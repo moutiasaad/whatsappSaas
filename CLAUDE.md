@@ -101,3 +101,83 @@ Validation performed:
   - migration for `subscriptions`
   - `Subscription` model
   - relations with `Tenant` and `Plan`
+
+---
+
+## Session Handoff (May 20, 2026 - UI_PATTERNS rollout continuation)
+
+### Scope completed in this phase
+
+- Applied `UI_PATTERNS.md` progressively to major admin/super-admin/supervisor pages requested in chat:
+  - `/super-admin/platform/tenants*`
+  - `/super-admin/platform/plans*`
+  - `/super-admin/platform/global-settings*`
+  - `/super-admin/platform/system-health`
+  - `/super-admin/conversations*`
+  - `/super-admin/customers*`
+  - `/supervisor/teams`
+
+### Notable backend updates
+
+- `app/Http/Controllers/Admin/SuperAdminPlatformController.php`
+  - Added/expanded show/edit/update/toggle flows for tenants/plans/global settings and disable/guard logic.
+- `app/Http/Controllers/Admin/ConversationWebController.php`
+  - Super-admin control/filter context for conversations.
+- `app/Http/Controllers/Api/ConversationController.php`
+  - Conversation list/filter behavior aligned with updated UI controls.
+- `app/Http/Controllers/Admin/CustomerController.php`
+  - Added richer filters (search, tenant, instance, activity/date, sort), KPI stats, and detailed customer-conversation filtering on show page.
+- `app/Http/Controllers/Admin/TeamController.php`
+  - Added supervisor-scoped team listing, filtering/sorting/pagination/stats for index.
+  - Added supervisor access guard for editing/updating teams (`ensureTeamAccess`).
+
+### Notable route/permission updates
+
+- `routes/web.php`
+  - Added supervisor route access for teams management:
+    - `supervisor.teams.index`
+    - `supervisor.teams.edit`
+    - `supervisor.teams.update`
+  - Kept admin/super-admin full team CRUD under management routes.
+
+### View/UI updates (patterned)
+
+- `resources/views/layouts/admin.blade.php`
+  - Sidebar role text/entries updated; supervisor now has dedicated Teams nav item.
+- `resources/views/admin/customers/index.blade.php`
+- `resources/views/admin/customers/show.blade.php`
+- `resources/views/admin/conversations/index.blade.php`
+- `resources/views/admin/conversations/show.blade.php`
+- `resources/views/admin/teams/index.blade.php`
+- `resources/views/admin/teams/edit.blade.php`
+- `resources/views/admin/platform/*.blade.php` (tenants/plans/global/system health pages and supporting edit/show views)
+
+### Data/config additions created in this phase
+
+- `app/Models/PlatformSetting.php`
+- `database/migrations/2026_05_20_000014_create_platform_settings_table.php`
+- New platform UI partials and edit/show pages under:
+  - `resources/views/admin/platform/`
+
+### Current behavior for Supervisor Teams
+
+- `/supervisor/teams` now uses patterned UI (page header, stat cards, toolbar filters, data table, badges, action buttons, pagination).
+- Supervisor can open **Manage** on teams they belong to and submit updates.
+- Supervisor cannot delete teams or manage instances (admin/super-admin only in UI and routes).
+
+### Important note about tooling
+
+- `code-review-graph` MCP calls repeatedly timed out in this environment during this phase.
+- Fallback used: direct file inspection and patching via shell/apply_patch.
+
+### Suggested first steps next session
+
+1. Run full app smoke test in browser for:
+   - `/super-admin/customers`
+   - `/super-admin/conversations`
+   - `/supervisor/teams`
+2. Run route + view compile checks:
+   - `php artisan route:list`
+   - `php artisan optimize:clear`
+   - `php artisan view:cache` (if environment temp file warning is resolved)
+3. Normalize remaining hardcoded `admin.*` routes in older blades (especially team create/edit and other legacy pages) to `routeNamePrefix()` pattern where needed.

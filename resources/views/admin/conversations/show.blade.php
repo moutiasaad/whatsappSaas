@@ -3,322 +3,234 @@
 @section('title', 'Conversation')
 
 @section('breadcrumb')
-    <a href="{{ route('admin.conversations.index') }}" style="color:var(--text-secondary);text-decoration:none">Conversations</a>
+    @php $panelPrefix = auth()->user()->routeNamePrefix(); @endphp
+    <a href="{{ route($panelPrefix . '.conversations.index') }}" style="color:var(--text-secondary);text-decoration:none">Conversations</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
     <span>{{ $conversation->customer->displayNameOrPhone }}</span>
 @endsection
 
 @section('content')
-<div x-data="conversationView()" x-init="init()" style="display:grid;grid-template-columns:1fr 320px;gap:1rem;height:calc(100vh - 8.5rem);min-height:0">
+<div x-data="conversationPro()" x-init="init()">
+    <div class="page-header" style="margin-bottom:1rem;">
+        <div class="page-header-left">
+            <div class="page-title">Conversation #{{ $conversation->id }}</div>
+            <div class="page-subtitle">{{ $conversation->customer->displayNameOrPhone }} - {{ $conversation->customer->phone_e164 }}</div>
+        </div>
+        <div class="page-header-actions">
+            <a href="{{ route($panelPrefix . '.conversations.index') }}" class="btn btn-outline btn-sm">
+                <i class="ri-arrow-left-line"></i> Back
+            </a>
+            <a href="{{ route($panelPrefix . '.customers.show', $conversation->customer) }}" class="btn btn-outline btn-sm">
+                <i class="ri-user-line"></i> Customer
+            </a>
+        </div>
+    </div>
 
-    {{-- === LEFT: Chat Panel === --}}
-    <div class="card" style="padding:0;display:flex;flex-direction:column;overflow:hidden">
-
-        {{-- Chat Header --}}
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-            <div style="display:flex;align-items:center;gap:.875rem">
-                <div style="width:2.75rem;height:2.75rem;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:.875rem;font-weight:600;display:flex;align-items:center;justify-content:center;text-transform:uppercase">
-                    {{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;height:calc(100vh - 11.5rem);min-height:0;">
+        <div class="card" style="padding:0;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="padding:12px 16px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:.75rem;">
+                    <div class="conv-avatar">{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:.95rem;">{{ $conversation->customer->displayNameOrPhone }}</div>
+                        <div style="font-size:.8rem;color:var(--text-muted);">{{ $conversation->instance->name }} - {{ $conversation->team?->name ?? 'No team' }}</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight:600;font-size:.9375rem">{{ $conversation->customer->displayNameOrPhone }}</div>
-                    <div style="font-size:.8125rem;color:var(--text-muted)">{{ $conversation->customer->phone_e164 }} · {{ $conversation->instance->name }}</div>
-                </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:.5rem">
-                {{-- State Badge --}}
-                <span x-show="state === 'pool'" class="badge badge-orange">Waiting in Pool</span>
-                <span x-show="state === 'claimed'" class="badge badge-blue">Claimed</span>
-                <span x-show="state === 'closed'" class="badge badge-gray">Closed</span>
 
-                {{-- Action Buttons --}}
-                @can('claim', $conversation)
+                <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+                    <span x-show="state === 'pool'" class="badge badge-orange"><i class="ri-time-line"></i> Pool</span>
+                    <span x-show="state === 'claimed'" class="badge badge-blue"><i class="ri-user-line"></i> Claimed</span>
+                    <span x-show="state === 'closed'" class="badge badge-gray"><i class="ri-check-double-line"></i> Closed</span>
+                    <span x-show="aiSuspended" class="badge badge-gray">AI Off</span>
+
+                    @can('claim', $conversation)
                     <template x-if="state === 'pool'">
                         <button @click="claim()" :disabled="actionLoading" class="btn btn-primary btn-sm">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Claim
+                            <i class="ri-hand-coin-line"></i> Claim
                         </button>
                     </template>
-                @endcan
+                    @endcan
 
-                <template x-if="state === 'claimed' && canAct">
-                    <div style="display:flex;gap:.375rem">
-                        @can('reassign', $conversation)
-                        <button @click="showReassign = true" class="btn btn-outline btn-sm">Reassign</button>
-                        @endcan
-                        @can('release', $conversation)
-                            <button @click="release()" :disabled="actionLoading" class="btn btn-outline btn-sm">Release</button>
-                        @endcan
-                        <button @click="close()" :disabled="actionLoading" class="btn btn-danger btn-sm">Close</button>
+                    <template x-if="state === 'claimed' && canAct">
+                        <div style="display:flex;align-items:center;gap:.35rem;">
+                            @can('reassign', $conversation)
+                            <button @click="showReassign = true" class="btn btn-outline btn-sm">
+                                <i class="ri-user-settings-line"></i> Reassign
+                            </button>
+                            @endcan
+                            @can('release', $conversation)
+                            <button @click="release()" class="btn btn-outline btn-sm" :disabled="actionLoading">
+                                <i class="ri-reply-line"></i> Release
+                            </button>
+                            @endcan
+                            @can('close', $conversation)
+                            <button @click="closeConv()" class="btn btn-danger btn-sm" :disabled="actionLoading">
+                                <i class="ri-close-circle-line"></i> Close
+                            </button>
+                            @endcan
+                        </div>
+                    </template>
+
+                    @can('reopen', $conversation)
+                    <template x-if="state === 'closed'">
+                        <button @click="reopen()" class="btn btn-outline btn-sm" :disabled="actionLoading">
+                            <i class="ri-refresh-line"></i> Reopen
+                        </button>
+                    </template>
+                    @endcan
+
+                    @can('toggleAi', $conversation)
+                    <template x-if="state !== 'closed'">
+                        <button @click="toggleAi()" class="btn btn-outline btn-sm" :disabled="actionLoading">
+                            <i class="ri-robot-2-line"></i>
+                            <span x-text="aiSuspended ? 'Resume AI' : 'Suspend AI'"></span>
+                        </button>
+                    </template>
+                    @endcan
+                </div>
+            </div>
+
+            <div id="messages-scroll" style="flex:1;overflow-y:auto;padding:14px;background:linear-gradient(180deg,#f8fafc 0%, #f0fdf4 100%);" >
+                <div x-show="hasMoreMessages" style="text-align:center;margin-bottom:.5rem;">
+                    <button @click="loadMoreMessages()" :disabled="loadingMessages" class="btn btn-ghost btn-sm">
+                        <span x-show="!loadingMessages">Load earlier messages</span>
+                        <span x-show="loadingMessages">Loading...</span>
+                    </button>
+                </div>
+
+                <template x-for="msg in messages" :key="msg.id">
+                    <div style="display:flex;margin-bottom:10px;" :style="msg.direction === 'out' ? 'justify-content:flex-end;' : 'justify-content:flex-start;'">
+                        <div :style="bubbleStyle(msg)" style="max-width:76%;padding:10px 12px;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+                            <div x-show="msg.ai_metadata?.is_note" style="font-size:.68rem;color:#b45309;font-weight:700;margin-bottom:4px;">INTERNAL NOTE</div>
+                            <div x-show="msg.author_type === 'ai'" style="font-size:.68rem;color:#0f766e;font-weight:700;margin-bottom:4px;">AI REPLY</div>
+                            <div style="font-size:.87rem;line-height:1.45;white-space:pre-wrap;word-break:break-word;" x-text="msg.body || '-'"></div>
+                            <div style="font-size:.68rem;opacity:.7;text-align:right;margin-top:4px;" x-text="formatTime(msg.sent_at)"></div>
+                        </div>
                     </div>
                 </template>
+                <div id="scroll-anchor"></div>
+            </div>
 
-                <template x-if="state === 'closed'">
-                    <div style="color:var(--text-muted);font-size:.8125rem" x-text="closedAt ? `Closed ${timeAgo(closedAt)}` : 'Closed'"></div>
-                </template>
+            <div x-show="state !== 'closed'" style="padding:10px 12px;border-top:1px solid var(--card-border);background:#fff;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Hello! Thanks for reaching out. How can I help you today?')">Greeting</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Thanks for waiting. I am checking this now and will update you shortly.')">Follow-up</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('This issue is now resolved. Please confirm on your side.')">Resolved</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="isNote = !isNote" :style="isNote ? 'color:#b45309;background:#fef3c7;' : ''">
+                        <i class="ri-sticky-note-line"></i> Note mode
+                    </button>
+                </div>
+
+                <div style="display:flex;gap:8px;align-items:flex-end;">
+                    <textarea x-model="draft" rows="1" @keydown.ctrl.enter.prevent="send()" @keydown.meta.enter.prevent="send()" @input="autoResize($el)"
+                              :placeholder="isNote ? 'Write internal note... (Ctrl+Enter)' : 'Type a message... (Ctrl+Enter)'"
+                              style="flex:1;resize:none;border:1.5px solid var(--card-border);border-radius:10px;padding:10px 12px;font-size:.875rem;line-height:1.45;max-height:150px;outline:none;"></textarea>
+                    <button @click="send()" :disabled="!draft.trim() || sending || state !== 'claimed'" class="btn btn-primary" style="height:40px;min-width:90px;">
+                        <span x-show="!sending"><i class="ri-send-plane-2-line"></i> Send</span>
+                        <span x-show="sending"><span class="btn-spinner"></span></span>
+                    </button>
+                </div>
+                <div x-show="state === 'pool'" style="font-size:.75rem;color:var(--text-muted);margin-top:6px;">Claim this conversation to send replies.</div>
+            </div>
+
+            <div x-show="state === 'closed'" style="padding:10px 12px;border-top:1px solid var(--card-border);background:var(--page-bg);font-size:.8rem;color:var(--text-muted);text-align:center;">
+                Conversation is closed. Reopen it to continue.
             </div>
         </div>
 
-        {{-- AI Suggestion Banner --}}
-        <div x-show="aiSuggestion" x-transition
-             style="margin:.75rem 1.25rem;padding:.75rem 1rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:.625rem;display:flex;align-items:flex-start;gap:.75rem;flex-shrink:0">
-            <svg style="color:var(--brand);flex-shrink:0;margin-top:.1rem" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-            <div style="flex:1;min-width:0">
-                <div style="font-size:.75rem;font-weight:600;color:var(--brand);margin-bottom:.25rem">AI Suggestion</div>
-                <div style="font-size:.8125rem;color:var(--text-secondary)" x-text="aiSuggestion"></div>
-            </div>
-            <div style="display:flex;gap:.375rem;flex-shrink:0">
-                <button @click="useAiSuggestion()" class="btn btn-sm" style="background:var(--brand);color:#fff;padding:.25rem .625rem;font-size:.75rem">Use</button>
-                <button @click="aiSuggestion = null" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem;font-size:.75rem">Dismiss</button>
-            </div>
-        </div>
-
-        {{-- Messages Area --}}
-        <div id="messages-scroll" style="flex:1;overflow-y:auto;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.75rem"
-             @scroll="onScroll">
-
-            {{-- Load More --}}
-            <div x-show="hasMoreMessages" style="text-align:center;margin-bottom:.5rem">
-                <button @click="loadMoreMessages()" :disabled="loadingMessages" class="btn btn-ghost btn-sm" style="font-size:.75rem">
-                    <span x-show="!loadingMessages">Load earlier messages</span>
-                    <span x-show="loadingMessages">Loading…</span>
-                </button>
-            </div>
-
-            <template x-for="msg in messages" :key="msg.id">
-                <div :class="msgClass(msg)" style="display:flex;align-items:flex-end;gap:.5rem">
-
-                    {{-- Inbound Avatar --}}
-                    <div x-show="msg.direction === 'in'"
-                         style="width:1.75rem;height:1.75rem;border-radius:50%;background:var(--card-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.6875rem;font-weight:600;color:var(--text-secondary)">
-                        {{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 1)) }}
+        <div style="display:flex;flex-direction:column;gap:1rem;min-height:0;">
+            <div class="card">
+                <div class="card-header" style="padding-bottom:10px;">
+                    <div class="card-title">Workspace</div>
+                </div>
+                <div style="padding:0 14px 14px;">
+                    <div class="tab-nav" style="margin-bottom:12px;">
+                        <button class="tab-btn" :class="{ 'active': sideTab === 'details' }" @click="sideTab = 'details'">Details</button>
+                        <button class="tab-btn" :class="{ 'active': sideTab === 'timeline' }" @click="sideTab = 'timeline'">Timeline</button>
                     </div>
 
-                    {{-- Bubble --}}
-                    <div :style="bubbleStyle(msg)" style="max-width:72%;border-radius:.875rem;padding:.625rem .875rem;position:relative">
-                        {{-- Note label --}}
-                        <div x-show="msg.ai_metadata?.is_note"
-                             style="font-size:.6875rem;font-weight:600;color:#f59e0b;margin-bottom:.25rem;display:flex;align-items:center;gap:.25rem">
-                            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Internal Note
-                        </div>
-                        {{-- AI label --}}
-                        <div x-show="msg.author_type === 'ai'"
-                             style="font-size:.6875rem;font-weight:600;color:var(--brand);margin-bottom:.25rem;display:flex;align-items:center;gap:.25rem">
-                            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                            AI Reply
-                        </div>
-                        <div style="font-size:.875rem;white-space:pre-wrap;word-break:break-word" x-text="msg.body"></div>
-                        <div style="font-size:.6875rem;margin-top:.375rem;opacity:.65;text-align:right" x-text="formatTime(msg.sent_at)"></div>
+                    <div x-show="sideTab === 'details'" class="tab-panel">
+                        <div class="meta-row"><span>Tenant</span><strong>{{ $conversation->tenant?->name ?? '-' }}</strong></div>
+                        <div class="meta-row"><span>Instance</span><strong>{{ $conversation->instance->name }}</strong></div>
+                        <div class="meta-row"><span>Team</span><strong>{{ $conversation->team?->name ?? '-' }}</strong></div>
+                        <div class="meta-row"><span>Owner</span><strong x-text="agentName || '{{ $conversation->ownerAgent?->name ?? 'Unassigned' }}'"></strong></div>
+                        <div class="meta-row"><span>Started</span><strong>{{ $conversation->created_at->format('M j, Y H:i') }}</strong></div>
+                        <div class="meta-row"><span>Last activity</span><strong x-text="timeAgo('{{ $conversation->last_message_at }}')"></strong></div>
+                        <div class="meta-row"><span>Total customer convos</span><strong>{{ $customerConversationCount }}</strong></div>
+                        <div class="meta-row"><span>AI mode</span><strong x-text="aiSuspended ? 'Suspended' : '{{ $aiMode }}'"></strong></div>
+                    </div>
 
-                        {{-- Delivery status (outbound) --}}
-                        <div x-show="msg.direction === 'out'" style="position:absolute;bottom:.375rem;right:.625rem;opacity:.6">
-                            <svg x-show="msg.status === 'sent'" width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/></svg>
-                            <svg x-show="msg.status === 'delivered'" width="14" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 12"><path d="M1 6l4 4L13 2M9 6l4 4 8-8"/></svg>
-                            <svg x-show="msg.status === 'read'" width="14" height="10" fill="none" stroke="#10b981" stroke-width="2.5" viewBox="0 0 24 12"><path d="M1 6l4 4L13 2M9 6l4 4 8-8"/></svg>
+                    <div x-show="sideTab === 'timeline'" class="tab-panel">
+                        <div style="display:flex;flex-direction:column;gap:9px;max-height:360px;overflow:auto;">
+                            @forelse($events as $event)
+                                <div style="padding:8px 10px;background:var(--page-bg);border:1px solid var(--card-border);border-radius:8px;">
+                                    <div style="font-size:.78rem;font-weight:700;">{{ strtoupper(str_replace('_', ' ', $event->type)) }}</div>
+                                    <div style="font-size:.73rem;color:var(--text-muted);">{{ $event->actor?->name ?? 'System' }} - {{ $event->created_at->diffForHumans() }}</div>
+                                </div>
+                            @empty
+                                <div style="font-size:.8rem;color:var(--text-muted);">No events yet.</div>
+                            @endforelse
                         </div>
                     </div>
                 </div>
-            </template>
-
-            {{-- Typing indicator --}}
-            <div x-show="agentTyping" style="display:flex;align-items:flex-end;gap:.5rem">
-                <div style="width:1.75rem;height:1.75rem;border-radius:50%;background:var(--brand-light);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-                <div style="background:var(--page-bg);border:1px solid var(--card-border);border-radius:.875rem;padding:.625rem .875rem">
-                    <div style="display:flex;gap:.25rem;align-items:center;height:1.125rem">
-                        <span class="typing-dot"></span>
-                        <span class="typing-dot" style="animation-delay:.2s"></span>
-                        <span class="typing-dot" style="animation-delay:.4s"></span>
-                    </div>
-                </div>
             </div>
-
-            <div id="scroll-anchor"></div>
-        </div>
-
-        {{-- Compose Bar --}}
-        <div x-show="state !== 'closed'" style="padding:.875rem 1.25rem;border-top:1px solid var(--card-border);flex-shrink:0;background:var(--card-bg)">
-            <div style="display:flex;gap:.5rem;align-items:flex-end">
-                {{-- Note toggle --}}
-                <button @click="isNote = !isNote"
-                        :style="isNote ? 'color:#f59e0b;background:rgba(245,158,11,.1)' : 'color:var(--text-muted)'"
-                        title="Toggle internal note"
-                        style="padding:.5rem;border-radius:.5rem;border:none;cursor:pointer;flex-shrink:0;transition:all .15s">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </button>
-
-                {{-- Textarea --}}
-                <div style="flex:1;position:relative">
-                    <textarea x-model="draft" @keydown.meta.enter.prevent="send()" @keydown.ctrl.enter.prevent="send()"
-                              :placeholder="isNote ? 'Write an internal note… (Ctrl+Enter to send)' : 'Type a message… (Ctrl+Enter to send)'"
-                              :style="isNote ? 'border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.04)' : ''"
-                              rows="1"
-                              @input="autoResize($el)"
-                              style="width:100%;resize:none;border:1.5px solid var(--card-border);border-radius:.75rem;padding:.625rem .875rem;font-size:.875rem;font-family:inherit;background:var(--card-bg);color:var(--text-primary);outline:none;line-height:1.5;max-height:150px;overflow-y:auto;transition:border-color .15s;box-sizing:border-box"
-                              onfocus="this.style.borderColor='var(--brand)'"
-                              onblur="this.style.borderColor='var(--card-border)'">
-                    </textarea>
-                </div>
-
-                {{-- Send --}}
-                <button @click="send()" :disabled="!draft.trim() || sending || state !== 'claimed'"
-                        class="btn btn-primary btn-icon" style="flex-shrink:0;width:2.5rem;height:2.5rem;padding:0">
-                    <svg x-show="!sending" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    <div x-show="sending" class="spinner" style="width:1rem;height:1rem;border-width:2px"></div>
-                </button>
-            </div>
-            <div x-show="state === 'pool'" style="margin-top:.5rem;font-size:.75rem;color:var(--text-muted);text-align:center">
-                Claim this conversation to reply
-            </div>
-        </div>
-
-        {{-- Closed bar --}}
-        <div x-show="state === 'closed'"
-             style="padding:.875rem 1.25rem;border-top:1px solid var(--card-border);flex-shrink:0;text-align:center;background:var(--page-bg)">
-            <span style="font-size:.8125rem;color:var(--text-muted)">This conversation is closed. New messages will reopen it automatically.</span>
         </div>
     </div>
 
-    {{-- === RIGHT: Info Panel === --}}
-    <div style="display:flex;flex-direction:column;gap:1rem;overflow-y:auto">
-
-        {{-- Customer Info --}}
-        <div class="card">
-            <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Contact</div>
+    <div x-show="showReassign" x-cloak class="modal-overlay show" @click.self="showReassign = false">
+        <div class="modal-box" style="max-width:420px;text-align:left;" @click.stop>
+            <div class="modal-send-icon"><i class="ri-user-settings-line"></i></div>
+            <h3>Reassign Conversation</h3>
+            <p>Select an eligible agent for this conversation.</p>
+            <div style="margin:12px 0 18px;">
+                <select x-model="reassignAgentId" class="form-control" data-no-ss>
+                    <option value="">Select agent...</option>
+                    @foreach($teamAgents as $agent)
+                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                    @endforeach
+                </select>
             </div>
-            <div style="padding:0 1.25rem 1.25rem">
-                <div style="text-align:center;margin-bottom:1rem">
-                    <div style="width:3.5rem;height:3.5rem;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;text-transform:uppercase">
-                        {{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}
-                    </div>
-                    <div style="font-weight:600">{{ $conversation->customer->displayNameOrPhone }}</div>
-                    <div style="font-size:.8125rem;color:var(--text-muted)">{{ $conversation->customer->phone_e164 }}</div>
-                </div>
-
-                <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.8125rem">
-                    <div style="display:flex;justify-content:space-between">
-                        <span style="color:var(--text-muted)">First contact</span>
-                        <span>{{ $conversation->customer->created_at->format('M j, Y') }}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between">
-                        <span style="color:var(--text-muted)">Total conversations</span>
-                        <span>{{ $customerConversationCount }}</span>
-                    </div>
-                </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" @click="showReassign = false">Cancel</button>
+                <button type="button" class="btn btn-primary" :disabled="!reassignAgentId || actionLoading" @click="reassign()">Confirm</button>
             </div>
-        </div>
-
-        {{-- Conversation Details --}}
-        <div class="card">
-            <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Details</div>
-            </div>
-            <div style="padding:0 1.25rem 1.25rem;font-size:.8125rem;display:flex;flex-direction:column;gap:.5rem">
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Instance</span>
-                    <span>{{ $conversation->instance->name }}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Team</span>
-                    <span>{{ $conversation->team?->name ?? '—' }}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Agent</span>
-                    <span x-text="agentName || '{{ $conversation->ownerAgent?->name ?? 'Unassigned' }}'"></span>
-                </div>
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Started</span>
-                    <span>{{ $conversation->created_at->format('M j, g:i a') }}</span>
-                </div>
-                @if($conversation->claimed_at)
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Claimed</span>
-                    <span>{{ $conversation->claimed_at->format('M j, g:i a') }}</span>
-                </div>
-                @endif
-                <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">AI</span>
-                    <span x-text="aiSuspended ? 'Suspended' : '{{ $aiMode }}'"></span>
-                </div>
-            </div>
-        </div>
-
-        {{-- Timeline --}}
-        <div class="card">
-            <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Timeline</div>
-            </div>
-            <div style="padding:0 1.25rem 1.25rem">
-                @forelse($events as $event)
-                <div style="display:flex;gap:.625rem;{{ $loop->last ? '' : 'padding-bottom:.75rem;border-bottom:1px solid var(--card-border);margin-bottom:.75rem' }}">
-                    <div style="width:1.5rem;height:1.5rem;border-radius:50%;background:var(--page-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted)">
-                        @if($event->type === 'claimed')
-                            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/></svg>
-                        @elseif($event->type === 'closed')
-                            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                        @elseif($event->type === 'note_added')
-                            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6"/></svg>
-                        @else
-                            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg>
-                        @endif
-                    </div>
-                    <div>
-                        <div style="font-size:.8125rem;font-weight:500">{{ ucfirst(str_replace('_', ' ', $event->type)) }}</div>
-                        <div style="font-size:.75rem;color:var(--text-muted)">
-                            {{ $event->actor?->name ?? 'System' }} · {{ $event->created_at->diffForHumans() }}
-                        </div>
-                    </div>
-                </div>
-                @empty
-                <div style="color:var(--text-muted);font-size:.8125rem;text-align:center;padding:.5rem 0">No events yet</div>
-                @endforelse
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- Reassign Modal --}}
-<div x-show="showReassign" x-cloak class="modal-overlay show" @click.self="showReassign = false">
-    <div class="modal-box" @click.stop style="text-align:left;padding:1.5rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-            <h3 style="font-size:1rem;font-weight:700;margin:0">Reassign Conversation</h3>
-            <button @click="showReassign = false" class="btn btn-ghost btn-icon btn-sm" style="width:28px;height:28px">&times;</button>
-        </div>
-        <div class="form-group" style="margin-bottom:1.25rem">
-            <label class="form-label">Assign to Agent</label>
-            <select x-model="reassignAgentId" class="form-control" data-no-ss>
-                <option value="">Select agent…</option>
-                @foreach($teamAgents as $agent)
-                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="modal-actions">
-            <button @click="showReassign = false" class="btn btn-outline">Cancel</button>
-            <button @click="reassign()" :disabled="!reassignAgentId || actionLoading" class="btn btn-primary">Reassign</button>
         </div>
     </div>
 </div>
 
 <style>
-@keyframes typingPulse {
-    0%, 100% { transform: scaleY(0.4); opacity: .4; }
-    50% { transform: scaleY(1); opacity: 1; }
+.conv-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: linear-gradient(135deg,#10b981,#059669);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .82rem;
+    text-transform: uppercase;
 }
-.typing-dot {
-    display: inline-block; width: 5px; height: 10px; border-radius: 2px;
-    background: var(--text-muted); animation: typingPulse 1s infinite;
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--card-border);
+    font-size: .8rem;
 }
+.meta-row:last-child { border-bottom: 0; }
+.meta-row span { color: var(--text-muted); }
+.meta-row strong { color: var(--text-primary); text-align: right; }
 </style>
 
 <script>
-function conversationView() {
+function conversationPro() {
     return {
         conversationId: {{ $conversation->id }},
         state: '{{ $conversation->state }}',
-        closedAt: '{{ $conversation->closed_at }}',
-        agentName: '{{ $conversation->ownerAgent?->name }}',
+        agentName: @json($conversation->ownerAgent?->name),
         agentId: {{ $conversation->owner_agent_id ?? 'null' }},
         aiSuspended: {{ $conversation->ai_suspended ? 'true' : 'false' }},
 
@@ -329,16 +241,14 @@ function conversationView() {
         draft: '',
         isNote: false,
         sending: false,
-        aiSuggestion: null,
-        agentTyping: false,
         actionLoading: false,
         showReassign: false,
         reassignAgentId: '',
+        sideTab: 'details',
 
         get canAct() {
             const role = '{{ auth()->user()->role }}';
-            if (['admin', 'supervisor'].includes(role)) return true;
-            // Agent can only act on their own claimed conversation
+            if (['admin', 'super_admin', 'supervisor'].includes(role)) return true;
             return this.agentId === {{ auth()->id() }};
         },
 
@@ -348,27 +258,27 @@ function conversationView() {
             this.subscribeChannel();
         },
 
+        setQuickReply(text) {
+            this.draft = text;
+            this.$nextTick(() => {
+                const ta = document.querySelector('textarea[x-model="draft"]');
+                if (ta) this.autoResize(ta);
+            });
+        },
+
         async loadMessages(append = false) {
             this.loadingMessages = true;
             try {
                 const params = new URLSearchParams({ per_page: 40 });
                 if (this.cursor) params.set('before', this.cursor);
-
                 const res = await fetch(`/api/conversations/${this.conversationId}/messages?${params}`, {
-                    credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
                 });
-
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-
                 const msgs = data.data || [];
-
-                if (append) {
-                    this.messages = [...msgs, ...this.messages];
-                } else {
-                    this.messages = msgs;
-                }
-
+                this.messages = append ? [...msgs, ...this.messages] : msgs;
                 this.hasMoreMessages = !!data.next_cursor;
                 this.cursor = data.next_cursor ?? null;
             } catch (e) {
@@ -390,8 +300,7 @@ function conversationView() {
 
         scrollToBottom() {
             this.$nextTick(() => {
-                const anchor = document.getElementById('scroll-anchor');
-                anchor?.scrollIntoView({ behavior: 'instant' });
+                document.getElementById('scroll-anchor')?.scrollIntoView({ behavior: 'instant' });
             });
         },
 
@@ -403,10 +312,8 @@ function conversationView() {
         async send() {
             if (!this.draft.trim() || this.sending || this.state !== 'claimed') return;
             this.sending = true;
-
             const body = this.draft.trim();
             this.draft = '';
-
             const endpoint = this.isNote
                 ? `/api/conversations/${this.conversationId}/notes`
                 : `/api/conversations/${this.conversationId}/messages`;
@@ -437,113 +344,196 @@ function conversationView() {
 
         async claim() {
             this.actionLoading = true;
-            const res = await fetch(`/api/conversations/${this.conversationId}/claim`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/claim`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.state = 'claimed';
+                    this.agentId = {{ auth()->id() }};
+                    this.agentName = @json(auth()->user()->name);
+                    this.aiSuspended = true;
+                    window.showToast?.('success', 'Conversation claimed');
+                } else {
+                    window.showToast?.('error', data.message || 'Could not claim');
+                }
+            } finally {
+                this.actionLoading = false;
+            }
+        },
+
+        release() {
+            confirmSend({
+                title: 'Release conversation?',
+                message: 'This will return the conversation to the pool.',
+                callback: async () => {
+                    this.actionLoading = true;
+                    await fetch(`/api/conversations/${this.conversationId}/release`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                        }
+                    });
+                    window.location.href = @json(route($panelPrefix . '.conversations.index'));
                 }
             });
-            const data = await res.json();
-            if (res.ok) {
-                this.state    = 'claimed';
-                this.agentId  = {{ auth()->id() }};
-                this.agentName = '{{ auth()->user()->name }}';
-                window.showToast?.('success', 'Conversation claimed');
-            } else {
-                window.showToast?.('error', data.message || 'Could not claim');
+        },
+
+        closeConv() {
+            confirmSend({
+                title: 'Close conversation?',
+                message: 'The conversation will move to closed state.',
+                callback: async () => {
+                    this.actionLoading = true;
+                    await fetch(`/api/conversations/${this.conversationId}/close`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                        }
+                    });
+                    this.state = 'closed';
+                    this.actionLoading = false;
+                    window.showToast?.('success', 'Conversation closed');
+                }
+            });
+        },
+
+        reopen() {
+            confirmSend({
+                title: 'Reopen conversation?',
+                message: 'The conversation will return to the pool.',
+                callback: async () => {
+                    this.actionLoading = true;
+                    await fetch(`/api/conversations/${this.conversationId}/reopen`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                        }
+                    });
+                    this.state = 'pool';
+                    this.agentId = null;
+                    this.agentName = null;
+                    this.aiSuspended = false;
+                    this.actionLoading = false;
+                    window.showToast?.('success', 'Conversation reopened');
+                }
+            });
+        },
+
+        async toggleAi() {
+            this.actionLoading = true;
+            const target = !this.aiSuspended;
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/toggle-ai`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ ai_suspended: target ? 1 : 0 })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.aiSuspended = !!data.ai_suspended;
+                    window.showToast?.('success', data.message || 'AI status updated');
+                } else {
+                    window.showToast?.('error', data.message || 'Could not update AI status');
+                }
+            } finally {
+                this.actionLoading = false;
             }
-            this.actionLoading = false;
-        },
-
-        async release() {
-            this.actionLoading = true;
-            await fetch(`/api/conversations/${this.conversationId}/release`, {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            });
-            window.location.href = '/admin/conversations';
-        },
-
-        async close() {
-            if (!confirm('Close this conversation?')) return;
-            this.actionLoading = true;
-            await fetch(`/api/conversations/${this.conversationId}/close`, {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            });
-            this.state = 'closed';
-            this.actionLoading = false;
-            window.showToast?.('success', 'Conversation closed');
         },
 
         async reassign() {
             if (!this.reassignAgentId) return;
             this.actionLoading = true;
-            await fetch(`/api/conversations/${this.conversationId}/reassign`, {
-                method: 'POST', credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                },
-                body: JSON.stringify({ agent_id: this.reassignAgentId })
-            });
-            this.showReassign = false;
-            this.actionLoading = false;
-            window.showToast?.('success', 'Conversation reassigned');
-        },
-
-        useAiSuggestion() {
-            this.draft = this.aiSuggestion;
-            this.aiSuggestion = null;
-            this.$nextTick(() => {
-                const ta = document.querySelector('textarea');
-                if (ta) { this.autoResize(ta); ta.focus(); }
-            });
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/reassign`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ agent_id: this.reassignAgentId })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    window.showToast?.('error', data.message || 'Reassign failed');
+                    return;
+                }
+                this.agentId = parseInt(this.reassignAgentId, 10);
+                const select = document.querySelector('select[x-model="reassignAgentId"]');
+                const label = select?.selectedOptions?.[0]?.textContent?.trim();
+                if (label) this.agentName = label;
+                this.showReassign = false;
+                this.reassignAgentId = '';
+                window.showToast?.('success', 'Conversation reassigned');
+            } finally {
+                this.actionLoading = false;
+            }
         },
 
         subscribeChannel() {
             if (!window.Echo) return;
-            const tenantId = {{ auth()->user()->tenant_id }};
-
+            const tenantId = {{ $conversation->tenant_id }};
             window.Echo.private(`tenant.${tenantId}.conversation.${this.conversationId}`)
                 .listen('.message.received', (e) => {
                     this.messages.push(e.message);
                     this.scrollToBottom();
-                    if (e.message.ai_metadata?.suggestion) {
-                        this.aiSuggestion = e.message.ai_metadata.suggestion;
-                    }
                 })
                 .listen('.message.sent', (e) => {
                     const idx = this.messages.findIndex(m => m.id === e.message.id);
                     if (idx >= 0) this.messages[idx] = e.message;
-                    else { this.messages.push(e.message); this.scrollToBottom(); }
+                    else {
+                        this.messages.push(e.message);
+                        this.scrollToBottom();
+                    }
                 })
                 .listen('.conversation.claimed', (e) => {
                     this.state = 'claimed';
-                    this.agentName = e.agent?.name;
-                    this.agentId = e.agent?.id;
+                    this.agentId = e.agent?.id || null;
+                    this.agentName = e.agent?.name || null;
                     this.aiSuspended = true;
                 })
-                .listen('.conversation.closed', () => { this.state = 'closed'; })
-                .listen('.conversation.released', () => { this.state = 'pool'; this.agentName = null; this.aiSuspended = false; });
-        },
-
-        msgClass(msg) {
-            if (msg.ai_metadata?.is_note) return 'msg-note';
-            return msg.direction === 'out' ? 'msg-out' : 'msg-in';
+                .listen('.conversation.released', () => {
+                    this.state = 'pool';
+                    this.agentId = null;
+                    this.agentName = null;
+                    this.aiSuspended = false;
+                })
+                .listen('.conversation.closed', () => {
+                    this.state = 'closed';
+                })
+                .listen('.conversation.reopened', () => {
+                    this.state = 'pool';
+                    this.aiSuspended = false;
+                });
         },
 
         bubbleStyle(msg) {
             if (msg.ai_metadata?.is_note) {
-                return 'background:rgba(245,158,11,.08);border:1px dashed rgba(245,158,11,.35);';
+                return 'background:#fffbeb;border:1px dashed #f59e0b;color:#92400e;';
             }
             if (msg.direction === 'out') {
-                return 'background:var(--brand);color:#fff;margin-left:auto;border-bottom-right-radius:.25rem;';
+                return 'background:var(--brand);color:#fff;border-bottom-right-radius:4px;';
             }
-            return 'background:var(--page-bg);border:1px solid var(--card-border);border-bottom-left-radius:.25rem;';
+            return 'background:#fff;border:1px solid var(--card-border);border-bottom-left-radius:4px;color:var(--text-primary);';
         },
 
         formatTime(ts) {
@@ -552,14 +542,14 @@ function conversationView() {
         },
 
         timeAgo(ts) {
-            if (!ts) return '';
+            if (!ts) return '-';
             const diff = (Date.now() - new Date(ts)) / 1000;
             if (diff < 60) return 'just now';
-            if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-            if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-            return `${Math.floor(diff/86400)}d ago`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
         }
-    }
+    };
 }
 </script>
 @endsection

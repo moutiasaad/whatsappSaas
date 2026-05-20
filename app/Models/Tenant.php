@@ -24,6 +24,7 @@ class Tenant extends Model
     public function plan(): BelongsTo { return $this->belongsTo(Plan::class); }
     public function users(): HasMany { return $this->hasMany(User::class); }
     public function teams(): HasMany { return $this->hasMany(Team::class); }
+    public function customers(): HasMany { return $this->hasMany(Customer::class); }
     public function whatsappInstances(): HasMany { return $this->hasMany(WhatsAppInstance::class); }
     public function conversations(): HasMany { return $this->hasMany(Conversation::class); }
     public function aiSettings(): HasOne { return $this->hasOne(AiSettings::class); }

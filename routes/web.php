@@ -40,7 +40,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
     Route::middleware($middleware)
         ->prefix($prefix)
         ->name($namePrefix . '.')
-        ->group(function () use ($includeManagement) {
+        ->group(function () use ($includeManagement, $roles) {
             Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
             // Conversations - all system users
@@ -53,6 +53,14 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Impersonation leave route (when admin is currently impersonating)
             Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
+
+            if (!$includeManagement && in_array('supervisor', $roles, true)) {
+                Route::middleware('role:supervisor')->group(function () {
+                    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+                    Route::get('/teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
+                    Route::put('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
+                });
+            }
 
             if (!$includeManagement) {
                 return;
@@ -113,8 +121,18 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/platform/tenants', [SuperAdminPlatformController::class, 'tenants'])->name('platform.tenants');
                 Route::get('/platform/tenants/create', [SuperAdminPlatformController::class, 'createTenant'])->name('platform.tenants.create');
                 Route::post('/platform/tenants', [SuperAdminPlatformController::class, 'storeTenant'])->name('platform.tenants.store');
+                Route::get('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'showTenant'])->name('platform.tenants.show');
+                Route::get('/platform/tenants/{tenant}/edit', [SuperAdminPlatformController::class, 'editTenant'])->name('platform.tenants.edit');
+                Route::put('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'updateTenant'])->name('platform.tenants.update');
+                Route::delete('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'destroyTenant'])->name('platform.tenants.destroy');
                 Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
+                Route::get('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'showPlan'])->name('platform.plans.show');
+                Route::get('/platform/plans/{plan}/edit', [SuperAdminPlatformController::class, 'editPlan'])->name('platform.plans.edit');
+                Route::put('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'updatePlan'])->name('platform.plans.update');
+                Route::patch('/platform/plans/{plan}/status', [SuperAdminPlatformController::class, 'togglePlanStatus'])->name('platform.plans.status');
                 Route::get('/platform/global-settings', [SuperAdminPlatformController::class, 'globalSettings'])->name('platform.global-settings');
+                Route::get('/platform/global-settings/edit', [SuperAdminPlatformController::class, 'editGlobalSettings'])->name('platform.global-settings.edit');
+                Route::put('/platform/global-settings', [SuperAdminPlatformController::class, 'updateGlobalSettings'])->name('platform.global-settings.update');
                 Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
                 Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
             });

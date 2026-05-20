@@ -5,31 +5,134 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Customer;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Models\WhatsAppInstance;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $customers = Customer::withCount('conversations')
-            ->when($request->search, fn ($q, $s) =>
-                $q->where('phone_e164', 'like', "%$s%")
-                  ->orWhere('name', 'like', "%$s%")
-            )
-            ->orderByDesc('updated_at')
+        $actor = $request->user();
+        $isSuperAdmin = $actor?->isSuperAdmin() ?? false;
+
+        $tenants = $isSuperAdmin
+            ? Tenant::query()->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        $instances = WhatsAppInstance::query()
+            ->select(['id', 'name', 'tenant_id'])
+            ->when(!$isSuperAdmin, fn ($q) => $q->where('tenant_id', $actor?->tenant_id))
+            ->orderBy('name')
+            ->get();
+
+        $baseQuery = Customer::query()
+            ->with('tenant:id,name')
+            ->withCount('conversations')
+            ->withMax('conversations', 'last_message_at')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = trim((string) $request->string('search'));
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('phone_e164', 'like', "%{$search}%")
+                        ->orWhere('display_name', 'like', "%{$search}%");
+                });
+            })
+            ->when($isSuperAdmin && $request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', (int) $request->integer('tenant_id')))
+            ->when($request->filled('instance_id'), function ($query) use ($request) {
+                $instanceId = (int) $request->integer('instance_id');
+                $query->whereHas('conversations', fn ($conv) => $conv->where('instance_id', $instanceId));
+            })
+            ->when($request->filled('has_conversations'), function ($query) use ($request) {
+                if ($request->string('has_conversations')->value() === '1') {
+                    $query->has('conversations');
+                } else {
+                    $query->doesntHave('conversations');
+                }
+            })
+            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('updated_at', '>=', $request->string('date_from')->value()))
+            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('updated_at', '<=', $request->string('date_to')->value()));
+
+        $customers = (clone $baseQuery);
+
+        match ($request->string('sort')->value()) {
+            'activity_asc' => $customers->orderBy('updated_at'),
+            'name_asc' => $customers->orderBy('display_name')->orderBy('phone_e164'),
+            'name_desc' => $customers->orderByDesc('display_name')->orderByDesc('phone_e164'),
+            'conversations_desc' => $customers->orderByDesc('conversations_count')->orderByDesc('updated_at'),
+            'conversations_asc' => $customers->orderBy('conversations_count')->orderByDesc('updated_at'),
+            default => $customers->orderByDesc('updated_at'),
+        };
+
+        $customers = $customers
             ->paginate(30)
             ->withQueryString();
 
-        return view('admin.customers.index', compact('customers'));
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'with_conversations' => (clone $baseQuery)->has('conversations')->count(),
+            'active_7d' => (clone $baseQuery)->where('updated_at', '>=', now()->subDays(7))->count(),
+            'dormant_30d' => (clone $baseQuery)->where('updated_at', '<', now()->subDays(30))->count(),
+        ];
+
+        return view('admin.customers.index', compact('customers', 'tenants', 'instances', 'stats', 'isSuperAdmin'));
     }
 
-    public function show(Customer $customer)
+    public function show(Request $request, Customer $customer)
     {
-        $conversations = Conversation::with(['ownerAgent', 'instance'])
+        $conversationBaseQuery = Conversation::query()
+            ->with([
+                'ownerAgent:id,name',
+                'instance:id,name',
+            ])
             ->where('customer_id', $customer->id)
-            ->orderByDesc('created_at')
-            ->paginate(15);
+            ->when($request->filled('state'), fn ($q) => $q->where('state', $request->string('state')->value()))
+            ->when($request->filled('instance_id'), fn ($q) => $q->where('instance_id', (int) $request->integer('instance_id')))
+            ->when($request->filled('agent_id'), fn ($q) => $q->where('owner_agent_id', (int) $request->integer('agent_id')))
+            ->when($request->filled('ai_suspended'), fn ($q) => $q->where('ai_suspended', $request->string('ai_suspended')->value() === '1'))
+            ->when($request->filled('search'), fn ($q) => $q->where('last_message_preview', 'like', '%' . trim((string) $request->string('search')) . '%'));
 
-        return view('admin.customers.show', compact('customer', 'conversations'));
+        $conversations = (clone $conversationBaseQuery);
+
+        match ($request->string('sort')->value()) {
+            'created_desc' => $conversations->orderByDesc('created_at'),
+            'created_asc' => $conversations->orderBy('created_at'),
+            'state' => $conversations->orderBy('state')->orderByDesc('last_message_at'),
+            default => $conversations->orderByDesc('last_message_at')->orderByDesc('created_at'),
+        };
+
+        $conversations = $conversations
+            ->paginate(15)
+            ->withQueryString();
+
+        $conversationStats = [
+            'total' => (clone $conversationBaseQuery)->count(),
+            'open' => (clone $conversationBaseQuery)->whereIn('state', ['pool', 'claimed'])->count(),
+            'closed' => (clone $conversationBaseQuery)->where('state', 'closed')->count(),
+            'unread' => (clone $conversationBaseQuery)->where('unread_count', '>', 0)->count(),
+            'ai_suspended' => (clone $conversationBaseQuery)->where('ai_suspended', true)->count(),
+        ];
+
+        $instanceOptions = WhatsAppInstance::query()
+            ->select(['id', 'name'])
+            ->where('tenant_id', $customer->tenant_id)
+            ->orderBy('name')
+            ->get();
+
+        $agentOptions = User::query()
+            ->select(['id', 'name', 'role'])
+            ->where('tenant_id', $customer->tenant_id)
+            ->whereIn('role', ['admin', 'supervisor', 'agent'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.customers.show', compact(
+            'customer',
+            'conversations',
+            'conversationStats',
+            'instanceOptions',
+            'agentOptions'
+        ));
     }
 }

@@ -16,9 +16,32 @@
             <div class="page-subtitle">Global tenant management (not scoped to a tenant)</div>
         </div>
         <div class="page-header-actions">
-            <a href="{{ route('admin.platform.tenants.create') }}" class="btn btn-primary">
+            <a href="{{ route('super_admin.platform.tenants.create') }}" class="btn btn-primary">
                 <i class="ri-add-line"></i> Add Tenant
             </a>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-building-2-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['total']) }}</div>
+            <div class="stat-card-label">Total Tenants</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-checkbox-circle-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['active']) }}</div>
+            <div class="stat-card-label">Active Subscriptions</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-card-icon"><i class="ri-time-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['trial']) }}</div>
+            <div class="stat-card-label">Trialing</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-card-icon"><i class="ri-pause-circle-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['inactive']) }}</div>
+            <div class="stat-card-label">Inactive Tenants</div>
         </div>
     </div>
 
@@ -47,7 +70,7 @@
             </select>
             <button type="submit" class="btn btn-outline btn-sm">Filter</button>
             @if(request()->hasAny(['search','plan_id','status','is_active']))
-                <a href="{{ route('admin.platform.tenants') }}" class="btn btn-ghost btn-sm">Clear</a>
+                <a href="{{ route('super_admin.platform.tenants') }}" class="btn btn-ghost btn-sm">Clear</a>
             @endif
         </div>
     </form>
@@ -58,7 +81,7 @@
                 <div class="empty-state-icon"><i class="ri-building-2-line"></i></div>
                 <h4>No tenants found</h4>
                 <p>Try adjusting your filters or add a tenant.</p>
-                <a href="{{ route('admin.platform.tenants.create') }}" class="btn btn-primary">Add Tenant</a>
+                <a href="{{ route('super_admin.platform.tenants.create') }}" class="btn btn-primary">Add Tenant</a>
             </div>
         @else
             <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
@@ -72,6 +95,7 @@
                             <th>Teams</th>
                             <th>Instances</th>
                             <th>Created</th>
+                            <th style="width:120px"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -95,7 +119,18 @@
                                             default => 'badge-gray',
                                         };
                                     @endphp
-                                    <span class="badge {{ $statusBadge }}">{{ ucfirst($tenant->subscription_status) }}</span>
+                                    <span class="badge {{ $statusBadge }}">
+                                        @if($tenant->subscription_status === 'active')
+                                            <i class="ri-checkbox-circle-line"></i>
+                                        @elseif($tenant->subscription_status === 'trial')
+                                            <i class="ri-time-line"></i>
+                                        @elseif($tenant->subscription_status === 'suspended')
+                                            <i class="ri-close-circle-line"></i>
+                                        @else
+                                            <i class="ri-stop-circle-line"></i>
+                                        @endif
+                                        {{ ucfirst($tenant->subscription_status) }}
+                                    </span>
                                     @if(!$tenant->is_active)
                                         <span class="badge badge-gray">Inactive</span>
                                     @endif
@@ -105,6 +140,22 @@
                                 <td>{{ number_format($tenant->instances_count) }}</td>
                                 <td>
                                     <span style="font-size:.8125rem;color:var(--text-muted)">{{ $tenant->created_at?->format('M j, Y') }}</span>
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:.25rem;justify-content:flex-end">
+                                        <a href="{{ route('super_admin.platform.tenants.show', $tenant) }}" class="action-btn" title="View">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <a href="{{ route('super_admin.platform.tenants.edit', $tenant) }}" class="action-btn" title="Edit">
+                                            <i class="ri-pencil-line"></i>
+                                        </a>
+                                        <button type="button"
+                                                class="action-btn danger"
+                                                title="Delete"
+                                                onclick="confirmDelete('{{ route('super_admin.platform.tenants.destroy', $tenant) }}', { title: 'Delete {{ addslashes($tenant->name) }}?', message: 'This will permanently delete the tenant and all tenant data.' })">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

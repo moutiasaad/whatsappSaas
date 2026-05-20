@@ -126,6 +126,33 @@ class ConversationService
         broadcast(new ConversationClaimed($conversation->fresh(), $newAgent));
     }
 
+    public function reopen(Conversation $conversation, User $actor): void
+    {
+        if (!$conversation->isClosed()) {
+            return;
+        }
+
+        $conversation->update([
+            'state'          => 'pool',
+            'owner_agent_id' => null,
+            'claimed_at'     => null,
+            'closed_at'      => null,
+            'ai_suspended'   => false,
+        ]);
+
+        $this->logEvent($conversation->fresh(), 'reopened', $actor->id, ['reason' => 'manual_reopen']);
+        broadcast(new ConversationReopened($conversation->fresh()));
+    }
+
+    public function toggleAi(Conversation $conversation, User $actor, bool $suspended): void
+    {
+        $conversation->update([
+            'ai_suspended' => $suspended,
+        ]);
+
+        $this->logEvent($conversation->fresh(), $suspended ? 'ai_suspended' : 'ai_resumed', $actor->id);
+    }
+
     private function logEvent(Conversation $conversation, string $type, ?int $actorId = null, array $payload = []): void
     {
         ConversationEvent::create([

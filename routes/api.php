@@ -12,7 +12,7 @@ Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'ha
 
 Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 
-    Route::middleware('role:admin,supervisor,agent')->group(function () {
+    Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
         // Conversations
         Route::get('/conversations', [ConversationController::class, 'index']);
         Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
@@ -20,6 +20,8 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         Route::post('/conversations/{conversation}/release', [ConversationController::class, 'release']);
         Route::post('/conversations/{conversation}/close', [ConversationController::class, 'close']);
         Route::post('/conversations/{conversation}/reassign', [ConversationController::class, 'reassign']);
+        Route::post('/conversations/{conversation}/reopen', [ConversationController::class, 'reopen']);
+        Route::post('/conversations/{conversation}/toggle-ai', [ConversationController::class, 'toggleAi']);
 
         // Messages
         Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);

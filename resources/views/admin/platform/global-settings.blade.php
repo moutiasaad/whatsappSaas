@@ -13,18 +13,75 @@
     <div class="page-header">
         <div class="page-header-left">
             <div class="page-title">Global Settings</div>
-            <div class="page-subtitle">Platform-level runtime configuration overview</div>
+            <div class="page-subtitle">Platform-level configuration and feature toggles</div>
+        </div>
+        <div class="page-header-actions">
+            <a href="{{ route('super_admin.platform.global-settings.edit') }}" class="btn btn-primary">
+                <i class="ri-pencil-line"></i> Edit Settings
+            </a>
         </div>
     </div>
 
-    <div class="card" style="padding:1rem">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
-            @foreach($settings as $key => $value)
-                <div style="padding:.875rem;border:1px solid var(--card-border);border-radius:.75rem;background:var(--page-bg)">
-                    <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">{{ str_replace('_', ' ', $key) }}</div>
-                    <div style="font-size:.9375rem;font-weight:600;color:var(--text-primary);margin-top:.25rem">{{ $value ?: '—' }}</div>
-                </div>
-            @endforeach
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-toggle-line"></i></div>
+            <div class="stat-card-value">{{ collect($settings)->where('type', 'boolean')->count() }}</div>
+            <div class="stat-card-label">Feature Toggles</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-check-line"></i></div>
+            <div class="stat-card-value">{{ collect($settings)->where('type', 'boolean')->filter(fn($s) => $s['value'])->count() }}</div>
+            <div class="stat-card-label">Enabled Toggles</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-card-icon"><i class="ri-close-line"></i></div>
+            <div class="stat-card-value">{{ collect($settings)->where('type', 'boolean')->filter(fn($s) => !$s['value'])->count() }}</div>
+            <div class="stat-card-label">Disabled Toggles</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-card-icon"><i class="ri-tools-line"></i></div>
+            <div class="stat-card-value">{{ count($runtime) }}</div>
+            <div class="stat-card-label">Runtime Signals</div>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Editable Platform Settings</div>
+            </div>
+            <div style="padding:1rem;display:grid;gap:.75rem;">
+                @foreach($settings as $key => $meta)
+                    <div style="padding:.875rem;border:1px solid var(--card-border);border-radius:.75rem;background:var(--page-bg);">
+                        <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">{{ $meta['label'] }}</div>
+                        <div style="margin-top:.35rem;">
+                            @if($meta['type'] === 'boolean')
+                                @if($meta['value'])
+                                    <span class="badge badge-green"><i class="ri-checkbox-circle-line"></i> Enabled</span>
+                                @else
+                                    <span class="badge badge-red"><i class="ri-close-circle-line"></i> Disabled</span>
+                                @endif
+                            @else
+                                <div style="font-size:.9375rem;font-weight:600;color:var(--text-primary);">{{ $meta['value'] ?: '-' }}</div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Runtime Configuration (Read Only)</div>
+            </div>
+            <div style="padding:1rem;display:grid;gap:.75rem;">
+                @foreach($runtime as $key => $value)
+                    <div style="padding:.875rem;border:1px solid var(--card-border);border-radius:.75rem;background:#fff;">
+                        <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">{{ str_replace('_', ' ', $key) }}</div>
+                        <div style="font-size:.9375rem;font-weight:600;color:var(--text-primary);margin-top:.25rem;">{{ $value ?: '-' }}</div>
+                    </div>
+                @endforeach
+            </div>
         </div>
     </div>
 </div>

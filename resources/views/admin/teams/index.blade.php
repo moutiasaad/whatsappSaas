@@ -7,95 +7,172 @@
 @endsection
 
 @section('content')
+    @php
+        $panelPrefix = auth()->user()->routeNamePrefix();
+        $canManageTeams = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+        $isSupervisor = auth()->user()->isSupervisor();
+    @endphp
 
-    {{-- Header --}}
     <div class="page-header">
         <div class="page-header-left">
             <div class="page-title">Teams</div>
-            <div class="page-subtitle">Organize agents into teams for conversation routing</div>
+            <div class="page-subtitle">
+                @if($isSupervisor)
+                    Manages one or more support teams
+                @else
+                    Organize agents into teams for conversation routing
+                @endif
+            </div>
         </div>
-        <div class="page-header-actions">
-            <a href="{{ route('admin.teams.create') }}" class="btn btn-primary">
-                <i class="ri-add-line"></i> New Team
-            </a>
+        @if($canManageTeams)
+            <div class="page-header-actions">
+                <a href="{{ route($panelPrefix . '.teams.create') }}" class="btn btn-primary">
+                    <i class="ri-add-line"></i> New Team
+                </a>
+            </div>
+        @endif
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-team-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['total'] ?? 0) }}</div>
+            <div class="stat-card-label">Total Teams</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon"><i class="ri-checkbox-circle-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['active'] ?? 0) }}</div>
+            <div class="stat-card-label">Active Teams</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-card-icon"><i class="ri-pause-circle-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['inactive'] ?? 0) }}</div>
+            <div class="stat-card-label">Inactive Teams</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-card-icon"><i class="ri-inbox-line"></i></div>
+            <div class="stat-card-value">{{ number_format($stats['pool'] ?? 0) }}</div>
+            <div class="stat-card-label">Pool Conversations</div>
         </div>
     </div>
 
-    @if($teams->isEmpty())
-        <div class="card">
+    <form method="GET">
+        <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem">
+            <div class="filter-input-wrap">
+                <i class="ri-search-line"></i>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search team name or description..." class="filter-input">
+            </div>
+
+            <select name="is_active" class="toolbar-select" onchange="this.form.submit()">
+                <option value="">Active + Inactive</option>
+                <option value="1" @selected(request('is_active') === '1')>Active only</option>
+                <option value="0" @selected(request('is_active') === '0')>Inactive only</option>
+            </select>
+
+            <select name="sort" class="toolbar-select" onchange="this.form.submit()">
+                <option value="name_asc" @selected(request('sort', 'name_asc') === 'name_asc')>Name A-Z</option>
+                <option value="name_desc" @selected(request('sort') === 'name_desc')>Name Z-A</option>
+                <option value="activity_desc" @selected(request('sort') === 'activity_desc')>Most Active</option>
+                <option value="pool_desc" @selected(request('sort') === 'pool_desc')>Most In Pool</option>
+            </select>
+
+            <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+
+            @if(request()->hasAny(['search', 'is_active', 'sort']))
+                <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-ghost btn-sm">Clear</a>
+            @endif
+        </div>
+    </form>
+
+    <div class="card" style="padding:0">
+        @if($teams->isEmpty())
             <div class="empty-state" style="padding:3rem">
-                <div class="empty-state-icon">
-                    <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                </div>
-                <h4>No teams yet</h4>
-                <p>Create your first team to organize agents and route conversations</p>
-                <a href="{{ route('admin.teams.create') }}" class="btn btn-primary">Create Team</a>
+                <div class="empty-state-icon"><i class="ri-team-line"></i></div>
+                <h4>No teams found</h4>
+                <p>Try adjusting your filters.</p>
+                @if($canManageTeams)
+                    <a href="{{ route($panelPrefix . '.teams.create') }}" class="btn btn-primary">Create Team</a>
+                @endif
             </div>
-        </div>
-    @else
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1rem">
-            @foreach($teams as $team)
-            <div class="card" style="transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 4px 20px rgba(16,185,129,.12)'" onmouseleave="this.style.boxShadow=''">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem">
-                    <div style="display:flex;align-items:center;gap:.75rem">
-                        <div style="width:2.5rem;height:2.5rem;border-radius:.75rem;background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.25));display:flex;align-items:center;justify-content:center;color:var(--brand)">
-                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                        </div>
-                        <div>
-                            <div style="font-weight:600">{{ $team->name }}</div>
-                            @if($team->description)
-                                <div style="font-size:.75rem;color:var(--text-muted)">{{ $team->description }}</div>
-                            @endif
-                        </div>
-                    </div>
-                    <span class="badge {{ $team->is_active ? 'badge-green' : 'badge-gray' }}">
-                        {{ $team->is_active ? 'Active' : 'Inactive' }}
-                    </span>
-                </div>
-
-                {{-- Member Avatars --}}
-                <div style="margin-bottom:1rem">
-                    <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem">{{ $team->users->count() }} member(s)</div>
-                    <div style="display:flex;align-items:center">
-                        @foreach($team->users->take(6) as $member)
-                        <img src="{{ $member->avatar_url }}" alt="{{ $member->name }}"
-                             title="{{ $member->name }}"
-                             style="width:1.875rem;height:1.875rem;border-radius:50%;border:2px solid var(--card-bg);object-fit:cover;margin-left:{{ $loop->first ? '0' : '-0.5rem' }}">
+        @else
+            <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Status</th>
+                            <th>Members</th>
+                            <th>Active Conversations</th>
+                            <th>Pool</th>
+                            <th>Closed</th>
+                            <th style="width:120px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($teams as $team)
+                            <tr>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:.75rem;min-width:0;">
+                                        <div style="width:2rem;height:2rem;border-radius:.625rem;background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.25));display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
+                                            <i class="ri-team-line"></i>
+                                        </div>
+                                        <div style="display:flex;flex-direction:column;gap:.125rem;min-width:0;">
+                                            <span style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $team->name }}</span>
+                                            <span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $team->description ?: 'No description' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge {{ $team->is_active ? 'badge-green' : 'badge-gray' }}">
+                                        <i class="{{ $team->is_active ? 'ri-checkbox-circle-line' : 'ri-pause-circle-line' }}"></i>
+                                        {{ $team->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-purple">
+                                        <i class="ri-user-line"></i>
+                                        {{ number_format($team->users_count ?? $team->users->count()) }}
+                                    </span>
+                                </td>
+                                <td>{{ number_format($team->active_conversations_count ?? 0) }}</td>
+                                <td>{{ number_format($team->pool_count ?? 0) }}</td>
+                                <td>{{ number_format($team->closed_count ?? 0) }}</td>
+                                <td>
+                                    <div style="display:flex;gap:.25rem;justify-content:flex-end;">
+                                        @if($canManageTeams)
+                                            <a href="{{ route($panelPrefix . '.teams.edit', $team) }}" class="action-btn" title="Manage">
+                                                <i class="ri-pencil-line"></i>
+                                            </a>
+                                            <a href="{{ route($panelPrefix . '.conversations.index', ['team_id' => $team->id]) }}" class="action-btn" title="View Conversations">
+                                                <i class="ri-message-3-line"></i>
+                                            </a>
+                                            <button type="button"
+                                                    class="action-btn danger"
+                                                    title="Delete"
+                                                    onclick="confirmDelete('{{ route($panelPrefix . '.teams.destroy', $team) }}', { title: 'Delete {{ addslashes($team->name) }}?', message: 'Existing conversations will become unassigned.' })">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        @else
+                                            <a href="{{ route($panelPrefix . '.teams.edit', $team) }}" class="action-btn" title="Manage">
+                                                <i class="ri-pencil-line"></i>
+                                            </a>
+                                            <a href="{{ route($panelPrefix . '.conversations.index', ['team_id' => $team->id]) }}" class="action-btn" title="View Conversations">
+                                                <i class="ri-message-3-line"></i>
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
                         @endforeach
-                        @if($team->users->count() > 6)
-                            <div style="width:1.875rem;height:1.875rem;border-radius:50%;background:var(--page-bg);border:2px solid var(--card-bg);display:flex;align-items:center;justify-content:center;font-size:.625rem;font-weight:600;color:var(--text-secondary);margin-left:-.5rem">
-                                +{{ $team->users->count() - 6 }}
-                            </div>
-                        @endif
-                        @if($team->users->isEmpty())
-                            <span style="font-size:.8125rem;color:var(--text-muted)">No members</span>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Stats --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:.875rem;background:var(--page-bg);border-radius:.625rem;margin-bottom:1rem">
-                    <div style="text-align:center">
-                        <div style="font-size:1.125rem;font-weight:700;color:var(--text-primary)">{{ $team->active_conversations_count ?? 0 }}</div>
-                        <div style="font-size:.6875rem;color:var(--text-muted)">Active</div>
-                    </div>
-                    <div style="text-align:center">
-                        <div style="font-size:1.125rem;font-weight:700;color:var(--text-primary)">{{ $team->pool_count ?? 0 }}</div>
-                        <div style="font-size:.6875rem;color:var(--text-muted)">In Pool</div>
-                    </div>
-                </div>
-
-                {{-- Actions --}}
-                <div style="display:flex;gap:.5rem;padding-top:.75rem;border-top:1px solid var(--card-border)">
-                    <a href="{{ route('admin.teams.edit', $team) }}" class="btn btn-outline btn-sm" style="flex:1">Manage</a>
-                    <button onclick="confirmDelete('{{ route('admin.teams.destroy', $team) }}', { title: 'Delete {{ addslashes($team->name) }}?', message: 'Existing conversations will become unassigned.' })"
-                            class="btn btn-ghost btn-icon" style="color:#ef4444">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-                    </button>
-                </div>
+                    </tbody>
+                </table>
             </div>
-            @endforeach
-        </div>
-    @endif
 
+            @if($teams->hasPages())
+                <div style="padding:1rem 1.25rem;border-top:1px solid var(--card-border)">
+                    {{ $teams->links('admin.partials.pagination') }}
+                </div>
+            @endif
+        @endif
+    </div>
 @endsection

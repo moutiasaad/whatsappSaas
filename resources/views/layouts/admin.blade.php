@@ -1479,7 +1479,6 @@
             @elseif(Auth::user()->isSupervisor())
                 <div class="sidebar-section-label">Supervisor</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    Supervisor
                     Manages one or more support teams. Sees all conversations of their team(s), can join, reassign, or release back to the pool.
                 </div>
             @elseif(Auth::user()->isAgent())
@@ -1497,22 +1496,22 @@
             </a>
 
             @if(Auth::user()->isSuperAdmin())
-            <a href="{{ route('admin.platform.tenants') }}" class="{{ request()->routeIs('admin.platform.tenants') ? 'active' : '' }}">
+            <a href="{{ route('admin.platform.tenants') }}" class="{{ request()->routeIs('admin.platform.tenants*') || request()->routeIs('super_admin.platform.tenants*') ? 'active' : '' }}">
                 <i class="ri-building-2-line"></i>
                 <span>Tenants</span>
             </a>
 
-            <a href="{{ route('admin.platform.plans') }}" class="{{ request()->routeIs('admin.platform.plans') ? 'active' : '' }}">
+            <a href="{{ route('admin.platform.plans') }}" class="{{ request()->routeIs('admin.platform.plans*') || request()->routeIs('super_admin.platform.plans*') ? 'active' : '' }}">
                 <i class="ri-price-tag-3-line"></i>
                 <span>Subscription Plans</span>
             </a>
 
-            <a href="{{ route('admin.platform.global-settings') }}" class="{{ request()->routeIs('admin.platform.global-settings') ? 'active' : '' }}">
+            <a href="{{ route('admin.platform.global-settings') }}" class="{{ request()->routeIs('admin.platform.global-settings*') || request()->routeIs('super_admin.platform.global-settings*') ? 'active' : '' }}">
                 <i class="ri-global-line"></i>
                 <span>Global Settings</span>
             </a>
 
-            <a href="{{ route('admin.platform.system-health') }}" class="{{ request()->routeIs('admin.platform.system-health') ? 'active' : '' }}">
+            <a href="{{ route('admin.platform.system-health') }}" class="{{ request()->routeIs('admin.platform.system-health*') || request()->routeIs('super_admin.platform.system-health*') ? 'active' : '' }}">
                 <i class="ri-pulse-line"></i>
                 <span>System Health</span>
             </a>
@@ -1537,6 +1536,13 @@
                 <i class="ri-contacts-line"></i>
                 <span>Customers</span>
             </a>
+
+            @if(Auth::user()->isSupervisor())
+            <a href="{{ route('supervisor.teams.index') }}" class="{{ request()->routeIs('supervisor.teams.*') ? 'active' : '' }}">
+                <i class="ri-team-line"></i>
+                <span>Teams</span>
+            </a>
+            @endif
 
             @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
             <div class="sidebar-section-label">Management</div>

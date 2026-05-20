@@ -12,6 +12,18 @@ use Illuminate\Http\Request;
 
 class TeamController extends Controller
 {
+    private function ensureTeamAccess(Team $team): void
+    {
+        $user = auth()->user();
+
+        if (!$user->isSupervisor()) {
+            return;
+        }
+
+        $isMember = $team->users()->where('users.id', $user->id)->exists();
+        abort_unless($isMember, 403, 'You are not allowed to manage this team.');
+    }
+
     private function scopedUsers()
     {
         $query = User::whereIn('role', ['agent', 'supervisor'])->where('is_active', true);
@@ -38,15 +50,53 @@ class TeamController extends Controller
         return $validIds;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $teams = Team::withCount([
-            'users',
-            'conversations as active_conversations_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
-            'conversations as pool_count' => fn ($q) => $q->where('state', 'pool'),
-        ])->with('users')->orderBy('name')->get();
+        $user = $request->user();
 
-        return view('admin.teams.index', compact('teams'));
+        $baseQuery = Team::query()
+            ->when($user->isSupervisor(), function ($query) use ($user) {
+                $query->whereHas('users', fn ($inner) => $inner->where('users.id', $user->id));
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = trim((string) $request->string('search'));
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active')->value() === '1'))
+            ->withCount([
+                'users',
+                'conversations as active_conversations_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
+                'conversations as pool_count' => fn ($q) => $q->where('state', 'pool'),
+                'conversations as closed_count' => fn ($q) => $q->where('state', 'closed'),
+            ])
+            ->with([
+                'users' => fn ($query) => $query->select('users.id', 'users.name', 'users.avatar_url'),
+            ]);
+
+        $teams = (clone $baseQuery);
+
+        match ($request->string('sort')->value()) {
+            'name_desc' => $teams->orderByDesc('name'),
+            'activity_desc' => $teams->orderByDesc('active_conversations_count')->orderByDesc('name'),
+            'pool_desc' => $teams->orderByDesc('pool_count')->orderByDesc('name'),
+            default => $teams->orderBy('name'),
+        };
+
+        $teams = $teams
+            ->paginate(18)
+            ->withQueryString();
+
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'active' => (clone $baseQuery)->where('is_active', true)->count(),
+            'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
+            'pool' => (clone $baseQuery)->get()->sum('pool_count'),
+        ];
+
+        return view('admin.teams.index', compact('teams', 'stats'));
     }
 
     public function create()
@@ -84,6 +134,8 @@ class TeamController extends Controller
 
     public function edit(Team $team)
     {
+        $this->ensureTeamAccess($team);
+
         $agents = $this->scopedUsers()->orderBy('name')->get();
         $team->load('users');
 
@@ -101,6 +153,8 @@ class TeamController extends Controller
 
     public function update(Request $request, Team $team)
     {
+        $this->ensureTeamAccess($team);
+
         $data = $request->validate([
             'name'        => 'required|string|max:100',
             'description' => 'nullable|string|max:250',
@@ -119,7 +173,7 @@ class TeamController extends Controller
 
         AuditLog::record('team.updated', $team);
 
-        return redirect()->route('admin.teams.index')
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
             ->with('success', 'Team updated.');
     }
 

@@ -4,13 +4,43 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\Team;
+use App\Models\Tenant;
 use App\Models\User;
+use App\Models\WhatsAppInstance;
 
 class ConversationWebController extends Controller
 {
     public function index()
     {
-        return view('admin.conversations.index');
+        $actor = auth()->user();
+        $isSuperAdmin = $actor->isSuperAdmin();
+
+        $tenants = $isSuperAdmin
+            ? Tenant::query()->orderBy('name')->get(['id', 'name', 'slug'])
+            : collect();
+
+        $instances = WhatsAppInstance::query()
+            ->select(['id', 'name', 'tenant_id'])
+            ->when(!$isSuperAdmin, fn ($q) => $q->where('tenant_id', $actor->tenant_id))
+            ->orderBy('name')
+            ->get();
+
+        $teams = Team::query()
+            ->select(['id', 'name', 'tenant_id'])
+            ->when(!$isSuperAdmin, fn ($q) => $q->where('tenant_id', $actor->tenant_id))
+            ->orderBy('name')
+            ->get();
+
+        $agents = User::query()
+            ->select(['id', 'name', 'role', 'tenant_id'])
+            ->whereIn('role', ['admin', 'supervisor', 'agent'])
+            ->where('is_active', true)
+            ->when(!$isSuperAdmin, fn ($q) => $q->where('tenant_id', $actor->tenant_id))
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.conversations.index', compact('tenants', 'instances', 'teams', 'agents', 'isSuperAdmin'));
     }
 
     public function show(Conversation $conversation)
@@ -25,12 +55,12 @@ class ConversationWebController extends Controller
             ? $conversation->team->users()->where('role', 'agent')->where('is_active', true)->get()
             : User::where('role', 'agent')
                 ->where('is_active', true)
-                ->when(!auth()->user()->isSuperAdmin(), fn ($q) => $q->where('tenant_id', auth()->user()->tenant_id))
+                ->where('tenant_id', $conversation->tenant_id)
                 ->get();
 
         $customerConversationCount = Conversation::where('customer_id', $conversation->customer_id)->count();
 
-        $aiSettings = auth()->user()->tenant?->aiSettings;
+        $aiSettings = $conversation->tenant?->aiSettings;
         $aiMode = $aiSettings?->mode ?? 'off';
 
         return view('admin.conversations.show', compact(

@@ -3,12 +3,22 @@
 @section('title', 'Edit Team')
 
 @section('breadcrumb')
-    <a href="{{ route('admin.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">Teams</a>
+    @php
+        $panelPrefix = auth()->user()->routeNamePrefix();
+        $canDeleteTeam = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+        $canManageInstances = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+    @endphp
+    <a href="{{ route($panelPrefix . '.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">Teams</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
     <span>{{ $team->name }}</span>
 @endsection
 
 @section('content')
+@php
+    $panelPrefix = auth()->user()->routeNamePrefix();
+    $canDeleteTeam = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+    $canManageInstances = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+@endphp
 <div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start"
      x-data="teamForm()">
 
@@ -24,7 +34,7 @@
             </span>
         </div>
 
-        <form action="{{ route('admin.teams.update', $team) }}" method="POST" data-unsaved data-loading>
+        <form action="{{ route($panelPrefix . '.teams.update', $team) }}" method="POST" data-unsaved data-loading>
             @csrf
             @method('PUT')
 
@@ -126,23 +136,25 @@
                 </div>
 
                 {{-- Danger Zone --}}
-                <div style="border:1px solid rgba(239,68,68,.2);border-radius:.75rem;padding:1rem">
-                    <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">Danger Zone</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
-                        <div style="font-size:.8125rem;color:var(--text-muted)">
-                            Permanently delete this team. Existing conversations will become unassigned.
+                @if($canDeleteTeam)
+                    <div style="border:1px solid rgba(239,68,68,.2);border-radius:.75rem;padding:1rem">
+                        <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">Danger Zone</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+                            <div style="font-size:.8125rem;color:var(--text-muted)">
+                                Permanently delete this team. Existing conversations will become unassigned.
+                            </div>
+                            <button type="button"
+                                    onclick="confirmDelete('{{ route($panelPrefix . '.teams.destroy', $team) }}', { title: 'Delete {{ addslashes($team->name) }}?', message: 'Existing conversations will become unassigned.' })"
+                                    class="btn btn-danger btn-sm">
+                                Delete Team
+                            </button>
                         </div>
-                        <button type="button"
-                                onclick="confirmDelete('{{ route('admin.teams.destroy', $team) }}', { title: 'Delete {{ addslashes($team->name) }}?', message: 'Existing conversations will become unassigned.' })"
-                                class="btn btn-danger btn-sm">
-                            Delete Team
-                        </button>
                     </div>
-                </div>
+                @endif
             </div>
 
             <div style="padding:1.25rem 1.5rem;border-top:1px solid var(--card-border);display:flex;justify-content:flex-end;gap:.5rem">
-                <a href="{{ route('admin.teams.index') }}" class="btn btn-outline">Cancel</a>
+                <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-outline">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>
@@ -190,12 +202,16 @@
                         <span class="status-dot {{ $instance->statusColor }}" style="width:.5rem;height:.5rem"></span>
                         <span style="font-size:.8125rem;font-weight:500">{{ $instance->name }}</span>
                     </div>
-                    <a href="{{ route('admin.instances.edit', $instance) }}" style="color:var(--text-muted);font-size:.75rem;text-decoration:none">Edit</a>
+                    @if($canManageInstances)
+                        <a href="{{ route($panelPrefix . '.instances.edit', $instance) }}" style="color:var(--text-muted);font-size:.75rem;text-decoration:none">Edit</a>
+                    @endif
                 </div>
                 @empty
                 <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">
                     No instances linked to this team.
-                    <a href="{{ route('admin.instances.index') }}" style="color:var(--brand);display:block;margin-top:.25rem">Manage instances</a>
+                    @if($canManageInstances)
+                        <a href="{{ route($panelPrefix . '.instances.index') }}" style="color:var(--brand);display:block;margin-top:.25rem">Manage instances</a>
+                    @endif
                 </div>
                 @endforelse
             </div>
