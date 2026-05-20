@@ -14,11 +14,15 @@ class Plan extends Model
     ];
 
     protected $casts = [
-        'features'    => 'array',
-        'ai_included' => 'boolean',
-        'is_active'   => 'boolean',
-        'price_monthly' => 'decimal:2',
-        'price_annual'  => 'decimal:2',
+        'price_monthly'               => 'decimal:2',
+        'price_annual'                => 'decimal:2',
+        'max_users'                   => 'integer',
+        'max_instances'               => 'integer',
+        'max_conversations_per_month' => 'integer',
+        'ai_included'                 => 'boolean',
+        'ai_token_quota'              => 'integer',
+        'features'                    => 'array',
+        'is_active'                   => 'boolean',
     ];
 
     public function tenants(): HasMany { return $this->hasMany(Tenant::class); }

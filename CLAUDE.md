@@ -36,3 +36,68 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes` for code review.
 3. Use `get_affected_flows` to understand impact.
 4. Use `query_graph` pattern="tests_for" to check coverage.
+
+---
+
+## Session Handoff (May 20, 2026)
+
+### What was implemented
+
+- Role system and panel separation work was requested and iterated across:
+  - `Super Admin`
+  - `Admin (Tenant Admin)`
+  - `Supervisor`
+  - `Support Agent`
+- Login/panel behavior was adjusted during the session so:
+  - Super Admin has dedicated login route: `/superadmin/login`
+  - Other roles have their own route/panel behavior
+- Sidebar role descriptions were requested and added per role intent:
+  - Super Admin: platform/tenants/plans/global/billing/system health
+  - Admin: tenant users/teams/instances/AI/knowledge base/impersonation
+  - Supervisor: team conversation oversight/reassign/release
+  - Support Agent: claim/reply/close frontline conversations
+- Permissions were updated to match the provided matrix (pool, claim, reply, reassign, close, instances, users/teams, AI config, impersonation, tenant/billing, audit log).
+- 419 login issue was addressed during the previous steps.
+- Super Admin tenant index page UI was adjusted per request (filter + top-right add action style).
+- Add Tenant action was adjusted to navigate to a dedicated create page.
+
+### Latest completed task (models aligned to schema screenshots)
+
+Two screenshots were used as schema source of truth:
+
+- `C:\Users\mouti\OneDrive\Images\Screenshots\Capture d'écran 2026-05-20 152414.png`
+- `C:\Users\mouti\OneDrive\Images\Screenshots\Capture d'écran 2026-05-20 152419.png`
+
+Model updates made for key columns/casts/relations:
+
+- `app/Models/Conversation.php`
+- `app/Models/ConversationEvent.php`
+- `app/Models/Customer.php`
+- `app/Models/ImpersonationLog.php`
+- `app/Models/KnowledgeEntry.php`
+- `app/Models/Message.php`
+- `app/Models/Plan.php`
+- `app/Models/Team.php`
+- `app/Models/Tenant.php`
+- `app/Models/User.php`
+- `app/Models/WebhookEvent.php`
+- `app/Models/WhatsAppInstance.php`
+
+Key alignment done:
+
+- Added integer casts for FK/counter fields.
+- Kept/added array, boolean, decimal, datetime casts where needed.
+- Added `team_id` support to `WhatsAppInstance` fillable + `team()` relation.
+- Added `instances()` relation on `Team`.
+
+Validation performed:
+
+- `php -l` passed for all changed model files (no syntax errors).
+
+### Known gap / next step
+
+- Screenshot included a `subscriptions` table concept, but project currently has no `Subscription` model/migration.
+- If full parity is required, create:
+  - migration for `subscriptions`
+  - `Subscription` model
+  - relations with `Tenant` and `Plan`

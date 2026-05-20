@@ -12,7 +12,11 @@ class Customer extends Model
     use BelongsToTenant;
 
     protected $fillable = ['tenant_id', 'phone_e164', 'display_name', 'profile_pic_url', 'tags', 'notes', 'first_contact_at'];
-    protected $casts = ['tags' => 'array', 'first_contact_at' => 'datetime'];
+    protected $casts = [
+        'tenant_id'         => 'integer',
+        'tags'              => 'array',
+        'first_contact_at'  => 'datetime',
+    ];
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
     public function conversations(): HasMany { return $this->hasMany(Conversation::class); }

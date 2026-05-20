@@ -14,7 +14,13 @@ class ImpersonationLog extends Model
         'started_at', 'ended_at', 'ip_address',
     ];
 
-    protected $casts = ['started_at' => 'datetime', 'ended_at' => 'datetime'];
+    protected $casts = [
+        'impersonator_user_id' => 'integer',
+        'impersonated_user_id' => 'integer',
+        'tenant_id'            => 'integer',
+        'started_at'           => 'datetime',
+        'ended_at'             => 'datetime',
+    ];
 
     public function impersonator(): BelongsTo { return $this->belongsTo(User::class, 'impersonator_user_id'); }
     public function impersonated(): BelongsTo { return $this->belongsTo(User::class, 'impersonated_user_id'); }

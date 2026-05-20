@@ -17,10 +17,12 @@ class WhatsAppInstance extends Model
     protected $fillable = [
         'tenant_id', 'name', 'gateway', 'gateway_instance_id', 'webhook_token',
         'webhook_secret', 'phone_number', 'status', 'last_status_at', 'last_message_at',
-        'qr_code', 'gateway_url', 'gateway_api_key', 'settings',
+        'qr_code', 'gateway_url', 'gateway_api_key', 'team_id', 'settings',
     ];
 
     protected $casts = [
+        'tenant_id'      => 'integer',
+        'team_id'        => 'integer',
         'settings'       => 'array',
         'last_status_at' => 'datetime',
         'last_message_at'=> 'datetime',
@@ -35,6 +37,7 @@ class WhatsAppInstance extends Model
     }
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    public function team(): BelongsTo { return $this->belongsTo(Team::class); }
     public function conversations(): HasMany { return $this->hasMany(Conversation::class, 'instance_id'); }
     public function webhookEvents(): HasMany { return $this->hasMany(WebhookEvent::class, 'instance_id'); }
 

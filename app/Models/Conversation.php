@@ -18,10 +18,16 @@ class Conversation extends Model
     ];
 
     protected $casts = [
+        'tenant_id'        => 'integer',
+        'instance_id'      => 'integer',
+        'customer_id'      => 'integer',
+        'team_id'          => 'integer',
+        'owner_agent_id'   => 'integer',
         'claimed_at'      => 'datetime',
         'closed_at'       => 'datetime',
         'last_message_at' => 'datetime',
         'ai_suspended'    => 'boolean',
+        'unread_count'    => 'integer',
     ];
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }

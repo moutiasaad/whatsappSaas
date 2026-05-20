@@ -11,7 +11,12 @@ class KnowledgeEntry extends Model
     use BelongsToTenant;
 
     protected $fillable = ['tenant_id', 'type', 'title', 'body', 'metadata', 'is_active', 'sort_order'];
-    protected $casts = ['metadata' => 'array', 'is_active' => 'boolean'];
+    protected $casts = [
+        'tenant_id'  => 'integer',
+        'metadata'   => 'array',
+        'is_active'  => 'boolean',
+        'sort_order' => 'integer',
+    ];
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
 

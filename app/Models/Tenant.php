@@ -15,6 +15,7 @@ class Tenant extends Model
     ];
 
     protected $casts = [
+        'plan_id'         => 'integer',
         'settings'       => 'array',
         'trial_ends_at'  => 'datetime',
         'is_active'      => 'boolean',

@@ -17,8 +17,11 @@ class Message extends Model
     ];
 
     protected $casts = [
-        'ai_metadata' => 'array',
-        'sent_at'     => 'datetime',
+        'conversation_id' => 'integer',
+        'tenant_id'       => 'integer',
+        'author_id'       => 'integer',
+        'ai_metadata'     => 'array',
+        'sent_at'         => 'datetime',
     ];
 
     public function conversation(): BelongsTo { return $this->belongsTo(Conversation::class); }
