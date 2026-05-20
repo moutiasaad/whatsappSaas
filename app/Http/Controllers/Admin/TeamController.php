@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\Conversation;
+use App\Models\Team;
+use App\Models\User;
+use App\Models\WhatsAppInstance;
+use Illuminate\Http\Request;
+
+class TeamController extends Controller
+{
+    private function scopedUsers()
+    {
+        $query = User::whereIn('role', ['agent', 'supervisor'])->where('is_active', true);
+
+        if (!auth()->user()->isSuperAdmin()) {
+            $query->where('tenant_id', auth()->user()->tenant_id);
+        }
+
+        return $query;
+    }
+
+    private function validateMembers(?array $memberIds): array
+    {
+        if (empty($memberIds)) {
+            return [];
+        }
+
+        $validIds = $this->scopedUsers()->whereIn('id', $memberIds)->pluck('id')->all();
+
+        if (count($validIds) !== count($memberIds)) {
+            abort(422, 'One or more selected team members are invalid.');
+        }
+
+        return $validIds;
+    }
+
+    public function index()
+    {
+        $teams = Team::withCount([
+            'users',
+            'conversations as active_conversations_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
+            'conversations as pool_count' => fn ($q) => $q->where('state', 'pool'),
+        ])->with('users')->orderBy('name')->get();
+
+        return view('admin.teams.index', compact('teams'));
+    }
+
+    public function create()
+    {
+        $agents = $this->scopedUsers()->orderBy('name')->get();
+        return view('admin.teams.create', compact('agents'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name'        => 'required|string|max:100',
+            'description' => 'nullable|string|max:250',
+            'is_active'   => 'boolean',
+            'members'     => 'nullable|array',
+            'members.*'   => 'exists:users,id',
+        ]);
+
+        $team = Team::create([
+            'tenant_id'   => auth()->user()->tenant_id,
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'is_active'   => $data['is_active'] ?? true,
+        ]);
+
+        if (!empty($data['members'])) {
+            $team->users()->sync($this->validateMembers($data['members']));
+        }
+
+        AuditLog::record('team.created', $team);
+
+        return redirect()->route('admin.teams.index')
+            ->with('success', "Team \"{$team->name}\" created.");
+    }
+
+    public function edit(Team $team)
+    {
+        $agents = $this->scopedUsers()->orderBy('name')->get();
+        $team->load('users');
+
+        $linkedInstances = WhatsAppInstance::where('team_id', $team->id)->orderBy('name')->get();
+
+        $stats = [
+            'pool'         => Conversation::where('team_id', $team->id)->where('state', 'pool')->count(),
+            'claimed'      => Conversation::where('team_id', $team->id)->where('state', 'claimed')->count(),
+            'closed_today' => Conversation::where('team_id', $team->id)->where('state', 'closed')->whereDate('closed_at', today())->count(),
+            'avg_response' => null,
+        ];
+
+        return view('admin.teams.edit', compact('team', 'agents', 'linkedInstances', 'stats'));
+    }
+
+    public function update(Request $request, Team $team)
+    {
+        $data = $request->validate([
+            'name'        => 'required|string|max:100',
+            'description' => 'nullable|string|max:250',
+            'is_active'   => 'boolean',
+            'members'     => 'nullable|array',
+            'members.*'   => 'exists:users,id',
+        ]);
+
+        $team->update([
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'is_active'   => $data['is_active'] ?? false,
+        ]);
+
+        $team->users()->sync($this->validateMembers($data['members'] ?? []));
+
+        AuditLog::record('team.updated', $team);
+
+        return redirect()->route('admin.teams.index')
+            ->with('success', 'Team updated.');
+    }
+
+    public function destroy(Team $team)
+    {
+        AuditLog::record('team.deleted', $team, ['name' => $team->name]);
+        $team->delete();
+        return redirect()->route('admin.teams.index')
+            ->with('success', "Team \"{$team->name}\" deleted.");
+    }
+}

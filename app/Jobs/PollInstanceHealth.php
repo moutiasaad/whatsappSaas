@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Events\InstanceStatusChanged;
+use App\Models\WhatsAppInstance;
+use App\Services\WhatsApp\Gateway\EvolutionApiClient;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class PollInstanceHealth implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function handle(): void
+    {
+        WhatsAppInstance::withoutGlobalScope('tenant')
+            ->whereNotIn('status', ['banned'])
+            ->whereNotNull('gateway_instance_id')
+            ->get()
+            ->each(function (WhatsAppInstance $instance) {
+                try {
+                    $gateway   = new EvolutionApiClient($instance->gateway_url, $instance->gateway_api_key);
+                    $newStatus = $gateway->getStatus($instance->gateway_instance_id);
+
+                    $changed = $newStatus !== $instance->status;
+                    $instance->update(['status' => $newStatus, 'last_status_at' => now()]);
+
+                    if ($changed) {
+                        broadcast(new InstanceStatusChanged($instance->fresh()));
+                    }
+                } catch (\Exception) {
+                    // Per-instance silent fail
+                }
+            });
+    }
+}

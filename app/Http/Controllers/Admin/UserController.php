@@ -1,0 +1,266 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\ImpersonationLog;
+use App\Models\Team;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+
+class UserController extends Controller
+{
+    private function actor(): User
+    {
+        return auth()->user();
+    }
+
+    private function tenantScopedUsers()
+    {
+        $query = User::query();
+
+        if (!$this->actor()->isSuperAdmin()) {
+            $query->where('tenant_id', $this->actor()->tenant_id);
+        }
+
+        return $query;
+    }
+
+    private function tenantScopedTeams()
+    {
+        $query = Team::query();
+
+        if (!$this->actor()->isSuperAdmin()) {
+            $query->where('tenant_id', $this->actor()->tenant_id);
+        }
+
+        return $query;
+    }
+
+    private function assertCanManageUser(User $user): void
+    {
+        $actor = $this->actor();
+
+        if ($actor->isSuperAdmin()) {
+            return;
+        }
+
+        if ($user->tenant_id !== $actor->tenant_id || $user->isSuperAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+    }
+
+    private function validateTeamIds(?array $teamIds, ?int $tenantId = null): array
+    {
+        if (empty($teamIds)) {
+            return [];
+        }
+
+        $teamsQuery = $this->tenantScopedTeams();
+        if ($tenantId !== null) {
+            $teamsQuery->where('tenant_id', $tenantId);
+        }
+
+        $validIds = $teamsQuery->whereIn('id', $teamIds)->pluck('id')->all();
+
+        if (count($validIds) !== count($teamIds)) {
+            abort(422, 'One or more selected teams are invalid.');
+        }
+
+        return $validIds;
+    }
+
+    public function index(Request $request)
+    {
+        $users = $this->tenantScopedUsers()
+            ->with('teams')
+            ->where('id', '!=', auth()->id())
+            ->when($request->search, fn ($q, $s) =>
+                $q->where(function ($inner) use ($s) {
+                    $inner->where('name', 'like', "%$s%")
+                        ->orWhere('email', 'like', "%$s%");
+                })
+            )
+            ->when($request->role, fn ($q, $r) => $q->where('role', $r))
+            ->when($request->status === 'active',   fn ($q) => $q->where('is_active', true))
+            ->when($request->status === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.users.index', compact('users'));
+    }
+
+    public function create()
+    {
+        $teams = $this->tenantScopedTeams()->where('is_active', true)->orderBy('name')->get();
+        return view('admin.users.create', compact('teams'));
+    }
+
+    public function store(Request $request)
+    {
+        $actor = $this->actor();
+        $isSuperAdmin = $actor->isSuperAdmin();
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:150',
+            'email'    => 'required|email|unique:users,email',
+            'role'     => ['required', Rule::in($isSuperAdmin ? ['agent', 'supervisor', 'admin', 'super_admin'] : ['agent', 'supervisor', 'admin'])],
+            'password' => 'nullable|string|min:8',
+            'tenant_id'=> [$isSuperAdmin ? 'nullable' : 'prohibited', 'nullable', 'exists:tenants,id'],
+            'teams'    => 'nullable|array',
+            'teams.*'  => 'exists:teams,id',
+        ]);
+
+        $tenantId = $isSuperAdmin
+            ? ($data['tenant_id'] ?? null)
+            : $actor->tenant_id;
+
+        if (!$isSuperAdmin && $tenantId === null) {
+            abort(422, 'Tenant admins must belong to a tenant.');
+        }
+
+        if ($isSuperAdmin && $data['role'] !== 'super_admin' && $tenantId === null) {
+            abort(422, 'A tenant is required for non-super-admin users.');
+        }
+
+        $user = User::create([
+            'name'      => $data['name'],
+            'email'     => $data['email'],
+            'role'      => $data['role'],
+            'tenant_id' => $tenantId,
+            'password'  => Hash::make($data['password'] ?? str()->random(16)),
+            'is_active' => true,
+        ]);
+
+        if (!$user->isSuperAdmin() && !empty($data['teams'])) {
+            $user->teams()->sync($this->validateTeamIds($data['teams'], $user->tenant_id));
+        }
+
+        AuditLog::record('user.created', $user);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User \"{$user->name}\" invited.");
+    }
+
+    public function edit(User $user)
+    {
+        $this->assertCanManageUser($user);
+
+        $user->load('teams');
+
+        $teams = Team::withCount('users')
+            ->when(!$this->actor()->isSuperAdmin(), fn ($q) => $q->where('tenant_id', $this->actor()->tenant_id))
+            ->when($this->actor()->isSuperAdmin() && $user->tenant_id, fn ($q) => $q->where('tenant_id', $user->tenant_id))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $stats = [
+            'active'       => \App\Models\Conversation::where('owner_agent_id', $user->id)->whereIn('state', ['claimed'])->count(),
+            'closed_total' => \App\Models\Conversation::where('owner_agent_id', $user->id)->where('state', 'closed')->count(),
+            'closed_month' => \App\Models\Conversation::where('owner_agent_id', $user->id)->where('state', 'closed')->whereMonth('closed_at', now()->month)->count(),
+        ];
+
+        return view('admin.users.edit', compact('user', 'teams', 'stats'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $this->assertCanManageUser($user);
+        $actor = $this->actor();
+        $isSuperAdmin = $actor->isSuperAdmin();
+
+        $data = $request->validate([
+            'name'      => 'required|string|max:150',
+            'role'      => ['required', Rule::in($isSuperAdmin ? ['agent', 'supervisor', 'admin', 'super_admin'] : ['agent', 'supervisor', 'admin'])],
+            'is_active' => 'boolean',
+            'tenant_id' => [$isSuperAdmin ? 'nullable' : 'prohibited', 'nullable', 'exists:tenants,id'],
+            'teams'     => 'nullable|array',
+            'teams.*'   => 'exists:teams,id',
+        ]);
+
+        $user->update([
+            'name'      => $data['name'],
+            'role'      => $data['role'],
+            'is_active' => $data['is_active'] ?? false,
+            'tenant_id' => $isSuperAdmin ? ($data['tenant_id'] ?? null) : $user->tenant_id,
+        ]);
+
+        if ($user->isSuperAdmin()) {
+            $user->teams()->sync([]);
+        } else {
+            $user->teams()->sync($this->validateTeamIds($data['teams'] ?? [], $user->tenant_id));
+        }
+
+        AuditLog::record('user.updated', $user);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'User updated.');
+    }
+
+    public function destroy(User $user)
+    {
+        $this->assertCanManageUser($user);
+
+        AuditLog::record('user.deleted', $user, ['name' => $user->name, 'email' => $user->email]);
+        $user->delete();
+        return redirect()->route('admin.users.index')
+            ->with('success', "User \"{$user->name}\" deleted.");
+    }
+
+    public function bulk(Request $request)
+    {
+        $ids    = explode(',', $request->input('ids', ''));
+        $action = $request->input('action');
+        $users  = $this->tenantScopedUsers()->whereIn('id', $ids)->get();
+
+        foreach ($users as $user) {
+            if ($action === 'activate')   $user->update(['is_active' => true]);
+            if ($action === 'deactivate') $user->update(['is_active' => false]);
+        }
+
+        return back()->with('success', count($ids) . " user(s) updated.");
+    }
+
+    public function impersonate(User $user)
+    {
+        $actor = $this->actor();
+
+        if (!$actor->isSuperAdmin() && (string) $actor->tenant_id !== (string) $user->tenant_id) {
+            abort(403, 'Tenant admins can only impersonate users in their own tenant.');
+        }
+
+        ImpersonationLog::create([
+            'impersonator_user_id'  => auth()->id(),
+            'impersonated_user_id'  => $user->id,
+            'tenant_id'             => $user->tenant_id,
+            'started_at'            => now(),
+            'ip_address'            => request()->ip(),
+        ]);
+
+        AuditLog::record('user.impersonated', $user);
+
+        session(['impersonating' => auth()->id()]);
+        auth()->login($user);
+
+        return redirect()->route($user->homeRouteName());
+    }
+
+    public function leaveImpersonation()
+    {
+        $originalId = session()->pull('impersonating');
+
+        ImpersonationLog::where('impersonator_user_id', $originalId)
+            ->whereNull('ended_at')
+            ->latest('started_at')
+            ->first()?->update(['ended_at' => now()]);
+
+        auth()->loginUsingId($originalId);
+
+        return redirect()->route(auth()->user()->homeRouteName());
+    }
+}

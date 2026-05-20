@@ -1,0 +1,63 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\AiSettings;
+use App\Services\AI\PromptBuilder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class AiController extends Controller
+{
+    public function show(Request $request): JsonResponse
+    {
+        $settings = AiSettings::firstOrCreate(
+            ['tenant_id' => $request->user()->tenant_id],
+            ['mode' => 'off', 'monthly_token_quota' => 100000]
+        );
+        return response()->json($settings);
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'mode'                 => 'required|in:off,suggestion,autonomous,hybrid',
+            'system_prompt'        => 'nullable|string|max:10000',
+            'escalation_keywords'  => 'nullable|array',
+            'escalation_keywords.*'=> 'string|max:50',
+            'monthly_token_quota'  => 'nullable|integer|min:0',
+        ]);
+
+        $settings = AiSettings::updateOrCreate(
+            ['tenant_id' => $request->user()->tenant_id],
+            $data
+        );
+
+        return response()->json($settings);
+    }
+
+    public function test(Request $request, PromptBuilder $builder): JsonResponse
+    {
+        $request->validate(['question' => 'required|string|max:500']);
+
+        try {
+            $tenant = $request->user()->tenant;
+            $client = new \Anthropic\Client(config('services.anthropic.key'));
+
+            $response = $client->messages()->create([
+                'model'     => 'claude-sonnet-4-20250514',
+                'max_tokens'=> 512,
+                'system'    => $builder->buildSystemPrompt($tenant),
+                'messages'  => [['role' => 'user', 'content' => $request->question]],
+            ]);
+
+            return response()->json(['answer' => $response->content[0]->text ?? '']);
+
+        } catch (\Exception $e) {
+            Log::error("AI test failed: {$e->getMessage()}");
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+}
