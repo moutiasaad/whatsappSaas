@@ -23,7 +23,7 @@ class PollInstanceHealth implements ShouldQueue
             ->get()
             ->each(function (WhatsAppInstance $instance) {
                 try {
-                    $gateway   = new EvolutionApiClient($instance->gateway_url, $instance->gateway_api_key);
+                    $gateway   = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
                     $newStatus = $gateway->getStatus($instance->gateway_instance_id);
 
                     $changed = $newStatus !== $instance->status;

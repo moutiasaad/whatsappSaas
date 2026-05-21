@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') — {{ Auth::user()->tenant->name ?? config('app.name') }}</title>
+    <title>@yield('title', __('ui.dashboard')) — {{ Auth::user()->tenant->name ?? config('app.name') }}</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -615,7 +615,7 @@
         ============================================================ */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
@@ -1188,16 +1188,17 @@
         ============================================================ */
         .ss-wrap { position: relative; }
         .ss-input {
-            width: 100%; padding: 0 32px 0 10px;
-            border: 1.5px solid var(--card-border);
-            border-radius: var(--radius); font-size: 13px; font-family: inherit;
-            background: var(--page-bg); color: var(--text-primary);
-            outline: none; transition: border-color .2s, box-shadow .2s; cursor: pointer;
+            width: 100%; padding: 0 34px 0 12px;
+            border: 1px solid #d8dcef;
+            border-radius: 8px; font-size: 13px; font-family: inherit;
+            background: #f8fafc; color: #1f2937;
+            outline: none; transition: border-color .18s, box-shadow .18s; cursor: pointer;
             height: 38px; line-height: 38px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             display: block;
         }
-        .ss-input:focus, .ss-wrap.open .ss-input { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
+        .ss-input:focus, .ss-wrap.open .ss-input { border-color: #b8bfe2; box-shadow: 0 0 0 2px rgba(184,191,226,.22); }
+        .ss-wrap.error .ss-input { border-color: var(--red); box-shadow: 0 0 0 2px rgba(220,38,38,.12); }
         .ss-chevron {
             position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
             pointer-events: none; color: var(--text-muted); font-size: 16px; transition: transform .2s;
@@ -1205,33 +1206,37 @@
         .ss-wrap.open .ss-chevron { transform: translateY(-50%) rotate(180deg); }
         .ss-dropdown {
             position: absolute; left: 0; top: calc(100% + 4px); width: 100%; min-width: 180px;
-            background: var(--card-bg); border: 1.5px solid var(--card-border);
-            border-radius: var(--radius-lg); box-shadow: 0 8px 28px rgba(0,0,0,.3);
+            background: #ffffff; border: 1px solid #d8dcef;
+            border-radius: 8px; box-shadow: 0 12px 28px rgba(15,23,42,.12);
             z-index: 9999; display: none; overflow: hidden;
         }
+        .ss-wrap.open-up .ss-dropdown {
+            top: auto;
+            bottom: calc(100% + 4px);
+        }
         .ss-wrap.open .ss-dropdown { display: block; }
-        .ss-search-row { padding: 8px 10px; border-bottom: 1px solid var(--card-border); }
+        .ss-search-row { padding: 8px 10px; border-bottom: 1px solid #e5e7f2; background: #f8fafc; }
         .ss-search-inner {
             display: flex; align-items: center; gap: 6px;
-            border: 1.5px solid var(--card-border);
-            border-radius: var(--radius); padding: 5px 9px; background: var(--page-bg);
+            border: 1px solid #d8dcef;
+            border-radius: 7px; padding: 6px 9px; background: #ffffff;
         }
-        .ss-search-inner i { color: var(--text-muted); font-size: 13px; flex-shrink: 0; }
+        .ss-search-inner i { color: #9ca3af; font-size: 13px; flex-shrink: 0; }
         .ss-search-inner input {
             border: none; outline: none; font-size: 13px;
             font-family: inherit; background: transparent; flex: 1;
-            color: var(--text-primary); min-width: 0;
+            color: #1f2937; min-width: 0;
         }
-        .ss-list { max-height: 220px; overflow-y: auto; }
+        .ss-list { max-height: 160px; overflow-y: auto; overscroll-behavior: contain; }
         .ss-item {
-            padding: 9px 13px; font-size: 13px; cursor: pointer;
-            border-bottom: 1px solid var(--card-border); color: var(--text-primary);
+            padding: 10px 13px; font-size: 13px; cursor: pointer;
+            border-bottom: 1px solid #eceff8; color: #1f2937;
             display: flex; align-items: center; gap: 8px; transition: background .12s;
         }
         .ss-item:last-child { border-bottom: none; }
-        .ss-item:hover, .ss-item.active { background: rgba(16,185,129,.08); color: var(--brand); }
-        .ss-item.ss-selected { color: var(--brand); font-weight: 500; }
-        .ss-item.ss-selected::after { content: '\EB7B'; font-family: "remixicon"; margin-left: auto; font-size: 14px; color: var(--brand); font-weight: 400; }
+        .ss-item:hover, .ss-item.active { background: #f4f6ff; color: #111827; }
+        .ss-item.ss-selected { background: #eef2ff; color: #1f2937; font-weight: 500; }
+        .ss-item.ss-selected::after { content: '\EB80'; font-family: "remixicon"; margin-left: auto; font-size: 14px; color: #6366f1; font-weight: 400; }
         .ss-empty { padding: 12px 14px; font-size: 13px; color: var(--text-muted); text-align: center; }
 
         /* ============================================================
@@ -1611,7 +1616,7 @@
                 <div class="sidebar-user-actions">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="sidebar-user-btn" title="Logout">
+                        <button type="submit" class="sidebar-user-btn" title="{{ __('ui.logout') }}">
                             <i class="ri-logout-box-r-line"></i>
                         </button>
                     </form>
@@ -1628,14 +1633,14 @@
         @if(session('impersonating'))
         <div class="impersonation-banner">
             <i class="ri-user-shared-line"></i>
-            <span>Impersonating <strong>{{ session('impersonating_name') }}</strong></span>
-            <a href="{{ route('admin.users.impersonate.leave') }}">Return to my account</a>
+            <span>{!! __('ui.impersonating', ['name' => '<strong>' . e(session('impersonating_name')) . '</strong>']) !!}</span>
+            <a href="{{ route('admin.users.impersonate.leave') }}">{{ __('ui.return_to_account') }}</a>
         </div>
         @endif
 
         {{-- TOPBAR --}}
         <header class="topbar">
-            <button class="topbar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <button class="topbar-toggle" id="sidebarToggle" aria-label="{{ __('ui.dashboard') }}">
                 <i class="ri-menu-3-line"></i>
             </button>
 
@@ -1650,14 +1655,30 @@
             </nav>
 
             <div class="topbar-right">
-                <a href="{{ route('admin.conversations.index', ['tab' => 'pool']) }}" class="topbar-btn" title="Inbox">
+                <form method="POST" action="{{ route('locale.update') }}">
+                    @csrf
+                    <input type="hidden" name="redirect" value="{{ url()->full() }}">
+                    <select id="locale-switch"
+                            name="locale"
+                            aria-label="{{ __('ui.language') }}"
+                            onchange="this.form.submit()"
+                            style="height:36px;padding:0 .625rem;border:1px solid var(--card-border);border-radius:var(--radius);background:var(--topbar-bg);color:var(--text-secondary);font-size:.8125rem;cursor:pointer;">
+                        @foreach(($supportedLocales ?? config('locales.supported', [])) as $localeCode => $localeMeta)
+                            <option value="{{ $localeCode }}" @selected(($currentLocale ?? app()->getLocale()) === $localeCode)>
+                                {{ __('ui.languages.' . $localeCode) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+
+                <a href="{{ route('admin.conversations.index', ['tab' => 'pool']) }}" class="topbar-btn" title="{{ __('ui.inbox') }}">
                     <i class="ri-inbox-line"></i>
                     @if(($poolCount ?? 0) > 0)
                         <span class="topbar-notif-dot"></span>
                     @endif
                 </a>
 
-                <button class="topbar-btn" id="notifBtn" title="Notifications">
+                <button class="topbar-btn" id="notifBtn" title="{{ __('ui.notifications') }}">
                     <i class="ri-notification-3-line"></i>
                 </button>
 
@@ -1679,14 +1700,14 @@
          onclick="if(event.target===this) closeSendModal()">
         <div class="modal-box">
             <div class="modal-icon warning"><i class="ri-send-plane-line"></i></div>
-            <h3 id="sendModalTitle">Confirm Action</h3>
-            <p id="sendModalMessage">Are you sure you want to proceed?</p>
+            <h3 id="sendModalTitle">{{ __('ui.confirm_action') }}</h3>
+            <p id="sendModalMessage">{{ __('ui.proceed_confirmation') }}</p>
             <div class="modal-actions">
                 <button class="btn btn-outline" onclick="closeSendModal()">
-                    <i class="ri-close-line"></i> Cancel
+                    <i class="ri-close-line"></i> {{ __('ui.cancel') }}
                 </button>
                 <button type="button" id="sendModalConfirmBtn" class="btn btn-primary">
-                    <i class="ri-check-line"></i> Confirm
+                    <i class="ri-check-line"></i> {{ __('ui.confirm') }}
                 </button>
             </div>
         </div>
@@ -1697,20 +1718,20 @@
          onclick="if(event.target===this) closeDeleteModal()">
         <div class="modal-box">
             <div class="modal-icon danger"><i class="ri-delete-bin-2-line"></i></div>
-            <h3 id="deleteModalTitle">Confirm Deletion</h3>
-            <p id="deleteModalMessage">This action is irreversible. Are you sure?</p>
+            <h3 id="deleteModalTitle">{{ __('ui.confirm_deletion') }}</h3>
+            <p id="deleteModalMessage">{{ __('ui.irreversible_warning') }}</p>
             <div class="modal-actions">
                 <button class="btn btn-outline" onclick="closeDeleteModal()">
-                    <i class="ri-close-line"></i> Cancel
+                    <i class="ri-close-line"></i> {{ __('ui.cancel') }}
                 </button>
                 <form id="deleteForm" method="POST" style="display:none;flex:1;">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-danger" style="width:100%;justify-content:center;">
-                        <i class="ri-delete-bin-line"></i> Delete
+                        <i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}
                     </button>
                 </form>
                 <button type="button" id="deleteCallbackBtn" class="btn btn-danger" style="display:none;flex:1;justify-content:center;">
-                    <i class="ri-delete-bin-line"></i> Delete
+                    <i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}
                 </button>
             </div>
         </div>
@@ -1765,7 +1786,7 @@
         const btn = form.querySelector('[type="submit"]');
         if (!btn) return;
         btn.classList.add('loading');
-        btn.innerHTML = '<span class="btn-spinner"></span> Processing…';
+        btn.innerHTML = '<span class="btn-spinner"></span> {{ __('ui.processing') }}';
     });
 
     window.resetSubmitBtn = function(btn, label = 'Save') {
@@ -1817,14 +1838,13 @@
             var dropdown = document.createElement('div');
             dropdown.className = 'ss-dropdown';
 
-            /* Only add search box when there are enough options to warrant it */
-            var realOptionCount = Array.from(select.options).filter(function(o, i) { return o.value || i > 0; }).length;
-            var useSearch = realOptionCount > 5;
+            /* Always show filter field for select2-like UX */
+            var useSearch = true;
             var searchRow = null;
             if (useSearch) {
                 searchRow = document.createElement('div');
                 searchRow.className = 'ss-search-row';
-                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Search…" autocomplete="off"></div>';
+                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Filter..." autocomplete="off"></div>';
             }
 
             var list = document.createElement('div');
@@ -1850,7 +1870,7 @@
                 list.appendChild(item);
             });
 
-            displayInput.placeholder = placeholderText || (hasPlaceholder ? 'Select…' : 'Select…');
+            displayInput.placeholder = placeholderText || (hasPlaceholder ? 'Select...' : 'Select...');
             if (!displayInput.value && select.value) {
                 var cur = select.options[select.selectedIndex];
                 if (cur && cur.value) displayInput.value = cur.textContent.trim();
@@ -1876,13 +1896,28 @@
                 var next = items[Math.max(0, Math.min(items.length - 1, idx + delta))];
                 if (next) { next.classList.add('active'); next.scrollIntoView({ block: 'nearest' }); }
             }
+            function syncDropdownPosition() {
+                wrap.classList.remove('open-up');
+
+                var rect = wrap.getBoundingClientRect();
+                var spaceBelow = window.innerHeight - rect.bottom;
+                var spaceAbove = rect.top;
+                var dropdownHeight = dropdown.offsetHeight || 260;
+
+                if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+                    wrap.classList.add('open-up');
+                }
+            }
             function openDropdown() {
+                syncDropdownPosition();
                 wrap.classList.add('open');
                 renderItems('');
+                syncDropdownPosition();
                 if (filterInput) { filterInput.value = ''; filterInput.focus(); }
             }
             function closeDropdown() {
                 wrap.classList.remove('open');
+                wrap.classList.remove('open-up');
                 list.querySelectorAll('.ss-item.active').forEach(function(el) { el.classList.remove('active'); });
             }
             function renderItems(q) {
@@ -1905,6 +1940,7 @@
                 list.querySelectorAll('.ss-item').forEach(function(el) {
                     el.classList.toggle('ss-selected', el.dataset.value === value);
                 });
+                wrap.classList.remove('error');
                 select.dispatchEvent(new Event('change', { bubbles: true }));
                 closeDropdown();
                 displayInput.focus();
@@ -1936,10 +1972,70 @@
                 });
             }
             document.addEventListener('click', function(e) { if (!wrap.contains(e.target) && e.target !== select) closeDropdown(); });
+            window.addEventListener('resize', function() {
+                if (wrap.classList.contains('open')) syncDropdownPosition();
+            });
+            window.addEventListener('scroll', function() {
+                if (wrap.classList.contains('open')) syncDropdownPosition();
+            }, true);
         });
     };
 
-    document.addEventListener('DOMContentLoaded', function() { window.initSS(); });
+    window.applyServerValidationErrors = function(errors) {
+        if (!errors || typeof errors !== 'object') return;
+
+        const escapeSelector = (value) => String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const mapToBracket = (name) => name
+            .replace(/\.(\d+)/g, '[$1]')
+            .replace(/\.([^.]+)/g, '[$1]');
+
+        Object.entries(errors).forEach(([fieldName, messages]) => {
+            if (!Array.isArray(messages) || !messages.length) return;
+
+            const candidates = [fieldName];
+            const bracketName = mapToBracket(fieldName);
+            if (bracketName !== fieldName) candidates.push(bracketName);
+
+            let field = null;
+            for (const candidate of candidates) {
+                field = document.querySelector(`[name="${escapeSelector(candidate)}"]`);
+                if (field) break;
+            }
+            if (!field) return;
+
+            field.classList.add('error');
+            const ssWrap = field.nextElementSibling && field.nextElementSibling.classList.contains('ss-wrap')
+                ? field.nextElementSibling
+                : null;
+            if (ssWrap) ssWrap.classList.add('error');
+
+            const formGroup = field.closest('.form-group') || field.parentElement;
+            if (!formGroup) return;
+            if (formGroup.querySelector('.form-error')) return;
+
+            const errorEl = document.createElement('div');
+            errorEl.className = 'form-error';
+            errorEl.textContent = messages[0];
+            formGroup.appendChild(errorEl);
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const path = window.location.pathname || '';
+        const isCreateOrEditPage = /\/(create|edit)\/?$/.test(path);
+
+        if (isCreateOrEditPage) {
+            document.querySelectorAll('form').forEach(form => {
+                form.setAttribute('novalidate', 'novalidate');
+                form.querySelectorAll('[required]').forEach(el => el.removeAttribute('required'));
+            });
+        }
+
+        window.initSS();
+        @if($errors->any())
+            window.applyServerValidationErrors(@json($errors->toArray()));
+        @endif
+    });
 
     // Flash messages from server
     @if(session('success'))
@@ -1959,8 +2055,8 @@
         const form    = document.getElementById('deleteForm');
         const cbBtn   = document.getElementById('deleteCallbackBtn');
 
-        titleEl.textContent = opts.title || 'Confirm Deletion';
-        msgEl.textContent   = opts.message || 'This action is irreversible. Are you sure?';
+        titleEl.textContent = opts.title || @json(__('ui.confirm_deletion'));
+        msgEl.textContent   = opts.message || @json(__('ui.irreversible_warning'));
 
         if (url) {
             form.action = url;
@@ -1988,14 +2084,63 @@
        UNSAVED CHANGES GUARD
     ==================================================== */
     let formDirty = false;
+    let allowDirtyNavigation = false;
+    const isCreateOrEditPage = /\/(create|edit)\/?$/.test(window.location.pathname || '');
+
+    function shouldTrackUnsaved(target) {
+        if (!isCreateOrEditPage || !target?.name) return false;
+
+        const form = target.closest('form');
+        if (!form || form.matches('[data-no-unsaved-guard]')) return false;
+
+        return true;
+    }
+
+    function shouldInterceptNavigation(link) {
+        if (!isCreateOrEditPage || !formDirty || allowDirtyNavigation || !link?.href) return false;
+        if (link.target && link.target !== '_self') return false;
+        if (link.hasAttribute('download') || link.closest('[data-no-unsaved-guard]')) return false;
+
+        const href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return false;
+        }
+
+        return link.href !== window.location.href;
+    }
+
+    function confirmDirtyNavigation(callback) {
+        confirmSend({
+            title: 'Leave this page?',
+            message: 'Your unsaved changes will be lost.',
+            callback: function () {
+                allowDirtyNavigation = true;
+                formDirty = false;
+                callback();
+            }
+        });
+    }
+
     document.addEventListener('input', e => {
-        if (!e.target.closest('[data-no-unsaved-guard]')) formDirty = true;
+        if (shouldTrackUnsaved(e.target)) formDirty = true;
     });
-    document.addEventListener('submit', () => formDirty = false);
+    document.addEventListener('change', e => {
+        if (shouldTrackUnsaved(e.target)) formDirty = true;
+    });
+    document.addEventListener('submit', () => {
+        formDirty = false;
+        allowDirtyNavigation = true;
+    });
+    document.addEventListener('click', e => {
+        const link = e.target.closest('a[href]');
+        if (!shouldInterceptNavigation(link)) return;
+
+        e.preventDefault();
+        confirmDirtyNavigation(() => {
+            window.location.href = link.href;
+        });
+    }, true);
     window.markFormClean = () => formDirty = false;
-    window.addEventListener('beforeunload', e => {
-        if (formDirty) { e.preventDefault(); e.returnValue = ''; }
-    });
 
     /* ====================================================
        BULK BAR
@@ -2048,8 +2193,8 @@
         const msgEl   = document.getElementById('sendModalMessage');
         const btn     = document.getElementById('sendModalConfirmBtn');
 
-        titleEl.textContent = opts.title   || 'Confirm Action';
-        msgEl.textContent   = opts.message || 'Are you sure you want to proceed?';
+        titleEl.textContent = opts.title   || @json(__('ui.confirm_action'));
+        msgEl.textContent   = opts.message || @json(__('ui.proceed_confirmation'));
 
         btn.onclick = function() {
             closeSendModal();

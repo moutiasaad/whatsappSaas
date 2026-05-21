@@ -6,38 +6,38 @@
 
 <div class="form-grid">
     <div class="form-group">
-        <label class="form-label" for="name">Plan Name <span class="req">*</span></label>
-        <input id="name" type="text" name="name" value="{{ old('name', $plan?->name) }}" class="form-control @error('name') error @enderror" required>
+        <label class="form-label" for="name">Plan Name</label>
+        <input id="name" type="text" name="name" value="{{ old('name', $plan?->name) }}" class="form-control @error('name') error @enderror">
         @error('name') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="price_monthly">Monthly Price <span class="req">*</span></label>
-        <input id="price_monthly" type="number" min="0" step="0.01" name="price_monthly" value="{{ old('price_monthly', $plan?->price_monthly) }}" class="form-control @error('price_monthly') error @enderror" required>
+        <label class="form-label" for="price_monthly">Monthly Price</label>
+        <input id="price_monthly" type="number" min="0" step="0.01" name="price_monthly" value="{{ old('price_monthly', $plan?->price_monthly) }}" class="form-control @error('price_monthly') error @enderror">
         @error('price_monthly') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="price_annual">Annual Price <span class="req">*</span></label>
-        <input id="price_annual" type="number" min="0" step="0.01" name="price_annual" value="{{ old('price_annual', $plan?->price_annual) }}" class="form-control @error('price_annual') error @enderror" required>
+        <label class="form-label" for="price_annual">Annual Price</label>
+        <input id="price_annual" type="number" min="0" step="0.01" name="price_annual" value="{{ old('price_annual', $plan?->price_annual) }}" class="form-control @error('price_annual') error @enderror">
         @error('price_annual') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="max_users">Max Users <span class="req">*</span></label>
-        <input id="max_users" type="number" min="1" step="1" name="max_users" value="{{ old('max_users', $plan?->max_users) }}" class="form-control @error('max_users') error @enderror" required>
+        <label class="form-label" for="max_users">Max Users</label>
+        <input id="max_users" type="number" min="1" step="1" name="max_users" value="{{ old('max_users', $plan?->max_users) }}" class="form-control @error('max_users') error @enderror">
         @error('max_users') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="max_instances">Max Instances <span class="req">*</span></label>
-        <input id="max_instances" type="number" min="0" step="1" name="max_instances" value="{{ old('max_instances', $plan?->max_instances) }}" class="form-control @error('max_instances') error @enderror" required>
+        <label class="form-label" for="max_instances">Max Instances</label>
+        <input id="max_instances" type="number" min="0" step="1" name="max_instances" value="{{ old('max_instances', $plan?->max_instances) }}" class="form-control @error('max_instances') error @enderror">
         @error('max_instances') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="max_conversations_per_month">Max Conversations / Month <span class="req">*</span></label>
-        <input id="max_conversations_per_month" type="number" min="0" step="1" name="max_conversations_per_month" value="{{ old('max_conversations_per_month', $plan?->max_conversations_per_month) }}" class="form-control @error('max_conversations_per_month') error @enderror" required>
+        <label class="form-label" for="max_conversations_per_month">Max Conversations / Month</label>
+        <input id="max_conversations_per_month" type="number" min="0" step="1" name="max_conversations_per_month" value="{{ old('max_conversations_per_month', $plan?->max_conversations_per_month) }}" class="form-control @error('max_conversations_per_month') error @enderror">
         @error('max_conversations_per_month') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 

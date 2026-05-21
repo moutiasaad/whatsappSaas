@@ -96,8 +96,11 @@ class UserController extends Controller
 
     public function create()
     {
+        $tenants = $this->actor()->isSuperAdmin()
+            ? \App\Models\Tenant::orderBy('name')->get()
+            : collect();
         $teams = $this->tenantScopedTeams()->where('is_active', true)->orderBy('name')->get();
-        return view('admin.users.create', compact('teams'));
+        return view('admin.users.create', compact('teams', 'tenants'));
     }
 
     public function store(Request $request)
@@ -110,7 +113,9 @@ class UserController extends Controller
             'email'    => 'required|email|unique:users,email',
             'role'     => ['required', Rule::in($isSuperAdmin ? ['agent', 'supervisor', 'admin', 'super_admin'] : ['agent', 'supervisor', 'admin'])],
             'password' => 'nullable|string|min:8',
-            'tenant_id'=> [$isSuperAdmin ? 'nullable' : 'prohibited', 'nullable', 'exists:tenants,id'],
+            'tenant_id'=> $isSuperAdmin
+                ? ['nullable', 'required_if:role,admin', 'exists:tenants,id']
+                : ['prohibited'],
             'teams'    => 'nullable|array',
             'teams.*'  => 'exists:teams,id',
         ]);
@@ -142,7 +147,7 @@ class UserController extends Controller
 
         AuditLog::record('user.created', $user);
 
-        return redirect()->route('admin.users.index')
+        return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', "User \"{$user->name}\" invited.");
     }
 
@@ -198,7 +203,7 @@ class UserController extends Controller
 
         AuditLog::record('user.updated', $user);
 
-        return redirect()->route('admin.users.index')
+        return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', 'User updated.');
     }
 
@@ -208,22 +213,61 @@ class UserController extends Controller
 
         AuditLog::record('user.deleted', $user, ['name' => $user->name, 'email' => $user->email]);
         $user->delete();
-        return redirect()->route('admin.users.index')
+        return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', "User \"{$user->name}\" deleted.");
     }
 
     public function bulk(Request $request)
     {
-        $ids    = explode(',', $request->input('ids', ''));
-        $action = $request->input('action');
-        $users  = $this->tenantScopedUsers()->whereIn('id', $ids)->get();
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['activate', 'deactivate', 'delete'])],
+            'ids' => 'required|string',
+        ]);
 
-        foreach ($users as $user) {
-            if ($action === 'activate')   $user->update(['is_active' => true]);
-            if ($action === 'deactivate') $user->update(['is_active' => false]);
+        $ids = collect(explode(',', $data['ids']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'No users selected.');
         }
 
-        return back()->with('success', count($ids) . " user(s) updated.");
+        $action = $data['action'];
+        $users = $this->tenantScopedUsers()
+            ->whereIn('id', $ids)
+            ->where('id', '!=', $this->actor()->id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return back()->with('error', 'No valid users selected.');
+        }
+
+        foreach ($users as $user) {
+            if ($action === 'activate') {
+                $user->update(['is_active' => true]);
+                continue;
+            }
+
+            if ($action === 'deactivate') {
+                $user->update(['is_active' => false]);
+                continue;
+            }
+
+            AuditLog::record('user.deleted', $user, [
+                'name' => $user->name,
+                'email' => $user->email,
+                'bulk' => true,
+            ]);
+            $user->delete();
+        }
+
+        $message = $action === 'delete'
+            ? $users->count() . ' user(s) deleted.'
+            : $users->count() . ' user(s) updated.';
+
+        return back()->with('success', $message);
     }
 
     public function impersonate(User $user)

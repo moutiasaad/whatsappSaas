@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\MessageReceived;
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendOutgoingMessage;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
@@ -56,10 +57,21 @@ class MessageController extends Controller
             'status'          => 'pending',
         ]);
 
-        SendOutgoingMessage::dispatch($message);
-        broadcast(new MessageReceived($message))->toOthers();
+        $conversation->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
+        ]);
 
-        return response()->json($message, 201);
+        try {
+            SendOutgoingMessage::dispatch($message);
+        } catch (\Throwable $e) {
+            Log::warning("Outgoing message dispatch failed [{$message->id}]: {$e->getMessage()}");
+            $message->refresh();
+        }
+
+        broadcast(new MessageSent($message->fresh()))->toOthers();
+
+        return response()->json($message->fresh(), 201);
     }
 
     public function storeNote(Conversation $conversation, Request $request): JsonResponse
@@ -78,6 +90,13 @@ class MessageController extends Controller
             'status'          => 'sent',
             'ai_metadata'     => ['is_note' => true],
         ]);
+
+        $conversation->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => '[Note] ' . $message->body,
+        ]);
+
+        broadcast(new MessageSent($message->fresh()))->toOthers();
 
         return response()->json($message, 201);
     }

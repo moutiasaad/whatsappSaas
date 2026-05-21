@@ -7,6 +7,9 @@
 @endsection
 
 @section('content')
+    @php
+        $routePrefix = explode('.', request()->route()?->getName() ?? 'admin.users.index')[0];
+    @endphp
 
     {{-- Header --}}
     <div class="page-header">
@@ -15,7 +18,7 @@
             <div class="page-subtitle">Manage team members and permissions</div>
         </div>
         <div class="page-header-actions">
-            <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+            <a href="{{ route($routePrefix . '.users.create') }}" class="btn btn-primary">
                 <i class="ri-user-add-line"></i> Invite User
             </a>
         </div>
@@ -41,7 +44,7 @@
             </select>
             <button type="submit" class="btn btn-outline btn-sm">Filter</button>
             @if(request()->hasAny(['search','role','status']))
-                <a href="{{ route('admin.users.index') }}" class="btn btn-ghost btn-sm">Clear</a>
+                <a href="{{ route($routePrefix . '.users.index') }}" class="btn btn-ghost btn-sm">Clear</a>
             @endif
         </div>
     </form>
@@ -60,7 +63,7 @@
                     @endif
                 </p>
                 @if(!request()->hasAny(['search','role','status']))
-                    <a href="{{ route('admin.users.create') }}" class="btn btn-primary">Invite User</a>
+                    <a href="{{ route($routePrefix . '.users.create') }}" class="btn btn-primary">Invite User</a>
                 @endif
             </div>
         @else
@@ -129,17 +132,17 @@
                             </td>
                             <td>
                                 <div style="display:flex;gap:.25rem">
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="action-btn" title="Edit">
+                                    <a href="{{ route($routePrefix . '.users.edit', $user) }}" class="action-btn" title="Edit">
                                         <i class="ri-edit-line"></i>
                                     </a>
                                     @if(auth()->id() !== $user->id)
                                     @can('impersonate', $user)
-                                    <a href="{{ route('admin.users.impersonate', $user) }}" class="action-btn" title="Impersonate"
+                                    <a href="{{ route($routePrefix . '.users.impersonate', $user) }}" class="action-btn" title="Impersonate"
                                        onclick="return confirm('Impersonate {{ $user->name }}?')">
                                         <i class="ri-user-shared-line"></i>
                                     </a>
                                     @endcan
-                                    <button onclick="confirmDelete('{{ route('admin.users.destroy', $user) }}', { title: 'Delete {{ addslashes($user->name) }}?', message: 'This will permanently remove the user account.' })"
+                                    <button onclick="confirmDelete('{{ route($routePrefix . '.users.destroy', $user) }}', { title: 'Delete {{ addslashes($user->name) }}?', message: 'This will permanently remove the user account.' })"
                                             class="action-btn danger" title="Delete">
                                         <i class="ri-delete-bin-line"></i>
                                     </button>
@@ -166,15 +169,15 @@
         <span class="bulk-count">0 selected</span>
         <span class="bulk-sep">|</span>
         <div class="bulk-actions">
-            <form method="POST" action="{{ route('admin.users.bulk') }}" id="bulkForm">
+            <form method="POST" action="{{ route($routePrefix . '.users.bulk') }}" id="bulkForm" style="display:flex;gap:.5rem;align-items:center;">
                 @csrf
                 <input type="hidden" name="ids" id="bulkIds">
-                <select name="action" data-no-ss
-                        style="height:30px;padding:0 10px;border:1px solid rgba(255,255,255,.15);border-radius:var(--radius-sm);font-size:12.5px;background:rgba(255,255,255,.08);color:#cdd9e5;outline:none;cursor:pointer">
+                <select name="action" class="form-control" style="min-width:170px;">
                     <option value="activate">Activate</option>
                     <option value="deactivate">Deactivate</option>
+                    <option value="delete">Delete</option>
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm" onclick="document.getElementById('bulkIds').value=bulk.getSelected().join(',')">
+                <button type="submit" class="btn btn-primary btn-sm">
                     Apply
                 </button>
             </form>
@@ -183,14 +186,91 @@
     </div>
 
 <script>
-var bulk = window.createBulkManager({
-    barId: 'userBulkBar',
-    getAllData: function() { return []; },
-    onDeleted: function() {}
+document.addEventListener('DOMContentLoaded', function () {
+    var headerCheckbox = document.querySelector('.header-cb');
+    var rowCheckboxes = Array.from(document.querySelectorAll('.row-cb'));
+    var bulkBar = document.getElementById('userBulkBar');
+    var bulkCount = bulkBar ? bulkBar.querySelector('.bulk-count') : null;
+    var bulkForm = document.getElementById('bulkForm');
+    var bulkIds = document.getElementById('bulkIds');
+    var bulkAction = bulkForm ? bulkForm.querySelector('select[name="action"]') : null;
+
+    function getSelected() {
+        return rowCheckboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).map(function (checkbox) {
+            return checkbox.value;
+        });
+    }
+
+    function syncBulkUi() {
+        var selected = getSelected();
+        var count = selected.length;
+
+        if (bulkCount) {
+            bulkCount.textContent = count + ' selected';
+        }
+
+        if (bulkBar) {
+            bulkBar.classList.toggle('visible', count > 0);
+        }
+
+        if (headerCheckbox) {
+            var allSelected = rowCheckboxes.length > 0 && count === rowCheckboxes.length;
+            headerCheckbox.checked = allSelected;
+            headerCheckbox.indeterminate = count > 0 && !allSelected;
+        }
+
+        if (bulkIds) {
+            bulkIds.value = selected.join(',');
+        }
+    }
+
+    window.bulk = {
+        getSelected: getSelected,
+        clear: function () {
+            if (headerCheckbox) {
+                headerCheckbox.checked = false;
+                headerCheckbox.indeterminate = false;
+            }
+
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.checked = false;
+            });
+
+            syncBulkUi();
+        }
+    };
+
+    if (headerCheckbox) {
+        headerCheckbox.addEventListener('change', function () {
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.checked = headerCheckbox.checked;
+            });
+
+            syncBulkUi();
+        });
+    }
+
+    rowCheckboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', syncBulkUi);
+    });
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', function (event) {
+            syncBulkUi();
+
+            if (bulkAction && bulkAction.value === 'delete' && !window.confirm('Delete the selected users? This cannot be undone.')) {
+                event.preventDefault();
+            }
+        });
+    }
+
+    if (window.initSS && bulkForm) {
+        window.initSS(bulkForm);
+    }
+
+    syncBulkUi();
 });
-bulk.clear = function() {
-    document.querySelectorAll('.row-cb, .header-cb').forEach(cb => cb.checked = false);
-    document.getElementById('userBulkBar').classList.remove('visible');
-};
 </script>
 @endsection

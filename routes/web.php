@@ -13,8 +13,11 @@ use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 // Auth
 Route::middleware('guest')->group(function () {
@@ -93,6 +96,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
                 Route::put('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
                 Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
+                Route::post('/teams/bulk', [TeamController::class, 'bulk'])->name('teams.bulk');
 
                 // Audit Log
                 Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
@@ -125,11 +129,15 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/platform/tenants/{tenant}/edit', [SuperAdminPlatformController::class, 'editTenant'])->name('platform.tenants.edit');
                 Route::put('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'updateTenant'])->name('platform.tenants.update');
                 Route::delete('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'destroyTenant'])->name('platform.tenants.destroy');
+                Route::post('/platform/tenants/bulk', [SuperAdminPlatformController::class, 'bulkTenants'])->name('platform.tenants.bulk');
                 Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
+                Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
+                Route::post('/platform/plans', [SuperAdminPlatformController::class, 'storePlan'])->name('platform.plans.store');
                 Route::get('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'showPlan'])->name('platform.plans.show');
                 Route::get('/platform/plans/{plan}/edit', [SuperAdminPlatformController::class, 'editPlan'])->name('platform.plans.edit');
                 Route::put('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'updatePlan'])->name('platform.plans.update');
                 Route::patch('/platform/plans/{plan}/status', [SuperAdminPlatformController::class, 'togglePlanStatus'])->name('platform.plans.status');
+                Route::post('/platform/plans/bulk', [SuperAdminPlatformController::class, 'bulkPlans'])->name('platform.plans.bulk');
                 Route::get('/platform/global-settings', [SuperAdminPlatformController::class, 'globalSettings'])->name('platform.global-settings');
                 Route::get('/platform/global-settings/edit', [SuperAdminPlatformController::class, 'editGlobalSettings'])->name('platform.global-settings.edit');
                 Route::put('/platform/global-settings', [SuperAdminPlatformController::class, 'updateGlobalSettings'])->name('platform.global-settings.update');

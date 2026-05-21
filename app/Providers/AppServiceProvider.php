@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
             if (!$instance instanceof WhatsAppInstance) {
                 throw new \InvalidArgumentException('GatewayClientInterface requires an instance parameter');
             }
-            return new EvolutionApiClient($instance->gateway_url, $instance->gateway_api_key);
+            return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
         });
     }
 

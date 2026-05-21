@@ -1,13 +1,13 @@
 <div class="form-grid">
     <div class="form-group">
-        <label class="form-label" for="app_name">Application Name <span class="req">*</span></label>
-        <input id="app_name" type="text" name="app_name" value="{{ old('app_name', $settings['app_name']['value']) }}" class="form-control @error('app_name') error @enderror" required>
+        <label class="form-label" for="app_name">Application Name</label>
+        <input id="app_name" type="text" name="app_name" value="{{ old('app_name', $settings['app_name']['value']) }}" class="form-control @error('app_name') error @enderror">
         @error('app_name') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="app_url">Application URL <span class="req">*</span></label>
-        <input id="app_url" type="url" name="app_url" value="{{ old('app_url', $settings['app_url']['value']) }}" class="form-control @error('app_url') error @enderror" required>
+        <label class="form-label" for="app_url">Application URL</label>
+        <input id="app_url" type="url" name="app_url" value="{{ old('app_url', $settings['app_url']['value']) }}" class="form-control @error('app_url') error @enderror">
         @error('app_url') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 

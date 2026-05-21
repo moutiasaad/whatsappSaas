@@ -27,7 +27,7 @@ class SendOutgoingMessage implements ShouldQueue
         $customer     = $conversation->customer;
 
         try {
-            $gateway = new EvolutionApiClient($instance->gateway_url, $instance->gateway_api_key);
+            $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
 
             $result = $this->message->type === 'text'
                 ? $gateway->sendText($instance->gateway_instance_id, $customer->phone_e164, $this->message->body)

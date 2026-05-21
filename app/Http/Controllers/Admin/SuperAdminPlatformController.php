@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -57,18 +58,32 @@ class SuperAdminPlatformController extends Controller
     public function storeTenant(Request $request)
     {
         $data = $this->validateTenant($request);
-        $slug = $this->buildUniqueSlug($data['slug'] ?? $data['name']);
 
-        Tenant::create([
-            'name'                => $data['name'],
-            'slug'                => $slug,
-            'plan_id'             => $data['plan_id'] ?? null,
-            'subscription_status' => $data['subscription_status'],
-            'trial_ends_at'       => $data['trial_ends_at'] ?? null,
-            'stripe_id'           => $data['stripe_id'] ?? null,
-            'settings'            => $this->parseSettings($data['settings'] ?? null),
-            'is_active'           => (bool) ($data['is_active'] ?? true),
-        ]);
+        DB::transaction(function () use ($data) {
+            $slug = $this->buildUniqueSlug($data['slug'] ?? $data['name']);
+
+            $tenant = Tenant::create([
+                'name'                => $data['name'],
+                'slug'                => $slug,
+                'plan_id'             => $data['plan_id'] ?? null,
+                'subscription_status' => $data['subscription_status'],
+                'trial_ends_at'       => $data['trial_ends_at'] ?? null,
+                'stripe_id'           => $data['stripe_id'] ?? null,
+                'settings'            => $this->parseSettings($data['settings'] ?? null),
+                'is_active'           => (bool) ($data['is_active'] ?? true),
+            ]);
+
+            if (!empty($data['admin_email']) && !empty($data['admin_password'])) {
+                User::create([
+                    'tenant_id' => $tenant->id,
+                    'name'      => $data['admin_name'] ?: ($tenant->name . ' Admin'),
+                    'email'     => $data['admin_email'],
+                    'password'  => Hash::make($data['admin_password']),
+                    'role'      => 'admin',
+                    'is_active' => true,
+                ]);
+            }
+        });
 
         return redirect()->route('super_admin.platform.tenants')->with('success', 'Tenant created successfully.');
     }
@@ -88,25 +103,67 @@ class SuperAdminPlatformController extends Controller
     {
         $tenant->loadCount(['users', 'teams', 'whatsappInstances as instances_count']);
         $plans = Plan::where('is_active', true)->orderBy('name')->get();
+        $tenantAdmin = User::where('tenant_id', $tenant->id)
+            ->where('role', 'admin')
+            ->orderBy('id')
+            ->first();
 
-        return view('admin.platform.tenants-edit', compact('tenant', 'plans'));
+        return view('admin.platform.tenants-edit', compact('tenant', 'plans', 'tenantAdmin'));
     }
 
     public function updateTenant(Request $request, Tenant $tenant)
     {
         $data = $this->validateTenant($request, $tenant);
-        $slug = $this->buildUniqueSlug($data['slug'] ?? $data['name'], $tenant->id);
 
-        $tenant->update([
-            'name'                => $data['name'],
-            'slug'                => $slug,
-            'plan_id'             => $data['plan_id'] ?? null,
-            'subscription_status' => $data['subscription_status'],
-            'trial_ends_at'       => $data['trial_ends_at'] ?? null,
-            'stripe_id'           => $data['stripe_id'] ?? null,
-            'settings'            => $this->parseSettings($data['settings'] ?? null),
-            'is_active'           => (bool) ($data['is_active'] ?? false),
-        ]);
+        DB::transaction(function () use ($data, $tenant) {
+            $slug = $this->buildUniqueSlug($data['slug'] ?? $data['name'], $tenant->id);
+
+            $tenant->update([
+                'name'                => $data['name'],
+                'slug'                => $slug,
+                'plan_id'             => $data['plan_id'] ?? null,
+                'subscription_status' => $data['subscription_status'],
+                'trial_ends_at'       => $data['trial_ends_at'] ?? null,
+                'stripe_id'           => $data['stripe_id'] ?? null,
+                'settings'            => $this->parseSettings($data['settings'] ?? null),
+                'is_active'           => (bool) ($data['is_active'] ?? false),
+            ]);
+
+            if (!empty($data['admin_email']) || !empty($data['admin_password']) || !empty($data['admin_name'])) {
+                $admin = User::where('tenant_id', $tenant->id)
+                    ->where('role', 'admin')
+                    ->orderBy('id')
+                    ->first();
+
+                if (!$admin) {
+                    if (!empty($data['admin_email']) && !empty($data['admin_password'])) {
+                        User::create([
+                            'tenant_id' => $tenant->id,
+                            'name'      => $data['admin_name'] ?: ($tenant->name . ' Admin'),
+                            'email'     => $data['admin_email'],
+                            'password'  => Hash::make($data['admin_password']),
+                            'role'      => 'admin',
+                            'is_active' => true,
+                        ]);
+                    }
+                    return;
+                }
+
+                $adminUpdates = [];
+                if (!empty($data['admin_name'])) {
+                    $adminUpdates['name'] = $data['admin_name'];
+                }
+                if (!empty($data['admin_email'])) {
+                    $adminUpdates['email'] = $data['admin_email'];
+                }
+                if (!empty($data['admin_password'])) {
+                    $adminUpdates['password'] = Hash::make($data['admin_password']);
+                }
+                if ($adminUpdates) {
+                    $admin->update($adminUpdates);
+                }
+            }
+        });
 
         return redirect()
             ->route('super_admin.platform.tenants.show', $tenant)
@@ -121,6 +178,43 @@ class SuperAdminPlatformController extends Controller
         return redirect()
             ->route('super_admin.platform.tenants')
             ->with('success', "Tenant \"{$tenantName}\" deleted.");
+    }
+
+    public function bulkTenants(Request $request)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:enable,disable,delete',
+            'ids' => 'required|string',
+        ]);
+
+        $ids = collect(explode(',', $data['ids']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'No tenants selected.');
+        }
+
+        $tenants = Tenant::whereIn('id', $ids)->get();
+
+        if ($tenants->isEmpty()) {
+            return back()->with('error', 'No valid tenants selected.');
+        }
+
+        if ($data['action'] === 'delete') {
+            foreach ($tenants as $tenant) {
+                $tenant->delete();
+            }
+
+            return back()->with('success', $tenants->count() . ' tenant(s) deleted.');
+        }
+
+        $enable = $data['action'] === 'enable';
+        Tenant::whereIn('id', $tenants->pluck('id'))->update(['is_active' => $enable]);
+
+        return back()->with('success', $tenants->count() . ' tenant(s) ' . ($enable ? 'enabled.' : 'disabled.'));
     }
 
     public function plans()
@@ -158,6 +252,35 @@ class SuperAdminPlatformController extends Controller
         ]);
 
         return view('admin.platform.plans-show', compact('plan'));
+    }
+
+    public function createPlan()
+    {
+        return view('admin.platform.plans-create');
+    }
+
+    public function storePlan(Request $request)
+    {
+        $data = $this->validatePlan($request);
+
+        Plan::create([
+            'name'                        => $data['name'],
+            'stripe_price_id_monthly'     => $data['stripe_price_id_monthly'] ?? null,
+            'stripe_price_id_annual'      => $data['stripe_price_id_annual'] ?? null,
+            'price_monthly'               => $data['price_monthly'],
+            'price_annual'                => $data['price_annual'],
+            'max_users'                   => $data['max_users'],
+            'max_instances'               => $data['max_instances'],
+            'max_conversations_per_month' => $data['max_conversations_per_month'],
+            'ai_included'                 => (bool) ($data['ai_included'] ?? false),
+            'ai_token_quota'              => (int) ($data['ai_token_quota'] ?? 0),
+            'features'                    => $this->parseFeatures($data['features'] ?? null),
+            'is_active'                   => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return redirect()
+            ->route('super_admin.platform.plans')
+            ->with('success', 'Plan created successfully.');
     }
 
     public function editPlan(Plan $plan)
@@ -214,6 +337,39 @@ class SuperAdminPlatformController extends Controller
         return redirect()
             ->route('super_admin.platform.plans')
             ->with('success', $nextStatus ? 'Plan enabled.' : 'Plan disabled.');
+    }
+
+    public function bulkPlans(Request $request)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:enable,disable',
+            'ids' => 'required|string',
+        ]);
+
+        $ids = collect(explode(',', $data['ids']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'No plans selected.');
+        }
+
+        $plans = Plan::whereIn('id', $ids)->get();
+        $enable = $data['action'] === 'enable';
+
+        if (!$enable) {
+            $activeCount = Plan::where('is_active', true)->count();
+            $activeSelected = $plans->where('is_active', true)->count();
+            if ($activeSelected >= $activeCount) {
+                return back()->with('error', 'Cannot disable all active plans.');
+            }
+        }
+
+        Plan::whereIn('id', $plans->pluck('id'))->update(['is_active' => $enable]);
+
+        return back()->with('success', $plans->count() . ' plan(s) ' . ($enable ? 'enabled.' : 'disabled.'));
     }
 
     public function globalSettings()
@@ -382,6 +538,10 @@ class SuperAdminPlatformController extends Controller
 
     private function validateTenant(Request $request, ?Tenant $tenant = null): array
     {
+        $tenantAdmin = $tenant
+            ? User::where('tenant_id', $tenant->id)->where('role', 'admin')->orderBy('id')->first()
+            : null;
+
         return $request->validate([
             'name'                => 'required|string|max:150',
             'slug'                => [
@@ -397,6 +557,14 @@ class SuperAdminPlatformController extends Controller
             'stripe_id'           => 'nullable|string|max:255',
             'settings'            => 'nullable|json',
             'is_active'           => 'nullable|boolean',
+            'admin_name'          => 'nullable|string|max:150',
+            'admin_email'         => [
+                'nullable',
+                'email',
+                'max:150',
+                Rule::unique('users', 'email')->ignore($tenantAdmin?->id),
+            ],
+            'admin_password'      => 'nullable|string|min:8|confirmed',
         ]);
     }
 

@@ -15,6 +15,11 @@
             <div class="page-title">Subscription Plans</div>
             <div class="page-subtitle">Global plan catalog and tenant assignment rules</div>
         </div>
+        <div class="page-header-actions">
+            <a href="{{ route('super_admin.platform.plans.create') }}" class="btn btn-primary">
+                <i class="ri-add-line"></i> Add Plan
+            </a>
+        </div>
     </div>
 
     <div class="stats-grid">
@@ -70,6 +75,9 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th style="width:2.5rem">
+                                <input type="checkbox" class="header-cb" style="cursor:pointer;">
+                            </th>
                             <th>Plan</th>
                             <th>Pricing</th>
                             <th>Limits</th>
@@ -81,6 +89,9 @@
                     <tbody>
                         @foreach($plans as $plan)
                             <tr>
+                                <td>
+                                    <input type="checkbox" class="row-cb" value="{{ $plan->id }}" style="cursor:pointer;">
+                                </td>
                                 <td>
                                     <div style="display:flex;flex-direction:column;gap:.125rem;">
                                         <span style="font-weight:600;color:var(--text-primary);">{{ $plan->name }}</span>
@@ -144,5 +155,108 @@
             @endif
         @endif
     </div>
+
+    @if($plans->isNotEmpty())
+        <div class="bulk-bar" id="planBulkBar">
+            <span class="bulk-count">0 selected</span>
+            <span class="bulk-sep">|</span>
+            <div class="bulk-actions">
+                <form method="POST" action="{{ route('super_admin.platform.plans.bulk') }}" id="planBulkForm" style="display:flex;gap:.5rem;align-items:center;">
+                    @csrf
+                    <input type="hidden" name="ids" id="planBulkIds">
+                    <select name="action" class="form-control" style="min-width:170px;">
+                        <option value="enable">Enable</option>
+                        <option value="disable">Disable</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                </form>
+            </div>
+            <button type="button" class="bulk-close" onclick="planBulk.clear()"><i class="ri-close-line"></i></button>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var headerCheckbox = document.querySelector('.header-cb');
+            var rowCheckboxes = Array.from(document.querySelectorAll('.row-cb'));
+            var bulkBar = document.getElementById('planBulkBar');
+            var bulkCount = bulkBar ? bulkBar.querySelector('.bulk-count') : null;
+            var bulkForm = document.getElementById('planBulkForm');
+            var bulkIds = document.getElementById('planBulkIds');
+
+            function getSelected() {
+                return rowCheckboxes.filter(function (checkbox) {
+                    return checkbox.checked;
+                }).map(function (checkbox) {
+                    return checkbox.value;
+                });
+            }
+
+            function syncBulkUi() {
+                var selected = getSelected();
+                var count = selected.length;
+
+                if (bulkCount) {
+                    bulkCount.textContent = count + ' selected';
+                }
+
+                if (bulkBar) {
+                    bulkBar.classList.toggle('visible', count > 0);
+                }
+
+                if (headerCheckbox) {
+                    var allSelected = rowCheckboxes.length > 0 && count === rowCheckboxes.length;
+                    headerCheckbox.checked = allSelected;
+                    headerCheckbox.indeterminate = count > 0 && !allSelected;
+                }
+
+                if (bulkIds) {
+                    bulkIds.value = selected.join(',');
+                }
+            }
+
+            window.planBulk = {
+                getSelected: getSelected,
+                clear: function () {
+                    if (headerCheckbox) {
+                        headerCheckbox.checked = false;
+                        headerCheckbox.indeterminate = false;
+                    }
+
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = false;
+                    });
+
+                    syncBulkUi();
+                }
+            };
+
+            if (headerCheckbox) {
+                headerCheckbox.addEventListener('change', function () {
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = headerCheckbox.checked;
+                    });
+
+                    syncBulkUi();
+                });
+            }
+
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', syncBulkUi);
+            });
+
+            if (bulkForm) {
+                bulkForm.addEventListener('submit', function () {
+                    syncBulkUi();
+                });
+            }
+
+            if (window.initSS && bulkForm) {
+                window.initSS(bulkForm);
+            }
+
+            syncBulkUi();
+        });
+        </script>
+    @endif
 </div>
 @endsection

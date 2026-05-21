@@ -1,12 +1,15 @@
 @php
     $tenant = $tenant ?? null;
+    $tenantAdmin = $tenantAdmin ?? null;
     $activeValue = old('is_active', $tenant?->is_active ?? true);
+    $adminNameValue = old('admin_name', $tenantAdmin?->name);
+    $adminEmailValue = old('admin_email', $tenantAdmin?->email);
 @endphp
 
 <div class="form-grid">
     <div class="form-group">
-        <label class="form-label" for="name">Name <span class="req">*</span></label>
-        <input id="name" type="text" name="name" value="{{ old('name', $tenant?->name) }}" class="form-control @error('name') error @enderror" required placeholder="e.g. Demo Company">
+        <label class="form-label" for="name">Name</label>
+        <input id="name" type="text" name="name" value="{{ old('name', $tenant?->name) }}" class="form-control @error('name') error @enderror" placeholder="e.g. Demo Company">
         @error('name') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
@@ -17,8 +20,8 @@
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="subscription_status">Subscription Status <span class="req">*</span></label>
-        <select id="subscription_status" name="subscription_status" class="form-control @error('subscription_status') error @enderror" required>
+        <label class="form-label" for="subscription_status">Subscription Status</label>
+        <select id="subscription_status" name="subscription_status" class="form-control @error('subscription_status') error @enderror">
             @foreach(['trial','active','suspended','cancelled'] as $status)
                 <option value="{{ $status }}" @selected(old('subscription_status', $tenant?->subscription_status ?? 'trial') === $status)>{{ ucfirst($status) }}</option>
             @endforeach
@@ -62,4 +65,38 @@
         <input type="checkbox" name="is_active" value="1" @checked((string) $activeValue === '1' || $activeValue === 1 || $activeValue === true)>
         <span class="toggle-text">Active tenant</span>
     </label>
+</div>
+
+<div class="card" style="margin-top:20px; overflow:visible;">
+    <div class="card-header">
+        <div>
+            <div class="card-title">Initial Tenant Admin</div>
+            <div class="card-subtitle">{{ $tenant ? 'Update the tenant admin credentials.' : 'Optional. Create the first admin account for this tenant now.' }}</div>
+        </div>
+    </div>
+
+    <div style="padding:20px; display:grid; gap:16px;">
+        <div class="form-group">
+            <label class="form-label" for="admin_name">Admin Name</label>
+            <input id="admin_name" type="text" name="admin_name" value="{{ $adminNameValue }}" class="form-control @error('admin_name') error @enderror" placeholder="e.g. Tenant Admin">
+            @error('admin_name') <div class="form-error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="admin_email">Admin Email</label>
+            <input id="admin_email" type="email" name="admin_email" value="{{ $adminEmailValue }}" class="form-control @error('admin_email') error @enderror" placeholder="admin@example.com">
+            @error('admin_email') <div class="form-error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="admin_password">Admin Password</label>
+            <input id="admin_password" type="password" name="admin_password" class="form-control @error('admin_password') error @enderror" placeholder="Minimum 8 characters">
+            @error('admin_password') <div class="form-error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="admin_password_confirmation">Confirm Password</label>
+            <input id="admin_password_confirmation" type="password" name="admin_password_confirmation" class="form-control" placeholder="Repeat password">
+        </div>
+    </div>
 </div>

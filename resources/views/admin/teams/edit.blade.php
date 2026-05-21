@@ -20,10 +20,10 @@
     $canManageInstances = auth()->user()->hasAnyRole(['admin', 'super_admin']);
 @endphp
 <div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start"
-     x-data="teamForm()">
+     >
 
     {{-- Left: Edit Form --}}
-    <div class="card">
+    <div class="card" style="overflow:visible;">
         <div class="card-header">
             <div>
                 <div class="card-title">Edit Team</div>
@@ -43,13 +43,10 @@
                 {{-- Basic Info --}}
                 <div style="display:flex;flex-direction:column;gap:1.125rem">
                     <div class="form-group">
-                        <label class="form-label" for="name">
-                            Team Name <span style="color:#ef4444">*</span>
-                        </label>
+                        <label class="form-label" for="name">Team Name</label>
                         <input type="text" id="name" name="name"
                                value="{{ old('name', $team->name) }}"
-                               class="form-control @error('name') error @enderror"
-                               required>
+                               class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
 
@@ -71,70 +68,32 @@
                         <span style="font-size:.8125rem;color:var(--text-muted)">Inactive teams won't receive new conversations</span>
                     </div>
                 </div>
-
                 {{-- Member Picker --}}
-                <div>
+                <div class="form-group" style="overflow:visible">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
                         <div>
-                            <div style="font-size:.9375rem;font-weight:600;color:var(--text-primary)">Team Members</div>
-                            <div style="font-size:.8125rem;color:var(--text-muted);margin-top:.125rem">
-                                Check to include in this team
+                            <label class="form-label" for="members" style="margin-bottom:.125rem">Team Members</label>
+                            <div style="font-size:.8125rem;color:var(--text-muted)">
+                                Click to open, then select one or more members.
                             </div>
                         </div>
-                        <span x-text="`${selected.length} member${selected.length !== 1 ? 's' : ''}`"
-                              style="font-size:.8125rem;color:var(--text-muted)"></span>
                     </div>
 
-                    {{-- Search --}}
-                    <div style="position:relative;margin-bottom:.75rem">
-                        <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                        <input type="text" x-model="search"
-                               placeholder="Filter by name…"
-                               class="filter-input" style="padding-left:2.25rem;width:100%">
-                    </div>
-
-                    {{-- Agent List --}}
-                    <div style="border:1px solid var(--card-border);border-radius:.75rem;overflow:hidden;max-height:380px;overflow-y:auto">
-                        @forelse($agents as $agent)
-                        @php $isMember = $team->users->contains('id', $agent->id); @endphp
-                        <label style="display:flex;align-items:center;gap:.875rem;padding:.75rem 1rem;cursor:pointer;border-bottom:1px solid var(--card-border);transition:background .12s"
-                               x-show="!search || '{{ strtolower($agent->name) }}'.includes(search.toLowerCase())"
-                               :style="selected.includes({{ $agent->id }}) ? 'background:rgba(16,185,129,.06)' : ''"
-                               onmouseenter="if(!this.querySelector('input').checked) this.style.background='var(--page-bg)'"
-                               onmouseleave="this.style.background=this.querySelector('input').checked?'rgba(16,185,129,.06)':''">
-                            <input type="checkbox" name="members[]" value="{{ $agent->id }}"
-                                   x-model="selected"
-                                   :value="{{ $agent->id }}"
-                                   {{ in_array($agent->id, old('members', $team->users->pluck('id')->toArray())) ? 'checked' : '' }}
-                                   style="accent-color:var(--brand);width:1rem;height:1rem;flex-shrink:0;cursor:pointer">
-                            <img src="{{ $agent->avatar_url }}" alt="{{ $agent->name }}"
-                                 style="width:2rem;height:2rem;border-radius:50%;object-fit:cover;flex-shrink:0">
-                            <div style="flex:1;min-width:0">
-                                <div style="font-weight:500;font-size:.875rem">{{ $agent->name }}</div>
-                                <div style="font-size:.75rem;color:var(--text-muted)">{{ $agent->email }}</div>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:.375rem">
-                                <span class="badge {{ $agent->role === 'supervisor' ? 'badge-blue' : 'badge-green' }}" style="font-size:.6875rem">
-                                    {{ ucfirst($agent->role) }}
-                                </span>
-                                @if($isMember)
-                                <span style="font-size:.6875rem;color:var(--text-muted)">current</span>
-                                @endif
-                            </div>
-                        </label>
-                        @empty
-                        <div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:.875rem">
-                            No agents available.
-                        </div>
-                        @endforelse
-                    </div>
-
-                    <div style="display:flex;gap:.5rem;margin-top:.5rem">
-                        <button type="button" @click="selectAll()" class="btn btn-ghost btn-sm" style="font-size:.75rem">Select all</button>
-                        <button type="button" @click="selected = []" class="btn btn-ghost btn-sm" style="font-size:.75rem">Clear all</button>
-                    </div>
+                    <select id="members" name="members[]" multiple
+                            data-no-ss
+                            data-members-ss
+                            class="form-control @error('members') error @enderror @error('members.*') error @enderror"
+                            style="display:none;">
+                        @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" @selected(in_array($agent->id, old('members', $team->users->pluck('id')->toArray())))>
+                                {{ $agent->name }} ({{ ucfirst($agent->role) }}) - {{ $agent->email }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('members') <div class="form-error">{{ $message }}</div> @enderror
+                    @error('members.*') <div class="form-error">{{ $message }}</div> @enderror
+                    <div class="form-hint">Click to open, then select one or more members.</div>
                 </div>
-
                 {{-- Danger Zone --}}
                 @if($canDeleteTeam)
                     <div style="border:1px solid rgba(239,68,68,.2);border-radius:.75rem;padding:1rem">
@@ -243,13 +202,164 @@
 </div>
 
 <script>
-function teamForm() {
-    return {
-        search: '',
-        selected: @json(old('members', $team->users->pluck('id')->toArray())),
-        allIds: @json($agents->pluck('id')),
-        selectAll() { this.selected = [...this.allIds]; }
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.querySelector('select[data-members-ss]');
+    if (!select) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ss-wrap';
+    if (select.classList.contains('error')) wrap.classList.add('error');
+
+    const displayInput = document.createElement('input');
+    displayInput.type = 'text';
+    displayInput.className = 'ss-input';
+    displayInput.readOnly = true;
+    displayInput.placeholder = 'Select...';
+
+    const chevron = document.createElement('i');
+    chevron.className = 'ri-arrow-down-s-line ss-chevron';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'ss-dropdown';
+
+    const searchRow = document.createElement('div');
+    searchRow.className = 'ss-search-row';
+    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Filter..." autocomplete="off"></div>';
+
+    const list = document.createElement('div');
+    list.className = 'ss-list';
+
+    Array.from(select.options).forEach(function (opt) {
+        const item = document.createElement('div');
+        item.className = 'ss-item';
+        item.dataset.value = opt.value;
+        item.dataset.label = opt.textContent.trim();
+        item.textContent = opt.textContent.trim();
+        if (opt.selected) item.classList.add('ss-selected');
+        list.appendChild(item);
+    });
+
+    dropdown.appendChild(searchRow);
+    dropdown.appendChild(list);
+    wrap.appendChild(displayInput);
+    wrap.appendChild(chevron);
+    wrap.appendChild(dropdown);
+    select.parentNode.insertBefore(wrap, select.nextSibling);
+
+    const filterInput = searchRow.querySelector('input');
+    const searchRowHeight = 56;
+
+    function updateDisplay() {
+        const selected = Array.from(select.selectedOptions);
+        if (!selected.length) {
+            displayInput.value = '';
+            return;
+        }
+        displayInput.value = selected.length === 1 ? selected[0].textContent.trim() : selected.length + ' selected';
     }
-}
+
+    function renderItems(q) {
+        const lower = (q || '').toLowerCase();
+        let visible = 0;
+        list.querySelectorAll('.ss-item').forEach(function (el) {
+            const matches = !lower || el.dataset.label.toLowerCase().includes(lower);
+            el.style.display = matches ? '' : 'none';
+            if (matches) visible++;
+        });
+        let emptyEl = list.querySelector('.ss-empty');
+        if (!visible) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'ss-empty';
+                emptyEl.textContent = 'No results found';
+                list.appendChild(emptyEl);
+            }
+            emptyEl.style.display = '';
+        } else if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+    }
+
+    function setSelectedClass(value, isSelected) {
+        const item = list.querySelector('.ss-item[data-value="' + CSS.escape(value) + '"]');
+        if (item) item.classList.toggle('ss-selected', isSelected);
+    }
+
+    function syncDropdownPosition() {
+        wrap.classList.remove('open-up');
+
+        const rect = wrap.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom - 16;
+        const spaceAbove = rect.top - 16;
+        const estimatedHeight = 56 + 120;
+        const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+        wrap.classList.toggle('open-up', openUp);
+
+        const room = openUp ? spaceAbove : spaceBelow;
+        const listMax = Math.max(100, Math.min(160, room - searchRowHeight));
+        list.style.maxHeight = listMax + 'px';
+    }
+
+    function openDropdown() {
+        syncDropdownPosition();
+        wrap.classList.add('open');
+        renderItems('');
+        filterInput.value = '';
+        filterInput.focus();
+        syncDropdownPosition();
+    }
+
+    function closeDropdown() {
+        wrap.classList.remove('open');
+        wrap.classList.remove('open-up');
+        list.style.maxHeight = '160px';
+    }
+
+    list.addEventListener('mousedown', function (e) {
+        const item = e.target.closest('.ss-item');
+        if (!item) return;
+        e.preventDefault();
+        const value = item.dataset.value;
+        const option = Array.from(select.options).find(function (o) { return o.value === value; });
+        if (!option) return;
+        option.selected = !option.selected;
+        setSelectedClass(value, option.selected);
+        updateDisplay();
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        wrap.classList.remove('error');
+    });
+
+    displayInput.addEventListener('click', function () {
+        if (wrap.classList.contains('open')) closeDropdown();
+        else openDropdown();
+    });
+
+    displayInput.addEventListener('keydown', function (e) {
+        if (['ArrowDown', 'Enter', ' '].includes(e.key)) {
+            e.preventDefault();
+            openDropdown();
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+        }
+    });
+
+    filterInput.addEventListener('input', function () {
+        renderItems(this.value.trim());
+    });
+
+    window.addEventListener('resize', function () {
+        if (wrap.classList.contains('open')) syncDropdownPosition();
+    });
+
+    window.addEventListener('scroll', function () {
+        if (wrap.classList.contains('open')) syncDropdownPosition();
+    }, true);
+
+    document.addEventListener('click', function (e) {
+        if (!wrap.contains(e.target)) closeDropdown();
+    });
+
+    updateDisplay();
+});
 </script>
 @endsection

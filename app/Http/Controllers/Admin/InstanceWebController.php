@@ -27,10 +27,13 @@ class InstanceWebController extends Controller
         $data = $request->validate([
             'name'           => 'required|string|max:100',
             'gateway'        => 'required|in:evolution_api,waha,cloud_api',
-            'gateway_url'    => 'required|url',
-            'gateway_api_key'=> 'required|string',
+            'gateway_url'    => 'nullable|url',
+            'gateway_api_key'=> 'nullable|string',
             'team_id'        => 'nullable|exists:teams,id',
         ]);
+
+        $data['gateway_url'] = $data['gateway_url'] ?: config('services.whatsapp.default_url');
+        $data['gateway_api_key'] = $data['gateway_api_key'] ?: config('services.whatsapp.default_api_key');
 
         $instance = WhatsAppInstance::create($data + ['tenant_id' => auth()->user()->tenant_id]);
 
@@ -50,13 +53,17 @@ class InstanceWebController extends Controller
     {
         $data = $request->validate([
             'name'           => 'required|string|max:100',
-            'gateway_url'    => 'required|url',
+            'gateway_url'    => 'nullable|url',
             'gateway_api_key'=> 'nullable|string',
             'team_id'        => 'nullable|exists:teams,id',
         ]);
 
+        if (empty($data['gateway_url'])) {
+            $data['gateway_url'] = $instance->gateway_url ?: config('services.whatsapp.default_url');
+        }
+
         if (empty($data['gateway_api_key'])) {
-            unset($data['gateway_api_key']);
+            $data['gateway_api_key'] = $instance->gateway_api_key ?: config('services.whatsapp.default_api_key');
         }
 
         $instance->update($data);

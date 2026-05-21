@@ -20,7 +20,23 @@ class EvolutionApiClient implements GatewayClientInterface
     {
         try {
             $res = $this->get("/instance/connect/{$instanceId}");
-            return $res['code'] ?? null;
+            $code = $res['base64'] ?? $res['code'] ?? ($res['qr_code'] ?? null);
+
+            if (is_array($code)) {
+                $code = $code['base64'] ?? $code['code'] ?? $code['data'] ?? null;
+            }
+
+            if (!is_string($code) || trim($code) === '') {
+                return null;
+            }
+
+            if (str_starts_with($code, 'data:image/')) {
+                return $code;
+            }
+
+            $normalized = preg_replace('/\s+/', '', $code);
+
+            return "data:image/png;base64,{$normalized}";
         } catch (\Exception) {
             return null;
         }

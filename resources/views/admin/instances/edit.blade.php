@@ -30,13 +30,10 @@
             <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem">
 
                 <div class="form-group">
-                    <label class="form-label" for="name">
-                        Instance Name <span style="color:#ef4444">*</span>
-                    </label>
+                    <label class="form-label" for="name">Instance Name</label>
                     <input type="text" id="name" name="name"
                            value="{{ old('name', $instance->name) }}"
-                           class="form-control @error('name') error @enderror"
-                           required>
+                           class="form-control @error('name') error @enderror">
                     @error('name') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
 
@@ -49,34 +46,10 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="gateway_url">
-                        Gateway URL <span style="color:#ef4444">*</span>
-                    </label>
-                    <input type="url" id="gateway_url" name="gateway_url"
-                           value="{{ old('gateway_url', $instance->gateway_url) }}"
-                           class="form-control @error('gateway_url') error @enderror"
-                           required>
-                    @error('gateway_url') <div class="form-error">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="gateway_api_key">
-                        API Key
-                        <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">(leave blank to keep current)</span>
-                    </label>
-                    <div style="position:relative">
-                        <input type="password" id="gateway_api_key" name="gateway_api_key"
-                               placeholder="Enter new API key to replace…"
-                               class="form-control @error('gateway_api_key') error @enderror"
-                               style="padding-right:2.75rem">
-                        <button type="button"
-                                onclick="const i=document.getElementById('gateway_api_key');i.type=i.type==='password'?'text':'password'"
-                                style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:.25rem">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                    </div>
-                    @error('gateway_api_key') <div class="form-error">{{ $message }}</div> @enderror
+                <input type="hidden" name="gateway_url" value="{{ $instance->gateway_url ?: config('services.whatsapp.default_url') }}">
+                <input type="hidden" name="gateway_api_key" value="{{ $instance->gateway_api_key ?: config('services.whatsapp.default_api_key') }}">
+                <div class="form-hint" style="margin-top:-.75rem">
+                    WhatsApp gateway settings are managed automatically from the server environment.
                 </div>
 
                 <div class="form-group">

@@ -16,10 +16,10 @@ class LoginController extends Controller
     public function showSuperAdminLoginForm()
     {
         return view('auth.login', [
-            'pageTitle'   => 'Super Admin Sign In',
-            'portalBadge' => 'Super Admin Control Plane',
-            'heading'     => 'Super Admin access',
-            'subheading'  => 'Sign in to the platform owner control plane',
+            'pageTitle'   => __('auth.login.portals.super_admin_title'),
+            'portalBadge' => __('auth.login.portals.super_admin_badge'),
+            'heading'     => __('auth.login.portals.super_admin_heading'),
+            'subheading'  => __('auth.login.portals.super_admin_subheading'),
             'loginAction' => route('superadmin.login.submit'),
         ]);
     }
@@ -27,10 +27,10 @@ class LoginController extends Controller
     public function showAdminLoginForm()
     {
         return view('auth.login', [
-            'pageTitle'   => 'Tenant Admin Sign In',
-            'portalBadge' => 'Tenant Admin Portal',
-            'heading'     => 'Tenant Admin access',
-            'subheading'  => 'Sign in to your tenant administration portal',
+            'pageTitle'   => __('auth.login.portals.admin_title'),
+            'portalBadge' => __('auth.login.portals.admin_badge'),
+            'heading'     => __('auth.login.portals.admin_heading'),
+            'subheading'  => __('auth.login.portals.admin_subheading'),
             'loginAction' => route('admin.login.submit'),
         ]);
     }
@@ -38,10 +38,10 @@ class LoginController extends Controller
     public function showSupervisorLoginForm()
     {
         return view('auth.login', [
-            'pageTitle'   => 'Supervisor Sign In',
-            'portalBadge' => 'Supervisor Portal',
-            'heading'     => 'Supervisor access',
-            'subheading'  => 'Sign in to manage your support teams',
+            'pageTitle'   => __('auth.login.portals.supervisor_title'),
+            'portalBadge' => __('auth.login.portals.supervisor_badge'),
+            'heading'     => __('auth.login.portals.supervisor_heading'),
+            'subheading'  => __('auth.login.portals.supervisor_subheading'),
             'loginAction' => route('supervisor.login.submit'),
         ]);
     }
@@ -49,10 +49,10 @@ class LoginController extends Controller
     public function showAgentLoginForm()
     {
         return view('auth.login', [
-            'pageTitle'   => 'Support Agent Sign In',
-            'portalBadge' => 'Support Agent Portal',
-            'heading'     => 'Support Agent access',
-            'subheading'  => 'Sign in to handle customer conversations',
+            'pageTitle'   => __('auth.login.portals.agent_title'),
+            'portalBadge' => __('auth.login.portals.agent_badge'),
+            'heading'     => __('auth.login.portals.agent_heading'),
+            'subheading'  => __('auth.login.portals.agent_subheading'),
             'loginAction' => route('agent.login.submit'),
         ]);
     }
@@ -69,25 +69,22 @@ class LoginController extends Controller
 
     public function adminLogin(Request $request)
     {
-        return $this->attemptLogin($request, adminOnly: true);
+        return redirect()->route('login');
     }
 
     public function supervisorLogin(Request $request)
     {
-        return $this->attemptLogin($request, supervisorOnly: true);
+        return redirect()->route('login');
     }
 
     public function agentLogin(Request $request)
     {
-        return $this->attemptLogin($request, agentOnly: true);
+        return redirect()->route('login');
     }
 
     private function attemptLogin(
         Request $request,
-        bool $superAdminOnly = false,
-        bool $adminOnly = false,
-        bool $supervisorOnly = false,
-        bool $agentOnly = false
+        bool $superAdminOnly = false
     )
     {
         $credentials = $request->validate([
@@ -100,91 +97,15 @@ class LoginController extends Controller
             $user = $request->user();
 
             if ($superAdminOnly && !$user->isSuperAdmin()) {
-                $redirect = $user->isAdmin() ? 'admin.login' : ($user->isSupervisor() ? 'supervisor.login' : 'login');
-
                 return $this->rejectPortalLogin(
                     $request,
-                    'This portal is only for super admins.',
-                    $redirect
-                );
-            }
-
-            if ($adminOnly && !$user->isAdmin()) {
-                $redirect = $user->isSuperAdmin()
-                    ? 'superadmin.login'
-                    : ($user->isSupervisor() ? 'supervisor.login' : 'login');
-
-                return $this->rejectPortalLogin(
-                    $request,
-                    'This portal is only for tenant admins.',
-                    $redirect
-                );
-            }
-
-            if ($supervisorOnly && !$user->isSupervisor()) {
-                $redirect = $user->isSuperAdmin()
-                    ? 'superadmin.login'
-                    : ($user->isAdmin() ? 'admin.login' : ($user->isAgent() ? 'agent.login' : 'login'));
-
-                return $this->rejectPortalLogin(
-                    $request,
-                    'This portal is only for supervisors.',
-                    $redirect
-                );
-            }
-
-            if ($agentOnly && !$user->isAgent()) {
-                $redirect = $user->isSuperAdmin()
-                    ? 'superadmin.login'
-                    : ($user->isAdmin() ? 'admin.login' : ($user->isSupervisor() ? 'supervisor.login' : 'login'));
-
-                return $this->rejectPortalLogin(
-                    $request,
-                    'This portal is only for support agents.',
-                    $redirect
-                );
-            }
-
-            if (!$superAdminOnly && $user->isSuperAdmin()) {
-                return $this->rejectPortalLogin(
-                    $request,
-                    'Use the Super Admin login page.',
+                    __('auth.errors.super_admin_only'),
                     'superadmin.login'
-                );
-            }
-
-            if (!$superAdminOnly && !$adminOnly && !$supervisorOnly && $user->isAdmin()) {
-                return $this->rejectPortalLogin(
-                    $request,
-                    'Use the Tenant Admin login page.',
-                    'admin.login'
-                );
-            }
-
-            if (!$superAdminOnly && !$adminOnly && !$supervisorOnly && $user->isSupervisor()) {
-                return $this->rejectPortalLogin(
-                    $request,
-                    'Use the Supervisor login page.',
-                    'supervisor.login'
-                );
-            }
-
-            if (!$superAdminOnly && !$adminOnly && !$supervisorOnly && !$agentOnly && $user->isAgent()) {
-                return $this->rejectPortalLogin(
-                    $request,
-                    'Use the Support Agent login page.',
-                    'agent.login'
                 );
             }
 
             if ($superAdminOnly) {
                 $target = route('super_admin.dashboard');
-            } elseif ($adminOnly) {
-                $target = route('tenant_admin.dashboard');
-            } elseif ($supervisorOnly) {
-                $target = route('supervisor.conversations.index');
-            } elseif ($agentOnly) {
-                $target = route('agent.conversations.index');
             } else {
                 $target = route($user->homeRouteName());
             }
@@ -193,7 +114,7 @@ class LoginController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'These credentials do not match our records.',
+            'email' => __('auth.errors.credentials_mismatch'),
         ])->onlyInput('email');
     }
 

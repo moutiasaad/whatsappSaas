@@ -22,11 +22,16 @@ class InstanceController extends Controller
         $request->validate([
             'name'           => 'required|string|max:100',
             'gateway'        => 'required|in:evolution,waha,cloud',
-            'gateway_url'    => 'required|url',
-            'gateway_api_key'=> 'required|string',
+            'gateway_url'    => 'nullable|url',
+            'gateway_api_key'=> 'nullable|string',
         ]);
 
-        $instance = WhatsAppInstance::create($request->only(['name', 'gateway', 'gateway_url', 'gateway_api_key']));
+        $instance = WhatsAppInstance::create([
+            'name'            => $request->name,
+            'gateway'         => $request->gateway,
+            'gateway_url'     => $request->gateway_url ?: config('services.whatsapp.default_url'),
+            'gateway_api_key' => $request->gateway_api_key ?: config('services.whatsapp.default_api_key'),
+        ]);
 
         return response()->json($instance, 201);
     }
@@ -59,7 +64,11 @@ class InstanceController extends Controller
             $status = $this->gateway($instance)->getStatus($instance->gateway_instance_id);
             $instance->update(['status' => $status, 'last_status_at' => now()]);
             broadcast(new InstanceStatusChanged($instance->fresh()));
-            return response()->json(['status' => $status, 'instance' => $instance->fresh()]);
+            return response()->json([
+                'status'   => $status,
+                'qr_code'  => $instance->qr_code,
+                'instance' => $instance->fresh(),
+            ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -74,6 +83,6 @@ class InstanceController extends Controller
 
     private function gateway(WhatsAppInstance $instance): EvolutionApiClient
     {
-        return new EvolutionApiClient($instance->gateway_url, $instance->gateway_api_key);
+        return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
     }
 }

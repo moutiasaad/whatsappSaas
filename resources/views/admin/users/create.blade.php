@@ -15,7 +15,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;margin-bottom:1.5rem">
 
         {{-- Left: Account Info --}}
-        <div class="card">
+        <div class="card" style="overflow:visible;">
             <div class="card-header">
                 <div>
                     <div class="card-title">Account Information</div>
@@ -26,22 +26,22 @@
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="name">Full Name <span style="color:#ef4444">*</span></label>
+                        <label class="form-label" for="name">Full Name</label>
                         <input type="text" id="name" name="name" value="{{ old('name') }}"
-                               class="form-control @error('name') error @enderror" required>
+                               class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="email">Email Address <span style="color:#ef4444">*</span></label>
+                        <label class="form-label" for="email">Email Address</label>
                         <input type="email" id="email" name="email" value="{{ old('email') }}"
-                               class="form-control @error('email') error @enderror" required>
+                               class="form-control @error('email') error @enderror">
                         @error('email') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="role">Role <span style="color:#ef4444">*</span></label>
-                    <select id="role" name="role" class="form-control @error('role') error @enderror" required>
+                    <label class="form-label" for="role">Role</label>
+                    <select id="role" name="role" class="form-control @error('role') error @enderror">
                         <option value="">Select role…</option>
                         <option value="agent" {{ old('role') === 'agent' ? 'selected' : '' }}>Agent</option>
                         <option value="supervisor" {{ old('role') === 'supervisor' ? 'selected' : '' }}>Supervisor</option>
@@ -64,6 +64,22 @@
                         </div>
                     </div>
                 </div>
+
+                @if(auth()->user()->isSuperAdmin())
+                <div class="form-group" id="tenantField" style="{{ old('role') === 'admin' ? '' : 'display:none;' }};overflow:visible;">
+                    <label class="form-label" for="tenant_id">Tenant</label>
+                    <select id="tenant_id" name="tenant_id" class="form-control @error('tenant_id') error @enderror">
+                        <option value="">Select tenant...</option>
+                        @foreach($tenants as $tenant)
+                            <option value="{{ $tenant->id }}" @selected((string) old('tenant_id') === (string) $tenant->id)>
+                                {{ $tenant->name }} ({{ $tenant->slug }})
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('tenant_id') <div class="form-error">{{ $message }}</div> @enderror
+                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.375rem">Shown only for Admin accounts.</div>
+                </div>
+                @endif
 
                 <div class="form-group">
                     <label class="form-label" for="password">
@@ -123,4 +139,74 @@
         <button type="submit" class="btn btn-primary">Send Invitation</button>
     </div>
 </form>
+@if(auth()->user()->isSuperAdmin())
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const roleSelect = document.getElementById('role');
+    const tenantField = document.getElementById('tenantField');
+    const tenantSelect = document.getElementById('tenant_id');
+
+    function syncTenantField() {
+        if (!roleSelect || !tenantField) return;
+        tenantField.style.display = roleSelect.value === 'admin' ? '' : 'none';
+    }
+
+    roleSelect?.addEventListener('change', syncTenantField);
+    syncTenantField();
+
+    if (tenantSelect) {
+        const wrap = tenantSelect.nextElementSibling;
+        const dropdown = wrap?.querySelector('.ss-dropdown');
+        const list = wrap?.querySelector('.ss-list');
+        const searchInput = wrap?.querySelector('.ss-search-inner input');
+
+        function syncDropdownPosition() {
+            if (!wrap || !dropdown) return;
+            wrap.classList.remove('open-up');
+            const rect = wrap.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom - 16;
+            const spaceAbove = rect.top - 16;
+            const estimatedHeight = 220;
+            if (spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
+                wrap.classList.add('open-up');
+            }
+            if (list) {
+                const room = wrap.classList.contains('open-up') ? spaceAbove : spaceBelow;
+                list.style.maxHeight = Math.max(100, Math.min(220, room - 56)) + 'px';
+            }
+        }
+
+        const observer = new MutationObserver(() => {
+            if (wrap?.classList.contains('open')) syncDropdownPosition();
+        });
+        if (wrap) observer.observe(wrap, { attributes: true, attributeFilter: ['class'] });
+        window.addEventListener('resize', () => {
+            if (wrap?.classList.contains('open')) syncDropdownPosition();
+        });
+        window.addEventListener('scroll', () => {
+            if (wrap?.classList.contains('open')) syncDropdownPosition();
+        }, true);
+
+        if (searchInput) {
+            searchInput.addEventListener('focus', syncDropdownPosition);
+        }
+        const observer2 = new MutationObserver(syncDropdownPosition);
+        if (list) observer2.observe(list, { childList: true, subtree: true });
+
+        const tenantInput = wrap?.querySelector('.ss-input');
+        const forceOpenUp = () => {
+            if (!wrap || !wrap.classList.contains('open')) return;
+            wrap.classList.add('open-up');
+            syncDropdownPosition();
+        };
+        tenantInput?.addEventListener('click', () => setTimeout(forceOpenUp, 0));
+        tenantInput?.addEventListener('keydown', (e) => {
+            if (['ArrowDown', 'Enter', ' '].includes(e.key)) {
+                setTimeout(forceOpenUp, 0);
+            }
+        });
+    }
+});
+</script>
+@endif
 @endsection

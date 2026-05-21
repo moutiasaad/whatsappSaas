@@ -36,11 +36,10 @@
                 {{-- Name + Email --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                     <div class="form-group">
-                        <label class="form-label" for="name">Full Name <span style="color:#ef4444">*</span></label>
+                        <label class="form-label" for="name">Full Name</label>
                         <input type="text" id="name" name="name"
                                value="{{ old('name', $user->name) }}"
-                               class="form-control @error('name') error @enderror"
-                               required>
+                               class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-group">
@@ -56,13 +55,12 @@
 
                 {{-- Role --}}
                 <div class="form-group">
-                    <label class="form-label" for="role">Role <span style="color:#ef4444">*</span></label>
+                    <label class="form-label" for="role">Role</label>
                     <select id="role" name="role"
                             class="form-control @error('role') error @enderror"
                             x-data x-model="$el.value"
                             @change="updateRoleHint($event.target.value)"
-                            data-no-ss
-                            required>
+                            >
                         <option value="agent"      {{ old('role', $user->role) === 'agent'      ? 'selected' : '' }}>Agent</option>
                         <option value="supervisor" {{ old('role', $user->role) === 'supervisor' ? 'selected' : '' }}>Supervisor</option>
                         <option value="admin"      {{ old('role', $user->role) === 'admin'      ? 'selected' : '' }}>Admin</option>

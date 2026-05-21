@@ -83,7 +83,10 @@ class ProcessIncomingMessage implements ShouldQueue
         ]);
 
         $conversation->increment('unread_count');
-        $conversation->update(['last_message_at' => now()]);
+        $conversation->update([
+            'last_message_at'      => $message->sent_at ?? now(),
+            'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
+        ]);
 
         broadcast(new MessageReceived($message))->toOthers();
 

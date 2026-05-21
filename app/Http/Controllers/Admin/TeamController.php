@@ -128,7 +128,7 @@ class TeamController extends Controller
 
         AuditLog::record('team.created', $team);
 
-        return redirect()->route('admin.teams.index')
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
             ->with('success', "Team \"{$team->name}\" created.");
     }
 
@@ -181,7 +181,50 @@ class TeamController extends Controller
     {
         AuditLog::record('team.deleted', $team, ['name' => $team->name]);
         $team->delete();
-        return redirect()->route('admin.teams.index')
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
             ->with('success', "Team \"{$team->name}\" deleted.");
+    }
+
+    public function bulk(Request $request)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:enable,disable,delete',
+            'ids' => 'required|string',
+        ]);
+
+        $ids = collect(explode(',', $data['ids']))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'No teams selected.');
+        }
+
+        $query = Team::query()->whereIn('id', $ids);
+        if (!auth()->user()->isSuperAdmin()) {
+            $query->where('tenant_id', auth()->user()->tenant_id);
+        }
+
+        $teams = $query->get();
+
+        if ($teams->isEmpty()) {
+            return back()->with('error', 'No valid teams selected.');
+        }
+
+        if ($data['action'] !== 'delete') {
+            $enable = $data['action'] === 'enable';
+            Team::whereIn('id', $teams->pluck('id'))->update(['is_active' => $enable]);
+
+            return back()->with('success', $teams->count() . ' team(s) ' . ($enable ? 'enabled.' : 'disabled.'));
+        }
+
+        foreach ($teams as $team) {
+            AuditLog::record('team.deleted', $team, ['name' => $team->name, 'bulk' => true]);
+            $team->delete();
+        }
+
+        return back()->with('success', $teams->count() . ' team(s) deleted.');
     }
 }

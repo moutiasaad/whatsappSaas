@@ -99,6 +99,11 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            @if($canManageTeams)
+                                <th style="width:2.5rem">
+                                    <input type="checkbox" class="header-cb" style="cursor:pointer;">
+                                </th>
+                            @endif
                             <th>Team</th>
                             <th>Status</th>
                             <th>Members</th>
@@ -111,6 +116,11 @@
                     <tbody>
                         @foreach($teams as $team)
                             <tr>
+                                @if($canManageTeams)
+                                    <td>
+                                        <input type="checkbox" class="row-cb" value="{{ $team->id }}" style="cursor:pointer;">
+                                    </td>
+                                @endif
                                 <td>
                                     <div style="display:flex;align-items:center;gap:.75rem;min-width:0;">
                                         <div style="width:2rem;height:2rem;border-radius:.625rem;background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.25));display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
@@ -175,4 +185,121 @@
             @endif
         @endif
     </div>
+
+    @if($canManageTeams && $teams->isNotEmpty())
+        <div class="bulk-bar" id="teamBulkBar">
+            <span class="bulk-count">0 selected</span>
+            <span class="bulk-sep">|</span>
+            <div class="bulk-actions">
+                <form method="POST" action="{{ route($panelPrefix . '.teams.bulk') }}" id="teamBulkForm" style="display:flex;gap:.5rem;align-items:center;">
+                    @csrf
+                    <input type="hidden" name="ids" id="teamBulkIds">
+                    <select name="action" class="form-control" style="min-width:170px;">
+                        <option value="enable">Enable</option>
+                        <option value="disable">Disable</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                </form>
+            </div>
+            <button type="button" class="bulk-close" onclick="teamBulk.clear()"><i class="ri-close-line"></i></button>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var headerCheckbox = document.querySelector('.header-cb');
+            var rowCheckboxes = Array.from(document.querySelectorAll('.row-cb'));
+            var bulkBar = document.getElementById('teamBulkBar');
+            var bulkCount = bulkBar ? bulkBar.querySelector('.bulk-count') : null;
+            var bulkForm = document.getElementById('teamBulkForm');
+            var bulkIds = document.getElementById('teamBulkIds');
+            var bulkAction = bulkForm ? bulkForm.querySelector('select[name="action"]') : null;
+
+            function getSelected() {
+                return rowCheckboxes.filter(function (checkbox) {
+                    return checkbox.checked;
+                }).map(function (checkbox) {
+                    return checkbox.value;
+                });
+            }
+
+            function syncBulkUi() {
+                var selected = getSelected();
+                var count = selected.length;
+
+                if (bulkCount) {
+                    bulkCount.textContent = count + ' selected';
+                }
+
+                if (bulkBar) {
+                    bulkBar.classList.toggle('visible', count > 0);
+                }
+
+                if (headerCheckbox) {
+                    var allSelected = rowCheckboxes.length > 0 && count === rowCheckboxes.length;
+                    headerCheckbox.checked = allSelected;
+                    headerCheckbox.indeterminate = count > 0 && !allSelected;
+                }
+
+                if (bulkIds) {
+                    bulkIds.value = selected.join(',');
+                }
+            }
+
+            window.teamBulk = {
+                getSelected: getSelected,
+                clear: function () {
+                    if (headerCheckbox) {
+                        headerCheckbox.checked = false;
+                        headerCheckbox.indeterminate = false;
+                    }
+
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = false;
+                    });
+
+                    syncBulkUi();
+                }
+            };
+
+            if (headerCheckbox) {
+                headerCheckbox.addEventListener('change', function () {
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = headerCheckbox.checked;
+                    });
+
+                    syncBulkUi();
+                });
+            }
+
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', syncBulkUi);
+            });
+
+            if (bulkForm) {
+                bulkForm.addEventListener('submit', function (event) {
+                    syncBulkUi();
+
+                    if (bulkAction && bulkAction.value === 'delete') {
+                        event.preventDefault();
+
+                        confirmDelete(null, {
+                            title: 'Delete selected teams?',
+                            message: 'Existing conversations will become unassigned.',
+                            callback: function () {
+                                bulkForm.submit();
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (window.initSS && bulkForm) {
+                window.initSS(bulkForm);
+            }
+
+            syncBulkUi();
+        });
+        </script>
+    @endif
 @endsection

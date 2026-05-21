@@ -26,9 +26,21 @@ class MessageSent implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'id'                   => $this->message->id,
-            'status'               => $this->message->status,
-            'external_message_id'  => $this->message->external_message_id,
+            'message' => [
+                'id'                  => $this->message->id,
+                'conversation_id'     => $this->message->conversation_id,
+                'direction'           => $this->message->direction,
+                'author_type'         => $this->message->author_type,
+                'type'                => $this->message->type,
+                'body'                => $this->message->body,
+                'media_url'           => $this->message->media_url,
+                'media_mime'          => $this->message->media_mime,
+                'ai_metadata'         => $this->message->ai_metadata,
+                'status'              => $this->message->status,
+                'external_message_id' => $this->message->external_message_id,
+                'sent_at'             => $this->message->sent_at?->toISOString(),
+                'created_at'          => $this->message->created_at?->toISOString(),
+            ],
         ];
     }
 }

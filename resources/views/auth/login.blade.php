@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app()->getLocale() }}" dir="{{ in_array(app()->getLocale(), ['ar']) ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In — {{ config('app.name', 'WhatsApp SaaS') }}</title>
+    <title>{{ $pageTitle ?? __('auth.login.sign_in') }} — {{ config('app.name', 'WhatsApp SaaS') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -116,6 +116,30 @@
         .login-box {
             width: 100%;
             max-width: 380px;
+            position: relative;
+        }
+
+        .locale-switch-wrap {
+            position: absolute;
+            top: -2rem;
+            right: 0;
+        }
+
+        html[dir="rtl"] .locale-switch-wrap {
+            right: auto;
+            left: 0;
+        }
+
+        .locale-select {
+            height: 34px;
+            padding: 0 .625rem;
+            border: 1px solid #e2e8f0;
+            border-radius: .625rem;
+            background: #fff;
+            color: #334155;
+            font-size: .8125rem;
+            font-family: inherit;
+            cursor: pointer;
         }
 
         .login-logo {
@@ -273,6 +297,7 @@
             h2, .sub { color: #f1f5f9; }
             label { color: #cbd5e1; }
             .login-logo span { color: #f1f5f9; }
+            .locale-select { background: #1a2332; border-color: rgba(255,255,255,.12); color: #f1f5f9; }
             input[type=email], input[type=password], input[type=text] {
                 background: #1a2332; border-color: rgba(255,255,255,.1); color: #f1f5f9;
             }
@@ -286,28 +311,28 @@
     <div class="left-panel">
         <div class="badge">
             <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
-            {{ $portalBadge ?? 'WhatsApp Customer Support Platform' }}
+            {{ $portalBadge ?? __('auth.login.marketing.badge') }}
         </div>
-        <h1>Handle every conversation <span>faster, smarter</span></h1>
-        <p>Unify your WhatsApp support across multiple numbers and teams. AI-powered triage, real-time collaboration, and full conversation history.</p>
+        <h1>{{ __('auth.login.marketing.title_before') }} <span>{{ __('auth.login.marketing.title_accent') }}</span></h1>
+        <p>{{ __('auth.login.marketing.subtitle') }}</p>
         <div class="features">
             <div class="feature-item">
                 <div class="feature-icon">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
-                AI auto-reply with Claude — reduces response time by 60%
+                {{ __('auth.login.marketing.feature_1') }}
             </div>
             <div class="feature-item">
                 <div class="feature-icon">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
                 </div>
-                Multi-team routing with real-time pool management
+                {{ __('auth.login.marketing.feature_2') }}
             </div>
             <div class="feature-item">
                 <div class="feature-icon">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01M18 14h.01M14 18h.01M18 18h.01"/></svg>
                 </div>
-                Connect unlimited WhatsApp numbers with QR scan
+                {{ __('auth.login.marketing.feature_3') }}
             </div>
         </div>
     </div>
@@ -315,6 +340,20 @@
     {{-- Right: Login Form --}}
     <div class="right-panel">
         <div class="login-box">
+            <div class="locale-switch-wrap">
+                <form method="POST" action="{{ route('locale.update') }}">
+                    @csrf
+                    <input type="hidden" name="redirect" value="{{ url()->full() }}">
+                    <select name="locale" class="locale-select" aria-label="{{ __('ui.language') }}" onchange="this.form.submit()">
+                        @foreach((config('locales.supported', [])) as $localeCode => $localeMeta)
+                            <option value="{{ $localeCode }}" @selected(app()->getLocale() === $localeCode)>
+                                {{ __('ui.languages.' . $localeCode) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
+
             <div class="login-logo">
                 <div class="logo-icon">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
@@ -322,8 +361,8 @@
                 <span>{{ config('app.name', 'WA Support') }}</span>
             </div>
 
-            <h2>{{ $heading ?? 'Welcome back' }}</h2>
-            <p class="sub">{{ $subheading ?? 'Sign in to your workspace' }}</p>
+            <h2>{{ $heading ?? __('auth.login.welcome_back') }}</h2>
+            <p class="sub">{{ $subheading ?? __('auth.login.sign_in_workspace') }}</p>
 
             @if($errors->any())
             <div class="alert-error">
@@ -336,15 +375,15 @@
                 @csrf
 
                 <div class="form-group">
-                    <label for="email">Email address</label>
+                    <label for="email">{{ __('auth.login.email_address') }}</label>
                     <input type="email" id="email" name="email" value="{{ old('email') }}"
                            autocomplete="email" autofocus required
-                           placeholder="you@company.com">
+                           placeholder="{{ __('auth.login.placeholder_email') }}">
                     @error('email') <div class="error-msg">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
+                    <label for="password">{{ __('auth.login.password') }}</label>
                     <input type="password" id="password" name="password"
                            autocomplete="current-password" required
                            placeholder="••••••••">
@@ -354,18 +393,18 @@
                 <div class="row">
                     <label class="remember">
                         <input type="checkbox" name="remember" {{ old('remember') ? 'checked' : '' }}>
-                        Remember me
+                        {{ __('auth.login.remember_me') }}
                     </label>
                     @if(Route::has('password.request'))
-                        <a href="{{ route('password.request') }}" class="forgot">Forgot password?</a>
+                        <a href="{{ route('password.request') }}" class="forgot">{{ __('auth.login.forgot_password') }}</a>
                     @endif
                 </div>
 
-                <button type="submit" class="btn-login">Sign in</button>
+                <button type="submit" class="btn-login">{{ __('auth.login.sign_in') }}</button>
             </form>
 
             <div class="divider">
-                Secure access · All data encrypted in transit
+                {{ __('auth.login.secure_access') }}
             </div>
         </div>
     </div>

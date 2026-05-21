@@ -88,6 +88,9 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th style="width:2.5rem">
+                                <input type="checkbox" class="header-cb" style="cursor:pointer;">
+                            </th>
                             <th>Tenant</th>
                             <th>Plan</th>
                             <th>Status</th>
@@ -101,6 +104,9 @@
                     <tbody>
                         @foreach($tenants as $tenant)
                             <tr>
+                                <td>
+                                    <input type="checkbox" class="row-cb" value="{{ $tenant->id }}" style="cursor:pointer;">
+                                </td>
                                 <td>
                                     <div style="display:flex;flex-direction:column;gap:.125rem">
                                         <span style="font-weight:600;color:var(--text-primary)">{{ $tenant->name }}</span>
@@ -170,5 +176,114 @@
             @endif
         @endif
     </div>
+
+    @if($tenants->isNotEmpty())
+        <div class="bulk-bar" id="tenantBulkBar">
+            <span class="bulk-count">0 selected</span>
+            <span class="bulk-sep">|</span>
+            <div class="bulk-actions">
+                <form method="POST" action="{{ route('super_admin.platform.tenants.bulk') }}" id="tenantBulkForm" style="display:flex;gap:.5rem;align-items:center;">
+                    @csrf
+                    <input type="hidden" name="ids" id="tenantBulkIds">
+                    <select name="action" class="form-control" style="min-width:170px;">
+                        <option value="enable">Enable</option>
+                        <option value="disable">Disable</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                </form>
+            </div>
+            <button type="button" class="bulk-close" onclick="tenantBulk.clear()"><i class="ri-close-line"></i></button>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var headerCheckbox = document.querySelector('.header-cb');
+            var rowCheckboxes = Array.from(document.querySelectorAll('.row-cb'));
+            var bulkBar = document.getElementById('tenantBulkBar');
+            var bulkCount = bulkBar ? bulkBar.querySelector('.bulk-count') : null;
+            var bulkForm = document.getElementById('tenantBulkForm');
+            var bulkIds = document.getElementById('tenantBulkIds');
+            var bulkAction = bulkForm ? bulkForm.querySelector('select[name="action"]') : null;
+
+            function getSelected() {
+                return rowCheckboxes.filter(function (checkbox) {
+                    return checkbox.checked;
+                }).map(function (checkbox) {
+                    return checkbox.value;
+                });
+            }
+
+            function syncBulkUi() {
+                var selected = getSelected();
+                var count = selected.length;
+
+                if (bulkCount) {
+                    bulkCount.textContent = count + ' selected';
+                }
+
+                if (bulkBar) {
+                    bulkBar.classList.toggle('visible', count > 0);
+                }
+
+                if (headerCheckbox) {
+                    var allSelected = rowCheckboxes.length > 0 && count === rowCheckboxes.length;
+                    headerCheckbox.checked = allSelected;
+                    headerCheckbox.indeterminate = count > 0 && !allSelected;
+                }
+
+                if (bulkIds) {
+                    bulkIds.value = selected.join(',');
+                }
+            }
+
+            window.tenantBulk = {
+                getSelected: getSelected,
+                clear: function () {
+                    if (headerCheckbox) {
+                        headerCheckbox.checked = false;
+                        headerCheckbox.indeterminate = false;
+                    }
+
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = false;
+                    });
+
+                    syncBulkUi();
+                }
+            };
+
+            if (headerCheckbox) {
+                headerCheckbox.addEventListener('change', function () {
+                    rowCheckboxes.forEach(function (checkbox) {
+                        checkbox.checked = headerCheckbox.checked;
+                    });
+
+                    syncBulkUi();
+                });
+            }
+
+            rowCheckboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', syncBulkUi);
+            });
+
+            if (bulkForm) {
+                bulkForm.addEventListener('submit', function (event) {
+                    syncBulkUi();
+
+                    if (bulkAction && bulkAction.value === 'delete' && !window.confirm('Delete the selected tenants? This will permanently remove all tenant data.')) {
+                        event.preventDefault();
+                    }
+                });
+            }
+
+            if (window.initSS && bulkForm) {
+                window.initSS(bulkForm);
+            }
+
+            syncBulkUi();
+        });
+        </script>
+    @endif
 </div>
 @endsection

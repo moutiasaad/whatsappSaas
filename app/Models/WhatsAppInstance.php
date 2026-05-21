@@ -43,6 +43,21 @@ class WhatsAppInstance extends Model
 
     public function isConnected(): bool { return $this->status === 'connected'; }
 
+    public function effectiveGatewayUrl(): ?string
+    {
+        return $this->gateway_url ?: config('services.whatsapp.default_url');
+    }
+
+    public function effectiveGatewayApiKey(): ?string
+    {
+        return $this->gateway_api_key ?: config('services.whatsapp.default_api_key');
+    }
+
+    public function hasGatewayCredentials(): bool
+    {
+        return filled($this->effectiveGatewayUrl()) && filled($this->effectiveGatewayApiKey());
+    }
+
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
