@@ -272,3 +272,86 @@ For a local test to work end-to-end:
 - The instances page should not keep hammering `/api/instances/{id}/connect`.
 - If QR is still slow, the remaining bottleneck is the gateway response time itself, not the frontend retry loop.
 - If the number still does not appear after connected, inspect one real `fetchInstance` JSON response and map the phone field explicitly if the gateway version differs.
+
+---
+
+## Session Handoff (May 21, 2026 - Localization sweep and users form updates)
+
+### UI localization sweep completed
+
+The French locale file was cleaned up and the app was expanded to use shared translation keys across the main admin and platform pages.
+
+Covered pages / areas:
+
+- `/tenant-admin`
+- `/conversations`
+- `/customers`
+- `/knowledge`
+- `/instances`
+- `/users`
+- `/teams`
+- `/audit-log`
+- `/ai-settings`
+- `/billing`
+- `/platform/global-settings`
+- `/platform/system-health`
+- `/super-admin/platform/tenants`
+- `/super-admin/platform/plans`
+- `/super-admin/platform/tenants/create`
+- `/super-admin/platform/plans/create`
+- `/super-admin/platform/tenants/edit`
+- `/super-admin/platform/plans/edit`
+- `/super-admin/users/create`
+- `/super-admin/users/{id}/edit`
+
+### Key localization fixes
+
+- Fixed French mojibake / broken accent rendering in `lang/fr/ui.php` across:
+  - users / teams forms
+  - AI settings
+  - audit log
+  - platform tenants / plans / billing / global settings / system health
+  - WhatsApp instance create/edit labels and checklist text
+- Added/normalized validation field names in `lang/fr/validation.php` for form errors like `app_name`.
+- Kept controller flash / validation messages routed through locale keys.
+
+### Users create/edit form changes
+
+- `/tenant-admin/users/create`
+  - `Affecter à des équipes` was moved into the main `Informations du compte` card.
+  - The old checkbox list was replaced with the shared Select2-style multi-select used elsewhere.
+  - The temporary password helper text now uses translations.
+- `/tenant-admin/users/{id}/edit`
+  - Team membership uses the same Select2-style multi-select.
+  - The impersonate action now uses the shared confirmation modal instead of the browser alert.
+
+### Sidebar / navigation behavior
+
+- Sidebar active state now respects the current route prefix (`admin`, `tenant_admin`, `super_admin`, `supervisor`, `agent`) so the correct item stays highlighted on deeper pages.
+- The sidebar scrolls the active item into view and focuses it on load / navigation.
+- Dark sidebar scrollbar styling was tightened to match the rest of the app.
+
+### Instance create/edit changes
+
+- `/tenant-admin/instances/create` and `/tenant-admin/instances/{id}/edit` now use translated French labels instead of broken text.
+- Team assignment on instances uses the shared Select2-style dropdown and can render above the card when space is tight.
+- Instance status labels on the index page are translated dynamically.
+- Instance delete action was added to the index rows.
+
+### WhatsApp test limitation discovered
+
+- The WhatsApp gateway is returning `connected`, but inbound messages do not reach `/conversations` if the webhook points to `127.0.0.1`.
+- The gateway needs a public webhook base URL, not localhost.
+- The app now supports configuring a public webhook base URL via `WHATSAPP_WEBHOOK_BASE_URL`.
+- For local testing, use a tunnel such as ngrok or Cloudflare Tunnel and reconnect the instance after changing the webhook base URL.
+
+### Current known status on instances
+
+- `Connectée` + `Aucun numéro` was fixed by syncing `ownerJid` / `number` / `me.jid` from the gateway payload.
+- QR generation was simplified to avoid repeated polling loops.
+- Remote gateway deletion and local deletion are both wired for old instances.
+
+### Validation already performed
+
+- `php -l` passed on the touched Blade views and locale files.
+- The new create view for `/tenant-admin/users/create` parses correctly after the layout change.
