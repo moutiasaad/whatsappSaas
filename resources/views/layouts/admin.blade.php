@@ -199,7 +199,33 @@
         }
 
         /* Nav */
-        .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 0;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(139,148,158,.45) transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(139,148,158,.35);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(16,185,129,.35);
+            background-clip: content-box;
+        }
 
         .sidebar-section-label {
             font-size: 10px; font-weight: 600; color: rgba(139,148,158,.5);
@@ -238,6 +264,33 @@
             background: var(--sidebar-active);
             color: var(--sidebar-active-text);
             font-weight: 600;
+            box-shadow: inset 3px 0 0 var(--sidebar-active-text);
+        }
+
+        .sidebar-nav a.active,
+        .sidebar-nav a:focus-visible {
+            scroll-margin-block: 140px;
+        }
+
+        .sidebar-nav a.active::before {
+            content: '';
+            position: absolute;
+            inset-block: 8px;
+            left: 0;
+            width: 3px;
+            border-radius: 0 999px 999px 0;
+            background: var(--sidebar-active-text);
+        }
+
+        .sidebar-nav a:focus-visible {
+            outline: 2px solid rgba(16,185,129,.55);
+            outline-offset: 2px;
+        }
+
+        html[dir="rtl"] .sidebar-nav a.active::before {
+            left: auto;
+            right: 0;
+            border-radius: 999px 0 0 999px;
         }
 
         .sidebar-nav a .nav-badge {
@@ -1444,8 +1497,19 @@
 
     {{-- SIDEBAR --}}
     <aside class="sidebar" id="sidebar">
+        @php
+            $panelPrefix = auth()->user()->routeNamePrefix();
+            $navActive = function (array $patterns) {
+                foreach ($patterns as $pattern) {
+                    if (request()->routeIs($pattern)) {
+                        return 'active';
+                    }
+                }
+                return '';
+            };
+        @endphp
         <div class="sidebar-logo-zone">
-            <a href="{{ route('admin.dashboard') }}" class="sidebar-logo">
+            <a href="{{ route($panelPrefix . '.dashboard') }}" class="sidebar-logo">
                 <div class="sidebar-logo-icon">
                     <i class="ri-whatsapp-line"></i>
                 </div>
@@ -1493,34 +1557,34 @@
                 <div class="sidebar-section-label">{{ __('ui.sidebar.workspace') }}</div>
             @endif
 
-            <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.dashboard') }}" class="{{ $navActive([$panelPrefix . '.dashboard']) }}">
                 <i class="ri-dashboard-3-line"></i>
                 <span>{{ __('ui.dashboard') }}</span>
             </a>
 
             @if(Auth::user()->isSuperAdmin())
-            <a href="{{ route('admin.platform.tenants') }}" class="{{ request()->routeIs('admin.platform.tenants*') || request()->routeIs('super_admin.platform.tenants*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.platform.tenants') }}" class="{{ $navActive([$panelPrefix . '.platform.tenants*']) }}">
                 <i class="ri-building-2-line"></i>
                 <span>{{ __('ui.sidebar.tenants') }}</span>
             </a>
 
-            <a href="{{ route('admin.platform.plans') }}" class="{{ request()->routeIs('admin.platform.plans*') || request()->routeIs('super_admin.platform.plans*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.platform.plans') }}" class="{{ $navActive([$panelPrefix . '.platform.plans*']) }}">
                 <i class="ri-price-tag-3-line"></i>
                 <span>{{ __('ui.sidebar.subscription_plans') }}</span>
             </a>
 
-            <a href="{{ route('admin.platform.global-settings') }}" class="{{ request()->routeIs('admin.platform.global-settings*') || request()->routeIs('super_admin.platform.global-settings*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.platform.global-settings') }}" class="{{ $navActive([$panelPrefix . '.platform.global-settings*']) }}">
                 <i class="ri-global-line"></i>
                 <span>{{ __('ui.sidebar.global_settings') }}</span>
             </a>
 
-            <a href="{{ route('admin.platform.system-health') }}" class="{{ request()->routeIs('admin.platform.system-health*') || request()->routeIs('super_admin.platform.system-health*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
                 <i class="ri-pulse-line"></i>
                 <span>{{ __('ui.sidebar.system_health') }}</span>
             </a>
             @endif
 
-            <a href="{{ route('admin.conversations.index') }}" class="{{ request()->routeIs('admin.conversations.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.conversations.*']) }}">
                 <i class="ri-message-3-line"></i>
                 <span>{{ __('ui.sidebar.conversations') }}</span>
                 @php
@@ -1535,13 +1599,13 @@
                 @endif
             </a>
 
-            <a href="{{ route('admin.customers.index') }}" class="{{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.customers.index') }}" class="{{ $navActive([$panelPrefix . '.customers.*']) }}">
                 <i class="ri-contacts-line"></i>
                 <span>{{ __('ui.sidebar.customers') }}</span>
             </a>
 
             @if(Auth::user()->isSupervisor())
-            <a href="{{ route('supervisor.teams.index') }}" class="{{ request()->routeIs('supervisor.teams.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
                 <i class="ri-team-line"></i>
                 <span>{{ __('ui.sidebar.teams') }}</span>
             </a>
@@ -1550,17 +1614,17 @@
             @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
                 <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
 
-            <a href="{{ route('admin.instances.index') }}" class="{{ request()->routeIs('admin.instances.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.instances.index') }}" class="{{ $navActive([$panelPrefix . '.instances.*']) }}">
                 <i class="ri-smartphone-line"></i>
                 <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
             </a>
 
-            <a href="{{ route('admin.teams.index') }}" class="{{ request()->routeIs('admin.teams.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
                 <i class="ri-team-line"></i>
                 <span>{{ __('ui.sidebar.teams') }}</span>
             </a>
 
-            <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.users.index') }}" class="{{ $navActive([$panelPrefix . '.users.*']) }}">
                 <i class="ri-user-settings-line"></i>
                 <span>{{ __('ui.sidebar.agents_users') }}</span>
             </a>
@@ -1568,12 +1632,12 @@
             @if(Auth::user()->isAdmin())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.ai_knowledge') }}</div>
 
-                <a href="{{ route('admin.knowledge.index') }}" class="{{ request()->routeIs('admin.knowledge.*') ? 'active' : '' }}">
+                <a href="{{ route($panelPrefix . '.knowledge.index') }}" class="{{ $navActive([$panelPrefix . '.knowledge.*']) }}">
                     <i class="ri-book-2-line"></i>
                     <span>{{ __('ui.sidebar.knowledge_base') }}</span>
                 </a>
 
-                <a href="{{ route('admin.ai-settings.index') }}" class="{{ request()->routeIs('admin.ai-settings.*') ? 'active' : '' }}">
+                <a href="{{ route($panelPrefix . '.ai-settings.index') }}" class="{{ $navActive([$panelPrefix . '.ai-settings.*']) }}">
                     <i class="ri-sparkling-2-line"></i>
                     <span>{{ __('ui.sidebar.ai_settings') }}</span>
                 </a>
@@ -1581,19 +1645,19 @@
 
             <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
 
-            <a href="{{ route('admin.audit-log.index') }}" class="{{ request()->routeIs('admin.audit-log.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.audit-log.index') }}" class="{{ $navActive([$panelPrefix . '.audit-log.*']) }}">
                 <i class="ri-file-list-3-line"></i>
                 <span>{{ __('ui.sidebar.audit_log') }}</span>
             </a>
 
             @if(Auth::user()->isSuperAdmin())
-                <a href="{{ route('admin.billing.index') }}" class="{{ request()->routeIs('admin.billing.*') ? 'active' : '' }}">
+                <a href="{{ route($panelPrefix . '.billing.index') }}" class="{{ $navActive([$panelPrefix . '.billing.*']) }}">
                     <i class="ri-bank-card-line"></i>
                     <span>{{ __('ui.sidebar.billing') }}</span>
                 </a>
             @endif
 
-            <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+            <a href="{{ route($panelPrefix . '.settings.index') }}" class="{{ $navActive([$panelPrefix . '.settings.*']) }}">
                 <i class="ri-settings-3-line"></i>
                 <span>{{ __('ui.sidebar.settings') }}</span>
             </a>
@@ -1643,7 +1707,7 @@
             </button>
 
             <nav class="topbar-breadcrumb">
-                <a href="{{ route('admin.dashboard') }}">
+                <a href="{{ route($panelPrefix . '.dashboard') }}">
                     <i class="ri-home-4-line" style="font-size:15px;"></i>
                 </a>
                 @hasSection('breadcrumb')
@@ -1774,6 +1838,27 @@
     }
 
     toggleBtn?.addEventListener('click', () => setSidebar(!sidebarOpen));
+
+    function scrollSidebarActiveIntoView() {
+        const active = sidebar?.querySelector('.sidebar-nav a.active');
+        if (active) {
+            active.focus({ preventScroll: true });
+            active.scrollIntoView({ block: 'center', inline: 'nearest' });
+        }
+    }
+
+    function deferSidebarFocus() {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(scrollSidebarActiveIntoView);
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', deferSidebarFocus);
+    window.addEventListener('load', deferSidebarFocus);
+    window.addEventListener('pageshow', deferSidebarFocus);
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1024) scrollSidebarActiveIntoView();
+    });
 
     /* ====================================================
        GLOBAL SUBMIT LOADING

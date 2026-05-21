@@ -12,7 +12,7 @@
 <div style="display:grid;grid-template-columns:1fr 280px;gap:1.5rem;align-items:start">
 
     {{-- Left: {{ __('ui.user_form_page.edit') }} Form --}}
-    <div class="card">
+    <div class="card" style="overflow:visible;">
         <div class="card-header">
             <div style="display:flex;align-items:center;gap:.875rem">
                 <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}"
@@ -83,32 +83,26 @@
                 </div>
 
                 {{-- Teams --}}
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.user_form_page.team_membership') }}</label>
+                <div class="form-group" style="overflow:visible">
+                    <label class="form-label" for="teams">{{ __('ui.user_form_page.team_membership') }}</label>
                     @if($teams->isEmpty())
                         <div style="font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">{{ __('ui.user_form_page.no_teams_created') }}</div>
                     @else
-                        <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem">
+                        <select id="teams" name="teams[]" multiple
+                                data-no-ss
+                                data-user-teams-ss
+                                class="form-control @error('teams') error @enderror @error('teams.*') error @enderror"
+                                style="display:none;">
                             @foreach($teams as $team)
-                            @php $checked = in_array($team->id, old('teams', $user->teams->pluck('id')->toArray())); @endphp
-                            <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;padding:.625rem .875rem;border:1.5px solid {{ $checked ? 'var(--brand)' : 'var(--card-border)' }};border-radius:.5rem;transition:border-color .15s;background:{{ $checked ? 'rgba(16,185,129,.04)' : 'transparent' }}"
-                                   x-data
-                                   @click="$el.style.borderColor = $el.querySelector('input').checked ? 'var(--card-border)' : 'var(--brand)'; $el.style.background = $el.querySelector('input').checked ? 'transparent' : 'rgba(16,185,129,.04)'">
-                                <input type="checkbox" name="teams[]" value="{{ $team->id }}"
-                                       {{ $checked ? 'checked' : '' }}
-                                       style="accent-color:var(--brand);cursor:pointer;width:1rem;height:1rem">
-                                <div style="flex:1">
-                                    <div style="font-size:.875rem;font-weight:500">{{ $team->name }}</div>
-                                    @if($team->description)
-                                        <div style="font-size:.75rem;color:var(--text-muted)">{{ $team->description }}</div>
-                                    @endif
-                                </div>
-                                <span style="font-size:.75rem;color:var(--text-muted)">
-                                    {{ $team->users_count }} member{{ $team->users_count !== 1 ? 's' : '' }}
-                                </span>
-                            </label>
+                                @php $checked = in_array($team->id, old('teams', $user->teams->pluck('id')->toArray())); @endphp
+                                <option value="{{ $team->id }}" @selected($checked)>
+                                    {{ $team->name }} @if($team->description) - {{ $team->description }} @endif
+                                </option>
                             @endforeach
-                        </div>
+                        </select>
+                        @error('teams') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('teams.*') <div class="form-error">{{ $message }}</div> @enderror
+                        <div class="form-hint">{{ __('ui.user_form_page.assign_to_teams_hint') }}</div>
                     @endif
                 </div>
 
@@ -241,6 +235,159 @@
 </div>
 
 <script>
+function initMultiSelect(widgetSelector, placeholder, filterPlaceholder) {
+    const select = document.querySelector(widgetSelector);
+    if (!select) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ss-wrap';
+    if (select.classList.contains('error')) wrap.classList.add('error');
+
+    const displayInput = document.createElement('input');
+    displayInput.type = 'text';
+    displayInput.className = 'ss-input';
+    displayInput.readOnly = true;
+    displayInput.placeholder = placeholder;
+
+    const chevron = document.createElement('i');
+    chevron.className = 'ri-arrow-down-s-line ss-chevron';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'ss-dropdown';
+
+    const searchRow = document.createElement('div');
+    searchRow.className = 'ss-search-row';
+    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="' + filterPlaceholder.replace(/"/g, '&quot;') + '" autocomplete="off"></div>';
+
+    const list = document.createElement('div');
+    list.className = 'ss-list';
+
+    Array.from(select.options).forEach(function (opt) {
+        const item = document.createElement('div');
+        item.className = 'ss-item';
+        item.dataset.value = opt.value;
+        item.dataset.label = opt.textContent.trim();
+        item.textContent = opt.textContent.trim();
+        if (opt.selected) item.classList.add('ss-selected');
+        list.appendChild(item);
+    });
+
+    dropdown.appendChild(searchRow);
+    dropdown.appendChild(list);
+    wrap.appendChild(displayInput);
+    wrap.appendChild(chevron);
+    wrap.appendChild(dropdown);
+    select.parentNode.insertBefore(wrap, select.nextSibling);
+
+    const filterInput = searchRow.querySelector('input');
+    const searchRowHeight = 56;
+
+    function updateDisplay() {
+        const selected = Array.from(select.selectedOptions);
+        if (!selected.length) {
+            displayInput.value = '';
+            return;
+        }
+        displayInput.value = selected.length === 1 ? selected[0].textContent.trim() : selected.length + ' ' + @json(__('ui.selected_items'));
+    }
+
+    function renderItems(q) {
+        const lower = (q || '').toLowerCase();
+        let visible = 0;
+        list.querySelectorAll('.ss-item').forEach(function (el) {
+            const matches = !lower || el.dataset.label.toLowerCase().includes(lower);
+            el.style.display = matches ? '' : 'none';
+            if (matches) visible++;
+        });
+        let emptyEl = list.querySelector('.ss-empty');
+        if (!visible) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'ss-empty';
+                emptyEl.textContent = @json(__('ui.select_no_results'));
+                list.appendChild(emptyEl);
+            }
+            emptyEl.style.display = '';
+        } else if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+    }
+
+    function setSelectedClass(value, isSelected) {
+        const item = list.querySelector('.ss-item[data-value="' + CSS.escape(value) + '"]');
+        if (item) item.classList.toggle('ss-selected', isSelected);
+    }
+
+    function syncDropdownPosition() {
+        wrap.classList.remove('open-up');
+        const rect = wrap.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom - 16;
+        const spaceAbove = rect.top - 16;
+        const estimatedHeight = 56 + 120;
+        const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+        wrap.classList.toggle('open-up', openUp);
+        const room = openUp ? spaceAbove : spaceBelow;
+        const listMax = Math.max(100, Math.min(160, room - searchRowHeight));
+        list.style.maxHeight = listMax + 'px';
+    }
+
+    function openDropdown() {
+        syncDropdownPosition();
+        wrap.classList.add('open');
+        renderItems('');
+        filterInput.value = '';
+        filterInput.focus();
+        syncDropdownPosition();
+    }
+
+    function closeDropdown() {
+        wrap.classList.remove('open');
+        wrap.classList.remove('open-up');
+        list.style.maxHeight = '160px';
+    }
+
+    list.addEventListener('mousedown', function (e) {
+        const item = e.target.closest('.ss-item');
+        if (!item) return;
+        e.preventDefault();
+        const value = item.dataset.value;
+        const option = Array.from(select.options).find(function (o) { return o.value === value; });
+        if (!option) return;
+        option.selected = !option.selected;
+        setSelectedClass(value, option.selected);
+        updateDisplay();
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        wrap.classList.remove('error');
+    });
+
+    displayInput.addEventListener('click', function () {
+        if (wrap.classList.contains('open')) closeDropdown();
+        else openDropdown();
+    });
+
+    displayInput.addEventListener('keydown', function (e) {
+        if (['ArrowDown', 'Enter', ' '].includes(e.key)) {
+            e.preventDefault();
+            openDropdown();
+        }
+    });
+
+    filterInput.addEventListener('input', function () {
+        renderItems(filterInput.value);
+        syncDropdownPosition();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!wrap.contains(e.target)) closeDropdown();
+    });
+
+    window.addEventListener('resize', syncDropdownPosition);
+    window.addEventListener('scroll', syncDropdownPosition, true);
+
+    updateDisplay();
+    renderItems('');
+}
+
 const roleHints = {
     agent:      @json(__('ui.user_form_page.agent_desc')),
     supervisor: @json(__('ui.user_form_page.supervisor_desc')),
@@ -252,10 +399,15 @@ function updateRoleHint(role) {
     if (el) el.textContent = roleHints[role] || '';
 }
 
-// Init hint on page load
 document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('role');
     if (sel) updateRoleHint(sel.value);
+
+    initMultiSelect(
+        'select[data-user-teams-ss]',
+        @json(__('ui.team_form_page.select')),
+        @json(__('ui.team_form_page.filter'))
+    );
 });
 </script>
 @endsection

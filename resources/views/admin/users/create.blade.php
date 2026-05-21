@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', __('ui.user_form_page.create_title'))
 
@@ -12,9 +12,7 @@
 <form action="{{ route('admin.users.store') }}" method="POST" data-loading>
     @csrf
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;margin-bottom:1.5rem">
-
-        {{-- Left: Account Info --}}
+    <div style="display:grid;grid-template-columns:1fr;gap:1.5rem;align-items:start;margin-bottom:1.5rem">
         <div class="card" style="overflow:visible;">
             <div class="card-header">
                 <div>
@@ -23,18 +21,15 @@
                 </div>
             </div>
             <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem">
-
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="name">{{ __('ui.user_form_page.full_name') }}</label>
-                        <input type="text" id="name" name="name" value="{{ old('name') }}"
-                               class="form-control @error('name') error @enderror">
+                        <input type="text" id="name" name="name" value="{{ old('name') }}" class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="email">{{ __('ui.user_form_page.email_address') }}</label>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}"
-                               class="form-control @error('email') error @enderror">
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" class="form-control @error('email') error @enderror">
                         @error('email') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -81,70 +76,205 @@
                 </div>
                 @endif
 
+                <div class="form-group" style="overflow:visible">
+                    <label class="form-label" for="teams">{{ __('ui.user_form_page.assign_to_teams') }}</label>
+                    @if($teams->isEmpty())
+                        <div style="font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">{{ __('ui.user_form_page.no_teams_created') }}</div>
+                        <a href="{{ route('admin.teams.create') }}" style="font-size:.8125rem;color:var(--brand)">{{ __('ui.user_form_page.create_team_first') }}</a>
+                    @else
+                        <select id="teams" name="teams[]" multiple
+                                data-no-ss
+                                data-user-teams-ss
+                                class="form-control @error('teams') error @enderror @error('teams.*') error @enderror"
+                                style="display:none;">
+                            @foreach($teams as $team)
+                                <option value="{{ $team->id }}" @selected(in_array($team->id, old('teams', [])))>
+                                    {{ $team->name }} @if($team->description) - {{ $team->description }} @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('teams') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('teams.*') <div class="form-error">{{ $message }}</div> @enderror
+                        <div class="form-hint">{{ __('ui.user_form_page.assign_to_teams_hint') }}</div>
+                    @endif
+                </div>
+
                 <div class="form-group">
                     <label class="form-label" for="password">
                         {{ __('ui.user_form_page.temporary_password') }}
-                        <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">(optional — leave blank to send invite email)</span>
+                        <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">{{ __('ui.user_form_page.temporary_password_hint') }}</span>
                     </label>
-                    <input type="password" id="password" name="password"
-                           placeholder="{{ __('ui.user_form_page.password_placeholder') }}"
-                           class="form-control @error('password') error @enderror">
+                    <input type="password" id="password" name="password" placeholder="{{ __('ui.user_form_page.password_placeholder') }}" class="form-control @error('password') error @enderror">
                     @error('password') <div class="form-error">{{ $message }}</div> @enderror
                 </div>
             </div>
         </div>
-
-        {{-- Right: Team Assignment --}}
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">{{ __('ui.user_form_page.assign_to_teams') }}</div>
-                    <div class="card-subtitle">Optional — can be changed later</div>
-                </div>
-            </div>
-            <div style="padding:0 1.5rem 1.5rem">
-                @forelse($teams as $team)
-                <label style="display:flex;align-items:center;gap:.625rem;cursor:pointer;padding:.625rem .875rem;border:1.5px solid var(--card-border);border-radius:.5rem;margin-bottom:.5rem;transition:border-color .15s"
-                       x-data
-                       @click="$el.style.borderColor = $el.querySelector('input').checked ? 'var(--card-border)' : 'var(--brand)'; $el.style.background = $el.querySelector('input').checked ? 'transparent' : 'rgba(16,185,129,.04)'">
-                    <input type="checkbox" name="teams[]" value="{{ $team->id }}"
-                           {{ in_array($team->id, old('teams', [])) ? 'checked' : '' }}
-                           style="accent-color:var(--brand);cursor:pointer;width:1rem;height:1rem">
-                    <div style="flex:1">
-                        <div style="font-size:.875rem;font-weight:500">{{ $team->name }}</div>
-                        @if($team->description)
-                            <div style="font-size:.75rem;color:var(--text-muted)">{{ $team->description }}</div>
-                        @endif
-                    </div>
-                    <span style="font-size:.75rem;color:var(--text-muted)">
-                        {{ $team->users_count ?? 0 }} member{{ ($team->users_count ?? 0) !== 1 ? 's' : '' }}
-                    </span>
-                </label>
-                @empty
-                <div style="padding:2rem;text-align:center">
-                    <div class="empty-state-icon" style="margin:0 auto .75rem">
-                        <i class="ri-team-line" style="font-size:1.5rem"></i>
-                    </div>
-                    <p style="color:var(--text-muted);font-size:.875rem">{{ __('ui.user_form_page.no_teams_created') }}</p>
-                    <a href="{{ route('admin.teams.create') }}" style="font-size:.8125rem;color:var(--brand)">{{ __('ui.user_form_page.create_team_first') }}</a>
-                </div>
-                @endforelse
-            </div>
-        </div>
     </div>
 
-    {{-- Footer --}}
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
         <a href="{{ route('admin.users.index') }}" class="btn btn-outline">{{ __('ui.user_form_page.cancel') }}</a>
         <button type="submit" class="btn btn-primary">{{ __('ui.user_form_page.send_invitation') }}</button>
     </div>
 </form>
-@if(auth()->user()->isSuperAdmin())
 <script>
+function initMultiSelect(widgetSelector, placeholder, filterPlaceholder) {
+    const select = document.querySelector(widgetSelector);
+    if (!select) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ss-wrap';
+    if (select.classList.contains('error')) wrap.classList.add('error');
+
+    const displayInput = document.createElement('input');
+    displayInput.type = 'text';
+    displayInput.className = 'ss-input';
+    displayInput.readOnly = true;
+    displayInput.placeholder = placeholder;
+
+    const chevron = document.createElement('i');
+    chevron.className = 'ri-arrow-down-s-line ss-chevron';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'ss-dropdown';
+
+    const searchRow = document.createElement('div');
+    searchRow.className = 'ss-search-row';
+    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="' + filterPlaceholder.replace(/"/g, '&quot;') + '" autocomplete="off"></div>';
+
+    const list = document.createElement('div');
+    list.className = 'ss-list';
+
+    Array.from(select.options).forEach(function (opt) {
+        const item = document.createElement('div');
+        item.className = 'ss-item';
+        item.dataset.value = opt.value;
+        item.dataset.label = opt.textContent.trim();
+        item.textContent = opt.textContent.trim();
+        if (opt.selected) item.classList.add('ss-selected');
+        list.appendChild(item);
+    });
+
+    dropdown.appendChild(searchRow);
+    dropdown.appendChild(list);
+    wrap.appendChild(displayInput);
+    wrap.appendChild(chevron);
+    wrap.appendChild(dropdown);
+    select.parentNode.insertBefore(wrap, select.nextSibling);
+
+    const filterInput = searchRow.querySelector('input');
+    const searchRowHeight = 56;
+
+    function updateDisplay() {
+        const selected = Array.from(select.selectedOptions);
+        if (!selected.length) {
+            displayInput.value = '';
+            return;
+        }
+        displayInput.value = selected.length === 1 ? selected[0].textContent.trim() : selected.length + ' ' + @json(__('ui.selected_items'));
+    }
+
+    function renderItems(q) {
+        const lower = (q || '').toLowerCase();
+        let visible = 0;
+        list.querySelectorAll('.ss-item').forEach(function (el) {
+            const matches = !lower || el.dataset.label.toLowerCase().includes(lower);
+            el.style.display = matches ? '' : 'none';
+            if (matches) visible++;
+        });
+        let emptyEl = list.querySelector('.ss-empty');
+        if (!visible) {
+            if (!emptyEl) {
+                emptyEl = document.createElement('div');
+                emptyEl.className = 'ss-empty';
+                emptyEl.textContent = @json(__('ui.select_no_results'));
+                list.appendChild(emptyEl);
+            }
+            emptyEl.style.display = '';
+        } else if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+    }
+
+    function setSelectedClass(value, isSelected) {
+        const item = list.querySelector('.ss-item[data-value="' + CSS.escape(value) + '"]');
+        if (item) item.classList.toggle('ss-selected', isSelected);
+    }
+
+    function syncDropdownPosition() {
+        wrap.classList.remove('open-up');
+        const rect = wrap.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom - 16;
+        const spaceAbove = rect.top - 16;
+        const estimatedHeight = 220;
+        if (spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
+            wrap.classList.add('open-up');
+        }
+        if (list) {
+            const room = wrap.classList.contains('open-up') ? spaceAbove : spaceBelow;
+            list.style.maxHeight = Math.max(100, Math.min(220, room - searchRowHeight)) + 'px';
+        }
+    }
+
+    function openDropdown() {
+        syncDropdownPosition();
+        wrap.classList.add('open');
+        renderItems('');
+        filterInput.value = '';
+        filterInput.focus();
+        syncDropdownPosition();
+    }
+
+    function closeDropdown() {
+        wrap.classList.remove('open');
+        wrap.classList.remove('open-up');
+        list.style.maxHeight = '160px';
+    }
+
+    list.addEventListener('mousedown', function (e) {
+        const item = e.target.closest('.ss-item');
+        if (!item) return;
+        e.preventDefault();
+        const value = item.dataset.value;
+        const option = Array.from(select.options).find(function (o) { return o.value === value; });
+        if (!option) return;
+        option.selected = !option.selected;
+        setSelectedClass(value, option.selected);
+        updateDisplay();
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        wrap.classList.remove('error');
+    });
+
+    displayInput.addEventListener('click', function () {
+        if (wrap.classList.contains('open')) closeDropdown();
+        else openDropdown();
+    });
+
+    displayInput.addEventListener('keydown', function (e) {
+        if (['ArrowDown', 'Enter', ' '].includes(e.key)) {
+            e.preventDefault();
+            openDropdown();
+        }
+    });
+
+    filterInput.addEventListener('input', function () {
+        renderItems(filterInput.value);
+        syncDropdownPosition();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!wrap.contains(e.target)) closeDropdown();
+    });
+
+    window.addEventListener('resize', syncDropdownPosition);
+    window.addEventListener('scroll', syncDropdownPosition, true);
+
+    updateDisplay();
+    renderItems('');
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const roleSelect = document.getElementById('role');
     const tenantField = document.getElementById('tenantField');
-    const tenantSelect = document.getElementById('tenant_id');
 
     function syncTenantField() {
         if (!roleSelect || !tenantField) return;
@@ -154,59 +284,11 @@ document.addEventListener('DOMContentLoaded', function () {
     roleSelect?.addEventListener('change', syncTenantField);
     syncTenantField();
 
-    if (tenantSelect) {
-        const wrap = tenantSelect.nextElementSibling;
-        const dropdown = wrap?.querySelector('.ss-dropdown');
-        const list = wrap?.querySelector('.ss-list');
-        const searchInput = wrap?.querySelector('.ss-search-inner input');
-
-        function syncDropdownPosition() {
-            if (!wrap || !dropdown) return;
-            wrap.classList.remove('open-up');
-            const rect = wrap.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom - 16;
-            const spaceAbove = rect.top - 16;
-            const estimatedHeight = 220;
-            if (spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
-                wrap.classList.add('open-up');
-            }
-            if (list) {
-                const room = wrap.classList.contains('open-up') ? spaceAbove : spaceBelow;
-                list.style.maxHeight = Math.max(100, Math.min(220, room - 56)) + 'px';
-            }
-        }
-
-        const observer = new MutationObserver(() => {
-            if (wrap?.classList.contains('open')) syncDropdownPosition();
-        });
-        if (wrap) observer.observe(wrap, { attributes: true, attributeFilter: ['class'] });
-        window.addEventListener('resize', () => {
-            if (wrap?.classList.contains('open')) syncDropdownPosition();
-        });
-        window.addEventListener('scroll', () => {
-            if (wrap?.classList.contains('open')) syncDropdownPosition();
-        }, true);
-
-        if (searchInput) {
-            searchInput.addEventListener('focus', syncDropdownPosition);
-        }
-        const observer2 = new MutationObserver(syncDropdownPosition);
-        if (list) observer2.observe(list, { childList: true, subtree: true });
-
-        const tenantInput = wrap?.querySelector('.ss-input');
-        const forceOpenUp = () => {
-            if (!wrap || !wrap.classList.contains('open')) return;
-            wrap.classList.add('open-up');
-            syncDropdownPosition();
-        };
-        tenantInput?.addEventListener('click', () => setTimeout(forceOpenUp, 0));
-        tenantInput?.addEventListener('keydown', (e) => {
-            if (['ArrowDown', 'Enter', ' '].includes(e.key)) {
-                setTimeout(forceOpenUp, 0);
-            }
-        });
-    }
+    initMultiSelect(
+        'select[data-user-teams-ss]',
+        @json(__('ui.team_form_page.select')),
+        @json(__('ui.team_form_page.filter'))
+    );
 });
 </script>
-@endif
 @endsection
