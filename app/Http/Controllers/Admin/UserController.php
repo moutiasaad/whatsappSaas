@@ -49,7 +49,7 @@ class UserController extends Controller
         }
 
         if ($user->tenant_id !== $actor->tenant_id || $user->isSuperAdmin()) {
-            abort(403, 'Unauthorized.');
+            abort(403, __('ui.controller_messages.unauthorized'));
         }
     }
 
@@ -67,7 +67,7 @@ class UserController extends Controller
         $validIds = $teamsQuery->whereIn('id', $teamIds)->pluck('id')->all();
 
         if (count($validIds) !== count($teamIds)) {
-            abort(422, 'One or more selected teams are invalid.');
+            abort(422, __('ui.controller_messages.invalid_selected_teams'));
         }
 
         return $validIds;
@@ -125,11 +125,11 @@ class UserController extends Controller
             : $actor->tenant_id;
 
         if (!$isSuperAdmin && $tenantId === null) {
-            abort(422, 'Tenant admins must belong to a tenant.');
+            abort(422, __('ui.controller_messages.tenant_admin_requires_tenant'));
         }
 
         if ($isSuperAdmin && $data['role'] !== 'super_admin' && $tenantId === null) {
-            abort(422, 'A tenant is required for non-super-admin users.');
+            abort(422, __('ui.controller_messages.tenant_required_for_non_super_admin_users'));
         }
 
         $user = User::create([
@@ -148,7 +148,7 @@ class UserController extends Controller
         AuditLog::record('user.created', $user);
 
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
-            ->with('success', "User \"{$user->name}\" invited.");
+            ->with('success', __('ui.controller_messages.user_invited', ['name' => $user->name]));
     }
 
     public function edit(User $user)
@@ -204,7 +204,7 @@ class UserController extends Controller
         AuditLog::record('user.updated', $user);
 
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
-            ->with('success', 'User updated.');
+            ->with('success', __('ui.controller_messages.user_updated'));
     }
 
     public function destroy(User $user)
@@ -214,7 +214,7 @@ class UserController extends Controller
         AuditLog::record('user.deleted', $user, ['name' => $user->name, 'email' => $user->email]);
         $user->delete();
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
-            ->with('success', "User \"{$user->name}\" deleted.");
+            ->with('success', __('ui.controller_messages.user_deleted', ['name' => $user->name]));
     }
 
     public function bulk(Request $request)
@@ -231,7 +231,7 @@ class UserController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
-            return back()->with('error', 'No users selected.');
+            return back()->with('error', __('ui.controller_messages.no_users_selected'));
         }
 
         $action = $data['action'];
@@ -241,7 +241,7 @@ class UserController extends Controller
             ->get();
 
         if ($users->isEmpty()) {
-            return back()->with('error', 'No valid users selected.');
+            return back()->with('error', __('ui.controller_messages.no_valid_users_selected'));
         }
 
         foreach ($users as $user) {
@@ -264,8 +264,8 @@ class UserController extends Controller
         }
 
         $message = $action === 'delete'
-            ? $users->count() . ' user(s) deleted.'
-            : $users->count() . ' user(s) updated.';
+            ? __('ui.controller_messages.users_deleted', ['count' => $users->count()])
+            : __('ui.controller_messages.users_updated', ['count' => $users->count()]);
 
         return back()->with('success', $message);
     }
@@ -275,7 +275,7 @@ class UserController extends Controller
         $actor = $this->actor();
 
         if (!$actor->isSuperAdmin() && (string) $actor->tenant_id !== (string) $user->tenant_id) {
-            abort(403, 'Tenant admins can only impersonate users in their own tenant.');
+            abort(403, __('ui.controller_messages.tenant_admin_impersonation_restricted'));
         }
 
         ImpersonationLog::create([

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\WhatsAppInstance;
+use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\Request;
 
 class InstanceWebController extends Controller
@@ -37,10 +38,12 @@ class InstanceWebController extends Controller
 
         $instance = WhatsAppInstance::create($data + ['tenant_id' => auth()->user()->tenant_id]);
 
+        $this->configureGatewayWebhook($instance);
+
         AuditLog::record('instance.created', $instance);
 
         return redirect()->route('admin.instances.index')
-            ->with('success', "Instance \"{$instance->name}\" created.");
+            ->with('success', __('ui.controller_messages.instance_created', ['name' => $instance->name]));
     }
 
     public function edit(WhatsAppInstance $instance)
@@ -67,17 +70,72 @@ class InstanceWebController extends Controller
         }
 
         $instance->update($data);
+        $this->configureGatewayWebhook($instance);
         AuditLog::record('instance.updated', $instance);
 
         return redirect()->route('admin.instances.index')
-            ->with('success', 'Instance updated.');
+            ->with('success', __('ui.controller_messages.instance_updated'));
     }
 
     public function destroy(WhatsAppInstance $instance)
     {
+        try {
+            if ($instance->gateway_instance_id && $instance->hasGatewayCredentials()) {
+                $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+                $gateway->logout($instance->gateway_instance_id);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         AuditLog::record('instance.deleted', $instance, ['name' => $instance->name]);
         $instance->delete();
         return redirect()->route('admin.instances.index')
-            ->with('success', "Instance \"{$instance->name}\" deleted.");
+            ->with('success', __('ui.controller_messages.instance_deleted', ['name' => $instance->name]));
+    }
+
+    private function configureGatewayWebhook(WhatsAppInstance $instance): void
+    {
+        if (!$instance->gateway_instance_id || !$instance->hasGatewayCredentials()) {
+            return;
+        }
+
+        try {
+            $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+            $gateway->setWebhook(
+                $instance->gateway_instance_id,
+                $this->webhookUrl($instance),
+                [
+                    'qrcodeUpdated' => true,
+                    'messagesSet' => false,
+                    'messagesUpsert' => true,
+                    'messagesUpdated' => true,
+                    'sendMessage' => true,
+                    'contactsSet' => true,
+                    'contactsUpsert' => true,
+                    'contactsUpdated' => true,
+                    'chatsSet' => false,
+                    'chatsUpsert' => true,
+                    'chatsUpdated' => true,
+                    'chatsDeleted' => true,
+                    'presenceUpdated' => true,
+                    'groupsUpsert' => true,
+                    'groupsUpdated' => true,
+                    'groupsParticipantsUpdated' => true,
+                    'connectionUpdated' => true,
+                    'statusInstance' => true,
+                    'refreshToken' => true,
+                ]
+            );
+        } catch (\Throwable) {
+            // Webhook setup is best-effort; user can retry from the instance page.
+        }
+    }
+
+    private function webhookUrl(WhatsAppInstance $instance): string
+    {
+        $base = rtrim((string) config('services.whatsapp.webhook_base_url', config('app.url')), '/');
+
+        return "{$base}/api/webhooks/whatsapp/{$instance->webhook_token}";
     }
 }

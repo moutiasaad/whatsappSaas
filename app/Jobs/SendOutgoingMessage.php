@@ -35,7 +35,7 @@ class SendOutgoingMessage implements ShouldQueue
 
             $this->message->update([
                 'status'              => 'sent',
-                'external_message_id' => $result['key']['id'] ?? null,
+                'external_message_id' => $result['keyId'] ?? $result['id'] ?? data_get($result, 'key.id'),
                 'sent_at'             => now(),
             ]);
 

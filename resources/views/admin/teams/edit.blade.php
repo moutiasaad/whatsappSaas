@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Team')
+@section('title', __('ui.team_edit_page.title'))
 
 @section('breadcrumb')
     @php
@@ -8,7 +8,7 @@
         $canDeleteTeam = auth()->user()->hasAnyRole(['admin', 'super_admin']);
         $canManageInstances = auth()->user()->hasAnyRole(['admin', 'super_admin']);
     @endphp
-    <a href="{{ route($panelPrefix . '.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">Teams</a>
+    <a href="{{ route($panelPrefix . '.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">{{ __('ui.team_form_page.breadcrumb') }}</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
     <span>{{ $team->name }}</span>
 @endsection
@@ -26,11 +26,11 @@
     <div class="card" style="overflow:visible;">
         <div class="card-header">
             <div>
-                <div class="card-title">Edit Team</div>
-                <div class="card-subtitle">Update settings for <strong>{{ $team->name }}</strong></div>
+                <div class="card-title">{{ __('ui.team_edit_page.page_title') }}</div>
+                <div class="card-subtitle">{{ __('ui.team_edit_page.subtitle', ['name' => $team->name]) }}</div>
             </div>
             <span class="badge {{ $team->is_active ? 'badge-green' : 'badge-gray' }}">
-                {{ $team->is_active ? 'Active' : 'Inactive' }}
+                {{ $team->is_active ? __('ui.active') : __('ui.inactive') }}
             </span>
         </div>
 
@@ -43,7 +43,7 @@
                 {{-- Basic Info --}}
                 <div style="display:flex;flex-direction:column;gap:1.125rem">
                     <div class="form-group">
-                        <label class="form-label" for="name">Team Name</label>
+                        <label class="form-label" for="name">{{ __('ui.team_form_page.team_name') }}</label>
                         <input type="text" id="name" name="name"
                                value="{{ old('name', $team->name) }}"
                                class="form-control @error('name') error @enderror">
@@ -51,10 +51,10 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="description">Description</label>
+                        <label class="form-label" for="description">{{ __('ui.team_form_page.description') }}</label>
                         <input type="text" id="description" name="description"
                                value="{{ old('description', $team->description) }}"
-                               placeholder="Short description of this team's focus"
+                               placeholder="{{ __('ui.team_form_page.description_placeholder') }}"
                                class="form-control @error('description') error @enderror">
                         @error('description') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
@@ -63,18 +63,18 @@
                         <label class="toggle-label">
                             <input type="checkbox" name="is_active" value="1"
                                    {{ old('is_active', $team->is_active) ? 'checked' : '' }}>
-                            <span class="toggle-text">Active</span>
+                            <span class="toggle-text">{{ __('ui.active') }}</span>
                         </label>
-                        <span style="font-size:.8125rem;color:var(--text-muted)">Inactive teams won't receive new conversations</span>
+                        <span style="font-size:.8125rem;color:var(--text-muted)">{{ __('ui.team_edit_page.inactive_hint') }}</span>
                     </div>
                 </div>
                 {{-- Member Picker --}}
                 <div class="form-group" style="overflow:visible">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
                         <div>
-                            <label class="form-label" for="members" style="margin-bottom:.125rem">Team Members</label>
+                            <label class="form-label" for="members" style="margin-bottom:.125rem">{{ __('ui.team_form_page.team_members') }}</label>
                             <div style="font-size:.8125rem;color:var(--text-muted)">
-                                Click to open, then select one or more members.
+                                {{ __('ui.team_form_page.members_hint') }}
                             </div>
                         </div>
                     </div>
@@ -92,20 +92,20 @@
                     </select>
                     @error('members') <div class="form-error">{{ $message }}</div> @enderror
                     @error('members.*') <div class="form-error">{{ $message }}</div> @enderror
-                    <div class="form-hint">Click to open, then select one or more members.</div>
+                    <div class="form-hint">{{ __('ui.team_form_page.members_hint') }}</div>
                 </div>
-                {{-- Danger Zone --}}
+                {{-- {{ __('ui.team_edit_page.danger_zone') }} --}}
                 @if($canDeleteTeam)
                     <div style="border:1px solid rgba(239,68,68,.2);border-radius:.75rem;padding:1rem">
-                        <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">Danger Zone</div>
+                        <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">{{ __('ui.team_edit_page.danger_zone') }}</div>
                         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
                             <div style="font-size:.8125rem;color:var(--text-muted)">
-                                Permanently delete this team. Existing conversations will become unassigned.
+                                {{ __('ui.team_edit_page.delete_message') }}
                             </div>
                             <button type="button"
-                                    onclick="confirmDelete('{{ route($panelPrefix . '.teams.destroy', $team) }}', { title: 'Delete {{ addslashes($team->name) }}?', message: 'Existing conversations will become unassigned.' })"
+                                    onclick="confirmDelete('{{ route($panelPrefix . '.teams.destroy', $team) }}', { title: '{{ __('ui.team_edit_page.delete_prompt', ['name' => addslashes($team->name)]) }}', message: @json(__('ui.team_edit_page.delete_message')) })"
                                     class="btn btn-danger btn-sm">
-                                Delete Team
+                                {{ __('ui.team_edit_page.delete_team') }}
                             </button>
                         </div>
                     </div>
@@ -113,8 +113,8 @@
             </div>
 
             <div style="padding:1.25rem 1.5rem;border-top:1px solid var(--card-border);display:flex;justify-content:flex-end;gap:.5rem">
-                <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-outline">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-outline">{{ __('ui.team_edit_page.cancel') }}</a>
+                <button type="submit" class="btn btn-primary">{{ __('ui.team_edit_page.save_changes') }}</button>
             </div>
         </form>
     </div>
@@ -125,25 +125,25 @@
         {{-- Live Stats --}}
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Current Load</div>
+                <div class="card-title">{{ __('ui.team_edit_page.current_load') }}</div>
             </div>
             <div style="padding:0 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.875rem">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
                     <div style="padding:.875rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:.625rem;text-align:center">
                         <div style="font-size:1.5rem;font-weight:700;color:#f59e0b">{{ $stats['pool'] }}</div>
-                        <div style="font-size:.6875rem;color:var(--text-muted);margin-top:.125rem">In Pool</div>
+                        <div style="font-size:.6875rem;color:var(--text-muted);margin-top:.125rem">{{ __('ui.team_edit_page.in_pool') }}</div>
                     </div>
                     <div style="padding:.875rem;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:.625rem;text-align:center">
                         <div style="font-size:1.5rem;font-weight:700;color:#3b82f6">{{ $stats['claimed'] }}</div>
-                        <div style="font-size:.6875rem;color:var(--text-muted);margin-top:.125rem">Claimed</div>
+                        <div style="font-size:.6875rem;color:var(--text-muted);margin-top:.125rem">{{ __('ui.team_edit_page.claimed') }}</div>
                     </div>
                 </div>
                 <div style="font-size:.8125rem;display:flex;justify-content:space-between;color:var(--text-muted)">
-                    <span>Closed today</span>
+                    <span>{{ __('ui.team_edit_page.closed_today') }}</span>
                     <span style="color:var(--text-secondary);font-weight:500">{{ $stats['closed_today'] }}</span>
                 </div>
                 <div style="font-size:.8125rem;display:flex;justify-content:space-between;color:var(--text-muted)">
-                    <span>Avg. response time</span>
+                    <span>{{ __('ui.team_edit_page.avg_response_time') }}</span>
                     <span style="color:var(--text-secondary);font-weight:500">{{ $stats['avg_response'] ?? '—' }}</span>
                 </div>
             </div>
@@ -152,7 +152,7 @@
         {{-- Linked Instances --}}
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Linked Instances</div>
+                <div class="card-title">{{ __('ui.team_edit_page.linked_instances') }}</div>
             </div>
             <div style="padding:0 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.625rem">
                 @forelse($linkedInstances as $instance)
@@ -162,14 +162,14 @@
                         <span style="font-size:.8125rem;font-weight:500">{{ $instance->name }}</span>
                     </div>
                     @if($canManageInstances)
-                        <a href="{{ route($panelPrefix . '.instances.edit', $instance) }}" style="color:var(--text-muted);font-size:.75rem;text-decoration:none">Edit</a>
+                        <a href="{{ route($panelPrefix . '.instances.edit', $instance) }}" style="color:var(--text-muted);font-size:.75rem;text-decoration:none">{{ __('ui.edit') }}</a>
                     @endif
                 </div>
                 @empty
                 <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">
-                    No instances linked to this team.
+                    {{ __('ui.team_edit_page.no_linked_instances') }}
                     @if($canManageInstances)
-                        <a href="{{ route($panelPrefix . '.instances.index') }}" style="color:var(--brand);display:block;margin-top:.25rem">Manage instances</a>
+                        <a href="{{ route($panelPrefix . '.instances.index') }}" style="color:var(--brand);display:block;margin-top:.25rem">{{ __('ui.team_edit_page.manage_instances') }}</a>
                     @endif
                 </div>
                 @endforelse
@@ -179,7 +179,7 @@
         {{-- Quick Members Summary --}}
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Current Members</div>
+                <div class="card-title">{{ __('ui.team_edit_page.current_members') }}</div>
             </div>
             <div style="padding:0 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.5rem">
                 @forelse($team->users as $member)
@@ -194,7 +194,7 @@
                     </span>
                 </div>
                 @empty
-                <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">No members yet</div>
+                <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">{{ __('ui.team_edit_page.no_members_yet') }}</div>
                 @endforelse
             </div>
         </div>
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
     displayInput.type = 'text';
     displayInput.className = 'ss-input';
     displayInput.readOnly = true;
-    displayInput.placeholder = 'Select...';
+    displayInput.placeholder = @json(__('ui.team_form_page.select'));
 
     const chevron = document.createElement('i');
     chevron.className = 'ri-arrow-down-s-line ss-chevron';
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const searchRow = document.createElement('div');
     searchRow.className = 'ss-search-row';
-    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Filter..." autocomplete="off"></div>';
+    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="{{ __('ui.team_form_page.filter') }}" autocomplete="off"></div>';
 
     const list = document.createElement('div');
     list.className = 'ss-list';
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!emptyEl) {
                 emptyEl = document.createElement('div');
                 emptyEl.className = 'ss-empty';
-                emptyEl.textContent = 'No results found';
+                emptyEl.textContent = @json(__('ui.select_no_results'));
                 list.appendChild(emptyEl);
             }
             emptyEl.style.display = '';

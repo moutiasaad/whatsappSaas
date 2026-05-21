@@ -1,12 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', 'New Team')
+@section('title', __('ui.team_form_page.create_title'))
 
 @section('breadcrumb')
     @php $panelPrefix = auth()->user()->routeNamePrefix(); @endphp
-    <a href="{{ route($panelPrefix . '.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">Teams</a>
+    <a href="{{ route($panelPrefix . '.teams.index') }}" style="color:var(--text-secondary);text-decoration:none">{{ __('ui.team_form_page.breadcrumb') }}</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
-    <span>New Team</span>
+    <span>{{ __('ui.team_form_page.title') }}</span>
 @endsection
 
 @section('content')
@@ -27,12 +27,12 @@
 
 <div class="page-header">
     <div class="page-header-left">
-        <h1 class="page-title">Create Team</h1>
-        <p class="page-subtitle">Set team details and assign members</p>
+        <h1 class="page-title">{{ __('ui.team_form_page.page_title') }}</h1>
+        <p class="page-subtitle">{{ __('ui.team_form_page.subtitle') }}</p>
     </div>
     <div class="page-header-actions">
         <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-outline">
-            <i class="ri-arrow-left-line"></i> Back
+                <i class="ri-arrow-left-line"></i> {{ __('ui.team_form_page.back') }}
         </a>
     </div>
 </div>
@@ -45,31 +45,31 @@
             <div class="card" style="overflow:visible;">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Team Details</div>
-                        <div class="card-subtitle">Name, description and status</div>
+                        <div class="card-title">{{ __('ui.team_form_page.team_details') }}</div>
+                        <div class="card-subtitle">{{ __('ui.team_form_page.team_details_hint') }}</div>
                     </div>
                 </div>
                 <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem">
                     <div class="form-group">
-                        <label class="form-label" for="name">Team Name</label>
+                        <label class="form-label" for="name">{{ __('ui.team_form_page.team_name') }}</label>
                         <input type="text" id="name" name="name"
                                value="{{ old('name') }}"
-                               placeholder="e.g. Technical Support, Sales, Billing"
+                               placeholder="{{ __('ui.team_form_page.name_placeholder') }}"
                                class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="description">Description</label>
+                        <label class="form-label" for="description">{{ __('ui.team_form_page.description') }}</label>
                         <input type="text" id="description" name="description"
                                value="{{ old('description') }}"
-                               placeholder="Short description of this team's focus"
+                               placeholder="{{ __('ui.team_form_page.description_placeholder') }}"
                                class="form-control @error('description') error @enderror">
                         @error('description') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="members">Team Members</label>
+                        <label class="form-label" for="members">{{ __('ui.team_form_page.team_members') }}</label>
                         <select id="members" name="members[]" multiple
                                 data-no-ss
                                 data-members-ss
@@ -83,24 +83,24 @@
                         </select>
                         @error('members') <div class="form-error">{{ $message }}</div> @enderror
                         @error('members.*') <div class="form-error">{{ $message }}</div> @enderror
-                        <div class="form-hint">Click to open, then select one or more members.</div>
+                        <div class="form-hint">{{ __('ui.team_form_page.members_hint') }}</div>
                     </div>
 
                     <div style="display:flex;align-items:center;gap:.75rem">
                         <label class="toggle-label">
                             <input type="checkbox" name="is_active" value="1"
                                    {{ old('is_active', '1') ? 'checked' : '' }}>
-                            <span class="toggle-text">Active</span>
+                            <span class="toggle-text">{{ __('ui.team_form_page.active') }}</span>
                         </label>
-                        <span style="font-size:.8125rem;color:var(--text-muted)">Inactive teams will not receive new conversations</span>
+                        <span style="font-size:.8125rem;color:var(--text-muted)">{{ __('ui.team_form_page.inactive_hint') }}</span>
                     </div>
 
                     <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:.75rem;padding:1rem;margin-top:.25rem">
                         <div style="display:flex;align-items:flex-start;gap:.625rem">
                             <svg style="color:var(--brand);flex-shrink:0;margin-top:.1rem" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <div style="font-size:.8125rem;color:var(--text-secondary)">
-                                Conversations from WhatsApp instances assigned to this team will go to this team's pool.
-                                All members can see and claim these conversations.
+                            {{ __('ui.team_form_page.pool_hint') }}
+                                {{ __('ui.team_form_page.pool_hint_detail') }}
                             </div>
                         </div>
                     </div>
@@ -111,10 +111,10 @@
 
         <div style="display:flex;justify-content:flex-end;gap:.5rem">
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-outline">
-                <i class="ri-close-line"></i> Cancel
+                <i class="ri-close-line"></i> {{ __('ui.team_form_page.cancel') }}
             </a>
             <button type="submit" class="btn btn-primary">
-                <i class="ri-check-line"></i> Create Team
+                <i class="ri-check-line"></i> {{ __('ui.team_form_page.create_team') }}
             </button>
         </div>
     </form>
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
     displayInput.type = 'text';
     displayInput.className = 'ss-input';
     displayInput.readOnly = true;
-    displayInput.placeholder = 'Select...';
+    displayInput.placeholder = @json(__('ui.team_form_page.select'));
 
     const chevron = document.createElement('i');
     chevron.className = 'ri-arrow-down-s-line ss-chevron';
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const searchRow = document.createElement('div');
     searchRow.className = 'ss-search-row';
-    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Filter..." autocomplete="off"></div>';
+    searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="{{ __('ui.team_form_page.filter') }}" autocomplete="off"></div>';
 
     const list = document.createElement('div');
     list.className = 'ss-list';
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!emptyEl) {
                 emptyEl = document.createElement('div');
                 emptyEl.className = 'ss-empty';
-                emptyEl.textContent = 'No results found';
+                emptyEl.textContent = @json(__('ui.select_no_results'));
                 list.appendChild(emptyEl);
             }
             emptyEl.style.display = '';

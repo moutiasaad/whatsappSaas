@@ -1,10 +1,10 @@
 @extends('layouts.admin')
 
-@section('title', 'Conversation')
+@section('title', __('ui.conversation_show_page.title'))
 
 @section('breadcrumb')
     @php $panelPrefix = auth()->user()->routeNamePrefix(); @endphp
-    <a href="{{ route($panelPrefix . '.conversations.index') }}" style="color:var(--text-secondary);text-decoration:none">Conversations</a>
+    <a href="{{ route($panelPrefix . '.conversations.index') }}" style="color:var(--text-secondary);text-decoration:none">{{ __('ui.conversation_show_page.breadcrumb') }}</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
     <span>{{ $conversation->customer->displayNameOrPhone }}</span>
 @endsection
@@ -13,15 +13,15 @@
 <div x-data="conversationPro()" x-init="init()">
     <div class="page-header conversation-page-header" style="margin-bottom:1rem;">
         <div class="page-header-left">
-            <div class="page-title">Conversation Desk</div>
+            <div class="page-title">{{ __('ui.conversation_show_page.page_title') }}</div>
             <div class="page-subtitle">{{ $conversation->customer->displayNameOrPhone }} - {{ $conversation->customer->phone_e164 }}</div>
         </div>
         <div class="page-header-actions">
             <a href="{{ route($panelPrefix . '.conversations.index') }}" class="btn btn-outline btn-sm">
-                <i class="ri-arrow-left-line"></i> Back
+                <i class="ri-arrow-left-line"></i> {{ __('ui.conversation_show_page.back') }}
             </a>
             <a href="{{ route($panelPrefix . '.customers.show', $conversation->customer) }}" class="btn btn-outline btn-sm">
-                <i class="ri-user-line"></i> Customer
+                <i class="ri-user-line"></i> {{ __('ui.conversation_show_page.customer') }}
             </a>
         </div>
     </div>
@@ -33,24 +33,24 @@
                     <div class="conv-avatar conv-avatar-lg">{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}</div>
                     <div class="conversation-thread-copy">
                         <div class="conversation-thread-name">{{ $conversation->customer->displayNameOrPhone }}</div>
-                        <div class="conversation-thread-meta">{{ $conversation->instance->name }} - {{ $conversation->team?->name ?? 'No team' }}</div>
+                        <div class="conversation-thread-meta">{{ $conversation->instance->name }} - {{ $conversation->team?->name ?? __('ui.conversation_show_page.no_team') }}</div>
                         <div class="conversation-thread-state">
                             <span class="presence-dot"></span>
-                            <span>Live support workspace</span>
+                            <span>{{ __('ui.conversation_show_page.live_workspace') }}</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="conversation-thread-actions">
-                    <span x-show="state === 'pool'" class="badge badge-orange"><i class="ri-time-line"></i> Pool</span>
-                    <span x-show="state === 'claimed'" class="badge badge-blue"><i class="ri-user-line"></i> Claimed</span>
-                    <span x-show="state === 'closed'" class="badge badge-gray"><i class="ri-check-double-line"></i> Closed</span>
-                    <span x-show="aiSuspended" class="badge badge-gray">AI Off</span>
+                    <span x-show="state === 'pool'" class="badge badge-orange"><i class="ri-time-line"></i> {{ __('ui.conversation_show_page.pool') }}</span>
+                    <span x-show="state === 'claimed'" class="badge badge-blue"><i class="ri-user-line"></i> {{ __('ui.conversation_show_page.claimed') }}</span>
+                    <span x-show="state === 'closed'" class="badge badge-gray"><i class="ri-check-double-line"></i> {{ __('ui.conversation_show_page.closed') }}</span>
+                    <span x-show="aiSuspended" class="badge badge-gray">{{ __('ui.conversation_show_page.ai_off') }}</span>
 
                     @can('claim', $conversation)
                     <template x-if="state === 'pool'">
                         <button @click="claim()" :disabled="actionLoading" class="btn btn-primary btn-sm conversation-cta">
-                            <i class="ri-hand-coin-line"></i> Claim
+                            <i class="ri-hand-coin-line"></i> {{ __('ui.conversation_show_page.claim') }}
                         </button>
                     </template>
                     @endcan
@@ -59,17 +59,17 @@
                         <div class="conversation-inline-actions">
                             @can('reassign', $conversation)
                             <button @click="showReassign = true" class="btn btn-outline btn-sm">
-                                <i class="ri-user-settings-line"></i> Reassign
+                                <i class="ri-user-settings-line"></i> {{ __('ui.conversation_show_page.reassign') }}
                             </button>
                             @endcan
                             @can('release', $conversation)
                             <button @click="release()" class="btn btn-outline btn-sm" :disabled="actionLoading">
-                                <i class="ri-reply-line"></i> Release
+                                <i class="ri-reply-line"></i> {{ __('ui.conversation_show_page.release') }}
                             </button>
                             @endcan
                             @can('close', $conversation)
                             <button @click="closeConv()" class="btn btn-danger btn-sm" :disabled="actionLoading">
-                                <i class="ri-close-circle-line"></i> Close
+                                <i class="ri-close-circle-line"></i> {{ __('ui.conversation_show_page.close') }}
                             </button>
                             @endcan
                         </div>
@@ -78,7 +78,7 @@
                     @can('reopen', $conversation)
                     <template x-if="state === 'closed'">
                         <button @click="reopen()" class="btn btn-outline btn-sm" :disabled="actionLoading">
-                            <i class="ri-refresh-line"></i> Reopen
+                            <i class="ri-refresh-line"></i> {{ __('ui.conversation_show_page.reopen') }}
                         </button>
                     </template>
                     @endcan
@@ -87,7 +87,7 @@
                     <template x-if="state !== 'closed'">
                         <button @click="toggleAi()" class="btn btn-outline btn-sm" :disabled="actionLoading">
                             <i class="ri-robot-2-line"></i>
-                            <span x-text="aiSuspended ? 'Resume AI' : 'Suspend AI'"></span>
+                            <span x-text="aiSuspended ? @js(__('ui.conversation_show_page.resume_ai')) : @js(__('ui.conversation_show_page.suspend_ai'))"></span>
                         </button>
                     </template>
                     @endcan
@@ -97,8 +97,8 @@
             <div id="messages-scroll" class="conversation-stage">
                 <div x-show="hasMoreMessages" class="conversation-load-more">
                     <button @click="loadMoreMessages()" :disabled="loadingMessages" class="btn btn-ghost btn-sm">
-                        <span x-show="!loadingMessages">Load earlier messages</span>
-                        <span x-show="loadingMessages">Loading...</span>
+                        <span x-show="!loadingMessages">{{ __('ui.conversation_show_page.load_earlier') }}</span>
+                        <span x-show="loadingMessages">{{ __('ui.conversation_show_page.loading') }}</span>
                     </button>
                 </div>
 
@@ -127,28 +127,28 @@
 
             <div x-show="state !== 'closed'" class="conversation-composer-wrap">
                 <div class="conversation-quick-replies">
-                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Hello! Thanks for reaching out. How can I help you today?')">Greeting</button>
-                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Thanks for waiting. I am checking this now and will update you shortly.')">Follow-up</button>
-                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('This issue is now resolved. Please confirm on your side.')">Resolved</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Hello! Thanks for reaching out. How can I help you today?')">{{ __('ui.conversation_show_page.greeting') }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('Thanks for waiting. I am checking this now and will update you shortly.')">{{ __('ui.conversation_show_page.follow_up') }}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="setQuickReply('This issue is now resolved. Please confirm on your side.')">{{ __('ui.conversation_show_page.resolved') }}</button>
                     <button type="button" class="btn btn-ghost btn-sm" @click="isNote = !isNote" :style="isNote ? 'color:#b45309;background:#fef3c7;' : ''">
-                        <i class="ri-sticky-note-line"></i> Note mode
+                        <i class="ri-sticky-note-line"></i> {{ __('ui.conversation_show_page.note_mode') }}
                     </button>
                 </div>
 
                 <div class="conversation-composer">
                     <textarea x-model="draft" rows="1" @keydown="handleComposerKeydown($event)" @input="autoResize($el)"
-                              :placeholder="isNote ? 'Write internal note... (Enter to send, Shift+Enter for newline)' : 'Type a message... (Enter to send, Shift+Enter for newline)'"
+                              :placeholder="isNote ? @js(__('ui.conversation_show_page.note_placeholder')) : @js(__('ui.conversation_show_page.message_placeholder'))"
                               class="conversation-textarea"></textarea>
                     <button @click="send()" :disabled="!draft.trim() || sending || state !== 'claimed'" class="btn btn-primary conversation-send-btn">
-                        <span x-show="!sending"><i class="ri-send-plane-2-line"></i> Send</span>
+                        <span x-show="!sending"><i class="ri-send-plane-2-line"></i> {{ __('ui.conversation_show_page.send') }}</span>
                         <span x-show="sending"><span class="btn-spinner"></span></span>
                     </button>
                 </div>
-                <div x-show="state === 'pool'" class="conversation-composer-hint">Claim this conversation to send replies.</div>
+                <div x-show="state === 'pool'" class="conversation-composer-hint">{{ __('ui.conversation_show_page.claim_hint') }}</div>
             </div>
 
             <div x-show="state === 'closed'" class="conversation-closed-banner">
-                Conversation is closed. Reopen it to continue.
+                {{ __('ui.conversation_show_page.closed_banner') }}
             </div>
         </div>
 
@@ -157,8 +157,8 @@
                 <div class="conversation-profile-top">
                     <div>
                         <div class="conversation-profile-name">{{ $conversation->customer->displayNameOrPhone }}</div>
-                        <div class="conversation-profile-company">{{ $conversation->tenant?->name ?? 'Workspace contact' }}</div>
-                        <div class="conversation-profile-role">{{ $conversation->ownerAgent?->name ?? 'Unassigned owner' }}</div>
+                        <div class="conversation-profile-company">{{ $conversation->tenant?->name ?? __('ui.conversation_show_page.workspace_contact') }}</div>
+                        <div class="conversation-profile-role">{{ $conversation->ownerAgent?->name ?? __('ui.conversation_show_page.unassigned_owner') }}</div>
                     </div>
                     <div class="conv-avatar conversation-profile-avatar">{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}</div>
                 </div>
@@ -172,23 +172,23 @@
 
             <div class="card conversation-side-card">
                 <div class="card-header" style="padding-bottom:10px;">
-                    <div class="card-title">Workspace</div>
+                    <div class="card-title">{{ __('ui.conversation_show_page.workspace') }}</div>
                 </div>
                 <div style="padding:0 14px 14px;">
                     <div class="tab-nav conversation-side-tabs" style="margin-bottom:12px;">
-                        <button class="tab-btn" :class="{ 'active': sideTab === 'details' }" @click="sideTab = 'details'">Details</button>
-                        <button class="tab-btn" :class="{ 'active': sideTab === 'timeline' }" @click="sideTab = 'timeline'">Timeline</button>
+                        <button class="tab-btn" :class="{ 'active': sideTab === 'details' }" @click="sideTab = 'details'">{{ __('ui.conversation_show_page.details') }}</button>
+                        <button class="tab-btn" :class="{ 'active': sideTab === 'timeline' }" @click="sideTab = 'timeline'">{{ __('ui.conversation_show_page.timeline') }}</button>
                     </div>
 
                     <div x-show="sideTab === 'details'" class="tab-panel">
-                        <div class="meta-row"><span>Tenant</span><strong>{{ $conversation->tenant?->name ?? '-' }}</strong></div>
-                        <div class="meta-row"><span>Instance</span><strong>{{ $conversation->instance->name }}</strong></div>
-                        <div class="meta-row"><span>Team</span><strong>{{ $conversation->team?->name ?? '-' }}</strong></div>
-                        <div class="meta-row"><span>Owner</span><strong x-text="agentName || '{{ $conversation->ownerAgent?->name ?? 'Unassigned' }}'"></strong></div>
-                        <div class="meta-row"><span>Started</span><strong>{{ $conversation->created_at->format('M j, Y H:i') }}</strong></div>
-                        <div class="meta-row"><span>Last activity</span><strong x-text="timeAgo('{{ $conversation->last_message_at }}')"></strong></div>
-                        <div class="meta-row"><span>Total customer convos</span><strong>{{ $customerConversationCount }}</strong></div>
-                        <div class="meta-row"><span>AI mode</span><strong x-text="aiSuspended ? 'Suspended' : '{{ $aiMode }}'"></strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.tenant') }}</span><strong>{{ $conversation->tenant?->name ?? '-' }}</strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.instance') }}</span><strong>{{ $conversation->instance->name }}</strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.team') }}</span><strong>{{ $conversation->team?->name ?? '-' }}</strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.owner') }}</span><strong x-text="agentName || '{{ $conversation->ownerAgent?->name ?? 'Unassigned' }}'"></strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.started') }}</span><strong>{{ $conversation->created_at->format('M j, Y H:i') }}</strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.last_activity') }}</span><strong x-text="timeAgo('{{ $conversation->last_message_at }}')"></strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.total_customer_convos') }}</span><strong>{{ $customerConversationCount }}</strong></div>
+                        <div class="meta-row"><span>{{ __('ui.conversation_show_page.ai_mode') }}</span><strong x-text="aiSuspended ? @js(__('ui.conversation_show_page.suspended')) : '{{ $aiMode }}'"></strong></div>
                     </div>
 
                     <div x-show="sideTab === 'timeline'" class="tab-panel">
@@ -199,7 +199,7 @@
                                     <div class="conversation-timeline-meta">{{ $event->actor?->name ?? 'System' }} - {{ $event->created_at->diffForHumans() }}</div>
                                 </div>
                             @empty
-                                <div style="font-size:.8rem;color:var(--text-muted);">No events yet.</div>
+                                <div style="font-size:.8rem;color:var(--text-muted);">{{ __('ui.conversation_show_page.no_events') }}</div>
                             @endforelse
                         </div>
                     </div>
@@ -211,19 +211,19 @@
     <div x-show="showReassign" x-cloak class="modal-overlay show" @click.self="showReassign = false">
         <div class="modal-box" style="max-width:420px;text-align:left;" @click.stop>
             <div class="modal-send-icon"><i class="ri-user-settings-line"></i></div>
-            <h3>Reassign Conversation</h3>
-            <p>Select an eligible agent for this conversation.</p>
+            <h3>{{ __('ui.conversation_show_page.reassign_title') }}</h3>
+            <p>{{ __('ui.conversation_show_page.reassign_desc') }}</p>
             <div style="margin:12px 0 18px;">
                 <select x-model="reassignAgentId" class="form-control" data-no-ss>
-                    <option value="">Select agent...</option>
+                    <option value="">{{ __('ui.conversation_show_page.select_agent') }}</option>
                     @foreach($teamAgents as $agent)
                         <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" @click="showReassign = false">Cancel</button>
-                <button type="button" class="btn btn-primary" :disabled="!reassignAgentId || actionLoading" @click="reassign()">Confirm</button>
+                <button type="button" class="btn btn-outline" @click="showReassign = false">{{ __('ui.conversation_show_page.cancel') }}</button>
+                <button type="button" class="btn btn-primary" :disabled="!reassignAgentId || actionLoading" @click="reassign()">{{ __('ui.conversation_show_page.confirm') }}</button>
             </div>
         </div>
     </div>

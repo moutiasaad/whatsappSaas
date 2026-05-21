@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ $currentLocale ?? app()->getLocale() }}" dir="{{ in_array(app()->getLocale(), ['ar']) ? 'rtl' : 'ltr' }}">
+<html lang="{{ $currentLocale ?? app()->getLocale() }}" dir="{{ data_get(config('locales.supported', []), app()->getLocale() . '.rtl') ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1459,72 +1459,70 @@
         @auth
         <div class="sidebar-tenant">
             <div class="sidebar-tenant-avatar">
-                {{ strtoupper(substr(Auth::user()->isSuperAdmin() ? 'Platform' : (Auth::user()->tenant->name ?? 'Tenant'), 0, 1)) }}
+                {{ strtoupper(substr(Auth::user()->isSuperAdmin() ? __('ui.sidebar.platform_short') : (Auth::user()->tenant->name ?? __('ui.sidebar.tenant_short')), 0, 1)) }}
             </div>
             <div style="overflow:hidden;">
-                <div class="sidebar-tenant-name">{{ Auth::user()->isSuperAdmin() ? 'Platform Owner' : (Auth::user()->tenant->name ?? 'Tenant') }}</div>
-                <div class="sidebar-tenant-plan">{{ Auth::user()->isSuperAdmin() ? 'Global scope' : ucfirst(Auth::user()->tenant->subscription_status ?? 'trial') }}</div>
+                <div class="sidebar-tenant-name">{{ Auth::user()->isSuperAdmin() ? __('ui.sidebar.platform_owner_name') : (Auth::user()->tenant->name ?? __('ui.sidebar.tenant_short')) }}</div>
+                <div class="sidebar-tenant-plan">{{ Auth::user()->isSuperAdmin() ? __('ui.sidebar.global_scope') : ucfirst(Auth::user()->tenant->subscription_status ?? 'trial') }}</div>
             </div>
         </div>
         @endauth
 
         <nav class="sidebar-nav">
             @if(Auth::user()->isSuperAdmin())
-                <div class="sidebar-section-label">Platform Owner</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.platform_owner') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    Manages tenants, subscription plans, global settings, billing, and system health.
-                    Not scoped to any tenant. Lives in the Filament Super Admin panel.
+                    {{ __('ui.sidebar.platform_owner_desc') }}
                 </div>
             @elseif(Auth::user()->isAdmin())
-                <div class="sidebar-section-label">Tenant Admin</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.tenant_admin') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    Top role within a tenant. Manages users, teams, WhatsApp instances, AI settings, knowledge base.
-                    Can impersonate any user inside their tenant.
+                    {{ __('ui.sidebar.tenant_admin_desc') }}
                 </div>
             @elseif(Auth::user()->isSupervisor())
-                <div class="sidebar-section-label">Supervisor</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.supervisor') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    Manages one or more support teams. Sees all conversations of their team(s), can join, reassign, or release back to the pool.
+                    {{ __('ui.sidebar.supervisor_desc') }}
                 </div>
             @elseif(Auth::user()->isAgent())
-                <div class="sidebar-section-label">Support Agent</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.support_agent') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    Front-line operator. Claims conversations from the pool, replies, and closes them.
+                    {{ __('ui.sidebar.support_agent_desc') }}
                 </div>
             @else
-                <div class="sidebar-section-label">Workspace</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.workspace') }}</div>
             @endif
 
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                 <i class="ri-dashboard-3-line"></i>
-                <span>Dashboard</span>
+                <span>{{ __('ui.dashboard') }}</span>
             </a>
 
             @if(Auth::user()->isSuperAdmin())
             <a href="{{ route('admin.platform.tenants') }}" class="{{ request()->routeIs('admin.platform.tenants*') || request()->routeIs('super_admin.platform.tenants*') ? 'active' : '' }}">
                 <i class="ri-building-2-line"></i>
-                <span>Tenants</span>
+                <span>{{ __('ui.sidebar.tenants') }}</span>
             </a>
 
             <a href="{{ route('admin.platform.plans') }}" class="{{ request()->routeIs('admin.platform.plans*') || request()->routeIs('super_admin.platform.plans*') ? 'active' : '' }}">
                 <i class="ri-price-tag-3-line"></i>
-                <span>Subscription Plans</span>
+                <span>{{ __('ui.sidebar.subscription_plans') }}</span>
             </a>
 
             <a href="{{ route('admin.platform.global-settings') }}" class="{{ request()->routeIs('admin.platform.global-settings*') || request()->routeIs('super_admin.platform.global-settings*') ? 'active' : '' }}">
                 <i class="ri-global-line"></i>
-                <span>Global Settings</span>
+                <span>{{ __('ui.sidebar.global_settings') }}</span>
             </a>
 
             <a href="{{ route('admin.platform.system-health') }}" class="{{ request()->routeIs('admin.platform.system-health*') || request()->routeIs('super_admin.platform.system-health*') ? 'active' : '' }}">
                 <i class="ri-pulse-line"></i>
-                <span>System Health</span>
+                <span>{{ __('ui.sidebar.system_health') }}</span>
             </a>
             @endif
 
             <a href="{{ route('admin.conversations.index') }}" class="{{ request()->routeIs('admin.conversations.*') ? 'active' : '' }}">
                 <i class="ri-message-3-line"></i>
-                <span>Conversations</span>
+                <span>{{ __('ui.sidebar.conversations') }}</span>
                 @php
                     $poolCountQuery = \App\Models\Conversation::pool();
                     if(Auth::user()->isSupervisor() || Auth::user()->isAgent()) {
@@ -1539,65 +1537,65 @@
 
             <a href="{{ route('admin.customers.index') }}" class="{{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">
                 <i class="ri-contacts-line"></i>
-                <span>Customers</span>
+                <span>{{ __('ui.sidebar.customers') }}</span>
             </a>
 
             @if(Auth::user()->isSupervisor())
             <a href="{{ route('supervisor.teams.index') }}" class="{{ request()->routeIs('supervisor.teams.*') ? 'active' : '' }}">
                 <i class="ri-team-line"></i>
-                <span>Teams</span>
+                <span>{{ __('ui.sidebar.teams') }}</span>
             </a>
             @endif
 
             @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
-            <div class="sidebar-section-label">Management</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
 
             <a href="{{ route('admin.instances.index') }}" class="{{ request()->routeIs('admin.instances.*') ? 'active' : '' }}">
                 <i class="ri-smartphone-line"></i>
-                <span>WhatsApp Instances</span>
+                <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
             </a>
 
             <a href="{{ route('admin.teams.index') }}" class="{{ request()->routeIs('admin.teams.*') ? 'active' : '' }}">
                 <i class="ri-team-line"></i>
-                <span>Teams</span>
+                <span>{{ __('ui.sidebar.teams') }}</span>
             </a>
 
             <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                 <i class="ri-user-settings-line"></i>
-                <span>Agents & Users</span>
+                <span>{{ __('ui.sidebar.agents_users') }}</span>
             </a>
 
             @if(Auth::user()->isAdmin())
-                <div class="sidebar-section-label">AI & Knowledge</div>
+                <div class="sidebar-section-label">{{ __('ui.sidebar.ai_knowledge') }}</div>
 
                 <a href="{{ route('admin.knowledge.index') }}" class="{{ request()->routeIs('admin.knowledge.*') ? 'active' : '' }}">
                     <i class="ri-book-2-line"></i>
-                    <span>Knowledge Base</span>
+                    <span>{{ __('ui.sidebar.knowledge_base') }}</span>
                 </a>
 
                 <a href="{{ route('admin.ai-settings.index') }}" class="{{ request()->routeIs('admin.ai-settings.*') ? 'active' : '' }}">
                     <i class="ri-sparkling-2-line"></i>
-                    <span>AI Settings</span>
+                    <span>{{ __('ui.sidebar.ai_settings') }}</span>
                 </a>
             @endif
 
-            <div class="sidebar-section-label">Account</div>
+            <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
 
             <a href="{{ route('admin.audit-log.index') }}" class="{{ request()->routeIs('admin.audit-log.*') ? 'active' : '' }}">
                 <i class="ri-file-list-3-line"></i>
-                <span>Audit Log</span>
+                <span>{{ __('ui.sidebar.audit_log') }}</span>
             </a>
 
             @if(Auth::user()->isSuperAdmin())
                 <a href="{{ route('admin.billing.index') }}" class="{{ request()->routeIs('admin.billing.*') ? 'active' : '' }}">
                     <i class="ri-bank-card-line"></i>
-                    <span>Billing</span>
+                    <span>{{ __('ui.sidebar.billing') }}</span>
                 </a>
             @endif
 
             <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                 <i class="ri-settings-3-line"></i>
-                <span>Settings</span>
+                <span>{{ __('ui.sidebar.settings') }}</span>
             </a>
             @endif
         </nav>
@@ -1611,7 +1609,7 @@
                 </div>
                 <div class="sidebar-user-info">
                     <div class="sidebar-user-name">{{ Auth::user()->name }}</div>
-                    <div class="sidebar-user-role">{{ str_replace('_', ' ', Auth::user()->role) }}</div>
+                    <div class="sidebar-user-role">{{ __('ui.roles.' . Auth::user()->role, ['role' => str_replace('_', ' ', Auth::user()->role)]) }}</div>
                 </div>
                 <div class="sidebar-user-actions">
                     <form method="POST" action="{{ route('logout') }}">
@@ -1742,7 +1740,7 @@
 
     {{-- BULK BAR --}}
     <div class="bulk-bar" id="bulkBar">
-        <span class="bulk-count">0 selected</span>
+        <span class="bulk-count">{{ __('ui.bulk_selected_zero', ['count' => 0]) }}</span>
         <span class="bulk-sep">|</span>
         <div class="bulk-actions" id="bulkActions"></div>
         <button type="button" class="bulk-close" onclick="closeBulkBar()">
@@ -1844,7 +1842,7 @@
             if (useSearch) {
                 searchRow = document.createElement('div');
                 searchRow.className = 'ss-search-row';
-                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="Filter..." autocomplete="off"></div>';
+                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="{{ __('ui.select_filter_hint') }}" autocomplete="off"></div>';
             }
 
             var list = document.createElement('div');
@@ -1930,7 +1928,7 @@
                 });
                 var emptyEl = list.querySelector('.ss-empty');
                 if (!visible) {
-                    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'ss-empty'; emptyEl.textContent = 'No results found'; list.appendChild(emptyEl); }
+                    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'ss-empty'; emptyEl.textContent = @json(__('ui.select_no_results')); list.appendChild(emptyEl); }
                     emptyEl.style.display = '';
                 } else if (emptyEl) { emptyEl.style.display = 'none'; }
             }
@@ -2111,8 +2109,8 @@
 
     function confirmDirtyNavigation(callback) {
         confirmSend({
-            title: 'Leave this page?',
-            message: 'Your unsaved changes will be lost.',
+            title: @json(__('ui.leave_page_prompt')),
+            message: @json(__('ui.unsaved_changes_warning')),
             callback: function () {
                 allowDirtyNavigation = true;
                 formDirty = false;
@@ -2157,7 +2155,7 @@
         let selected = new Set();
 
         function update() {
-            countEl.textContent = selected.size + ' selected';
+            countEl.textContent = selected.size + ' ' + @json(__('ui.selected_items'));
             bar.classList.toggle('visible', selected.size > 0);
         }
 
@@ -2230,7 +2228,7 @@
                 '<i class="' + arrowCls + '" style="font-size:14px;color:' + (active ? 'var(--brand)' : 'var(--text-muted)') + '"></i>' +
             '</div>' +
             '<input type="text" class="col-filter" data-col="' + col + '" value="' + (filterVal.replace ? filterVal.replace(/"/g, '&quot;') : '') + '" ' +
-                'placeholder="Filter…" onclick="event.stopPropagation()" ' +
+                'placeholder="{{ __('ui.select_filter_hint') }}" onclick="event.stopPropagation()" ' +
                 'style="margin-top:4px;width:100%;height:26px;padding:0 6px;font-size:11px;border:1px solid var(--card-border);border-radius:var(--radius-sm);background:var(--page-bg);color:var(--text-primary);outline:none;font-family:inherit;" ' +
                 'onfocus="this.style.borderColor=\'var(--brand)\'" onblur="this.style.borderColor=\'var(--card-border)\'">' +
         '</th>';

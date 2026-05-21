@@ -21,7 +21,7 @@ class TeamController extends Controller
         }
 
         $isMember = $team->users()->where('users.id', $user->id)->exists();
-        abort_unless($isMember, 403, 'You are not allowed to manage this team.');
+        abort_unless($isMember, 403, __('ui.controller_messages.not_allowed_to_manage_team'));
     }
 
     private function scopedUsers()
@@ -44,7 +44,7 @@ class TeamController extends Controller
         $validIds = $this->scopedUsers()->whereIn('id', $memberIds)->pluck('id')->all();
 
         if (count($validIds) !== count($memberIds)) {
-            abort(422, 'One or more selected team members are invalid.');
+            abort(422, __('ui.controller_messages.invalid_selected_team_members'));
         }
 
         return $validIds;
@@ -129,7 +129,7 @@ class TeamController extends Controller
         AuditLog::record('team.created', $team);
 
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
-            ->with('success', "Team \"{$team->name}\" created.");
+            ->with('success', __('ui.controller_messages.team_created', ['name' => $team->name]));
     }
 
     public function edit(Team $team)
@@ -174,7 +174,7 @@ class TeamController extends Controller
         AuditLog::record('team.updated', $team);
 
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
-            ->with('success', 'Team updated.');
+            ->with('success', __('ui.controller_messages.team_updated'));
     }
 
     public function destroy(Team $team)
@@ -182,7 +182,7 @@ class TeamController extends Controller
         AuditLog::record('team.deleted', $team, ['name' => $team->name]);
         $team->delete();
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
-            ->with('success', "Team \"{$team->name}\" deleted.");
+            ->with('success', __('ui.controller_messages.team_deleted', ['name' => $team->name]));
     }
 
     public function bulk(Request $request)
@@ -199,7 +199,7 @@ class TeamController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
-            return back()->with('error', 'No teams selected.');
+            return back()->with('error', __('ui.controller_messages.no_teams_selected'));
         }
 
         $query = Team::query()->whereIn('id', $ids);
@@ -210,14 +210,19 @@ class TeamController extends Controller
         $teams = $query->get();
 
         if ($teams->isEmpty()) {
-            return back()->with('error', 'No valid teams selected.');
+            return back()->with('error', __('ui.controller_messages.no_valid_teams_selected'));
         }
 
         if ($data['action'] !== 'delete') {
             $enable = $data['action'] === 'enable';
             Team::whereIn('id', $teams->pluck('id'))->update(['is_active' => $enable]);
 
-            return back()->with('success', $teams->count() . ' team(s) ' . ($enable ? 'enabled.' : 'disabled.'));
+            return back()->with(
+                'success',
+                $enable
+                    ? __('ui.controller_messages.teams_enabled', ['count' => $teams->count()])
+                    : __('ui.controller_messages.teams_disabled', ['count' => $teams->count()])
+            );
         }
 
         foreach ($teams as $team) {
@@ -225,6 +230,6 @@ class TeamController extends Controller
             $team->delete();
         }
 
-        return back()->with('success', $teams->count() . ' team(s) deleted.');
+        return back()->with('success', __('ui.controller_messages.teams_deleted', ['count' => $teams->count()]));
     }
 }

@@ -9,6 +9,6 @@ abstract class Controller
     protected function currentTenant(): \App\Models\Tenant
     {
         return \App\Models\Tenant::find(auth()->user()->tenant_id)
-            ?? abort(403, 'No tenant associated with your account.');
+            ?? abort(403, __('ui.controller_messages.no_tenant_associated'));
     }
 }

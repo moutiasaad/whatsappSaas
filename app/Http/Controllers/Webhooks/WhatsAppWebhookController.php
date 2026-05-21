@@ -21,11 +21,13 @@ class WhatsAppWebhookController extends Controller
             return response('', 401);
         }
 
+        $payload = $request->all();
+
         $event = WebhookEvent::create([
             'tenant_id'  => $instance->tenant_id,
             'instance_id'=> $instance->id,
-            'event_type' => $request->input('event', 'unknown'),
-            'payload'    => $request->all(),
+            'event_type' => $this->eventType($payload),
+            'payload'    => $payload,
         ]);
 
         ProcessIncomingMessage::dispatch($event)->onQueue('whatsapp');
@@ -41,5 +43,16 @@ class WhatsAppWebhookController extends Controller
         $expected  = hash_hmac('sha256', $request->getContent(), $instance->webhook_secret);
 
         return hash_equals($expected, $signature);
+    }
+
+    private function eventType(array $payload): string
+    {
+        $event = data_get($payload, 'event')
+            ?? data_get($payload, 'type')
+            ?? data_get($payload, 'eventType')
+            ?? data_get($payload, 'name')
+            ?? 'unknown';
+
+        return strtolower(trim((string) $event));
     }
 }

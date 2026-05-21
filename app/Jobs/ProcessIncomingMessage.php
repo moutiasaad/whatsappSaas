@@ -34,9 +34,16 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        match ($payload['event'] ?? '') {
-            'message.received'   => $this->handleMessage($payload, $instance, $convService, $aiService),
-            'connection.update'  => $this->handleConnectionUpdate($payload, $instance),
+        match ($this->normalizedEvent($payload)) {
+            'message.received',
+            'messages.upsert',
+            'messagesupsert'     => $this->handleMessage($payload, $instance, $convService, $aiService),
+            'connection.update',
+            'connectionupdated',
+            'status.instance',
+            'statusinstance',
+            'qrcode.updated',
+            'qrcodeupdated'      => $this->handleConnectionUpdate($payload, $instance),
             default              => null,
         };
 
@@ -45,11 +52,15 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function handleMessage(array $payload, $instance, ConversationService $convService, AutoReplyService $aiService): void
     {
-        $msg     = $payload['message'] ?? [];
-        $contact = $payload['contact'] ?? [];
-        $from    = $msg['from'] ?? '';
+        $msg     = $this->extractMessage($payload);
+        $contact = $this->extractContact($payload, $msg);
+        $from    = $this->extractFrom($payload, $msg);
 
         if (!$from) return;
+
+        if ($this->isFromMe($msg)) {
+            return;
+        }
 
         $conversation = $convService->findOrCreateForIncoming(
             $instance, $from, $contact['name'] ?? ''
@@ -61,10 +72,15 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         // Deduplication
-        $extId = $msg['id'] ?? null;
+        $extId = $this->extractExternalId($payload, $msg);
         if ($extId && Message::where('tenant_id', $instance->tenant_id)->where('external_message_id', $extId)->exists()) {
             return;
         }
+
+        $body = $this->extractText($msg);
+        $mediaUrl = $this->extractMediaUrl($msg);
+        $mediaMime = $this->extractMediaMime($msg);
+        $type = $this->extractType($msg, $body, $mediaUrl);
 
         $message = Message::create([
             'conversation_id'    => $conversation->id,
@@ -72,14 +88,12 @@ class ProcessIncomingMessage implements ShouldQueue
             'direction'          => 'in',
             'author_type'        => 'customer',
             'external_message_id'=> $extId,
-            'type'               => $msg['type'] ?? 'text',
-            'body'               => $msg['text'] ?? null,
-            'media_url'          => $msg['media_url'] ?? null,
-            'media_mime'         => $msg['media_mime'] ?? null,
+            'type'               => $type,
+            'body'               => $body,
+            'media_url'          => $mediaUrl,
+            'media_mime'         => $mediaMime,
             'status'             => 'delivered',
-            'sent_at'            => isset($payload['timestamp'])
-                                        ? Carbon::createFromTimestamp($payload['timestamp'])
-                                        : now(),
+            'sent_at'            => $this->extractTimestamp($payload, $msg),
         ]);
 
         $conversation->increment('unread_count');
@@ -95,14 +109,212 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function handleConnectionUpdate(array $payload, $instance): void
     {
-        $status = match($payload['state'] ?? '') {
-            'open'       => 'connected',
+        $status = match($this->extractConnectionState($payload)) {
+            'open', 'online', 'connected' => 'connected',
             'connecting' => 'connecting',
             default      => 'disconnected',
         };
 
         $instance->update(['status' => $status, 'last_status_at' => now()]);
         broadcast(new \App\Events\InstanceStatusChanged($instance->fresh()));
+    }
+
+    private function normalizedEvent(array $payload): string
+    {
+        return strtolower(str_replace([' ', '_'], ['.', '.'], (string) (
+            data_get($payload, 'event')
+            ?? data_get($payload, 'type')
+            ?? data_get($payload, 'eventType')
+            ?? data_get($payload, 'name')
+            ?? $this->webhookEvent->event_type
+            ?? 'unknown'
+        )));
+    }
+
+    private function extractMessage(array $payload): array
+    {
+        $candidates = [
+            data_get($payload, 'message'),
+            data_get($payload, 'data.message'),
+            data_get($payload, 'messages.0'),
+            data_get($payload, 'data.messages.0'),
+            data_get($payload, 'messageData'),
+            $payload,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate) && !empty($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return [];
+    }
+
+    private function extractContact(array $payload, array $msg): array
+    {
+        $name = data_get($payload, 'contact.name')
+            ?? data_get($payload, 'data.contact.name')
+            ?? data_get($msg, 'pushName')
+            ?? data_get($msg, 'senderName')
+            ?? data_get($msg, 'contact.name')
+            ?? '';
+
+        return ['name' => is_string($name) ? trim($name) : ''];
+    }
+
+    private function extractFrom(array $payload, array $msg): ?string
+    {
+        $raw = data_get($msg, 'from')
+            ?? data_get($msg, 'key.remoteJid')
+            ?? data_get($msg, 'remoteJid')
+            ?? data_get($payload, 'from')
+            ?? data_get($payload, 'data.from')
+            ?? data_get($payload, 'key.remoteJid');
+
+        if (!is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+
+        $raw = trim($raw);
+        $raw = preg_replace('/@.*/', '', $raw) ?: $raw;
+        $raw = preg_replace('/\D+/', '', $raw) ?: $raw;
+
+        return $raw !== '' ? $raw : null;
+    }
+
+    private function isFromMe(array $msg): bool
+    {
+        return (bool) data_get($msg, 'fromMe')
+            || (bool) data_get($msg, 'key.fromMe')
+            || (bool) data_get($msg, 'keyFromMe');
+    }
+
+    private function extractExternalId(array $payload, array $msg): ?string
+    {
+        $id = data_get($msg, 'id')
+            ?? data_get($msg, 'key.id')
+            ?? data_get($msg, 'keyId')
+            ?? data_get($payload, 'id')
+            ?? data_get($payload, 'data.id');
+
+        return is_string($id) || is_int($id) ? (string) $id : null;
+    }
+
+    private function extractText(array $msg): ?string
+    {
+        $candidates = [
+            data_get($msg, 'text'),
+            data_get($msg, 'body'),
+            data_get($msg, 'content.text'),
+            data_get($msg, 'message.conversation'),
+            data_get($msg, 'message.extendedTextMessage.text'),
+            data_get($msg, 'message.imageMessage.caption'),
+            data_get($msg, 'message.videoMessage.caption'),
+            data_get($msg, 'message.documentMessage.caption'),
+            data_get($msg, 'extendedTextMessage.text'),
+            data_get($msg, 'imageMessage.caption'),
+            data_get($msg, 'videoMessage.caption'),
+            data_get($msg, 'documentMessage.caption'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractMediaUrl(array $msg): ?string
+    {
+        $candidates = [
+            data_get($msg, 'media_url'),
+            data_get($msg, 'mediaUrl'),
+            data_get($msg, 'content.url'),
+            data_get($msg, 'message.imageMessage.url'),
+            data_get($msg, 'message.videoMessage.url'),
+            data_get($msg, 'message.documentMessage.url'),
+            data_get($msg, 'message.audioMessage.url'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractMediaMime(array $msg): ?string
+    {
+        $candidates = [
+            data_get($msg, 'media_mime'),
+            data_get($msg, 'mediaMime'),
+            data_get($msg, 'content.mimetype'),
+            data_get($msg, 'message.imageMessage.mimetype'),
+            data_get($msg, 'message.videoMessage.mimetype'),
+            data_get($msg, 'message.documentMessage.mimetype'),
+            data_get($msg, 'message.audioMessage.mimetype'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractType(array $msg, ?string $body, ?string $mediaUrl): string
+    {
+        $type = strtolower((string) (
+            data_get($msg, 'type')
+            ?? data_get($msg, 'messageType')
+            ?? data_get($msg, 'contentType')
+            ?? ''
+        ));
+
+        if ($type !== '') {
+            return match (true) {
+                str_contains($type, 'image') => 'image',
+                str_contains($type, 'video') => 'video',
+                str_contains($type, 'audio') => 'audio',
+                str_contains($type, 'document') => 'document',
+                default => $body ? 'text' : ($mediaUrl ? 'document' : 'text'),
+            };
+        }
+
+        return $body ? 'text' : ($mediaUrl ? 'document' : 'text');
+    }
+
+    private function extractTimestamp(array $payload, array $msg): Carbon
+    {
+        $timestamp = data_get($msg, 'messageTimestamp')
+            ?? data_get($msg, 'timestamp')
+            ?? data_get($payload, 'timestamp')
+            ?? data_get($payload, 'messageTimestamp');
+
+        if (is_numeric($timestamp)) {
+            return Carbon::createFromTimestamp((int) $timestamp);
+        }
+
+        return now();
+    }
+
+    private function extractConnectionState(array $payload): string
+    {
+        return strtolower((string) (
+            data_get($payload, 'state')
+            ?? data_get($payload, 'connectionStatus')
+            ?? data_get($payload, 'status')
+            ?? data_get($payload, 'data.state')
+            ?? data_get($payload, 'data.connectionStatus')
+            ?? ''
+        ));
     }
 
     public function failed(\Throwable $e): void

@@ -181,3 +181,94 @@ Validation performed:
    - `php artisan optimize:clear`
    - `php artisan view:cache` (if environment temp file warning is resolved)
 3. Normalize remaining hardcoded `admin.*` routes in older blades (especially team create/edit and other legacy pages) to `routeNamePrefix()` pattern where needed.
+
+---
+
+## Session Handoff (May 21, 2026 - WhatsApp gateway / instances / QR)
+
+### WhatsApp gateway contract now used by this app
+
+The current WhatsApp provider is the API exposed at:
+
+- `https://api.whatstshl.online`
+
+This is the iStoreBox WhatsApp API contract, not the older Evolution-only flow.
+
+Relevant endpoints already wired in the app:
+
+- `POST /instance/create`
+- `GET /instance/connect/{instanceName}`
+- `GET /instance/fetchInstance/{instanceName}`
+- `PUT /webhook/set/{instanceName}`
+- `POST /message/sendText/{instanceName}`
+- `POST /message/sendMedia/{instanceName}`
+- `DELETE /instance/delete/{instanceName}`
+
+Auth:
+
+- API key header: `apikey`
+
+### QR / connect behavior
+
+The QR flow was simplified to match the faster behavior observed in the Sultankoo reference project:
+
+- `connect()` now only creates the gateway instance if needed and fetches the QR.
+- Webhook registration is no longer done inside the QR connect path.
+- `status()` now sets the webhook only after the gateway reports the instance as connected.
+- The QR modal on the instances page no longer re-POSTs `/api/instances/{id}/connect` in a timer loop.
+- If the instance already has a cached QR code and is still `connecting` / `qr_pending`, the connect endpoint returns the cached QR immediately.
+
+### Instance status / phone number sync
+
+Status refresh now does more than flip connected/disconnected:
+
+- It fetches the full gateway instance payload.
+- It maps gateway states like `open`, `online`, `connected` to local `connected`.
+- It extracts the owner phone from gateway fields such as:
+  - `ownerJid`
+  - `number`
+  - `me.jid`
+  - `me.id`
+- The extracted phone is stored in `whatsapp_instances.phone_number`.
+
+This fixes the case where the UI showed:
+
+- `Connectée`
+- but still displayed `Aucun numéro`
+
+### Instance deletion
+
+The instances list now has a delete action in addition to logout/logout-like disconnect:
+
+- `resources/views/admin/instances/index.blade.php`
+  - delete icon added in the row actions
+  - uses the shared delete modal
+- `app/Http/Controllers/Admin/InstanceWebController.php`
+  - `destroy()` now tries to delete the remote gateway instance first
+  - then deletes the local `WhatsAppInstance` record
+
+### Current operational expectations
+
+For a local test to work end-to-end:
+
+1. Create instance.
+2. Click Connect once.
+3. Scan the QR with the business/agent WhatsApp account.
+4. Wait for status to become connected.
+5. Click refresh status if needed so the phone number syncs.
+6. Ensure `php artisan queue:work` is running.
+7. Ensure `php artisan schedule:work` is running.
+8. Use a second WhatsApp number as the customer for conversation tests.
+
+### Files changed in this phase
+
+- `app/Services/WhatsApp/Gateway/EvolutionApiClient.php`
+- `app/Http/Controllers/Api/InstanceController.php`
+- `app/Http/Controllers/Admin/InstanceWebController.php`
+- `resources/views/admin/instances/index.blade.php`
+
+### Notes
+
+- The instances page should not keep hammering `/api/instances/{id}/connect`.
+- If QR is still slow, the remaining bottleneck is the gateway response time itself, not the frontend retry loop.
+- If the number still does not appear after connected, inspect one real `fetchInstance` JSON response and map the phone field explicitly if the gateway version differs.

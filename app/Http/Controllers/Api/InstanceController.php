@@ -41,10 +41,17 @@ class InstanceController extends Controller
         try {
             $gateway = $this->gateway($instance);
 
+            if ($instance->qr_code && in_array($instance->status, ['connecting', 'qr_pending'], true)) {
+                return response()->json([
+                    'qr_code' => $instance->qr_code,
+                    'status'  => $instance->status,
+                ]);
+            }
+
             if (!$instance->gateway_instance_id) {
                 $result = $gateway->createInstance($instance->name);
                 $instance->update([
-                    'gateway_instance_id' => $result['instance']['instanceId'] ?? $result['instanceName'] ?? $instance->name,
+                    'gateway_instance_id' => $result['name'] ?? $result['instance']['instanceId'] ?? $result['instanceName'] ?? $instance->name,
                 ]);
             }
 
@@ -61,8 +68,34 @@ class InstanceController extends Controller
     public function status(WhatsAppInstance $instance): JsonResponse
     {
         try {
-            $status = $this->gateway($instance)->getStatus($instance->gateway_instance_id);
-            $instance->update(['status' => $status, 'last_status_at' => now()]);
+            $gateway = $this->gateway($instance);
+            $details = $gateway->fetchInstance($instance->gateway_instance_id);
+            $status = $gateway->getStatus($instance->gateway_instance_id);
+            $phoneNumber = $this->extractPhoneNumber($details);
+
+            if ($status === 'connected' && ! $instance->webhook_enabled) {
+                try {
+                    $gateway->setWebhook(
+                        $instance->gateway_instance_id,
+                        $this->webhookUrl($instance),
+                        $this->defaultWebhookEvents()
+                    );
+
+                    $instance->update([
+                        'webhook_enabled'   => true,
+                        'webhook_url'       => $this->webhookUrl($instance),
+                        'webhook_last_set'  => now(),
+                    ]);
+                } catch (\Throwable $webhookException) {
+                    report($webhookException);
+                }
+            }
+
+            $instance->update(array_filter([
+                'status' => $status,
+                'phone_number' => $phoneNumber ?: $instance->phone_number,
+                'last_status_at' => now(),
+            ], fn ($value) => $value !== null));
             broadcast(new InstanceStatusChanged($instance->fresh()));
             return response()->json([
                 'status'   => $status,
@@ -84,5 +117,62 @@ class InstanceController extends Controller
     private function gateway(WhatsAppInstance $instance): EvolutionApiClient
     {
         return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+    }
+
+    private function defaultWebhookEvents(): array
+    {
+        return [
+            'qrcodeUpdated' => true,
+            'messagesSet' => false,
+            'messagesUpsert' => true,
+            'messagesUpdated' => true,
+            'sendMessage' => true,
+            'contactsSet' => true,
+            'contactsUpsert' => true,
+            'contactsUpdated' => true,
+            'chatsSet' => false,
+            'chatsUpsert' => true,
+            'chatsUpdated' => true,
+            'chatsDeleted' => true,
+            'presenceUpdated' => true,
+            'groupsUpsert' => true,
+            'groupsUpdated' => true,
+            'groupsParticipantsUpdated' => true,
+            'connectionUpdated' => true,
+            'statusInstance' => true,
+            'refreshToken' => true,
+        ];
+    }
+
+    private function webhookUrl(WhatsAppInstance $instance): string
+    {
+        $base = rtrim((string) config('services.whatsapp.webhook_base_url', config('app.url')), '/');
+
+        return "{$base}/api/webhooks/whatsapp/{$instance->webhook_token}";
+    }
+
+    private function extractPhoneNumber(array $details): ?string
+    {
+        $candidate = data_get($details, 'ownerJid')
+            ?? data_get($details, 'instance.ownerJid')
+            ?? data_get($details, 'number')
+            ?? data_get($details, 'instance.number')
+            ?? data_get($details, 'me.jid')
+            ?? data_get($details, 'instance.me.jid')
+            ?? data_get($details, 'me.id')
+            ?? data_get($details, 'instance.me.id');
+
+        if (!is_string($candidate) || trim($candidate) === '') {
+            return null;
+        }
+
+        $candidate = preg_replace('/[^0-9@]/', '', $candidate);
+        if (!$candidate) {
+            return null;
+        }
+
+        return str_contains($candidate, '@')
+            ? preg_replace('/@.*$/', '', $candidate)
+            : $candidate;
     }
 }

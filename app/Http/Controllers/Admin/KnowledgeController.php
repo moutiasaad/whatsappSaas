@@ -40,7 +40,7 @@ class KnowledgeController extends Controller
         AuditLog::record('knowledge.created', $entry);
 
         return redirect()->route('admin.knowledge.index')
-            ->with('success', 'Knowledge entry created.');
+            ->with('success', __('ui.controller_messages.knowledge_created'));
     }
 
     public function edit(KnowledgeEntry $entry)
@@ -61,7 +61,7 @@ class KnowledgeController extends Controller
         AuditLog::record('knowledge.updated', $entry);
 
         return redirect()->route('admin.knowledge.index')
-            ->with('success', 'Entry updated.');
+            ->with('success', __('ui.controller_messages.knowledge_updated'));
     }
 
     public function destroy(KnowledgeEntry $entry)
@@ -69,6 +69,6 @@ class KnowledgeController extends Controller
         AuditLog::record('knowledge.deleted', $entry, ['title' => $entry->title]);
         $entry->delete();
         return redirect()->route('admin.knowledge.index')
-            ->with('success', 'Entry deleted.');
+            ->with('success', __('ui.controller_messages.knowledge_deleted'));
     }
 }

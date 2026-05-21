@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
-@section('title', 'WhatsApp Instances')
+@section('title', __('ui.instances_page.title'))
 
 @section('breadcrumb')
-    <span>Instances</span>
+    <span>{{ __('ui.instances_page.breadcrumb') }}</span>
 @endsection
 
 @section('content')
@@ -11,12 +11,12 @@
 
     <div class="page-header">
         <div class="page-header-left">
-            <div class="page-title">WhatsApp Instances</div>
-            <div class="page-subtitle">Manage your WhatsApp connections</div>
+            <div class="page-title">{{ __('ui.instances_page.title') }}</div>
+            <div class="page-subtitle">{{ __('ui.instances_page.subtitle') }}</div>
         </div>
         <div class="page-header-actions">
             <a href="{{ route('admin.instances.create') }}" class="btn btn-primary">
-                <i class="ri-add-line"></i> New Instance
+                <i class="ri-add-line"></i> {{ __('ui.instances_page.new_instance') }}
             </a>
         </div>
     </div>
@@ -25,17 +25,17 @@
         <div class="stat-card">
             <div class="stat-card-icon"><i class="ri-check-line"></i></div>
             <div class="stat-card-value">{{ $instances->where('status', 'connected')->count() }}</div>
-            <div class="stat-card-label">Connected</div>
+            <div class="stat-card-label">{{ __('ui.instances_page.connected') }}</div>
         </div>
         <div class="stat-card orange">
             <div class="stat-card-icon"><i class="ri-loader-4-line"></i></div>
             <div class="stat-card-value">{{ $instances->whereIn('status', ['connecting', 'qr_pending'])->count() }}</div>
-            <div class="stat-card-label">Connecting</div>
+            <div class="stat-card-label">{{ __('ui.instances_page.connecting') }}</div>
         </div>
         <div class="stat-card red">
             <div class="stat-card-icon"><i class="ri-wifi-off-line"></i></div>
             <div class="stat-card-value">{{ $instances->whereIn('status', ['disconnected', 'error', 'banned'])->count() }}</div>
-            <div class="stat-card-label">Offline</div>
+            <div class="stat-card-label">{{ __('ui.instances_page.offline') }}</div>
         </div>
     </div>
 
@@ -45,17 +45,17 @@
                 <div class="empty-state-icon">
                     <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
                 </div>
-                <h4>No instances yet</h4>
-                <p>Add your first WhatsApp instance to start receiving messages</p>
-                <a href="{{ route('admin.instances.create') }}" class="btn btn-primary">Add Instance</a>
+                <h4>{{ __('ui.instances_page.no_instances_yet') }}</h4>
+                <p>{{ __('ui.instances_page.no_instances_desc') }}</p>
+                <a href="{{ route('admin.instances.create') }}" class="btn btn-primary">{{ __('ui.instances_page.add_instance') }}</a>
             </div>
         </div>
     @else
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">Instances</div>
-                    <div class="card-subtitle">Overview of WhatsApp connections, sync state, and quick actions</div>
+                    <div class="card-title">{{ __('ui.instances_page.instances') }}</div>
+                    <div class="card-subtitle">{{ __('ui.instances_page.overview') }}</div>
                 </div>
             </div>
 
@@ -63,12 +63,12 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Instance</th>
-                            <th>Gateway</th>
-                            <th>Phone</th>
-                            <th>Activity</th>
-                            <th>Status</th>
-                            <th style="text-align:right">Actions</th>
+                            <th>{{ __('ui.instances_page.instance') }}</th>
+                            <th>{{ __('ui.instances_page.gateway') }}</th>
+                            <th>{{ __('ui.instances_page.phone') }}</th>
+                            <th>{{ __('ui.instances_page.activity') }}</th>
+                            <th>{{ __('ui.instances_page.status') }}</th>
+                            <th style="text-align:right">{{ __('ui.instances_page.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -81,39 +81,39 @@
                                     </div>
                                     <div>
                                         <div style="font-weight:600;font-size:.9375rem">{{ $instance->name }}</div>
-                                        <div style="font-size:.75rem;color:var(--text-muted)">{{ $instance->phone_number ?? 'No number' }}</div>
+                                        <div style="font-size:.75rem;color:var(--text-muted)">{{ $instance->phone_number ?? __('ui.instances_page.no_number') }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td>{{ ucfirst(str_replace('_', ' ', $instance->gateway)) }}</td>
                             <td>{{ $instance->phone_number ?? '—' }}</td>
-                            <td>{{ $instance->last_message_at?->diffForHumans() ?? 'Never' }}</td>
+                            <td>{{ $instance->last_message_at?->diffForHumans() ?? __('ui.instances_page.never') }}</td>
                             <td>
                                 <span :class="statusBadge(status)" style="display:inline-flex;align-items:center;gap:.35rem">
                                     <span class="status-dot" :class="statusDot(status)" style="width:.4rem;height:.4rem"></span>
-                                    <span x-text="status.replace('_',' ')"></span>
+                                    <span x-text="statusLabel(status)"></span>
                                 </span>
                             </td>
                             <td>
                                 <div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap">
                                     <template x-if="status === 'disconnected' || status === 'error'">
                                         <button @click="connect({{ $instance->id }}, '{{ addslashes($instance->name) }}')" :disabled="loading" class="btn btn-primary btn-sm">
-                                            <span x-show="!loading">Connect</span>
-                                            <span x-show="loading">Connecting...</span>
+                                            <span x-show="!loading">{{ __('ui.instances_page.connect') }}</span>
+                                            <span x-show="loading">{{ __('ui.instances_page.connecting_ellipsis') }}</span>
                                         </button>
                                     </template>
 
                                     <template x-if="status === 'qr_pending' || status === 'connecting'">
                                         <button @click="showQrCode({{ $instance->id }}, '{{ addslashes($instance->name) }}')" class="btn btn-outline btn-sm">
                                             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01M18 14h.01M14 18h.01M18 18h.01"/></svg>
-                                            Show QR
+                                            {{ __('ui.instances_page.show_qr') }}
                                         </button>
                                     </template>
 
                                     <template x-if="status === 'connected'">
                                         <button @click="checkStatus({{ $instance->id }})" class="btn btn-outline btn-sm">
                                             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                                            Refresh
+                                            {{ __('ui.instances_page.refresh') }}
                                         </button>
                                     </template>
 
@@ -121,8 +121,17 @@
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </a>
 
-                                    <button @click="logoutInstance({{ $instance->id }}, '{{ $instance->name }}')" class="btn btn-ghost btn-icon" title="Logout" style="color:#ef4444">
+                                    <button @click="logoutInstance({{ $instance->id }}, '{{ $instance->name }}')" class="btn btn-ghost btn-icon" title="{{ __('ui.instances_page.logout') }}" style="color:#ef4444">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="confirmDelete('{{ route('admin.instances.destroy', $instance) }}', { title: @js(__('ui.instance_edit_page.delete_prompt', ['name' => $instance->name])), message: @js(__('ui.instance_edit_page.delete_warning')) })"
+                                        class="btn btn-ghost btn-icon"
+                                        title="{{ __('ui.instance_edit_page.delete_instance') }}"
+                                        style="color:#ef4444">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                                     </button>
                                 </div>
                             </td>
@@ -135,11 +144,11 @@
     @endif
 
     <div class="modal-overlay" :class="qr.show ? 'show' : ''" role="dialog" aria-modal="true"
-         @click.self="qr.show = false" @keydown.escape.window="qr.show = false">
+         @click.self="closeQr()" @keydown.escape.window="closeQr()">
         <div class="modal-box" style="width:min(430px,calc(100vw - 32px));max-width:430px">
             <div class="modal-icon info"><i class="ri-qr-code-line"></i></div>
-            <h3>Scan QR Code</h3>
-            <p x-text="qr.instanceName ? qr.instanceName : 'Open WhatsApp and link this device'"></p>
+            <h3>{{ __('ui.instances_page.scan_qr_code') }}</h3>
+            <p x-text="qr.instanceName ? qr.instanceName : @js(__('ui.instances_page.open_whatsapp'))"></p>
 
             <div style="margin:1rem 0 1.25rem;display:flex;align-items:center;justify-content:center;min-height:240px">
                 <div x-show="qr.data && isQrImage(qr.data)" style="background:#fff;padding:1rem;border-radius:1rem;border:1px solid var(--card-border);box-shadow:0 8px 24px rgba(15,23,42,.08)">
@@ -147,16 +156,16 @@
                 </div>
                 <div x-show="!qr.data || !isQrImage(qr.data)" style="display:flex;flex-direction:column;align-items:center;gap:.875rem;color:var(--text-muted);text-align:center">
                     <div class="spinner" style="width:2.5rem;height:2.5rem;border-width:3px"></div>
-                    <span style="font-size:.8125rem" x-text="qr.data ? 'Gateway returned a non-image QR payload.' : 'Generating QR code...'"></span>
+                    <span style="font-size:.8125rem" x-text="qr.data ? @js(__('ui.instances_page.non_image_payload')) : @js(__('ui.instances_page.generating_qr'))"></span>
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button class="btn btn-outline" @click="qr.show = false">
-                    <i class="ri-close-line"></i> Close
+                <button class="btn btn-outline" @click="closeQr()">
+                    <i class="ri-close-line"></i> {{ __('ui.instances_page.close') }}
                 </button>
-                <button type="button" class="btn btn-primary" @click="refreshQr()" :disabled="!qr.instanceId">
-                    <i class="ri-refresh-line"></i> Refresh
+                <button type="button" class="btn btn-primary" @click="refreshQr(false)" :disabled="!qr.instanceId || qr.loading">
+                    <i class="ri-refresh-line" :class="{ 'ri-loader-4-line ri-spin': qr.loading }"></i> {{ __('ui.instances_page.refresh') }}
                 </button>
             </div>
         </div>
@@ -166,7 +175,8 @@
 <script>
 function instancesPage() {
     return {
-        qr: { show: false, data: null, instanceId: null, instanceName: '' },
+        statusLabels: @js(__('ui.instances_page.status_labels')),
+        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false },
 
         init() {
             this.subscribeHealth();
@@ -198,19 +208,13 @@ function instancesPage() {
                 card.status = 'qr_pending';
                 this.openQr(id, name, data.qr_code ?? null);
             } else {
-                window.showToast?.('error', data.message || 'Connection failed');
+                window.showToast?.('error', data.message || @js(__('ui.instances_page.connection_failed')));
             }
         },
 
         async showQrCode(id, name) {
             this.openQr(id, name, null);
-            const res = await fetch(`/api/instances/${id}/connect`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            });
-            const data = await res.json();
-            this.qr.data = data.qr_code ?? null;
+            await this.refreshQr(true);
         },
 
         openQr(id, name, data) {
@@ -220,14 +224,24 @@ function instancesPage() {
             this.qr.show         = true;
         },
 
-        async refreshQr() {
+        async refreshQr(silent = false) {
             if (!this.qr.instanceId) return;
-            this.qr.data = null;
-            const res = await fetch(`/api/instances/${this.qr.instanceId}/status`, {
-                credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+            this.qr.loading = true;
+            const res = await fetch(`/api/instances/${this.qr.instanceId}/connect`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
             });
             const data = await res.json();
-            this.qr.data = data.qr_code ?? null;
+            this.qr.loading = false;
+            if (data.qr_code) {
+                this.qr.data = data.qr_code;
+                return;
+            }
+
+            if (!silent) {
+                window.showToast?.('info', @js(__('ui.instances_page.generating_qr')));
+            }
         },
 
         isQrImage(data) {
@@ -242,6 +256,10 @@ function instancesPage() {
             return `data:image/png;base64,${String(data).replace(/\s+/g, '')}`;
         },
 
+        statusLabel(s) {
+            return this.statusLabels?.[s] || s.replace(/_/g, ' ');
+        },
+
         async checkStatus(id) {
             const card = this.getCard(id);
             const res = await fetch(`/api/instances/${id}/status`, {
@@ -249,16 +267,16 @@ function instancesPage() {
             });
             const data = await res.json();
             if (card) card.status = data.status;
-            window.showToast?.('success', 'Status refreshed');
+            window.showToast?.('success', @js(__('ui.instances_page.status_refreshed')));
         },
 
         async logoutInstance(id, name) {
-            if (!confirm(`Logout "${name}"? This will disconnect WhatsApp.`)) return;
+            if (!confirm(`${@js(__('ui.instances_page.logout_confirm_prefix'))} "${name}"? ${@js(__('ui.instances_page.logout_confirm_suffix'))}`)) return;
             await fetch(`/api/instances/${id}/logout`, {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
             });
-            window.showToast?.('success', 'Instance logged out');
+            window.showToast?.('success', @js(__('ui.instances_page.instance_logged_out')));
             const card = this.getCard(id);
             if (card) card.status = 'disconnected';
         },
@@ -266,6 +284,12 @@ function instancesPage() {
         getCard(id) {
             const el = document.querySelector(`[data-instance="${id}"]`);
             return el?._x_dataStack?.[0] ?? null;
+        },
+
+        closeQr() {
+            this.qr.show = false;
+            this.qr.data = null;
+            this.qr.loading = false;
         }
     }
 }

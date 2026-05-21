@@ -36,7 +36,7 @@ class AiSettingsController extends Controller
             'escalation_keywords' => 'nullable|string',
         ]);
 
-        $tenant   = auth()->user()->tenant ?? abort(403, 'No tenant assigned to this account.');
+        $tenant   = auth()->user()->tenant ?? abort(403, __('ui.controller_messages.no_tenant_assigned'));
         $settings = $tenant->aiSettings()->firstOrCreate(['tenant_id' => $tenant->id]);
 
         $settings->update([
@@ -49,6 +49,6 @@ class AiSettingsController extends Controller
         AuditLog::record('ai_settings.updated', $settings);
 
         return redirect()->route('admin.ai-settings.index')
-            ->with('success', 'AI settings saved.');
+            ->with('success', __('ui.controller_messages.ai_settings_saved'));
     }
 }

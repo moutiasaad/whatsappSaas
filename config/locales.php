@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'supported' => [
@@ -7,4 +7,3 @@ return [
         'ar' => ['native' => 'العربية', 'rtl' => true],
     ],
 ];
-

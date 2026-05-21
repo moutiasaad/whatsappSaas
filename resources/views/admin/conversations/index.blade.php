@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
-@section('title', 'Conversations')
+@section('title', __('ui.conversations_page.title'))
 
 @section('breadcrumb')
-    <span>Conversations</span>
+    <span>{{ __('ui.conversations_page.breadcrumb') }}</span>
 @endsection
 
 @section('content')
@@ -25,12 +25,12 @@
 <div x-data="conversationsPage()" x-init="init()" x-cloak>
     <div class="page-header">
         <div class="page-header-left">
-            <div class="page-title">Conversations</div>
+            <div class="page-title">{{ __('ui.conversations_page.title') }}</div>
             <div class="page-subtitle">
                 @if(auth()->user()->isSuperAdmin())
-                    Full cross-tenant conversation control center
+                    {{ __('ui.conversations_page.subtitle_superadmin') }}
                 @else
-                    Manage and respond to customer conversations
+                    {{ __('ui.conversations_page.subtitle_default') }}
                 @endif
             </div>
         </div>
@@ -40,30 +40,30 @@
         <div class="tab-nav">
             <button class="tab-btn" :class="{'active': tab==='pool'}" @click="switchTab('pool')">
                 <i class="ri-inbox-line" style="font-size:14px;"></i>
-                Pool
+                {{ __('ui.conversations_page.pool') }}
                 <span x-show="counts.pool > 0" x-text="counts.pool"
                       style="background:var(--brand);color:#fff;font-size:.6875rem;font-weight:700;min-width:1.125rem;height:1.125rem;padding:0 .25rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:.25rem;"></span>
             </button>
             <button class="tab-btn" :class="{'active': tab==='mine'}" @click="switchTab('mine')">
                 <i class="ri-user-line" style="font-size:14px;"></i>
-                My Conversations
+                {{ __('ui.conversations_page.my_conversations') }}
                 <span x-show="counts.mine > 0" x-text="counts.mine"
                       style="background:var(--brand);color:#fff;font-size:.6875rem;font-weight:700;min-width:1.125rem;height:1.125rem;padding:0 .25rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:.25rem;"></span>
             </button>
             <button class="tab-btn" :class="{'active': tab==='closed'}" @click="switchTab('closed')">
                 <i class="ri-check-double-line" style="font-size:14px;"></i>
-                Closed
+                {{ __('ui.conversations_page.closed') }}
             </button>
             <template x-if="isSuperAdmin">
                 <button class="tab-btn" :class="{'active': tab==='claimed'}" @click="switchTab('claimed')">
                     <i class="ri-user-star-line" style="font-size:14px;"></i>
-                    Claimed
+                    {{ __('ui.conversations_page.claimed') }}
                 </button>
             </template>
             <template x-if="isSuperAdmin">
                 <button class="tab-btn" :class="{'active': tab==='all'}" @click="switchTab('all')">
                     <i class="ri-earth-line" style="font-size:14px;"></i>
-                    All
+                    {{ __('ui.conversations_page.all') }}
                 </button>
             </template>
         </div>
@@ -71,7 +71,7 @@
         <div x-show="tab === 'pool' && !loading && conversations.length > 0"
              style="font-size:.8125rem;color:var(--text-muted);display:flex;align-items:center;gap:.375rem;">
             <i class="ri-information-line"></i>
-            Hover a row to claim
+            {{ __('ui.conversations_page.hover_claim') }}
         </div>
     </div>
 
@@ -79,12 +79,12 @@
         <div class="filter-input-wrap">
             <i class="ri-search-line"></i>
             <input type="text" x-model="search" @input.debounce.350ms="reload()"
-                   placeholder="Search contact, message, agent, team, instance..." class="filter-input">
+                   placeholder="{{ __('ui.conversations_page.search_placeholder') }}" class="filter-input">
         </div>
 
         <template x-if="isSuperAdmin">
             <select x-model="filters.tenant_id" @change="onTenantFilterChange()" class="toolbar-select">
-                <option value="">All Tenants</option>
+                <option value="">{{ __('ui.conversations_page.all_tenants') }}</option>
                 <template x-for="tenant in tenants" :key="tenant.id">
                     <option :value="String(tenant.id)" x-text="tenant.name"></option>
                 </template>
@@ -92,63 +92,63 @@
         </template>
 
         <select x-model="filters.instance_id" @change="reload()" class="toolbar-select">
-            <option value="">All Instances</option>
+            <option value="">{{ __('ui.conversations_page.all_instances') }}</option>
             <template x-for="instance in filteredInstances()" :key="instance.id">
                 <option :value="String(instance.id)" x-text="instance.name"></option>
             </template>
         </select>
 
         <select x-model="filters.team_id" @change="reload()" class="toolbar-select">
-            <option value="">All Teams</option>
+            <option value="">{{ __('ui.conversations_page.all_teams') }}</option>
             <template x-for="team in filteredTeams()" :key="team.id">
                 <option :value="String(team.id)" x-text="team.name"></option>
             </template>
         </select>
 
         <select x-model="filters.agent_id" @change="reload()" class="toolbar-select">
-            <option value="">All Agents</option>
+            <option value="">{{ __('ui.conversations_page.all_agents') }}</option>
             <template x-for="agent in filteredAgents()" :key="agent.id">
                 <option :value="String(agent.id)" x-text="`${agent.name} (${agent.role})`"></option>
             </template>
         </select>
 
         <select x-model="filters.state" @change="reload()" class="toolbar-select">
-            <option value="">All States</option>
-            <option value="pool">Pool</option>
-            <option value="claimed">Claimed</option>
-            <option value="closed">Closed</option>
+            <option value="">{{ __('ui.conversations_page.all_states') }}</option>
+            <option value="pool">{{ __('ui.conversations_page.pool') }}</option>
+            <option value="claimed">{{ __('ui.conversations_page.claimed') }}</option>
+            <option value="closed">{{ __('ui.conversations_page.closed') }}</option>
         </select>
 
         <select x-model="filters.has_unread" @change="reload()" class="toolbar-select">
-            <option value="">Unread + Read</option>
-            <option value="1">Has unread</option>
-            <option value="0">Read only</option>
+            <option value="">{{ __('ui.conversations_page.unread_read') }}</option>
+            <option value="1">{{ __('ui.conversations_page.has_unread') }}</option>
+            <option value="0">{{ __('ui.conversations_page.read_only') }}</option>
         </select>
 
         <select x-model="filters.ai_suspended" @change="reload()" class="toolbar-select">
-            <option value="">AI any state</option>
-            <option value="1">AI suspended</option>
-            <option value="0">AI active</option>
+            <option value="">{{ __('ui.conversations_page.ai_any_state') }}</option>
+            <option value="1">{{ __('ui.conversations_page.ai_suspended') }}</option>
+            <option value="0">{{ __('ui.conversations_page.ai_active') }}</option>
         </select>
 
-        <input type="date" x-model="filters.date_from" @change="reload()" class="toolbar-select">
-        <input type="date" x-model="filters.date_to" @change="reload()" class="toolbar-select">
+        <input type="text" x-model="filters.date_from" @change="reload()" class="toolbar-select" placeholder="{{ __('ui.date_placeholder_from') }}" aria-label="{{ __('ui.date_from') }}" title="{{ __('ui.date_from') }}">
+        <input type="text" x-model="filters.date_to" @change="reload()" class="toolbar-select" placeholder="{{ __('ui.date_placeholder_to') }}" aria-label="{{ __('ui.date_to') }}" title="{{ __('ui.date_to') }}">
 
         <select x-model="filters.sort" @change="reload()" class="toolbar-select">
-            <option value="last_message_desc">Latest activity</option>
-            <option value="last_message_asc">Oldest activity</option>
-            <option value="created_desc">Newest created</option>
-            <option value="created_asc">Oldest created</option>
+            <option value="last_message_desc">{{ __('ui.conversations_page.latest_activity') }}</option>
+            <option value="last_message_asc">{{ __('ui.conversations_page.oldest_activity') }}</option>
+            <option value="created_desc">{{ __('ui.conversations_page.newest_created') }}</option>
+            <option value="created_asc">{{ __('ui.conversations_page.oldest_created') }}</option>
         </select>
 
-        <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">Clear</button>
+        <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">{{ __('ui.conversations_page.clear') }}</button>
     </div>
 
     <div class="table-wrap">
         <div x-show="loading" class="spinner-wrap">
             <div>
                 <div class="spinner" style="margin:0 auto 1rem;"></div>
-                <div style="color:var(--text-muted);font-size:.875rem;text-align:center;">Loading conversations...</div>
+                <div style="color:var(--text-muted);font-size:.875rem;text-align:center;">{{ __('ui.conversations_page.loading') }}</div>
             </div>
         </div>
 
@@ -159,7 +159,7 @@
             <div x-show="tab === 'pool'">
                 @if(auth()->user()->isAdmin() || auth()->user()->isSuperAdmin())
                     <a href="{{ route($panelPrefix . '.instances.index') }}" class="btn btn-outline btn-sm">
-                        <i class="ri-smartphone-line"></i> Check Instances
+                        <i class="ri-smartphone-line"></i> {{ __('ui.conversations_page.check_instances') }}
                     </a>
                 @endif
             </div>
@@ -188,9 +188,9 @@
                                     <span x-show="conv.unread_count > 0" class="unread-badge" x-text="conv.unread_count"></span>
                                     <span x-show="conv.state === 'claimed'" class="badge badge-blue" style="font-size:.6875rem;">
                                         <i class="ri-user-line" style="font-size:.625rem;"></i>
-                                        <span x-text="conv.owner_agent?.name || 'Claimed'"></span>
+                                        <span x-text="conv.owner_agent?.name || @js(__('ui.conversations_page.claimed'))"></span>
                                     </span>
-                                    <span x-show="conv.ai_suspended" class="badge badge-gray" style="font-size:.6875rem;">AI Off</span>
+                                    <span x-show="conv.ai_suspended" class="badge badge-gray" style="font-size:.6875rem;">{{ __('ui.conversations_page.ai_off') }}</span>
                                     <span x-show="conv.instance" class="badge badge-teal" style="font-size:.6875rem;" x-text="conv.instance?.name"></span>
                                     <span x-show="isSuperAdmin && conv.tenant" class="badge badge-purple" style="font-size:.6875rem;" x-text="conv.tenant?.name"></span>
                                 </div>
@@ -201,7 +201,7 @@
                     <div x-show="canClaimPool && tab === 'pool' && hovered === conv.id" style="padding-right:1rem;flex-shrink:0;">
                         <button @click.prevent="claimConversation(conv)" :disabled="claiming === conv.id"
                                 class="btn btn-primary btn-sm" style="white-space:nowrap;min-width:72px;">
-                            <template x-if="claiming !== conv.id"><span><i class="ri-hand-coin-line"></i> Take</span></template>
+                            <template x-if="claiming !== conv.id"><span><i class="ri-hand-coin-line"></i> {{ __('ui.conversations_page.take') }}</span></template>
                             <template x-if="claiming === conv.id"><span class="btn-spinner"></span></template>
                         </button>
                     </div>
@@ -215,8 +215,8 @@
 
         <div x-show="!loading && hasMore" style="padding:1rem;text-align:center;border-top:1px solid var(--card-border);">
             <button @click="loadMore()" :disabled="loadingMore" class="btn btn-outline btn-sm">
-                <template x-if="!loadingMore"><span><i class="ri-arrow-down-line"></i> Load more</span></template>
-                <template x-if="loadingMore"><span><span class="btn-spinner"></span> Loading...</span></template>
+                            <template x-if="!loadingMore"><span><i class="ri-arrow-down-line"></i> {{ __('ui.conversations_page.load_more') }}</span></template>
+                <template x-if="loadingMore"><span><span class="btn-spinner"></span> {{ __('ui.conversations_page.loading_more') }}</span></template>
             </button>
         </div>
     </div>
@@ -269,8 +269,35 @@
 </style>
 
 <script>
+@php
+    $conversationI18n = [
+        'conversation_claimed' => __('ui.conversations_page.conversation_claimed'),
+        'opening_now' => __('ui.conversations_page.opening_now'),
+        'already_taken' => __('ui.conversations_page.already_taken'),
+        'another_just_claimed' => __('ui.conversations_page.another_just_claimed'),
+        'could_not_claim' => __('ui.conversations_page.could_not_claim'),
+        'please_try_again' => __('ui.conversations_page.please_try_again'),
+        'network_error' => __('ui.conversations_page.network_error'),
+        'could_not_reach_server' => __('ui.conversations_page.could_not_reach_server'),
+        'just_now' => __('ui.conversations_page.just_now'),
+        'minutes_ago' => __('ui.conversations_page.minutes_ago'),
+        'hours_ago' => __('ui.conversations_page.hours_ago'),
+        'days_ago' => __('ui.conversations_page.days_ago'),
+        'no_conversations_waiting' => __('ui.conversations_page.no_conversations_waiting'),
+        'no_active_conversations' => __('ui.conversations_page.no_active_conversations'),
+        'no_claimed_conversations' => __('ui.conversations_page.no_claimed_conversations'),
+        'no_conversations_found' => __('ui.conversations_page.no_conversations_found'),
+        'no_closed_conversations' => __('ui.conversations_page.no_closed_conversations'),
+        'desc_pool' => __('ui.conversations_page.desc_pool'),
+        'desc_mine' => __('ui.conversations_page.desc_mine'),
+        'desc_claimed' => __('ui.conversations_page.desc_claimed'),
+        'desc_all' => __('ui.conversations_page.desc_all'),
+        'desc_closed' => __('ui.conversations_page.desc_closed'),
+    ];
+@endphp
 function conversationsPage() {
     return {
+        i18n: @json($conversationI18n),
         tab: '{{ request("tab", "pool") }}',
         isSuperAdmin: @json(auth()->user()->isSuperAdmin()),
         showUrlTpl: @json(route($panelPrefix . '.conversations.show', ['conversation' => '__ID__'])),
@@ -415,17 +442,17 @@ function conversationsPage() {
                 });
 
                 if (res.ok) {
-                    window.showToast?.('success', 'Conversation claimed', 'Opening now...');
+                    window.showToast?.('success', this.i18n.conversation_claimed, this.i18n.opening_now);
                     window.location.href = this.conversationUrl(conv.id);
                 } else if (res.status === 409) {
-                    window.showToast?.('warning', 'Already taken', 'Another agent just claimed this');
+                    window.showToast?.('warning', this.i18n.already_taken, this.i18n.another_just_claimed);
                     this.conversations = this.conversations.filter(c => c.id !== conv.id);
                     this.fetchCounts();
                 } else {
-                    window.showToast?.('error', 'Could not claim', 'Please try again');
+                    window.showToast?.('error', this.i18n.could_not_claim, this.i18n.please_try_again);
                 }
             } catch {
-                window.showToast?.('error', 'Network error', 'Could not reach server');
+                window.showToast?.('error', this.i18n.network_error, this.i18n.could_not_reach_server);
             } finally {
                 this.claiming = null;
             }
@@ -502,26 +529,26 @@ function conversationsPage() {
         timeAgo(ts) {
             if (!ts) return '';
             const diff = (Date.now() - new Date(ts)) / 1000;
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-            return `${Math.floor(diff / 86400)}d ago`;
+            if (diff < 60) return this.i18n.just_now;
+            if (diff < 3600) return `${Math.floor(diff / 60)}${this.i18n.minutes_ago}`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}${this.i18n.hours_ago}`;
+            return `${Math.floor(diff / 86400)}${this.i18n.days_ago}`;
         },
 
         emptyTitle() {
-            if (this.tab === 'pool') return 'No conversations waiting';
-            if (this.tab === 'mine') return 'No active conversations';
-            if (this.tab === 'claimed') return 'No claimed conversations';
-            if (this.tab === 'all') return 'No conversations found';
-            return 'No closed conversations';
+            if (this.tab === 'pool') return this.i18n.no_conversations_waiting;
+            if (this.tab === 'mine') return this.i18n.no_active_conversations;
+            if (this.tab === 'claimed') return this.i18n.no_claimed_conversations;
+            if (this.tab === 'all') return this.i18n.no_conversations_found;
+            return this.i18n.no_closed_conversations;
         },
 
         emptyDesc() {
-            if (this.tab === 'pool') return 'New inbound messages will appear here for your team to claim';
-            if (this.tab === 'mine') return 'Claim conversations from the Pool to start handling them';
-            if (this.tab === 'claimed') return 'Claimed conversations will appear here';
-            if (this.tab === 'all') return 'Try widening your filters';
-            return 'Conversations you close will appear here';
+            if (this.tab === 'pool') return this.i18n.desc_pool;
+            if (this.tab === 'mine') return this.i18n.desc_mine;
+            if (this.tab === 'claimed') return this.i18n.desc_claimed;
+            if (this.tab === 'all') return this.i18n.desc_all;
+            return this.i18n.desc_closed;
         }
     };
 }

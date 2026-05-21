@@ -85,7 +85,7 @@ class SuperAdminPlatformController extends Controller
             }
         });
 
-        return redirect()->route('super_admin.platform.tenants')->with('success', 'Tenant created successfully.');
+        return redirect()->route('super_admin.platform.tenants')->with('success', __('ui.controller_messages.tenant_created'));
     }
 
     public function showTenant(Tenant $tenant)
@@ -167,7 +167,7 @@ class SuperAdminPlatformController extends Controller
 
         return redirect()
             ->route('super_admin.platform.tenants.show', $tenant)
-            ->with('success', 'Tenant updated successfully.');
+            ->with('success', __('ui.controller_messages.tenant_updated'));
     }
 
     public function destroyTenant(Tenant $tenant)
@@ -177,7 +177,7 @@ class SuperAdminPlatformController extends Controller
 
         return redirect()
             ->route('super_admin.platform.tenants')
-            ->with('success', "Tenant \"{$tenantName}\" deleted.");
+            ->with('success', __('ui.controller_messages.tenant_deleted', ['name' => $tenantName]));
     }
 
     public function bulkTenants(Request $request)
@@ -194,13 +194,13 @@ class SuperAdminPlatformController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
-            return back()->with('error', 'No tenants selected.');
+            return back()->with('error', __('ui.controller_messages.no_tenants_selected'));
         }
 
         $tenants = Tenant::whereIn('id', $ids)->get();
 
         if ($tenants->isEmpty()) {
-            return back()->with('error', 'No valid tenants selected.');
+            return back()->with('error', __('ui.controller_messages.no_valid_tenants_selected'));
         }
 
         if ($data['action'] === 'delete') {
@@ -208,13 +208,18 @@ class SuperAdminPlatformController extends Controller
                 $tenant->delete();
             }
 
-            return back()->with('success', $tenants->count() . ' tenant(s) deleted.');
+            return back()->with('success', __('ui.controller_messages.tenants_deleted', ['count' => $tenants->count()]));
         }
 
         $enable = $data['action'] === 'enable';
         Tenant::whereIn('id', $tenants->pluck('id'))->update(['is_active' => $enable]);
 
-        return back()->with('success', $tenants->count() . ' tenant(s) ' . ($enable ? 'enabled.' : 'disabled.'));
+        return back()->with(
+            'success',
+            $enable
+                ? __('ui.controller_messages.tenants_enabled', ['count' => $tenants->count()])
+                : __('ui.controller_messages.tenants_disabled', ['count' => $tenants->count()])
+        );
     }
 
     public function plans()
@@ -280,7 +285,7 @@ class SuperAdminPlatformController extends Controller
 
         return redirect()
             ->route('super_admin.platform.plans')
-            ->with('success', 'Plan created successfully.');
+            ->with('success', __('ui.controller_messages.plan_created'));
     }
 
     public function editPlan(Plan $plan)
@@ -298,7 +303,7 @@ class SuperAdminPlatformController extends Controller
         if (!$nextStatus && $plan->is_active && Plan::where('is_active', true)->where('id', '!=', $plan->id)->count() === 0) {
             return back()
                 ->withInput()
-                ->with('error', 'Cannot disable the last active plan.');
+                ->with('error', __('ui.controller_messages.cannot_disable_last_active_plan'));
         }
 
         $plan->update([
@@ -318,7 +323,7 @@ class SuperAdminPlatformController extends Controller
 
         return redirect()
             ->route('super_admin.platform.plans.show', $plan)
-            ->with('success', 'Plan updated successfully.');
+            ->with('success', __('ui.controller_messages.plan_updated'));
     }
 
     public function togglePlanStatus(Request $request, Plan $plan)
@@ -329,14 +334,14 @@ class SuperAdminPlatformController extends Controller
         if (!$nextStatus && Plan::where('is_active', true)->where('id', '!=', $plan->id)->count() === 0) {
             return redirect()
                 ->route('super_admin.platform.plans')
-                ->with('error', 'Cannot disable the last active plan.');
+                ->with('error', __('ui.controller_messages.cannot_disable_last_active_plan'));
         }
 
         $plan->update(['is_active' => $nextStatus]);
 
         return redirect()
             ->route('super_admin.platform.plans')
-            ->with('success', $nextStatus ? 'Plan enabled.' : 'Plan disabled.');
+            ->with('success', $nextStatus ? __('ui.controller_messages.plan_enabled') : __('ui.controller_messages.plan_disabled'));
     }
 
     public function bulkPlans(Request $request)
@@ -353,7 +358,7 @@ class SuperAdminPlatformController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
-            return back()->with('error', 'No plans selected.');
+            return back()->with('error', __('ui.controller_messages.no_plans_selected'));
         }
 
         $plans = Plan::whereIn('id', $ids)->get();
@@ -363,13 +368,18 @@ class SuperAdminPlatformController extends Controller
             $activeCount = Plan::where('is_active', true)->count();
             $activeSelected = $plans->where('is_active', true)->count();
             if ($activeSelected >= $activeCount) {
-                return back()->with('error', 'Cannot disable all active plans.');
+                return back()->with('error', __('ui.controller_messages.cannot_disable_all_active_plans'));
             }
         }
 
         Plan::whereIn('id', $plans->pluck('id'))->update(['is_active' => $enable]);
 
-        return back()->with('success', $plans->count() . ' plan(s) ' . ($enable ? 'enabled.' : 'disabled.'));
+        return back()->with(
+            'success',
+            $enable
+                ? __('ui.controller_messages.plans_enabled', ['count' => $plans->count()])
+                : __('ui.controller_messages.plans_disabled', ['count' => $plans->count()])
+        );
     }
 
     public function globalSettings()
@@ -421,7 +431,7 @@ class SuperAdminPlatformController extends Controller
 
         return redirect()
             ->route('super_admin.platform.global-settings')
-            ->with('success', 'Global settings updated.');
+            ->with('success', __('ui.controller_messages.global_settings_updated'));
     }
 
     public function systemHealth()
@@ -468,15 +478,15 @@ class SuperAdminPlatformController extends Controller
         try {
             DB::select('select 1');
             return [
-                'label' => 'Database',
+                'label' => __('ui.platform_system_health_page.database'),
                 'status' => 'ok',
-                'detail' => 'Connection check succeeded.',
+                'detail' => __('ui.platform_system_health_page.database_ok'),
             ];
         } catch (Throwable) {
             return [
-                'label' => 'Database',
+                'label' => __('ui.platform_system_health_page.database'),
                 'status' => 'error',
-                'detail' => 'Unable to execute database health query.',
+                'detail' => __('ui.platform_system_health_page.database_error'),
             ];
         }
     }
@@ -488,20 +498,20 @@ class SuperAdminPlatformController extends Controller
             Cache::put($key, 'ok', 10);
             return Cache::get($key) === 'ok'
                 ? [
-                    'label' => 'Cache',
+                    'label' => __('ui.platform_system_health_page.cache'),
                     'status' => 'ok',
-                    'detail' => 'Read/write cache check succeeded.',
+                    'detail' => __('ui.platform_system_health_page.cache_ok'),
                 ]
                 : [
-                    'label' => 'Cache',
+                    'label' => __('ui.platform_system_health_page.cache'),
                     'status' => 'error',
-                    'detail' => 'Cache read/write validation failed.',
+                    'detail' => __('ui.platform_system_health_page.cache_error'),
                 ];
         } catch (Throwable) {
             return [
-                'label' => 'Cache',
+                'label' => __('ui.platform_system_health_page.cache'),
                 'status' => 'error',
-                'detail' => 'Cache driver threw an exception.',
+                'detail' => __('ui.platform_system_health_page.cache_exception'),
             ];
         }
     }
@@ -512,16 +522,16 @@ class SuperAdminPlatformController extends Controller
 
         if ($connection === 'sync') {
             return [
-                'label' => 'Queue Worker',
+                'label' => __('ui.platform_system_health_page.queue_worker'),
                 'status' => 'warning',
-                'detail' => 'Queue is using sync driver.',
+                'detail' => __('ui.platform_system_health_page.queue_sync'),
             ];
         }
 
         return [
-            'label' => 'Queue Worker',
+            'label' => __('ui.platform_system_health_page.queue_worker'),
             'status' => 'ok',
-            'detail' => "Queue connection is set to {$connection}.",
+            'detail' => __('ui.platform_system_health_page.queue_connection_is', ['connection' => $connection]),
         ];
     }
 
@@ -530,9 +540,11 @@ class SuperAdminPlatformController extends Controller
         $ok = is_dir($path) && is_writable($path);
 
         return [
-            'label' => str_starts_with($path, storage_path()) ? 'Storage Directory' : 'Bootstrap Cache',
+            'label' => str_starts_with($path, storage_path())
+                ? __('ui.platform_system_health_page.storage_directory')
+                : __('ui.platform_system_health_page.bootstrap_cache'),
             'status' => $ok ? 'ok' : 'error',
-            'detail' => $ok ? 'Directory is writable.' : 'Directory is missing or not writable.',
+            'detail' => $ok ? __('ui.platform_system_health_page.directory_writable') : __('ui.platform_system_health_page.directory_missing'),
         ];
     }
 
@@ -625,32 +637,32 @@ class SuperAdminPlatformController extends Controller
     {
         return [
             'app_name' => [
-                'label' => 'Application Name',
+                'label' => __('ui.platform_global_settings_page.application_name'),
                 'type' => 'string',
                 'default' => config('app.name'),
             ],
             'app_url' => [
-                'label' => 'Application URL',
+                'label' => __('ui.platform_global_settings_page.application_url'),
                 'type' => 'url',
                 'default' => config('app.url'),
             ],
             'support_email' => [
-                'label' => 'Support Email',
+                'label' => __('ui.platform_global_settings_page.support_email'),
                 'type' => 'email',
                 'default' => config('mail.from.address'),
             ],
             'platform_signups_enabled' => [
-                'label' => 'Enable New Tenant Signups',
+                'label' => __('ui.platform_global_settings_page.new_tenant_signups'),
                 'type' => 'boolean',
                 'default' => true,
             ],
             'billing_features_enabled' => [
-                'label' => 'Enable Billing Features',
+                'label' => __('ui.platform_global_settings_page.billing_features'),
                 'type' => 'boolean',
                 'default' => true,
             ],
             'maintenance_mode_enabled' => [
-                'label' => 'Enable Maintenance Mode Banner',
+                'label' => __('ui.platform_global_settings_page.maintenance_banner'),
                 'type' => 'boolean',
                 'default' => false,
             ],

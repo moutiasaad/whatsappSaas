@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit User')
+@section('title', __('ui.user_form_page.edit_title'))
 
 @section('breadcrumb')
-    <a href="{{ route('admin.users.index') }}" style="color:var(--text-secondary);text-decoration:none">Users</a>
+    <a href="{{ route('admin.users.index') }}" style="color:var(--text-secondary);text-decoration:none">{{ __('ui.user_form_page.breadcrumb') }}</a>
     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-muted)"><path d="M9 18l6-6-6-6"/></svg>
     <span>{{ $user->name }}</span>
 @endsection
@@ -11,7 +11,7 @@
 @section('content')
 <div style="display:grid;grid-template-columns:1fr 280px;gap:1.5rem;align-items:start">
 
-    {{-- Left: Edit Form --}}
+    {{-- Left: {{ __('ui.user_form_page.edit') }} Form --}}
     <div class="card">
         <div class="card-header">
             <div style="display:flex;align-items:center;gap:.875rem">
@@ -36,34 +36,34 @@
                 {{-- Name + Email --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                     <div class="form-group">
-                        <label class="form-label" for="name">Full Name</label>
+                        <label class="form-label" for="name">{{ __('ui.user_form_page.full_name') }}</label>
                         <input type="text" id="name" name="name"
                                value="{{ old('name', $user->name) }}"
                                class="form-control @error('name') error @enderror">
                         @error('name') <div class="form-error">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="email">Email Address</label>
+                        <label class="form-label" for="email">{{ __('ui.user_form_page.email_address') }}</label>
                         <input type="email" id="email"
                                value="{{ $user->email }}"
                                class="form-control"
                                style="background:var(--page-bg);color:var(--text-muted);cursor:not-allowed"
                                disabled>
-                        <div class="form-hint">Email cannot be changed after account creation</div>
+                        <div class="form-hint">{{ __('ui.user_form_page.email_hint') }}</div>
                     </div>
                 </div>
 
                 {{-- Role --}}
                 <div class="form-group">
-                    <label class="form-label" for="role">Role</label>
+                    <label class="form-label" for="role">{{ __('ui.user_form_page.role') }}</label>
                     <select id="role" name="role"
                             class="form-control @error('role') error @enderror"
                             x-data x-model="$el.value"
                             @change="updateRoleHint($event.target.value)"
                             >
-                        <option value="agent"      {{ old('role', $user->role) === 'agent'      ? 'selected' : '' }}>Agent</option>
-                        <option value="supervisor" {{ old('role', $user->role) === 'supervisor' ? 'selected' : '' }}>Supervisor</option>
-                        <option value="admin"      {{ old('role', $user->role) === 'admin'      ? 'selected' : '' }}>Admin</option>
+                        <option value="agent"      {{ old('role', $user->role) === 'agent'      ? 'selected' : '' }}>{{ __('ui.roles.agent') }}</option>
+                        <option value="supervisor" {{ old('role', $user->role) === 'supervisor' ? 'selected' : '' }}>{{ __('ui.roles.supervisor') }}</option>
+                        <option value="admin"      {{ old('role', $user->role) === 'admin'      ? 'selected' : '' }}>{{ __('ui.roles.admin') }}</option>
                     </select>
                     @error('role') <div class="form-error">{{ $message }}</div> @enderror
                     <div id="role-hint" style="margin-top:.5rem;font-size:.8125rem;color:var(--text-muted)"></div>
@@ -78,15 +78,15 @@
                                    {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
                             <span class="toggle-text">Active</span>
                         </label>
-                        <span style="font-size:.8125rem;color:var(--text-muted)">Inactive users cannot log in or access the platform</span>
+                        <span style="font-size:.8125rem;color:var(--text-muted)">{{ __('ui.user_form_page.inactive_hint') }}</span>
                     </div>
                 </div>
 
                 {{-- Teams --}}
                 <div class="form-group">
-                    <label class="form-label">Team Membership</label>
+                    <label class="form-label">{{ __('ui.user_form_page.team_membership') }}</label>
                     @if($teams->isEmpty())
-                        <div style="font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">No teams created yet</div>
+                        <div style="font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">{{ __('ui.user_form_page.no_teams_created') }}</div>
                     @else
                         <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem">
                             @foreach($teams as $team)
@@ -112,18 +112,18 @@
                     @endif
                 </div>
 
-                {{-- Reset Password --}}
+                {{-- Reset {{ __('ui.user_form_page.temporary_password') }} --}}
                 <div class="form-group" x-data="{ show: false }">
                     <label class="form-label">
-                        Password
+                        {{ __('ui.user_form_page.temporary_password') }}
                         <button type="button" @click="show = !show"
                                 style="font-size:.75rem;font-weight:400;color:var(--brand);background:none;border:none;cursor:pointer;padding:0;margin-left:.375rem"
-                                x-text="show ? 'Cancel' : 'Reset password'"></button>
+                                x-text="show ? '{{ __('ui.user_form_page.cancel') }}' : '{{ __('ui.user_form_page.reset_password') }}'"></button>
                     </label>
                     <div x-show="show" x-transition style="display:flex;flex-direction:column;gap:.75rem;margin-top:.375rem">
                         <div style="position:relative">
                             <input type="password" id="password" name="password"
-                                   placeholder="New password (min 8 characters)"
+                                   placeholder="{{ __('ui.user_form_page.new_password_placeholder') }}"
                                    class="form-control @error('password') error @enderror"
                                    style="padding-right:2.75rem">
                             <button type="button"
@@ -133,25 +133,25 @@
                             </button>
                         </div>
                         @error('password') <div class="form-error">{{ $message }}</div> @enderror
-                        <div class="form-hint">Leave blank to keep the current password</div>
+                        <div class="form-hint">{{ __('ui.user_form_page.password_hint') }}</div>
                     </div>
                     <div x-show="!show" style="font-size:.8125rem;color:var(--text-muted);margin-top:.25rem">
                         ••••••••  <span style="font-size:.75rem">(hidden)</span>
                     </div>
                 </div>
 
-                {{-- Danger Zone --}}
+                {{-- {{ __('ui.user_form_page.danger_zone') }} --}}
                 @if(auth()->id() !== $user->id)
                 <div style="border:1px solid rgba(239,68,68,.2);border-radius:.75rem;padding:1rem">
-                    <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">Danger Zone</div>
+                    <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">{{ __('ui.user_form_page.danger_zone') }}</div>
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
                         <div style="font-size:.8125rem;color:var(--text-muted)">
-                            Permanently delete this user account and remove them from all teams.
+                            {{ __('ui.user_form_page.delete_message') }}
                         </div>
                         <button type="button"
-                                onclick="confirmDelete('{{ route('admin.users.destroy', $user) }}', { title: 'Delete {{ addslashes($user->name) }}?', message: 'This will permanently remove the user account and all team memberships.' })"
+                                onclick="confirmDelete('{{ route('admin.users.destroy', $user) }}', { title: '{{ __('ui.user_form_page.delete_prompt', ['name' => addslashes($user->name)]) }}', message: '{{ __('ui.user_form_page.delete_warning') }}' })"
                                 class="btn btn-danger btn-sm">
-                            Delete User
+                            {{ __('ui.user_form_page.delete_user') }}
                         </button>
                     </div>
                 </div>
@@ -159,8 +159,8 @@
             </div>
 
             <div style="padding:1.25rem 1.5rem;border-top:1px solid var(--card-border);display:flex;justify-content:flex-end;gap:.5rem">
-                <a href="{{ route('admin.users.index') }}" class="btn btn-outline">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ route('admin.users.index') }}" class="btn btn-outline">{{ __('ui.user_form_page.cancel') }}</a>
+                <button type="submit" class="btn btn-primary">{{ __('ui.user_form_page.save_changes') }}</button>
             </div>
         </form>
     </div>
@@ -171,27 +171,27 @@
         {{-- Quick Stats --}}
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Activity</div>
+                <div class="card-title">{{ __('ui.user_form_page.activity') }}</div>
             </div>
             <div style="padding:0 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.625rem;font-size:.8125rem">
                 <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Joined</span>
+                    <span style="color:var(--text-muted)">{{ __('ui.user_form_page.joined') }}</span>
                     <span>{{ $user->created_at->format('M j, Y') }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Last login</span>
-                    <span>{{ $user->last_login_at?->diffForHumans() ?? 'Never' }}</span>
+                    <span style="color:var(--text-muted)">{{ __('ui.user_form_page.last_login') }}</span>
+                    <span>{{ $user->last_login_at?->diffForHumans() ?? __('ui.users_page.never') }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Active convos</span>
+                    <span style="color:var(--text-muted)">{{ __('ui.user_form_page.active_conversations') }}</span>
                     <span>{{ $stats['active'] }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Closed total</span>
+                    <span style="color:var(--text-muted)">{{ __('ui.user_form_page.closed_total') }}</span>
                     <span>{{ $stats['closed_total'] }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between">
-                    <span style="color:var(--text-muted)">Closed this month</span>
+                    <span style="color:var(--text-muted)">{{ __('ui.user_form_page.closed_month') }}</span>
                     <span>{{ $stats['closed_month'] }}</span>
                 </div>
             </div>
@@ -200,7 +200,7 @@
         {{-- Current Teams --}}
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
-                <div class="card-title">Teams</div>
+                <div class="card-title">{{ __('ui.user_form_page.teams') }}</div>
             </div>
             <div style="padding:0 1.25rem 1.25rem;display:flex;flex-direction:column;gap:.5rem">
                 @forelse($user->teams as $team)
@@ -209,11 +209,11 @@
                     <a href="{{ route('admin.teams.edit', $team) }}"
                        style="font-size:.75rem;color:var(--text-muted);text-decoration:none"
                        onmouseenter="this.style.color='var(--brand)'" onmouseleave="this.style.color='var(--text-muted)'">
-                        Edit
+                        {{ __('ui.user_form_page.edit') }}
                     </a>
                 </div>
                 @empty
-                <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">Not in any team</div>
+                <div style="font-size:.8125rem;color:var(--text-muted);text-align:center;padding:.5rem 0">{{ __('ui.user_form_page.no_team_membership') }}</div>
                 @endforelse
             </div>
         </div>
@@ -223,15 +223,15 @@
         @can('impersonate', $user)
         <div class="card">
             <div style="padding:1.25rem">
-                <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);margin-bottom:.375rem">Impersonate</div>
+                <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);margin-bottom:.375rem">{{ __('ui.user_form_page.impersonate') }}</div>
                 <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:.875rem">
-                    Log in as this user to debug issues. An amber banner will remind you.
+                    {{ __('ui.user_form_page.impersonate_desc') }}
                 </div>
                 <a href="{{ route('admin.users.impersonate', $user) }}"
-                   onclick="return confirm('Impersonate {{ $user->name }}?')"
+                   onclick="event.preventDefault(); confirmSend({ title: @js(__('ui.user_form_page.impersonate')), message: @js(__('ui.user_form_page.impersonate_confirm', ['name' => $user->name])), callback: function(){ window.location.href = @js(route('admin.users.impersonate', $user)); } })"
                    class="btn btn-outline btn-sm" style="width:100%;justify-content:center">
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Log in as {{ $user->name }}
+                    {{ __('ui.user_form_page.log_in_as', ['name' => $user->name]) }}
                 </a>
             </div>
         </div>
@@ -242,9 +242,9 @@
 
 <script>
 const roleHints = {
-    agent:      'Can see the pool, claim conversations, and reply to their own assigned conversations.',
-    supervisor: 'Same as agent, plus can view all team conversations and reassign to any agent.',
-    admin:      'Full tenant access: users, teams, instances, conversations, AI settings, and audit log.'
+    agent:      @json(__('ui.user_form_page.agent_desc')),
+    supervisor: @json(__('ui.user_form_page.supervisor_desc')),
+    admin:      @json(__('ui.user_form_page.admin_desc'))
 };
 
 function updateRoleHint(role) {

@@ -33,6 +33,6 @@ class SettingsController extends Controller
         $tenant->update(['name' => $data['name']]);
         AuditLog::record('tenant.settings.updated', $tenant);
 
-        return redirect()->route(auth()->user()->routeNamePrefix() . '.settings.index')->with('success', 'Settings saved.');
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.settings.index')->with('success', __('ui.controller_messages.settings_saved'));
     }
 }
