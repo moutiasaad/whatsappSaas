@@ -17,7 +17,7 @@ class SendOutgoingMessage implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public string $queue = 'whatsapp';
+    public $queue = 'whatsapp';
 
     public function __construct(private Message $message) {}
 
