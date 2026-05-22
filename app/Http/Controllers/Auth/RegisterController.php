@@ -47,7 +47,7 @@ class RegisterController extends Controller
                 'name'                => $request->company_name,
                 'slug'                => $slug,
                 'plan_id'             => $plan->id,
-                'subscription_status' => $isFree ? 'trial' : 'inactive',
+                'subscription_status' => $isFree ? 'trial' : 'suspended',
                 'trial_ends_at'       => $isFree ? now()->addDays(14) : null,
                 'is_active'           => $isFree,
             ]);
