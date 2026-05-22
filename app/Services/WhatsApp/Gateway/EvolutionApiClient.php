@@ -101,6 +101,11 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    public function markMessagesRead(string $instanceId, array $ids): array
+    {
+        return $this->patch("/chat/readMessages/{$instanceId}", ['ids' => $ids]);
+    }
+
     public function logout(string $instanceId): void
     {
         $this->delete("/instance/delete/{$instanceId}");
@@ -122,6 +127,13 @@ class EvolutionApiClient implements GatewayClientInterface
     {
         return Http::withHeaders(['apikey' => $this->apiKey])
             ->post(rtrim($this->baseUrl, '/') . $path, $data)
+            ->throw()->json();
+    }
+
+    private function patch(string $path, array $data): array
+    {
+        return Http::withHeaders(['apikey' => $this->apiKey])
+            ->patch(rtrim($this->baseUrl, '/') . $path, $data)
             ->throw()->json();
     }
 

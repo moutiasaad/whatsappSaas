@@ -49,10 +49,12 @@ class InstanceController extends Controller
             }
 
             if (!$instance->gateway_instance_id) {
-                $result = $gateway->createInstance($instance->name);
+                $gatewayName = 'wa-' . $instance->tenant_id . '-' . $instance->id;
+                $result = $gateway->createInstance($gatewayName);
                 $instance->update([
-                    'gateway_instance_id' => $result['name'] ?? $result['instance']['instanceId'] ?? $result['instanceName'] ?? $instance->name,
+                    'gateway_instance_id' => $result['name'] ?? $result['instance']['instanceId'] ?? $result['instanceName'] ?? $gatewayName,
                 ]);
+                $instance->refresh();
             }
 
             // Register webhook immediately so the gateway can reach us as soon as the QR is scanned

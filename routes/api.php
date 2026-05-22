@@ -23,6 +23,7 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         Route::post('/conversations/{conversation}/reassign', [ConversationController::class, 'reassign']);
         Route::post('/conversations/{conversation}/reopen', [ConversationController::class, 'reopen']);
         Route::post('/conversations/{conversation}/toggle-ai', [ConversationController::class, 'toggleAi']);
+        Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead']);
 
         // Messages
         Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);

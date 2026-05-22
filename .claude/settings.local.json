@@ -33,7 +33,11 @@
       "PowerShell(php artisan tinker --execute=\"echo json_encode\\(DB::table\\('webhook_events'\\)->latest\\(\\)->limit\\(3\\)->get\\(['id','event_type','processed_at','error','created_at']\\)\\);\")",
       "PowerShell(php -l app/Jobs/ProcessIncomingMessage.php)",
       "WebFetch(domain:api.whatstshl.online)",
-      "Bash(Get-Content storage/logs/laravel.log -Tail 50)"
+      "Bash(Get-Content storage/logs/laravel.log -Tail 50)",
+      "Bash(php -l app/Services/WhatsApp/Gateway/EvolutionApiClient.php)",
+      "Bash(php -l app/Services/WhatsApp/Gateway/GatewayClientInterface.php)",
+      "Bash(php -l app/Http/Controllers/Api/ConversationController.php)",
+      "Bash(php *)"
     ]
   },
   "enableAllProjectMcpServers": true,

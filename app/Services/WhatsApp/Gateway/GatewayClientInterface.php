@@ -12,4 +12,5 @@ interface GatewayClientInterface
     public function sendMedia(string $instanceId, string $to, string $url, string $type, ?string $caption = null): array;
     public function logout(string $instanceId): void;
     public function restart(string $instanceId): void;
+    public function markMessagesRead(string $instanceId, array $ids): array;
 }

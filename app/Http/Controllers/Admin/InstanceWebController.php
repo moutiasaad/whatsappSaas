@@ -27,8 +27,13 @@ class InstanceWebController extends Controller
 
     public function create()
     {
-        $teams = Team::where('is_active', true)->orderBy('name')->get();
-        return view('admin.instances.create', compact('teams'));
+        $teams  = Team::where('is_active', true)->orderBy('name')->get();
+        $agents = \App\Models\User::where('tenant_id', auth()->user()->tenant_id)
+            ->whereIn('role', ['agent', 'supervisor'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+        return view('admin.instances.create', compact('teams', 'agents'));
     }
 
     public function store(Request $request)

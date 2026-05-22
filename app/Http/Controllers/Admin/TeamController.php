@@ -128,6 +128,10 @@ class TeamController extends Controller
 
         AuditLog::record('team.created', $team);
 
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $team->id, 'name' => $team->name], 201);
+        }
+
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
             ->with('success', __('ui.controller_messages.team_created', ['name' => $team->name]));
     }

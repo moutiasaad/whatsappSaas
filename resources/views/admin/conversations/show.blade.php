@@ -614,6 +614,18 @@ function conversationPro() {
             await this.loadMessages();
             this.scrollToBottom();
             this.subscribeChannel();
+            this.markRead();
+        },
+
+        markRead() {
+            fetch(`/api/conversations/${this.conversationId}/read`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? ''
+                }
+            }).catch(() => {});
         },
 
         setQuickReply(text) {
@@ -867,6 +879,7 @@ function conversationPro() {
                 .listen('.message.received', (e) => {
                     this.messages = this.sortMessages([...this.messages, this.normalizeMessage(e.message)]);
                     this.scrollToBottom();
+                    this.markRead();
                 })
                 .listen('.message.sent', (e) => {
                     const idx = this.messages.findIndex(m => m.id === e.message.id);

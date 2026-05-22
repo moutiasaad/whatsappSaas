@@ -147,6 +147,10 @@ class UserController extends Controller
 
         AuditLog::record('user.created', $user);
 
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->role], 201);
+        }
+
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', __('ui.controller_messages.user_invited', ['name' => $user->name]));
     }

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Services\Conversations\ConversationService;
+use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ConversationController extends Controller
@@ -172,6 +174,39 @@ class ConversationController extends Controller
         $this->authorize('reopen', $conversation);
         $this->service->reopen($conversation, $request->user());
         return response()->json(['message' => 'Reopened.']);
+    }
+
+    public function markRead(Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $ids = $conversation->messages()
+            ->where('direction', 'in')
+            ->whereNotNull('external_message_id')
+            ->pluck('external_message_id')
+            ->map(fn($id) => is_numeric($id) ? (int) $id : $id)
+            ->values()
+            ->toArray();
+
+        $conversation->update(['unread_count' => 0]);
+
+        if (!empty($ids)) {
+            $instance = $conversation->instance;
+            try {
+                $gateway = new EvolutionApiClient(
+                    $instance->effectiveGatewayUrl(),
+                    $instance->effectiveGatewayApiKey()
+                );
+                $gateway->markMessagesRead($instance->gateway_instance_id, $ids);
+            } catch (\Exception $e) {
+                Log::channel('whatsapp')->warning('markRead gateway error', [
+                    'conversation_id' => $conversation->id,
+                    'error'           => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Read.']);
     }
 
     public function toggleAi(Conversation $conversation, Request $request): JsonResponse
