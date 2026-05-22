@@ -17,35 +17,41 @@ use Throwable;
 
 class SuperAdminPlatformController extends Controller
 {
-    public function tenants()
+    public function tenants(Request $request)
     {
         $baseQuery = Tenant::query()
             ->withCount(['users', 'teams', 'whatsappInstances as instances_count'])
-            ->when(request('search'), function ($q, $search) {
+            ->when($request->search, function ($q, $search) {
                 $q->where(function ($inner) use ($search) {
                     $inner->where('name', 'like', "%{$search}%")
                         ->orWhere('slug', 'like', "%{$search}%");
                 });
             })
-            ->when(request('status'), fn ($q, $status) => $q->where('subscription_status', $status))
-            ->when(request('plan_id'), fn ($q, $planId) => $q->where('plan_id', $planId))
-            ->when(request()->filled('is_active'), fn ($q) => $q->where('is_active', request('is_active') === '1'));
+            ->when($request->status,  fn ($q, $status) => $q->where('subscription_status', $status))
+            ->when($request->plan_id, fn ($q, $planId) => $q->where('plan_id', $planId))
+            ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active === '1'));
 
-        $tenants = (clone $baseQuery)
-            ->with('plan')
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
-
-        $plans = Plan::where('is_active', true)->orderBy('name')->get();
         $stats = [
-            'total'          => (clone $baseQuery)->count(),
-            'active'         => (clone $baseQuery)->where('subscription_status', 'active')->count(),
-            'trial'          => (clone $baseQuery)->where('subscription_status', 'trial')->count(),
-            'inactive'       => (clone $baseQuery)->where('is_active', false)->count(),
+            'total'    => (clone $baseQuery)->count(),
+            'active'   => (clone $baseQuery)->where('subscription_status', 'active')->count(),
+            'trial'    => (clone $baseQuery)->where('subscription_status', 'trial')->count(),
+            'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
         ];
 
-        return view('admin.platform.tenants', compact('tenants', 'plans', 'stats'));
+        if ($request->expectsJson()) {
+            $paginated = (clone $baseQuery)
+                ->with('plan:id,name')
+                ->orderBy('name')
+                ->paginate((int) ($request->integer('per_page') ?: 20));
+
+            return response()->json(
+                array_merge($paginated->toArray(), ['stats' => $stats])
+            )->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        $plans = Plan::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('admin.platform.tenants', compact('plans'));
     }
 
     public function createTenant()
@@ -170,10 +176,14 @@ class SuperAdminPlatformController extends Controller
             ->with('success', __('ui.controller_messages.tenant_updated'));
     }
 
-    public function destroyTenant(Tenant $tenant)
+    public function destroyTenant(Request $request, Tenant $tenant)
     {
         $tenantName = $tenant->name;
         $tenant->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Tenant deleted.']);
+        }
 
         return redirect()
             ->route('super_admin.platform.tenants')
@@ -194,12 +204,18 @@ class SuperAdminPlatformController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.no_tenants_selected')], 422);
+            }
             return back()->with('error', __('ui.controller_messages.no_tenants_selected'));
         }
 
         $tenants = Tenant::whereIn('id', $ids)->get();
 
         if ($tenants->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.no_valid_tenants_selected')], 422);
+            }
             return back()->with('error', __('ui.controller_messages.no_valid_tenants_selected'));
         }
 
@@ -208,18 +224,25 @@ class SuperAdminPlatformController extends Controller
                 $tenant->delete();
             }
 
-            return back()->with('success', __('ui.controller_messages.tenants_deleted', ['count' => $tenants->count()]));
+            $message = __('ui.controller_messages.tenants_deleted', ['count' => $tenants->count()]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message]);
+            }
+            return back()->with('success', $message);
         }
 
         $enable = $data['action'] === 'enable';
         Tenant::whereIn('id', $tenants->pluck('id'))->update(['is_active' => $enable]);
 
-        return back()->with(
-            'success',
-            $enable
-                ? __('ui.controller_messages.tenants_enabled', ['count' => $tenants->count()])
-                : __('ui.controller_messages.tenants_disabled', ['count' => $tenants->count()])
-        );
+        $message = $enable
+            ? __('ui.controller_messages.tenants_enabled', ['count' => $tenants->count()])
+            : __('ui.controller_messages.tenants_disabled', ['count' => $tenants->count()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message]);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function plans()
