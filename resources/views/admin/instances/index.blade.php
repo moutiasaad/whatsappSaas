@@ -67,6 +67,7 @@
                             <th>{{ __('ui.instances_page.gateway') }}</th>
                             <th>{{ __('ui.instances_page.phone') }}</th>
                             <th>{{ __('ui.instances_page.activity') }}</th>
+                            <th>Webhook</th>
                             <th>{{ __('ui.instances_page.status') }}</th>
                             <th style="text-align:right">{{ __('ui.instances_page.actions') }}</th>
                         </tr>
@@ -88,6 +89,22 @@
                             <td>{{ ucfirst(str_replace('_', ' ', $instance->gateway)) }}</td>
                             <td>{{ $instance->phone_number ?? '—' }}</td>
                             <td>{{ $instance->last_message_at?->diffForHumans() ?? __('ui.instances_page.never') }}</td>
+                            <td>
+                                @if($instance->webhook_enabled)
+                                    @php $lastHit = $instance->webhook_events_max_created_at ? \Carbon\Carbon::parse($instance->webhook_events_max_created_at) : null; @endphp
+                                    <span style="display:inline-flex;align-items:center;gap:.4rem">
+                                        <span style="width:.45rem;height:.45rem;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+                                        <span style="font-size:.8rem;color:var(--text-muted)">
+                                            {{ $lastHit ? $lastHit->diffForHumans() : 'Pas encore' }}
+                                        </span>
+                                    </span>
+                                @else
+                                    <span style="display:inline-flex;align-items:center;gap:.4rem">
+                                        <span style="width:.45rem;height:.45rem;border-radius:50%;background:#ef4444;flex-shrink:0"></span>
+                                        <span style="font-size:.8rem;color:#ef4444">Non enregistré</span>
+                                    </span>
+                                @endif
+                            </td>
                             <td>
                                 <span :class="statusBadge(status)" style="display:inline-flex;align-items:center;gap:.35rem">
                                     <span class="status-dot" :class="statusDot(status)" style="width:.4rem;height:.4rem"></span>

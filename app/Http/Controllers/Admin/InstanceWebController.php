@@ -13,7 +13,10 @@ class InstanceWebController extends Controller
 {
     public function index()
     {
-        $instances = WhatsAppInstance::orderBy('name')->get();
+        $instances = WhatsAppInstance::withCount('webhookEvents')
+            ->withMax('webhookEvents', 'created_at')
+            ->orderBy('name')
+            ->get();
         return view('admin.instances.index', compact('instances'));
     }
 
