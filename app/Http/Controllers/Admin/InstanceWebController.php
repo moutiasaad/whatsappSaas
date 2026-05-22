@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessIncomingMessage;
 use App\Models\AuditLog;
 use App\Models\Team;
+use App\Models\WebhookEvent;
 use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\Request;
@@ -60,6 +62,27 @@ class InstanceWebController extends Controller
             ->get(['id', 'event_type', 'payload', 'processed_at', 'error', 'created_at']);
 
         return view('admin.instances.webhook-events', compact('instance', 'events'));
+    }
+
+    public function reprocessWebhookEvent(WhatsAppInstance $instance, int $eventId)
+    {
+        $event = WebhookEvent::where('instance_id', $instance->id)->findOrFail($eventId);
+
+        // Reset so the job re-runs fully
+        $event->update(['processed_at' => null, 'error' => null]);
+
+        try {
+            ProcessIncomingMessage::dispatchSync($event);
+            $event->refresh();
+            $result = $event->error
+                ? ['status' => 'error', 'message' => $event->error]
+                : ['status' => 'ok', 'message' => 'Traité avec succès'];
+        } catch (\Throwable $e) {
+            $event->update(['error' => $e->getMessage()]);
+            $result = ['status' => 'error', 'message' => $e->getMessage()];
+        }
+
+        return back()->with('reprocess_result', $result);
     }
 
     public function edit(WhatsAppInstance $instance)
