@@ -14,7 +14,8 @@ class ConversationPolicy
 
     private function canAccessTeam(User $user, Conversation $conversation): bool
     {
-        return $conversation->team_id !== null && $user->teams->contains('id', $conversation->team_id);
+        if ($conversation->team_id === null) return true;
+        return $user->teams->contains('id', $conversation->team_id);
     }
 
     public function view(User $user, Conversation $conversation): bool
