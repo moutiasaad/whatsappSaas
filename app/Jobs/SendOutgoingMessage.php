@@ -29,12 +29,26 @@ class SendOutgoingMessage implements ShouldQueue
         $instance     = $conversation->instance;
         $customer     = $conversation->customer;
 
+        Log::channel('whatsapp')->info('SendOutgoingMessage: start', [
+            'message_id'          => $this->message->id,
+            'gateway_instance_id' => $instance->gateway_instance_id,
+            'gateway_url'         => $instance->effectiveGatewayUrl(),
+            'customer_phone'      => $customer->phone_e164,
+            'type'                => $this->message->type,
+            'body_preview'        => mb_substr((string) $this->message->body, 0, 80),
+        ]);
+
         try {
             $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
 
             $result = $this->message->type === 'text'
                 ? $gateway->sendText($instance->gateway_instance_id, $customer->phone_e164, $this->message->body)
                 : $gateway->sendMedia($instance->gateway_instance_id, $customer->phone_e164, $this->message->media_url, $this->message->type);
+
+            Log::channel('whatsapp')->info('SendOutgoingMessage: gateway response', [
+                'message_id' => $this->message->id,
+                'result'     => $result,
+            ]);
 
             $this->message->update([
                 'status'              => 'sent',
@@ -46,7 +60,10 @@ class SendOutgoingMessage implements ShouldQueue
 
         } catch (\Exception $e) {
             $this->message->update(['status' => 'failed']);
-            Log::error("SendOutgoingMessage failed [{$this->message->id}]: {$e->getMessage()}");
+            Log::channel('whatsapp')->error('SendOutgoingMessage: failed', [
+                'message_id' => $this->message->id,
+                'error'      => $e->getMessage(),
+            ]);
             throw $e;
         }
     }
