@@ -52,6 +52,16 @@ class InstanceWebController extends Controller
             ->with('success', __('ui.controller_messages.instance_created', ['name' => $instance->name]));
     }
 
+    public function webhookEvents(WhatsAppInstance $instance)
+    {
+        $events = $instance->webhookEvents()
+            ->latest()
+            ->limit(30)
+            ->get(['id', 'event_type', 'payload', 'processed_at', 'error', 'created_at']);
+
+        return view('admin.instances.webhook-events', compact('instance', 'events'));
+    }
+
     public function edit(WhatsAppInstance $instance)
     {
         $teams = Team::where('is_active', true)->orderBy('name')->get();
