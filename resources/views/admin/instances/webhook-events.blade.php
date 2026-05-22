@@ -120,7 +120,7 @@
                         <td>
                             <details>
                                 <summary style="cursor:pointer;font-size:.8rem;color:var(--text-muted)">Voir JSON</summary>
-                                <pre style="margin-top:.5rem;padding:.75rem;background:var(--sidebar-bg);border-radius:.5rem;font-size:.7rem;overflow-x:auto;max-height:200px;white-space:pre-wrap;word-break:break-all">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                <pre style="margin-top:.5rem;padding:.75rem;background:#0f172a;color:#e2e8f0;border-radius:.5rem;font-size:.7rem;overflow-x:auto;max-height:300px;white-space:pre-wrap;word-break:break-all;border:1px solid #334155">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                             </details>
                             @if($event->error)
                                 <div style="margin-top:.35rem;font-size:.75rem;color:#ef4444">{{ Str::limit($event->error, 120) }}</div>
