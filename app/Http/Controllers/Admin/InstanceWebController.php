@@ -13,16 +13,29 @@ use Illuminate\Http\Request;
 
 class InstanceWebController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $instances = WhatsAppInstance::withCount([
-                'webhookEvents',
-                'webhookEvents as webhook_pending_count' => fn($q) => $q->whereNull('processed_at'),
-            ])
-            ->withMax('webhookEvents', 'created_at')
-            ->orderBy('name')
-            ->get();
-        return view('admin.instances.index', compact('instances'));
+        if ($request->expectsJson()) {
+            $instances = WhatsAppInstance::withCount([
+                    'webhookEvents',
+                    'webhookEvents as webhook_pending_count' => fn($q) => $q->whereNull('processed_at'),
+                ])
+                ->withMax('webhookEvents', 'created_at')
+                ->orderBy('name')
+                ->get()
+                ->makeHidden(['gateway_api_key', 'webhook_token']);
+
+            $stats = [
+                'connected'  => $instances->where('status', 'connected')->count(),
+                'connecting' => $instances->whereIn('status', ['connecting', 'qr_pending'])->count(),
+                'offline'    => $instances->whereIn('status', ['disconnected', 'error', 'banned'])->count(),
+            ];
+
+            return response()->json(['data' => $instances, 'stats' => $stats])
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return view('admin.instances.index');
     }
 
     public function create()
@@ -121,7 +134,7 @@ class InstanceWebController extends Controller
             ->with('success', __('ui.controller_messages.instance_updated'));
     }
 
-    public function destroy(WhatsAppInstance $instance)
+    public function destroy(Request $request, WhatsAppInstance $instance)
     {
         try {
             if ($instance->gateway_instance_id && $instance->hasGatewayCredentials()) {
@@ -134,6 +147,11 @@ class InstanceWebController extends Controller
 
         AuditLog::record('instance.deleted', $instance, ['name' => $instance->name]);
         $instance->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Instance deleted.']);
+        }
+
         return redirect()->route('admin.instances.index')
             ->with('success', __('ui.controller_messages.instance_deleted', ['name' => $instance->name]));
     }

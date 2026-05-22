@@ -71,32 +71,36 @@ class TeamController extends Controller
                 'conversations as active_conversations_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
                 'conversations as pool_count' => fn ($q) => $q->where('state', 'pool'),
                 'conversations as closed_count' => fn ($q) => $q->where('state', 'closed'),
-            ])
-            ->with([
-                'users' => fn ($query) => $query->select('users.id', 'users.name', 'users.avatar_url'),
             ]);
 
-        $teams = (clone $baseQuery);
-
-        match ($request->string('sort')->value()) {
-            'name_desc' => $teams->orderByDesc('name'),
-            'activity_desc' => $teams->orderByDesc('active_conversations_count')->orderByDesc('name'),
-            'pool_desc' => $teams->orderByDesc('pool_count')->orderByDesc('name'),
-            default => $teams->orderBy('name'),
-        };
-
-        $teams = $teams
-            ->paginate(18)
-            ->withQueryString();
-
         $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'active' => (clone $baseQuery)->where('is_active', true)->count(),
+            'total'    => (clone $baseQuery)->count(),
+            'active'   => (clone $baseQuery)->where('is_active', true)->count(),
             'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
-            'pool' => (clone $baseQuery)->get()->sum('pool_count'),
+            'pool'     => (clone $baseQuery)->get()->sum('pool_count'),
         ];
 
-        return view('admin.teams.index', compact('teams', 'stats'));
+        if ($request->expectsJson()) {
+            $listQuery = clone $baseQuery;
+
+            match ($request->string('sort')->value()) {
+                'name_desc'     => $listQuery->orderByDesc('name'),
+                'activity_desc' => $listQuery->orderByDesc('active_conversations_count')->orderByDesc('name'),
+                'pool_desc'     => $listQuery->orderByDesc('pool_count')->orderByDesc('name'),
+                default         => $listQuery->orderBy('name'),
+            };
+
+            $paginated = $listQuery->paginate((int) ($request->integer('per_page') ?: 18));
+
+            return response()->json(
+                array_merge($paginated->toArray(), ['stats' => $stats])
+            )->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return view('admin.teams.index', [
+            'canManageTeams' => $user->hasAnyRole(['admin', 'super_admin']),
+            'isSupervisor'   => $user->isSupervisor(),
+        ]);
     }
 
     public function create()
@@ -181,10 +185,15 @@ class TeamController extends Controller
             ->with('success', __('ui.controller_messages.team_updated'));
     }
 
-    public function destroy(Team $team)
+    public function destroy(Request $request, Team $team)
     {
         AuditLog::record('team.deleted', $team, ['name' => $team->name]);
         $team->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Team deleted.']);
+        }
+
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
             ->with('success', __('ui.controller_messages.team_deleted', ['name' => $team->name]));
     }
@@ -221,12 +230,15 @@ class TeamController extends Controller
             $enable = $data['action'] === 'enable';
             Team::whereIn('id', $teams->pluck('id'))->update(['is_active' => $enable]);
 
-            return back()->with(
-                'success',
-                $enable
-                    ? __('ui.controller_messages.teams_enabled', ['count' => $teams->count()])
-                    : __('ui.controller_messages.teams_disabled', ['count' => $teams->count()])
-            );
+            $message = $enable
+                ? __('ui.controller_messages.teams_enabled', ['count' => $teams->count()])
+                : __('ui.controller_messages.teams_disabled', ['count' => $teams->count()]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message]);
+            }
+
+            return back()->with('success', $message);
         }
 
         foreach ($teams as $team) {
@@ -234,6 +246,12 @@ class TeamController extends Controller
             $team->delete();
         }
 
-        return back()->with('success', __('ui.controller_messages.teams_deleted', ['count' => $teams->count()]));
+        $message = __('ui.controller_messages.teams_deleted', ['count' => $teams->count()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message]);
+        }
+
+        return back()->with('success', $message);
     }
 }

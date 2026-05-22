@@ -21,6 +21,7 @@ return [
     'date_placeholder_from' => 'AAAA-MM-JJ',
     'date_placeholder_to' => 'AAAA-MM-JJ',
     'delete' => 'Supprimer',
+    'deleting' => 'Suppression...',
     'irreversible_warning' => 'Cette action est irréversible. Êtes-vous sûr ?',
     'proceed_confirmation' => 'Êtes-vous sûr de vouloir continuer ?',
     'leave_page_prompt' => 'Quitter cette page ?',

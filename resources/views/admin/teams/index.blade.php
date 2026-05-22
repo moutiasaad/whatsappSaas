@@ -7,11 +7,28 @@
 @endsection
 
 @section('content')
-    @php
-        $panelPrefix = auth()->user()->routeNamePrefix();
-        $canManageTeams = auth()->user()->hasAnyRole(['admin', 'super_admin']);
-        $isSupervisor = auth()->user()->isSupervisor();
-    @endphp
+@php
+    $panelPrefix    = auth()->user()->routeNamePrefix();
+    $canManageTeams = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+    $isSupervisor   = auth()->user()->isSupervisor();
+    $i18n = [
+        'active'                 => __('ui.teams_page.active'),
+        'inactive'               => __('ui.teams_page.inactive'),
+        'no_description'         => __('ui.teams_page.no_description'),
+        'no_teams_found'         => __('ui.teams_page.no_teams_found'),
+        'try_adjusting'          => __('ui.teams_page.try_adjusting'),
+        'delete_team_prompt'     => __('ui.teams_page.delete_team_prompt'),
+        'delete_team_message'    => __('ui.teams_page.delete_team_message'),
+        'delete_selected_prompt' => __('ui.teams_page.delete_selected_prompt'),
+        'deleted_toast'          => __('ui.controller_messages.team_deleted'),
+        'selected_items'         => __('ui.selected_items'),
+        'loading'                => __('ui.conversations_page.loading'),
+        'load_more'              => __('ui.conversations_page.load_more'),
+        'loading_more'           => __('ui.conversations_page.loading_more'),
+    ];
+@endphp
+
+<div x-data="teamsPage()" x-init="init()" x-cloak>
 
     <div class="page-header">
         <div class="page-header-left">
@@ -36,72 +53,80 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-card-icon"><i class="ri-team-line"></i></div>
-            <div class="stat-card-value">{{ number_format($stats['total'] ?? 0) }}</div>
+            <div class="stat-card-value" x-text="stats.total ?? '-'"></div>
             <div class="stat-card-label">{{ __('ui.teams_page.total_teams') }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-card-icon"><i class="ri-checkbox-circle-line"></i></div>
-            <div class="stat-card-value">{{ number_format($stats['active'] ?? 0) }}</div>
+            <div class="stat-card-value" x-text="stats.active ?? '-'"></div>
             <div class="stat-card-label">{{ __('ui.teams_page.active_teams') }}</div>
         </div>
         <div class="stat-card red">
             <div class="stat-card-icon"><i class="ri-pause-circle-line"></i></div>
-            <div class="stat-card-value">{{ number_format($stats['inactive'] ?? 0) }}</div>
+            <div class="stat-card-value" x-text="stats.inactive ?? '-'"></div>
             <div class="stat-card-label">{{ __('ui.teams_page.inactive_teams') }}</div>
         </div>
         <div class="stat-card orange">
             <div class="stat-card-icon"><i class="ri-inbox-line"></i></div>
-            <div class="stat-card-value">{{ number_format($stats['pool'] ?? 0) }}</div>
+            <div class="stat-card-value" x-text="stats.pool ?? '-'"></div>
             <div class="stat-card-label">{{ __('ui.teams_page.pool_conversations') }}</div>
         </div>
     </div>
 
-    <form method="GET">
-        <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem">
-            <div class="filter-input-wrap">
-                <i class="ri-search-line"></i>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="{{ __('ui.teams_page.search_placeholder') }}" class="filter-input">
-            </div>
+    <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem">
+        <div class="filter-input-wrap">
+            <i class="ri-search-line"></i>
+            <input type="text" x-model="search" @input.debounce.350ms="reload()"
+                   placeholder="{{ __('ui.teams_page.search_placeholder') }}" class="filter-input">
+        </div>
 
-            <select name="is_active" class="toolbar-select" onchange="this.form.submit()">
-                <option value="">{{ __('ui.teams_page.active_inactive') }}</option>
-                <option value="1" @selected(request('is_active') === '1')>{{ __('ui.teams_page.active_only') }}</option>
-                <option value="0" @selected(request('is_active') === '0')>{{ __('ui.teams_page.inactive_only') }}</option>
-            </select>
+        <select x-model="filters.is_active" @change="reload()" class="toolbar-select">
+            <option value="">{{ __('ui.teams_page.active_inactive') }}</option>
+            <option value="1">{{ __('ui.teams_page.active_only') }}</option>
+            <option value="0">{{ __('ui.teams_page.inactive_only') }}</option>
+        </select>
 
-            <select name="sort" class="toolbar-select" onchange="this.form.submit()">
-                <option value="name_asc" @selected(request('sort', 'name_asc') === 'name_asc')>{{ __('ui.teams_page.name_az') }}</option>
-                <option value="name_desc" @selected(request('sort') === 'name_desc')>{{ __('ui.teams_page.name_za') }}</option>
-                <option value="activity_desc" @selected(request('sort') === 'activity_desc')>{{ __('ui.teams_page.most_active') }}</option>
-                <option value="pool_desc" @selected(request('sort') === 'pool_desc')>{{ __('ui.teams_page.most_in_pool') }}</option>
-            </select>
+        <select x-model="filters.sort" @change="reload()" class="toolbar-select">
+            <option value="name_asc">{{ __('ui.teams_page.name_az') }}</option>
+            <option value="name_desc">{{ __('ui.teams_page.name_za') }}</option>
+            <option value="activity_desc">{{ __('ui.teams_page.most_active') }}</option>
+            <option value="pool_desc">{{ __('ui.teams_page.most_in_pool') }}</option>
+        </select>
 
-            <button type="submit" class="btn btn-outline btn-sm">{{ __('ui.teams_page.filter') }}</button>
+        <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">{{ __('ui.teams_page.clear') }}</button>
+    </div>
 
-            @if(request()->hasAny(['search', 'is_active', 'sort']))
-                <a href="{{ route($panelPrefix . '.teams.index') }}" class="btn btn-ghost btn-sm">{{ __('ui.teams_page.clear') }}</a>
+    {{-- Loading --}}
+    <div x-show="loading" class="spinner-wrap" style="min-height:200px">
+        <div>
+            <div class="spinner" style="margin:0 auto 1rem"></div>
+            <div style="color:var(--text-muted);font-size:.875rem;text-align:center" x-text="i18n.loading"></div>
+        </div>
+    </div>
+
+    <div class="card" style="padding:0" x-show="!loading">
+
+        <div x-show="teams.length === 0" class="empty-state" style="padding:3rem">
+            <div class="empty-state-icon"><i class="ri-team-line"></i></div>
+            <h4 x-text="i18n.no_teams_found"></h4>
+            <p x-text="i18n.try_adjusting"></p>
+            @if($canManageTeams)
+                <a href="{{ route($panelPrefix . '.teams.create') }}" class="btn btn-primary">{{ __('ui.teams_page.create_team') }}</a>
             @endif
         </div>
-    </form>
 
-    <div class="card" style="padding:0">
-        @if($teams->isEmpty())
-            <div class="empty-state" style="padding:3rem">
-                <div class="empty-state-icon"><i class="ri-team-line"></i></div>
-                <h4>{{ __('ui.teams_page.no_teams_found') }}</h4>
-                <p>{{ __('ui.teams_page.try_adjusting') }}</p>
-                @if($canManageTeams)
-                    <a href="{{ route($panelPrefix . '.teams.create') }}" class="btn btn-primary">{{ __('ui.teams_page.create_team') }}</a>
-                @endif
-            </div>
-        @else
+        <div x-show="teams.length > 0">
             <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
                 <table class="data-table">
                     <thead>
                         <tr>
                             @if($canManageTeams)
                                 <th style="width:2.5rem">
-                                    <input type="checkbox" class="header-cb" style="cursor:pointer;">
+                                    <input type="checkbox"
+                                           :checked="isAllSelected()"
+                                           :indeterminate.prop="isIndeterminate()"
+                                           @change="toggleAll()"
+                                           style="cursor:pointer;">
                                 </th>
                             @endif
                             <th>{{ __('ui.teams_page.team') }}</th>
@@ -114,11 +139,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($teams as $team)
+                        <template x-for="team in teams" :key="team.id">
                             <tr>
                                 @if($canManageTeams)
                                     <td>
-                                        <input type="checkbox" class="row-cb" value="{{ $team->id }}" style="cursor:pointer;">
+                                        <input type="checkbox"
+                                               :checked="isSelected(team.id)"
+                                               @change="toggleSelect(team.id)"
+                                               style="cursor:pointer;">
                                     </td>
                                 @endif
                                 <td>
@@ -127,179 +155,254 @@
                                             <i class="ri-team-line"></i>
                                         </div>
                                         <div style="display:flex;flex-direction:column;gap:.125rem;min-width:0;">
-                                            <span style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $team->name }}</span>
-                                            <span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $team->description ?: __('ui.teams_page.no_description') }}</span>
+                                            <span style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="team.name"></span>
+                                            <span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="team.description || i18n.no_description"></span>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge {{ $team->is_active ? 'badge-green' : 'badge-gray' }}">
-                                        <i class="{{ $team->is_active ? 'ri-checkbox-circle-line' : 'ri-pause-circle-line' }}"></i>
-                                        {{ $team->is_active ? __('ui.teams_page.active') : __('ui.teams_page.inactive') }}
+                                    <span :class="team.is_active ? 'badge badge-green' : 'badge badge-gray'">
+                                        <i :class="team.is_active ? 'ri-checkbox-circle-line' : 'ri-pause-circle-line'"></i>
+                                        <span x-text="team.is_active ? i18n.active : i18n.inactive"></span>
                                     </span>
                                 </td>
                                 <td>
                                     <span class="badge badge-purple">
                                         <i class="ri-user-line"></i>
-                                        {{ number_format($team->users_count ?? $team->users->count()) }}
+                                        <span x-text="team.users_count ?? 0"></span>
                                     </span>
                                 </td>
-                                <td>{{ number_format($team->active_conversations_count ?? 0) }}</td>
-                                <td>{{ number_format($team->pool_count ?? 0) }}</td>
-                                <td>{{ number_format($team->closed_count ?? 0) }}</td>
+                                <td x-text="team.active_conversations_count ?? 0"></td>
+                                <td x-text="team.pool_count ?? 0"></td>
+                                <td x-text="team.closed_count ?? 0"></td>
                                 <td>
                                     <div style="display:flex;gap:.25rem;justify-content:flex-end;">
+                                        <a :href="editUrl(team.id)" class="action-btn" title="{{ __('ui.teams_page.manage') }}">
+                                            <i class="ri-pencil-line"></i>
+                                        </a>
+                                        <a :href="conversationsUrl(team.id)" class="action-btn" title="{{ __('ui.teams_page.view_conversations') }}">
+                                            <i class="ri-message-3-line"></i>
+                                        </a>
                                         @if($canManageTeams)
-                                            <a href="{{ route($panelPrefix . '.teams.edit', $team) }}" class="action-btn" title="{{ __('ui.teams_page.manage') }}">
-                                                <i class="ri-pencil-line"></i>
-                                            </a>
-                                            <a href="{{ route($panelPrefix . '.conversations.index', ['team_id' => $team->id]) }}" class="action-btn" title="{{ __('ui.teams_page.view_conversations') }}">
-                                                <i class="ri-message-3-line"></i>
-                                            </a>
                                             <button type="button"
+                                                    @click="openDeleteModal(team.id, team.name)"
                                                     class="action-btn danger"
-                                                    title="{{ __('ui.teams_page.delete') }}"
-                                                    onclick="confirmDelete('{{ route($panelPrefix . '.teams.destroy', $team) }}', { title: '{{ __('ui.teams_page.delete_team_prompt') }}'.replace(':name', '{{ addslashes($team->name) }}'), message: '{{ __('ui.teams_page.delete_team_message') }}' })">
+                                                    title="{{ __('ui.teams_page.delete') }}">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
-                                        @else
-                                            <a href="{{ route($panelPrefix . '.teams.edit', $team) }}" class="action-btn" title="{{ __('ui.teams_page.manage') }}">
-                                                <i class="ri-pencil-line"></i>
-                                            </a>
-                                            <a href="{{ route($panelPrefix . '.conversations.index', ['team_id' => $team->id]) }}" class="action-btn" title="{{ __('ui.teams_page.view_conversations') }}">
-                                                <i class="ri-message-3-line"></i>
-                                            </a>
                                         @endif
                                     </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
             </div>
 
-            @if($teams->hasPages())
-                <div style="padding:1rem 1.25rem;border-top:1px solid var(--card-border)">
-                    {{ $teams->links('admin.partials.pagination') }}
-                </div>
-            @endif
-        @endif
+            <div x-show="hasMore" style="padding:1rem;text-align:center;border-top:1px solid var(--card-border)">
+                <button @click="loadMore()" :disabled="loadingMore" class="btn btn-outline btn-sm">
+                    <template x-if="!loadingMore">
+                        <span><i class="ri-arrow-down-line"></i> <span x-text="i18n.load_more"></span></span>
+                    </template>
+                    <template x-if="loadingMore">
+                        <span><span class="btn-spinner"></span> <span x-text="i18n.loading_more"></span></span>
+                    </template>
+                </button>
+            </div>
+        </div>
     </div>
 
-    @if($canManageTeams && $teams->isNotEmpty())
-        <div class="bulk-bar" id="teamBulkBar">
-            <span class="bulk-count">{{ __('ui.bulk_selected_zero') }}</span>
+    {{-- Bulk Bar --}}
+    @if($canManageTeams)
+        <div class="bulk-bar" :class="selected.length > 0 ? 'visible' : ''">
+            <span class="bulk-count" x-text="selected.length + ' ' + i18n.selected_items"></span>
             <span class="bulk-sep">|</span>
-            <div class="bulk-actions">
-                <form method="POST" action="{{ route($panelPrefix . '.teams.bulk') }}" id="teamBulkForm" style="display:flex;gap:.5rem;align-items:center;">
-                    @csrf
-                    <input type="hidden" name="ids" id="teamBulkIds">
-                    <select name="action" class="form-control" style="min-width:170px;">
-                        <option value="enable">{{ __('ui.teams_page.enable') }}</option>
-                        <option value="disable">{{ __('ui.teams_page.disable') }}</option>
-                        <option value="delete">{{ __('ui.teams_page.delete') }}</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary btn-sm">{{ __('ui.teams_page.apply') }}</button>
-                </form>
+            <div class="bulk-actions" style="display:flex;gap:.5rem;align-items:center;">
+                <select x-model="bulkAction" class="form-control" style="min-width:170px;">
+                    <option value="enable">{{ __('ui.teams_page.enable') }}</option>
+                    <option value="disable">{{ __('ui.teams_page.disable') }}</option>
+                    <option value="delete">{{ __('ui.teams_page.delete') }}</option>
+                </select>
+                <button type="button" @click="submitBulk()" :disabled="bulkSaving" class="btn btn-primary btn-sm">
+                    <span x-show="!bulkSaving">{{ __('ui.teams_page.apply') }}</span>
+                    <span x-show="bulkSaving"><span class="btn-spinner"></span></span>
+                </button>
             </div>
-            <button type="button" class="bulk-close" onclick="teamBulk.clear()"><i class="ri-close-line"></i></button>
+            <button type="button" class="bulk-close" @click="selected = []"><i class="ri-close-line"></i></button>
         </div>
-
-        <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var headerCheckbox = document.querySelector('.header-cb');
-            var rowCheckboxes = Array.from(document.querySelectorAll('.row-cb'));
-            var bulkBar = document.getElementById('teamBulkBar');
-            var bulkCount = bulkBar ? bulkBar.querySelector('.bulk-count') : null;
-            var bulkForm = document.getElementById('teamBulkForm');
-            var bulkIds = document.getElementById('teamBulkIds');
-            var bulkAction = bulkForm ? bulkForm.querySelector('select[name="action"]') : null;
-
-            function getSelected() {
-                return rowCheckboxes.filter(function (checkbox) {
-                    return checkbox.checked;
-                }).map(function (checkbox) {
-                    return checkbox.value;
-                });
-            }
-
-            function syncBulkUi() {
-                var selected = getSelected();
-                var count = selected.length;
-
-                if (bulkCount) {
-                    bulkCount.textContent = count + ' ' + @json(__('ui.selected_items'));
-                }
-
-                if (bulkBar) {
-                    bulkBar.classList.toggle('visible', count > 0);
-                }
-
-                if (headerCheckbox) {
-                    var allSelected = rowCheckboxes.length > 0 && count === rowCheckboxes.length;
-                    headerCheckbox.checked = allSelected;
-                    headerCheckbox.indeterminate = count > 0 && !allSelected;
-                }
-
-                if (bulkIds) {
-                    bulkIds.value = selected.join(',');
-                }
-            }
-
-            window.teamBulk = {
-                getSelected: getSelected,
-                clear: function () {
-                    if (headerCheckbox) {
-                        headerCheckbox.checked = false;
-                        headerCheckbox.indeterminate = false;
-                    }
-
-                    rowCheckboxes.forEach(function (checkbox) {
-                        checkbox.checked = false;
-                    });
-
-                    syncBulkUi();
-                }
-            };
-
-            if (headerCheckbox) {
-                headerCheckbox.addEventListener('change', function () {
-                    rowCheckboxes.forEach(function (checkbox) {
-                        checkbox.checked = headerCheckbox.checked;
-                    });
-
-                    syncBulkUi();
-                });
-            }
-
-            rowCheckboxes.forEach(function (checkbox) {
-                checkbox.addEventListener('change', syncBulkUi);
-            });
-
-            if (bulkForm) {
-                bulkForm.addEventListener('submit', function (event) {
-                    syncBulkUi();
-
-                    if (bulkAction && bulkAction.value === 'delete') {
-                        event.preventDefault();
-
-                        confirmDelete(null, {
-                            title: @js(__('ui.teams_page.delete_selected_prompt')),
-                            message: @js(__('ui.teams_page.delete_team_message')),
-                            callback: function () {
-                                bulkForm.submit();
-                            }
-                        });
-                    }
-                });
-            }
-
-            if (window.initSS && bulkForm) {
-                window.initSS(bulkForm);
-            }
-
-            syncBulkUi();
-        });
-        </script>
     @endif
+
+    {{-- Delete Modal --}}
+    <div class="modal-overlay" :class="deleteModal.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="deleteModal.show = false" @keydown.escape.window="deleteModal.show = false">
+        <div class="modal-box" style="max-width:420px">
+            <div class="modal-icon danger"><i class="ri-delete-bin-line"></i></div>
+            <h3 x-text="i18n.delete_team_prompt.replace(':name', deleteModal.name)"></h3>
+            <p x-text="i18n.delete_team_message"></p>
+            <div class="modal-actions">
+                <button type="button" @click="deleteModal.show = false" class="btn btn-outline">
+                    {{ __('ui.cancel') }}
+                </button>
+                <button type="button" @click="confirmDelete()" :disabled="deleteModal.saving" class="btn btn-danger">
+                    <span x-show="!deleteModal.saving"><i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}</span>
+                    <span x-show="deleteModal.saving"><span class="btn-spinner"></span> {{ __('ui.deleting') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function teamsPage() {
+    return {
+        i18n:                @json($i18n),
+        indexUrl:            @json(route($panelPrefix . '.teams.index')),
+        editUrlTpl:          @json(route($panelPrefix . '.teams.edit', ['team' => '__ID__'])),
+        conversationsBaseUrl: @json(route($panelPrefix . '.conversations.index')),
+        destroyUrlTpl:       @json($canManageTeams ? route($panelPrefix . '.teams.destroy', ['team' => '__ID__']) : null),
+        bulkUrl:             @json($canManageTeams ? route($panelPrefix . '.teams.bulk') : null),
+
+        teams:       [],
+        stats:       { total: null, active: null, inactive: null, pool: null },
+        loading:     true,
+        loadingMore: false,
+        hasMore:     false,
+        page:        1,
+
+        search:     '',
+        filters:    { is_active: '', sort: 'name_asc' },
+
+        selected:   [],
+        bulkAction: 'enable',
+        bulkSaving: false,
+
+        deleteModal: { show: false, id: null, name: '', saving: false },
+
+        init() {
+            this.loadData();
+            window.addEventListener('pageshow', (e) => {
+                if (e.persisted) this.loadData();
+            });
+        },
+
+        reload() {
+            this.page     = 1;
+            this.teams    = [];
+            this.selected = [];
+            this.loadData();
+        },
+
+        buildParams() {
+            const p = new URLSearchParams();
+            p.set('per_page', '18');
+            p.set('page', String(this.page));
+            if (this.search.trim()) p.set('search', this.search.trim());
+            if (this.filters.is_active !== '') p.set('is_active', this.filters.is_active);
+            if (this.filters.sort) p.set('sort', this.filters.sort);
+            return p;
+        },
+
+        async loadData(append = false) {
+            if (!append) { this.loading = true; this.page = 1; }
+            else         { this.loadingMore = true; this.page++; }
+            try {
+                const res = await fetch(`${this.indexUrl}?${this.buildParams()}`, {
+                    headers: {
+                        'Accept':       'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                this.teams   = append ? [...this.teams, ...(data.data || [])] : (data.data || []);
+                this.hasMore = (data.current_page ?? 1) < (data.last_page ?? 1);
+                if (data.stats) this.stats = data.stats;
+            } catch (e) {
+                console.error('Teams fetch failed:', e);
+                if (!append) this.teams = [];
+            } finally {
+                this.loading     = false;
+                this.loadingMore = false;
+            }
+        },
+
+        loadMore() { this.loadData(true); },
+
+        clearFilters() {
+            this.search  = '';
+            this.filters = { is_active: '', sort: 'name_asc' };
+            this.reload();
+        },
+
+        isSelected(id)    { return this.selected.includes(id); },
+        toggleSelect(id)  {
+            if (this.isSelected(id)) this.selected = this.selected.filter(s => s !== id);
+            else this.selected.push(id);
+        },
+        toggleAll() {
+            this.selected = this.isAllSelected() ? [] : this.teams.map(t => t.id);
+        },
+        isAllSelected()   { return this.teams.length > 0 && this.selected.length === this.teams.length; },
+        isIndeterminate() { return this.selected.length > 0 && this.selected.length < this.teams.length; },
+
+        openDeleteModal(id, name) {
+            this.deleteModal = { show: true, id, name, saving: false };
+        },
+
+        async confirmDelete() {
+            this.deleteModal.saving = true;
+            try {
+                const res = await fetch(this.destroyUrlTpl.replace('__ID__', String(this.deleteModal.id)), {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept':       'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                });
+                if (!res.ok) throw new Error();
+                const name = this.deleteModal.name;
+                this.deleteModal.show = false;
+                window.showToast?.('success', this.i18n.deleted_toast.replace(':name', name));
+                this.reload();
+            } catch {
+                window.showToast?.('error', 'Erreur lors de la suppression.');
+                this.deleteModal.saving = false;
+            }
+        },
+
+        async submitBulk() {
+            if (!this.selected.length || !this.bulkUrl) return;
+            if (this.bulkAction === 'delete') {
+                if (!confirm(this.i18n.delete_selected_prompt)) return;
+            }
+            this.bulkSaving = true;
+            try {
+                const res = await fetch(this.bulkUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept':       'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({ action: this.bulkAction, ids: this.selected.join(',') }),
+                });
+                if (!res.ok) throw new Error();
+                this.selected = [];
+                this.reload();
+            } catch {
+                window.showToast?.('error', 'Erreur lors de l\'action groupée.');
+            } finally {
+                this.bulkSaving = false;
+            }
+        },
+
+        editUrl(id)          { return this.editUrlTpl.replace('__ID__', String(id)); },
+        conversationsUrl(id) { return this.conversationsBaseUrl + '?team_id=' + id; },
+    };
+}
+</script>
 @endsection
