@@ -385,18 +385,19 @@ document.addEventListener('DOMContentLoaded', function () {
         <div style="display:flex;flex-direction:column;gap:1rem">
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Nom complet <span style="color:var(--brand)">*</span></label>
-                <input type="text" x-model="userForm.name" class="form-control" placeholder="Prénom Nom" @keydown.enter.prevent="createUser()">
+                <input type="text" x-model="userForm.name" :class="{'error': userErrors.name}" class="form-control" placeholder="Prénom Nom" @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.name" x-text="userErrors.name?.[0]" class="form-error"></div>
             </div>
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Email <span style="color:var(--brand)">*</span></label>
-                <input type="email" x-model="userForm.email" class="form-control" placeholder="email@example.com" @keydown.enter.prevent="createUser()">
+                <input type="email" x-model="userForm.email" :class="{'error': userErrors.email}" class="form-control" placeholder="email@example.com" @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.email" x-text="userErrors.email?.[0]" class="form-error"></div>
             </div>
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Mot de passe <span style="font-weight:400;color:var(--text-muted)">(auto-généré si vide)</span></label>
-                <input type="password" x-model="userForm.password" class="form-control" placeholder="••••••••" @keydown.enter.prevent="createUser()">
+                <input type="password" x-model="userForm.password" :class="{'error': userErrors.password}" class="form-control" placeholder="••••••••" @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.password" x-text="userErrors.password?.[0]" class="form-error"></div>
             </div>
-            <div x-show="userError" x-text="userError"
-                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
             <button type="button" @click="userModal=false" class="btn btn-outline">Annuler</button>
@@ -413,18 +414,18 @@ function teamQuickCreate() {
     return {
         userModal:  false,
         userSaving: false,
-        userError:  '',
+        userErrors: {},
         userForm:   { name: '', email: '', password: '' },
 
         openUserModal() {
-            this.userError = '';
-            this.userForm  = { name: '', email: '', password: '' };
-            this.userModal = true;
+            this.userErrors = {};
+            this.userForm   = { name: '', email: '', password: '' };
+            this.userModal  = true;
         },
 
         async createUser() {
             if (!this.userForm.name.trim() || !this.userForm.email.trim()) return;
-            this.userError  = '';
+            this.userErrors = {};
             this.userSaving = true;
             try {
                 const res = await fetch(@json(route($panelPrefix . '.users.store')), {
@@ -441,9 +442,14 @@ function teamQuickCreate() {
                         role:     'agent',
                     }),
                 });
-                if (!res.ok) {
+                if (res.status === 422) {
                     const err = await res.json();
-                    this.userError = err.message || Object.values(err.errors || {})[0]?.[0] || 'Erreur';
+                    this.userErrors = err.errors || {};
+                    return;
+                }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.userErrors = { name: [err.message || 'Erreur serveur.'] };
                     return;
                 }
                 const user = await res.json();
@@ -452,7 +458,7 @@ function teamQuickCreate() {
                 this.userModal = false;
                 window.showToast?.('success', user.name + ' ajouté(e).');
             } catch (e) {
-                this.userError = 'Erreur réseau. Réessayez.';
+                this.userErrors = { name: ['Erreur réseau. Réessayez.'] };
             } finally {
                 this.userSaving = false;
             }

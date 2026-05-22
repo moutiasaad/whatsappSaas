@@ -95,9 +95,9 @@
                 <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.75rem">
                     @foreach([
                         ['icon' => 'ri-server-line',    'title' => __('ui.instance_create_page.steps.deploy_gateway.title'),    'desc' => __('ui.instance_create_page.steps.deploy_gateway.desc')],
-                        ['icon' => 'ri-key-line',       'title' => __('ui.instance_create_page.steps.get_api_key.title'),     'desc' => __('ui.instance_create_page.steps.get_api_key.desc')],
-                        ['icon' => 'ri-link',           'title' => __('ui.instance_create_page.steps.configure_webhook.title'),'desc' => __('ui.instance_create_page.steps.configure_webhook.desc')],
-                        ['icon' => 'ri-qr-code-line',   'title' => __('ui.instance_create_page.steps.scan_qr.title'),        'desc' => __('ui.instance_create_page.steps.scan_qr.desc')],
+                        ['icon' => 'ri-key-line',       'title' => __('ui.instance_create_page.steps.get_api_key.title'),       'desc' => __('ui.instance_create_page.steps.get_api_key.desc')],
+                        ['icon' => 'ri-link',           'title' => __('ui.instance_create_page.steps.configure_webhook.title'), 'desc' => __('ui.instance_create_page.steps.configure_webhook.desc')],
+                        ['icon' => 'ri-qr-code-line',   'title' => __('ui.instance_create_page.steps.scan_qr.title'),          'desc' => __('ui.instance_create_page.steps.scan_qr.desc')],
                     ] as $step)
                     <div style="display:flex;align-items:flex-start;gap:.75rem">
                         <div style="width:2rem;height:2rem;border-radius:.5rem;background:rgba(16,185,129,.1);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0">
@@ -120,75 +120,102 @@
     </div>
 </form>
 
-{{-- ── Modal 1: Create Team ── --}}
+{{-- ══════════════════════════════════════════
+     Modal 1: Create Team
+══════════════════════════════════════════ --}}
 <div x-show="teamModal && !userModal" x-cloak
-     class="modal-overlay show"
-     style="z-index:1000"
-     @click.self="teamModal = false">
-    <div class="modal-box" style="max-width:500px;text-align:left;padding:1.5rem" @click.stop>
+     class="modal-overlay show" style="z-index:1000"
+     @click.self="teamModal=false">
+    <div class="modal-box" style="max-width:500px;text-align:left;padding:1.5rem;overflow:visible" @click.stop>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
             <h3 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin:0">
                 <i class="ri-team-line" style="color:var(--brand);margin-right:.375rem"></i>
                 Créer une équipe
             </h3>
-            <button type="button" @click="teamModal = false"
-                    class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
+            <button type="button" @click="teamModal=false" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
                 <i class="ri-close-line"></i>
             </button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1rem">
+
+            {{-- Name --}}
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Nom de l'équipe <span style="color:var(--brand)">*</span></label>
-                <input type="text" x-model="teamForm.name" class="form-control"
+                <input type="text" x-model="teamForm.name"
+                       :class="{'error': teamErrors.name}"
+                       class="form-control"
                        placeholder="ex: Support Client"
-                       @keydown.enter.prevent="createTeam()">
+                       @keydown.enter.prevent>
+                <div x-show="teamErrors.name" x-text="teamErrors.name?.[0]" class="form-error"></div>
             </div>
 
+            {{-- Description --}}
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Description</label>
-                <input type="text" x-model="teamForm.description" class="form-control"
+                <input type="text" x-model="teamForm.description"
+                       :class="{'error': teamErrors.description}"
+                       class="form-control"
                        placeholder="Optionnel">
+                <div x-show="teamErrors.description" x-text="teamErrors.description?.[0]" class="form-error"></div>
             </div>
 
+            {{-- Members — SS-style dropdown opening upward --}}
             <div class="form-group" style="margin-bottom:0">
-                <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
-                    <span>Membres de l'équipe</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+                    <label class="form-label" style="margin-bottom:0">Membres de l'équipe</label>
                     <button type="button" @click="openUserModal()"
                             class="btn btn-outline btn-sm"
-                            style="height:26px;padding:0 .5rem;font-size:.75rem;gap:.25rem">
+                            style="height:26px;padding:0 .625rem;font-size:.75rem">
                         <i class="ri-add-line"></i> Créer un utilisateur
                     </button>
-                </label>
-                <div style="border:1px solid var(--card-border);border-radius:.625rem;overflow:hidden">
-                    <div style="max-height:160px;overflow-y:auto;padding:.5rem;display:flex;flex-direction:column;gap:.125rem">
-                        <template x-for="agent in agents" :key="agent.id">
-                            <label style="display:flex;align-items:center;gap:.625rem;padding:.375rem .5rem;border-radius:.375rem;cursor:pointer;font-size:.875rem;transition:background .15s"
-                                   :style="teamForm.members.includes(agent.id) ? 'background:rgba(16,185,129,.08)' : ''">
-                                <input type="checkbox" :value="agent.id" x-model="teamForm.members"
-                                       style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer">
-                                <span x-text="agent.name" style="font-weight:500;color:var(--text-primary)"></span>
-                                <span x-text="'(' + agent.role + ')'"
-                                      style="font-size:.75rem;color:var(--text-muted);margin-left:auto"></span>
-                            </label>
-                        </template>
-                        <div x-show="!agents.length"
-                             style="font-size:.8125rem;color:var(--text-muted);padding:.5rem;text-align:center">
-                            Aucun agent disponible — créez-en un avec le bouton ci-dessus
+                </div>
+
+                {{-- SS wrap with forced open-up since we're in a modal --}}
+                <div class="ss-wrap" :class="{'open': membersOpen, 'open-up': true}"
+                     @click.outside="membersOpen=false">
+                    <input type="text" class="ss-input" readonly
+                           :value="membersDisplayText"
+                           :placeholder="agents.length ? 'Sélectionner des membres' : 'Aucun agent — créez-en un'"
+                           @click.stop="membersOpen = !membersOpen; membersSearch = ''">
+                    <i class="ri-arrow-down-s-line ss-chevron"></i>
+                    <div class="ss-dropdown" @click.stop>
+                        <div class="ss-search-row">
+                            <div class="ss-search-inner">
+                                <i class="ri-search-line"></i>
+                                <input type="text" x-model="membersSearch" placeholder="Filtrer…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="ss-list">
+                            <template x-for="agent in filteredAgents" :key="agent.id">
+                                <div class="ss-item"
+                                     :class="{'ss-selected': teamForm.members.includes(agent.id)}"
+                                     @mousedown.prevent="toggleMember(agent.id)"
+                                     :data-value="agent.id">
+                                    <span x-text="agent.name + ' (' + agent.role + ')'"></span>
+                                </div>
+                            </template>
+                            <div class="ss-empty"
+                                 x-show="filteredAgents.length === 0"
+                                 x-text="membersSearch ? 'Aucun résultat' : 'Aucun agent disponible'">
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div x-show="teamForm.members.length" style="font-size:.75rem;color:var(--text-muted);margin-top:.375rem"
-                     x-text="teamForm.members.length + ' membre(s) sélectionné(s)'"></div>
+
+                <div x-show="teamForm.members.length"
+                     x-text="teamForm.members.length + ' membre(s) sélectionné(s)'"
+                     style="font-size:.75rem;color:var(--text-muted);margin-top:.375rem"></div>
             </div>
 
+            {{-- Global error --}}
             <div x-show="teamError" x-text="teamError"
-                 style="font-size:.8125rem;color:var(--red, #ef4444);background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
+                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
-            <button type="button" @click="teamModal = false" class="btn btn-outline">Annuler</button>
+            <button type="button" @click="teamModal=false" class="btn btn-outline">Annuler</button>
             <button type="button" @click="createTeam()"
                     :disabled="teamSaving || !teamForm.name.trim()"
                     class="btn btn-primary">
@@ -199,11 +226,12 @@
     </div>
 </div>
 
-{{-- ── Modal 2: Create User ── --}}
+{{-- ══════════════════════════════════════════
+     Modal 2: Create User
+══════════════════════════════════════════ --}}
 <div x-show="userModal" x-cloak
-     class="modal-overlay show"
-     style="z-index:1100"
-     @click.self="userModal = false">
+     class="modal-overlay show" style="z-index:1100"
+     @click.self="userModal=false">
     <div class="modal-box" style="max-width:440px;text-align:left;padding:1.5rem" @click.stop>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
@@ -211,43 +239,56 @@
                 <i class="ri-user-add-line" style="color:var(--brand);margin-right:.375rem"></i>
                 Créer un utilisateur
             </h3>
-            <button type="button" @click="userModal = false"
-                    class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
+            <button type="button" @click="userModal=false" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
                 <i class="ri-close-line"></i>
             </button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1rem">
+
+            {{-- Name --}}
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Nom complet <span style="color:var(--brand)">*</span></label>
-                <input type="text" x-model="userForm.name" class="form-control"
+                <input type="text" x-model="userForm.name"
+                       :class="{'error': userErrors.name}"
+                       class="form-control"
                        placeholder="Prénom Nom"
                        @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.name" x-text="userErrors.name?.[0]" class="form-error"></div>
             </div>
 
+            {{-- Email --}}
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">Email <span style="color:var(--brand)">*</span></label>
-                <input type="email" x-model="userForm.email" class="form-control"
+                <input type="email" x-model="userForm.email"
+                       :class="{'error': userErrors.email}"
+                       class="form-control"
                        placeholder="email@example.com"
                        @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.email" x-text="userErrors.email?.[0]" class="form-error"></div>
             </div>
 
+            {{-- Password --}}
             <div class="form-group" style="margin-bottom:0">
                 <label class="form-label">
                     Mot de passe
                     <span style="font-weight:400;color:var(--text-muted)">(auto-généré si vide)</span>
                 </label>
-                <input type="password" x-model="userForm.password" class="form-control"
+                <input type="password" x-model="userForm.password"
+                       :class="{'error': userErrors.password}"
+                       class="form-control"
                        placeholder="••••••••"
                        @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.password" x-text="userErrors.password?.[0]" class="form-error"></div>
             </div>
 
+            {{-- Global error --}}
             <div x-show="userError" x-text="userError"
-                 style="font-size:.8125rem;color:var(--red, #ef4444);background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
+                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
-            <button type="button" @click="userModal = false" class="btn btn-outline">Annuler</button>
+            <button type="button" @click="userModal=false" class="btn btn-outline">Annuler</button>
             <button type="button" @click="createUser()"
                     :disabled="userSaving || !userForm.name.trim() || !userForm.email.trim()"
                     class="btn btn-primary">
@@ -263,36 +304,70 @@
 <script>
 function instanceQuickCreate() {
     return {
-        teamModal:   false,
-        userModal:   false,
-        teamSaving:  false,
-        userSaving:  false,
-        teamError:   '',
-        userError:   '',
-        agents: @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'role' => $a->role])),
-        teamForm: { name: '', description: '', members: [] },
-        userForm: { name: '', email: '', password: '' },
+        /* ── state ── */
+        teamModal:    false,
+        userModal:    false,
+        teamSaving:   false,
+        userSaving:   false,
+        teamError:    '',
+        userError:    '',
+        teamErrors:   {},
+        userErrors:   {},
+        agents:       @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'role' => $a->role])),
+        teamForm:     { name: '', description: '', members: [] },
+        userForm:     { name: '', email: '', password: '' },
+        membersOpen:  false,
+        membersSearch:'',
+
+        /* ── computed ── */
+        get membersDisplayText() {
+            if (!this.teamForm.members.length) return '';
+            const sel = this.agents.filter(a => this.teamForm.members.includes(a.id));
+            if (sel.length === 1) return sel[0].name + ' (' + sel[0].role + ')';
+            return sel.length + ' sélectionné(s)';
+        },
+
+        get filteredAgents() {
+            const q = this.membersSearch.trim().toLowerCase();
+            if (!q) return this.agents;
+            return this.agents.filter(a =>
+                (a.name + ' ' + a.role).toLowerCase().includes(q)
+            );
+        },
+
+        /* ── methods ── */
+        toggleMember(id) {
+            const idx = this.teamForm.members.indexOf(id);
+            if (idx >= 0) this.teamForm.members.splice(idx, 1);
+            else          this.teamForm.members.push(id);
+        },
 
         openTeamModal() {
-            this.teamError = '';
-            this.teamForm  = { name: '', description: '', members: [] };
-            this.teamModal = true;
+            this.teamError    = '';
+            this.teamErrors   = {};
+            this.membersOpen  = false;
+            this.membersSearch= '';
+            this.teamForm     = { name: '', description: '', members: [] };
+            this.teamModal    = true;
         },
 
         openUserModal() {
-            this.userError = '';
-            this.userForm  = { name: '', email: '', password: '' };
-            this.userModal = true;
+            this.userError  = '';
+            this.userErrors = {};
+            this.userForm   = { name: '', email: '', password: '' };
+            this.userModal  = true;
         },
 
         escHandler(e) {
-            if (this.userModal)  { this.userModal  = false; e.stopPropagation(); return; }
-            if (this.teamModal)  { this.teamModal  = false; e.stopPropagation(); }
+            if (this.membersOpen) { this.membersOpen = false; e.stopPropagation(); return; }
+            if (this.userModal)   { this.userModal   = false; e.stopPropagation(); return; }
+            if (this.teamModal)   { this.teamModal   = false; e.stopPropagation(); }
         },
 
         async createTeam() {
             if (!this.teamForm.name.trim()) return;
             this.teamError  = '';
+            this.teamErrors = {};
             this.teamSaving = true;
             try {
                 const res = await fetch(@json(route('admin.teams.store')), {
@@ -312,15 +387,17 @@ function instanceQuickCreate() {
 
                 if (!res.ok) {
                     const err = await res.json();
-                    this.teamError = err.message
-                        || Object.values(err.errors || {})[0]?.[0]
-                        || 'Une erreur est survenue.';
+                    if (res.status === 422) {
+                        this.teamErrors = err.errors || {};
+                    } else {
+                        this.teamError = err.message || 'Une erreur est survenue.';
+                    }
                     return;
                 }
 
                 const team = await res.json();
 
-                // Add new team to the instance form's select and auto-select it
+                // Inject into instance form's team select & auto-select
                 const sel = this.$refs.teamSelect;
                 const opt = document.createElement('option');
                 opt.value    = team.id;
@@ -340,6 +417,7 @@ function instanceQuickCreate() {
         async createUser() {
             if (!this.userForm.name.trim() || !this.userForm.email.trim()) return;
             this.userError  = '';
+            this.userErrors = {};
             this.userSaving = true;
             try {
                 const res = await fetch(@json(route('admin.users.store')), {
@@ -359,15 +437,17 @@ function instanceQuickCreate() {
 
                 if (!res.ok) {
                     const err = await res.json();
-                    this.userError = err.message
-                        || Object.values(err.errors || {})[0]?.[0]
-                        || 'Une erreur est survenue.';
+                    if (res.status === 422) {
+                        this.userErrors = err.errors || {};
+                    } else {
+                        this.userError = err.message || 'Une erreur est survenue.';
+                    }
                     return;
                 }
 
                 const user = await res.json();
 
-                // Add to local agents list and auto-check in team members
+                // Add to agents list and auto-select in members dropdown
                 this.agents.push({ id: user.id, name: user.name, role: user.role });
                 this.$nextTick(() => {
                     if (!this.teamForm.members.includes(user.id)) {
