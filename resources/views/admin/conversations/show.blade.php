@@ -35,8 +35,8 @@
                         <div class="conversation-thread-name">{{ $conversation->customer->displayNameOrPhone }}</div>
                         <div class="conversation-thread-meta">{{ $conversation->instance->name }} - {{ $conversation->team?->name ?? __('ui.conversation_show_page.no_team') }}</div>
                         <div class="conversation-thread-state">
-                            <span class="presence-dot"></span>
-                            <span>{{ __('ui.conversation_show_page.live_workspace') }}</span>
+                            <span class="presence-dot" :class="wsConnected ? '' : 'presence-dot-reconnecting'"></span>
+                            <span x-text="wsConnected ? @js(__('ui.conversation_show_page.live_workspace')) : 'Reconnexion...'"></span>
                         </div>
                     </div>
                 </div>
@@ -289,6 +289,16 @@
     border-radius: 999px;
     background: #22c55e;
     box-shadow: 0 0 0 5px rgba(34,197,94,.12);
+    transition: background .3s, box-shadow .3s;
+}
+.presence-dot-reconnecting {
+    background: #f59e0b;
+    box-shadow: 0 0 0 5px rgba(245,158,11,.14);
+    animation: pulse-amber 1.4s ease-in-out infinite;
+}
+@keyframes pulse-amber {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,.16); }
+    50%       { box-shadow: 0 0 0 7px rgba(245,158,11,.04); }
 }
 .conversation-thread-actions,
 .conversation-inline-actions {
@@ -603,6 +613,8 @@ function conversationPro() {
         showReassign: false,
         reassignAgentId: '',
         sideTab: 'details',
+        wsConnected: false,
+        _pollTimer: null,
         _presenceState: null,
         _presenceTimer: null,
 
@@ -617,6 +629,10 @@ function conversationPro() {
             this.scrollToBottom();
             this.subscribeChannel();
             this.markRead();
+            this.setupWsTracking();
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this.pollNewMessages();
+            });
         },
 
         markRead() {
@@ -628,6 +644,50 @@ function conversationPro() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? ''
                 }
             }).catch(() => {});
+        },
+
+        setupWsTracking() {
+            this.wsConnected = window._echoConnected === true;
+            const self = this;
+            window._echoStateListeners = window._echoStateListeners || [];
+            window._echoStateListeners.push(function(connected) {
+                self.wsConnected = connected;
+                if (connected) {
+                    self.stopPolling();
+                    self.pollNewMessages();
+                } else {
+                    self.startPolling();
+                }
+            });
+            if (!this.wsConnected) this.startPolling();
+        },
+
+        startPolling() {
+            this.stopPolling();
+            this._pollTimer = setInterval(() => this.pollNewMessages(), 5000);
+        },
+
+        stopPolling() {
+            if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+        },
+
+        async pollNewMessages() {
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/messages?per_page=20`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const fresh = (data.data || []).map(m => this.normalizeMessage(m));
+                const existingIds = new Set(this.messages.map(m => m.id));
+                const added = fresh.filter(m => !existingIds.has(m.id));
+                if (added.length > 0) {
+                    this.messages = this.sortMessages([...this.messages, ...added]);
+                    this.$nextTick(() => this.scrollToBottom());
+                    this.markRead();
+                }
+            } catch(e) {}
         },
 
         sendPresence(presence) {

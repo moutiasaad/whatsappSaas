@@ -15,8 +15,15 @@
     {{-- Laravel Echo + Pusher (for Reverb real-time) --}}
     <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
     <script>
+    window._echoConnected = false;
+    window._echoStateListeners = [];
+    function _notifyEchoState(connected) {
+        window._echoConnected = connected;
+        window._echoStateListeners.forEach(function(cb) { try { cb(connected); } catch(e) {} });
+    }
+
     window.addEventListener('DOMContentLoaded', function () {
-        if (typeof Pusher === 'undefined') return;
+        if (typeof Pusher === 'undefined') { _notifyEchoState(false); return; }
         try {
             var _pusher = new Pusher('{{ config("broadcasting.connections.reverb.key", "local") }}', {
                 wsHost:            '{{ config("broadcasting.connections.reverb.options.host", "localhost") }}',
@@ -29,13 +36,15 @@
                 auth: { headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content } },
             });
 
+            _pusher.connection.bind('state_change', function(states) {
+                _notifyEchoState(states.current === 'connected');
+            });
+            _pusher.connection.bind('error', function() { _notifyEchoState(false); });
+
             function makeChannelShim(ch) {
                 var shim = {
                     listen: function(event, cb) {
-                        // Leading dot = exact broadcastAs() name; no dot = namespace-qualified
-                        var name = event.startsWith('.')
-                            ? event.slice(1)
-                            : 'App\\Events\\' + event;
+                        var name = event.startsWith('.') ? event.slice(1) : 'App\\Events\\' + event;
                         ch.bind(name, cb);
                         return shim;
                     }
@@ -49,6 +58,7 @@
             };
         } catch(e) {
             console.warn('Echo init failed:', e);
+            _notifyEchoState(false);
         }
     });
     </script>

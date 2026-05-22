@@ -43,7 +43,10 @@
       "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\resources\\\\views\\\\admin\\\\conversations *)",
       "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Services\\\\WhatsApp\\\\Gateway *)",
       "Bash(sed -n '94,105p' resources/views/admin/users/index.blade.php)",
-      "Bash(sed -n '112,122p' resources/views/admin/users/index.blade.php)"
+      "Bash(sed -n '112,122p' resources/views/admin/users/index.blade.php)",
+      "Bash(xargs grep -l \"broadcast\\\\|pusher\\\\|reverb\")",
+      "Bash(sed -i 's/ShouldBroadcast$/ShouldBroadcastNow/' app/Events/MessageReceived.php app/Events/MessageSent.php app/Events/ConversationClaimed.php app/Events/ConversationReleased.php app/Events/ConversationClosed.php app/Events/ConversationReopened.php)",
+      "Bash(sed -i 's/use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcast;/use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcastNow;/' app/Events/MessageReceived.php app/Events/MessageSent.php app/Events/ConversationClaimed.php app/Events/ConversationReleased.php app/Events/ConversationClosed.php app/Events/ConversationReopened.php)"
     ]
   },
   "enableAllProjectMcpServers": true,
