@@ -201,6 +201,18 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         $raw = trim($raw);
+
+        // Group JIDs are not customer phones
+        if (str_contains($raw, '@g.us')) {
+            return null;
+        }
+
+        // LID JIDs (Meta linked IDs) must be preserved as-is — they are not phone numbers
+        if (str_contains($raw, '@lid')) {
+            return $raw;
+        }
+
+        // Strip @s.whatsapp.net suffix and keep digits only
         $raw = preg_replace('/@.*/', '', $raw) ?: $raw;
         $raw = preg_replace('/\D+/', '', $raw) ?: $raw;
 
