@@ -75,8 +75,8 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $users = $this->tenantScopedUsers()
-            ->with('teams')
+        $query = $this->tenantScopedUsers()
+            ->with(['teams' => fn ($q) => $q->select('teams.id', 'teams.name')])
             ->where('id', '!=', auth()->id())
             ->when($request->search, fn ($q, $s) =>
                 $q->where(function ($inner) use ($s) {
@@ -84,14 +84,18 @@ class UserController extends Controller
                         ->orWhere('email', 'like', "%$s%");
                 })
             )
-            ->when($request->role, fn ($q, $r) => $q->where('role', $r))
+            ->when($request->role,             fn ($q, $r) => $q->where('role', $r))
             ->when($request->status === 'active',   fn ($q) => $q->where('is_active', true))
             ->when($request->status === 'inactive', fn ($q) => $q->where('is_active', false))
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+            ->orderBy('name');
 
-        return view('admin.users.index', compact('users'));
+        if ($request->expectsJson()) {
+            $paginated = $query->paginate((int) ($request->integer('per_page') ?: 20));
+            return response()->json($paginated->toArray())
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return view('admin.users.index');
     }
 
     public function create()
@@ -211,12 +215,17 @@ class UserController extends Controller
             ->with('success', __('ui.controller_messages.user_updated'));
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         $this->assertCanManageUser($user);
 
         AuditLog::record('user.deleted', $user, ['name' => $user->name, 'email' => $user->email]);
         $user->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'User deleted.']);
+        }
+
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', __('ui.controller_messages.user_deleted', ['name' => $user->name]));
     }
@@ -235,6 +244,9 @@ class UserController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.no_users_selected')], 422);
+            }
             return back()->with('error', __('ui.controller_messages.no_users_selected'));
         }
 
@@ -245,6 +257,9 @@ class UserController extends Controller
             ->get();
 
         if ($users->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.no_valid_users_selected')], 422);
+            }
             return back()->with('error', __('ui.controller_messages.no_valid_users_selected'));
         }
 
@@ -270,6 +285,10 @@ class UserController extends Controller
         $message = $action === 'delete'
             ? __('ui.controller_messages.users_deleted', ['count' => $users->count()])
             : __('ui.controller_messages.users_updated', ['count' => $users->count()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message]);
+        }
 
         return back()->with('success', $message);
     }

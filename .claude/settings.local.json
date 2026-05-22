@@ -37,7 +37,8 @@
       "Bash(php -l app/Services/WhatsApp/Gateway/EvolutionApiClient.php)",
       "Bash(php -l app/Services/WhatsApp/Gateway/GatewayClientInterface.php)",
       "Bash(php -l app/Http/Controllers/Api/ConversationController.php)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "Bash(grep -n 'appends\\\\|protected $appends' app/Models/User.php)"
     ]
   },
   "enableAllProjectMcpServers": true,
