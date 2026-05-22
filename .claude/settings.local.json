@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(ls -Force \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" | Where-Object {$_.PSIsContainer})",
+      "PowerShell(ls -Force \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Gestion\\\\ERP\" | Where-Object {$_.PSIsContainer} | Select-Object Name)",
+      "Bash(php artisan *)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ]
+}
