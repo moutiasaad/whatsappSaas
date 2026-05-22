@@ -92,11 +92,18 @@
                             <td>
                                 @if($instance->webhook_enabled)
                                     @php $lastHit = $instance->webhook_events_max_created_at ? \Carbon\Carbon::parse($instance->webhook_events_max_created_at) : null; @endphp
-                                    <span style="display:inline-flex;align-items:center;gap:.4rem">
-                                        <span style="width:.45rem;height:.45rem;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
-                                        <span style="font-size:.8rem;color:var(--text-muted)">
-                                            {{ $lastHit ? $lastHit->diffForHumans() : 'Pas encore' }}
+                                    <span style="display:flex;flex-direction:column;gap:.2rem">
+                                        <span style="display:inline-flex;align-items:center;gap:.4rem">
+                                            <span style="width:.45rem;height:.45rem;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+                                            <span style="font-size:.8rem;color:var(--text-muted)">
+                                                {{ $lastHit ? $lastHit->diffForHumans() : 'Pas encore' }}
+                                            </span>
                                         </span>
+                                        @if($instance->webhook_pending_count > 0)
+                                            <span style="font-size:.75rem;color:#f59e0b;font-weight:600">
+                                                ⚠ {{ $instance->webhook_pending_count }} non traité{{ $instance->webhook_pending_count > 1 ? 's' : '' }} — queue:work requis
+                                            </span>
+                                        @endif
                                     </span>
                                 @else
                                     <span style="display:inline-flex;align-items:center;gap:.4rem">
