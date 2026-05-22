@@ -41,7 +41,9 @@
       "Bash(grep -n 'appends\\\\|protected $appends' app/Models/User.php)",
       "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Http\\\\Controllers\\\\Admin *)",
       "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\resources\\\\views\\\\admin\\\\conversations *)",
-      "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Services\\\\WhatsApp\\\\Gateway *)"
+      "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Services\\\\WhatsApp\\\\Gateway *)",
+      "Bash(sed -n '94,105p' resources/views/admin/users/index.blade.php)",
+      "Bash(sed -n '112,122p' resources/views/admin/users/index.blade.php)"
     ]
   },
   "enableAllProjectMcpServers": true,

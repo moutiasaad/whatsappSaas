@@ -117,11 +117,10 @@
                     <thead>
                         <tr>
                             <th style="width:2.5rem">
-                                <input type="checkbox"
+                                <input type="checkbox" class="header-cb"
                                        :checked="isAllSelected()"
                                        :indeterminate.prop="isIndeterminate()"
-                                       @change="toggleAll()"
-                                       style="cursor:pointer;accent-color:var(--brand)">
+                                       @change="toggleAll()">
                             </th>
                             <th>{{ __('ui.platform_tenants_page.tenant') }}</th>
                             <th>{{ __('ui.platform_tenants_page.plan') }}</th>
@@ -137,10 +136,9 @@
                         <template x-for="tenant in tenants" :key="tenant.id">
                             <tr>
                                 <td>
-                                    <input type="checkbox"
+                                    <input type="checkbox" class="row-cb"
                                            :checked="isSelected(tenant.id)"
-                                           @change="toggleSelect(tenant.id)"
-                                           style="cursor:pointer;accent-color:var(--brand)">
+                                           @change="toggleSelect(tenant.id)">
                                 </td>
                                 <td>
                                     <div style="display:flex;flex-direction:column;gap:.125rem">

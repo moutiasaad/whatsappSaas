@@ -894,6 +894,19 @@
             position: absolute; top: 1px; left: 4px;
             transform: rotate(45deg);
         }
+        input[type="checkbox"].row-cb:indeterminate,
+        input[type="checkbox"].header-cb:indeterminate {
+            background: var(--brand);
+            border-color: var(--brand);
+        }
+        input[type="checkbox"].row-cb:indeterminate::after,
+        input[type="checkbox"].header-cb:indeterminate::after {
+            content: ''; display: block;
+            width: 8px; height: 2px;
+            background: #fff;
+            position: absolute; top: 5px; left: 3px;
+            border-radius: 2px;
+        }
 
         /* ============================================================
            BADGES

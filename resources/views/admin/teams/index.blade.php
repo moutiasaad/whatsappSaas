@@ -122,11 +122,10 @@
                         <tr>
                             @if($canManageTeams)
                                 <th style="width:2.5rem">
-                                    <input type="checkbox"
+                                    <input type="checkbox" class="header-cb"
                                            :checked="isAllSelected()"
                                            :indeterminate.prop="isIndeterminate()"
-                                           @change="toggleAll()"
-                                           style="cursor:pointer;accent-color:var(--brand);">
+                                           @change="toggleAll()">
                                 </th>
                             @endif
                             <th>{{ __('ui.teams_page.team') }}</th>
@@ -143,10 +142,9 @@
                             <tr>
                                 @if($canManageTeams)
                                     <td>
-                                        <input type="checkbox"
+                                        <input type="checkbox" class="row-cb"
                                                :checked="isSelected(team.id)"
-                                               @change="toggleSelect(team.id)"
-                                               style="cursor:pointer;accent-color:var(--brand);">
+                                               @change="toggleSelect(team.id)">
                                     </td>
                                 @endif
                                 <td>

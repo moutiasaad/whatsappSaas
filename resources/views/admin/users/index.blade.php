@@ -94,11 +94,10 @@
                     <thead>
                         <tr>
                             <th style="width:2.5rem">
-                                <input type="checkbox"
+                                <input type="checkbox" class="header-cb"
                                        :checked="isAllSelected()"
                                        :indeterminate.prop="isIndeterminate()"
-                                       @change="toggleAll()"
-                                       style="cursor:pointer;accent-color:var(--brand)">
+                                       @change="toggleAll()">
                             </th>
                             <th>{{ __('ui.users_page.user') }}</th>
                             <th>{{ __('ui.users_page.role') }}</th>
@@ -112,10 +111,9 @@
                         <template x-for="user in users" :key="user.id">
                             <tr>
                                 <td>
-                                    <input type="checkbox"
+                                    <input type="checkbox" class="row-cb"
                                            :checked="isSelected(user.id)"
-                                           @change="toggleSelect(user.id)"
-                                           style="cursor:pointer;accent-color:var(--brand)">
+                                           @change="toggleSelect(user.id)">
                                 </td>
                                 <td>
                                     <div style="display:flex;align-items:center;gap:.75rem">

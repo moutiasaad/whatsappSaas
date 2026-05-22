@@ -87,11 +87,10 @@
                 <thead>
                     <tr>
                         <th style="width:2.5rem">
-                            <input type="checkbox"
+                            <input type="checkbox" class="header-cb"
                                    :checked="isAllSelected()"
-                                   :indeterminate="isIndeterminate()"
-                                   @change="toggleAll($event.target.checked)"
-                                   style="cursor:pointer;accent-color:var(--brand)">
+                                   :indeterminate.prop="isIndeterminate()"
+                                   @change="toggleAll($event.target.checked)">
                         </th>
                         <th>{{ __('ui.platform_plans_page.plan') }}</th>
                         <th>{{ __('ui.platform_plans_page.pricing') }}</th>
@@ -105,11 +104,10 @@
                     <template x-for="plan in rows" :key="plan.id">
                         <tr>
                             <td>
-                                <input type="checkbox"
+                                <input type="checkbox" class="row-cb"
                                        :value="plan.id"
                                        :checked="selected.includes(plan.id)"
-                                       @change="toggleRow(plan.id)"
-                                       style="cursor:pointer;accent-color:var(--brand)">
+                                       @change="toggleRow(plan.id)">
                             </td>
                             <td>
                                 <div style="display:flex;flex-direction:column;gap:.125rem;">
