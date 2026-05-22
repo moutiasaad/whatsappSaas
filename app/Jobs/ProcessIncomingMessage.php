@@ -26,15 +26,22 @@ class ProcessIncomingMessage implements ShouldQueue
 
     public function handle(ConversationService $convService, AutoReplyService $aiService): void
     {
-        $payload  = $this->webhookEvent->payload;
-        $instance = $this->webhookEvent->instance;
+        $payload   = $this->webhookEvent->payload;
+        $instance  = $this->webhookEvent->instance;
+        $eventType = $this->normalizedEvent($payload);
+
+        Log::channel('whatsapp')->info('Job: processing', [
+            'webhook_event_id' => $this->webhookEvent->id,
+            'event_type'       => $eventType,
+            'instance_id'      => $instance?->id,
+        ]);
 
         if (!$instance) {
-            Log::warning("No instance for webhook event {$this->webhookEvent->id}");
+            Log::channel('whatsapp')->error('Job: no instance', ['webhook_event_id' => $this->webhookEvent->id]);
             return;
         }
 
-        match ($this->normalizedEvent($payload)) {
+        match ($eventType) {
             'message.received',
             'messages.upsert',
             'messagesupsert'     => $this->handleMessage($payload, $instance, $convService, $aiService),
@@ -44,7 +51,7 @@ class ProcessIncomingMessage implements ShouldQueue
             'statusinstance',
             'qrcode.updated',
             'qrcodeupdated'      => $this->handleConnectionUpdate($payload, $instance),
-            default              => null,
+            default              => Log::channel('whatsapp')->debug('Job: unhandled event', ['event' => $eventType]),
         };
 
         $this->webhookEvent->update(['processed_at' => now()]);
@@ -56,9 +63,17 @@ class ProcessIncomingMessage implements ShouldQueue
         $contact = $this->extractContact($payload, $msg);
         $from    = $this->extractFrom($payload, $msg);
 
-        if (!$from) return;
+        if (!$from) {
+            Log::channel('whatsapp')->warning('Job: could not extract sender', [
+                'instance_id'  => $instance->id,
+                'msg_keys'     => array_keys($msg),
+                'payload_keys' => array_keys($payload),
+            ]);
+            return;
+        }
 
         if ($this->isFromMe($msg)) {
+            Log::channel('whatsapp')->debug('Job: skipping outbound (fromMe)', ['from' => $from]);
             return;
         }
 

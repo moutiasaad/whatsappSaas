@@ -118,13 +118,23 @@ class InstanceController extends Controller
         }
 
         try {
-            $gateway->setWebhook($instance->gateway_instance_id, $url, $this->defaultWebhookEvents());
+            $result = $gateway->setWebhook($instance->gateway_instance_id, $url, $this->defaultWebhookEvents());
+            \Illuminate\Support\Facades\Log::channel('whatsapp')->info('Webhook registered', [
+                'instance_id' => $instance->id,
+                'url'         => $url,
+                'response'    => $result,
+            ]);
             $instance->update([
                 'webhook_enabled'  => true,
                 'webhook_url'      => $url,
                 'webhook_last_set' => now(),
             ]);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::channel('whatsapp')->error('Webhook registration failed', [
+                'instance_id' => $instance->id,
+                'url'         => $url,
+                'error'       => $e->getMessage(),
+            ]);
             report($e);
         }
     }

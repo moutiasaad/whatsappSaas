@@ -8,7 +8,8 @@ use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
-    ->name('webhooks.whatsapp');
+    ->name('webhooks.whatsapp')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 

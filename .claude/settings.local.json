@@ -9,7 +9,11 @@
       "Bash(grep -v \"^$\")",
       "Bash(grep \"landing\\\\|GET.*\\\\/$\")",
       "Bash(php -l app/Http/Controllers/Api/InstanceController.php app/Models/WhatsAppInstance.php)",
-      "Bash(php -l app/Models/WhatsAppInstance.php)"
+      "Bash(php -l app/Models/WhatsAppInstance.php)",
+      "Bash(php -l app/Http/Controllers/Webhooks/WhatsAppWebhookController.php app/Jobs/ProcessIncomingMessage.php app/Http/Controllers/Api/InstanceController.php routes/api.php)",
+      "Bash(php -l app/Jobs/ProcessIncomingMessage.php)",
+      "Bash(php -l app/Http/Controllers/Api/InstanceController.php)",
+      "Bash(php -l routes/api.php)"
     ]
   },
   "enableAllProjectMcpServers": true,
