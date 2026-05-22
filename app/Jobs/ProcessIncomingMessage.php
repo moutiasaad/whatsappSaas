@@ -190,9 +190,11 @@ class ProcessIncomingMessage implements ShouldQueue
         $raw = data_get($msg, 'from')
             ?? data_get($msg, 'key.remoteJid')
             ?? data_get($msg, 'remoteJid')
+            ?? data_get($msg, 'keyRemoteJid')          // iStoreBox flat format
             ?? data_get($payload, 'from')
             ?? data_get($payload, 'data.from')
-            ?? data_get($payload, 'key.remoteJid');
+            ?? data_get($payload, 'key.remoteJid')
+            ?? data_get($payload, 'data.keyRemoteJid'); // iStoreBox flat format
 
         if (!is_string($raw) || trim($raw) === '') {
             return null;
