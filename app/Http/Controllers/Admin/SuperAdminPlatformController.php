@@ -245,19 +245,12 @@ class SuperAdminPlatformController extends Controller
         return back()->with('success', $message);
     }
 
-    public function plans()
+    public function plans(Request $request)
     {
         $baseQuery = Plan::query()
             ->withCount('tenants')
-            ->when(request('search'), function ($query, $search) {
-                $query->where('name', 'like', '%' . $search . '%');
-            })
-            ->when(request()->filled('is_active'), fn ($query) => $query->where('is_active', request('is_active') === '1'));
-
-        $plans = (clone $baseQuery)
-            ->orderBy('price_monthly')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active === '1'));
 
         $stats = [
             'total'    => (clone $baseQuery)->count(),
@@ -266,7 +259,17 @@ class SuperAdminPlatformController extends Controller
             'assigned' => (clone $baseQuery)->has('tenants')->count(),
         ];
 
-        return view('admin.platform.plans', compact('plans', 'stats'));
+        if ($request->expectsJson()) {
+            $paginated = (clone $baseQuery)
+                ->orderBy('price_monthly')
+                ->paginate((int) ($request->integer('per_page') ?: 20));
+
+            return response()->json(
+                array_merge($paginated->toArray(), ['stats' => $stats])
+            )->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
+        return view('admin.platform.plans');
     }
 
     public function showPlan(Plan $plan)
@@ -355,12 +358,22 @@ class SuperAdminPlatformController extends Controller
         $nextStatus = $request->boolean('is_active');
 
         if (!$nextStatus && Plan::where('is_active', true)->where('id', '!=', $plan->id)->count() === 0) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.cannot_disable_last_active_plan')], 422);
+            }
             return redirect()
                 ->route('super_admin.platform.plans')
                 ->with('error', __('ui.controller_messages.cannot_disable_last_active_plan'));
         }
 
         $plan->update(['is_active' => $nextStatus]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'   => $nextStatus ? __('ui.controller_messages.plan_enabled') : __('ui.controller_messages.plan_disabled'),
+                'is_active' => $nextStatus,
+            ]);
+        }
 
         return redirect()
             ->route('super_admin.platform.plans')
@@ -381,6 +394,9 @@ class SuperAdminPlatformController extends Controller
             ->values();
 
         if ($ids->isEmpty()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('ui.controller_messages.no_plans_selected')], 422);
+            }
             return back()->with('error', __('ui.controller_messages.no_plans_selected'));
         }
 
@@ -391,18 +407,24 @@ class SuperAdminPlatformController extends Controller
             $activeCount = Plan::where('is_active', true)->count();
             $activeSelected = $plans->where('is_active', true)->count();
             if ($activeSelected >= $activeCount) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => __('ui.controller_messages.cannot_disable_all_active_plans')], 422);
+                }
                 return back()->with('error', __('ui.controller_messages.cannot_disable_all_active_plans'));
             }
         }
 
         Plan::whereIn('id', $plans->pluck('id'))->update(['is_active' => $enable]);
 
-        return back()->with(
-            'success',
-            $enable
-                ? __('ui.controller_messages.plans_enabled', ['count' => $plans->count()])
-                : __('ui.controller_messages.plans_disabled', ['count' => $plans->count()])
-        );
+        $message = $enable
+            ? __('ui.controller_messages.plans_enabled', ['count' => $plans->count()])
+            : __('ui.controller_messages.plans_disabled', ['count' => $plans->count()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message]);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function globalSettings()

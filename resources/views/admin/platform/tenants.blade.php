@@ -121,7 +121,7 @@
                                        :checked="isAllSelected()"
                                        :indeterminate.prop="isIndeterminate()"
                                        @change="toggleAll()"
-                                       style="cursor:pointer;">
+                                       style="cursor:pointer;accent-color:var(--brand)">
                             </th>
                             <th>{{ __('ui.platform_tenants_page.tenant') }}</th>
                             <th>{{ __('ui.platform_tenants_page.plan') }}</th>
@@ -140,7 +140,7 @@
                                     <input type="checkbox"
                                            :checked="isSelected(tenant.id)"
                                            @change="toggleSelect(tenant.id)"
-                                           style="cursor:pointer;">
+                                           style="cursor:pointer;accent-color:var(--brand)">
                                 </td>
                                 <td>
                                     <div style="display:flex;flex-direction:column;gap:.125rem">
