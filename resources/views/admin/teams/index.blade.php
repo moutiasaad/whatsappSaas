@@ -126,7 +126,7 @@
                                            :checked="isAllSelected()"
                                            :indeterminate.prop="isIndeterminate()"
                                            @change="toggleAll()"
-                                           style="cursor:pointer;">
+                                           style="cursor:pointer;accent-color:var(--brand);">
                                 </th>
                             @endif
                             <th>{{ __('ui.teams_page.team') }}</th>
@@ -146,7 +146,7 @@
                                         <input type="checkbox"
                                                :checked="isSelected(team.id)"
                                                @change="toggleSelect(team.id)"
-                                               style="cursor:pointer;">
+                                               style="cursor:pointer;accent-color:var(--brand);">
                                     </td>
                                 @endif
                                 <td>

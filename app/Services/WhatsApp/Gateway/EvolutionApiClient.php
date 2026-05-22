@@ -106,6 +106,14 @@ class EvolutionApiClient implements GatewayClientInterface
         return $this->patch("/chat/readMessages/{$instanceId}", ['ids' => $ids]);
     }
 
+    public function updatePresence(string $instanceId, string $number, string $presence): void
+    {
+        $this->patch("/chat/updatePresence/{$instanceId}", [
+            'number'   => $this->normalizeRecipient($number),
+            'presence' => $presence,
+        ]);
+    }
+
     public function logout(string $instanceId): void
     {
         $this->delete("/instance/delete/{$instanceId}");

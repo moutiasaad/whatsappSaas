@@ -38,7 +38,10 @@
       "Bash(php -l app/Services/WhatsApp/Gateway/GatewayClientInterface.php)",
       "Bash(php -l app/Http/Controllers/Api/ConversationController.php)",
       "Bash(php *)",
-      "Bash(grep -n 'appends\\\\|protected $appends' app/Models/User.php)"
+      "Bash(grep -n 'appends\\\\|protected $appends' app/Models/User.php)",
+      "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Http\\\\Controllers\\\\Admin *)",
+      "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\resources\\\\views\\\\admin\\\\conversations *)",
+      "Bash(dir C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\app\\\\Services\\\\WhatsApp\\\\Gateway *)"
     ]
   },
   "enableAllProjectMcpServers": true,

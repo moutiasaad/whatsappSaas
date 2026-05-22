@@ -13,4 +13,5 @@ interface GatewayClientInterface
     public function logout(string $instanceId): void;
     public function restart(string $instanceId): void;
     public function markMessagesRead(string $instanceId, array $ids): array;
+    public function updatePresence(string $instanceId, string $number, string $presence): void;
 }

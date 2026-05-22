@@ -136,7 +136,7 @@
                 </div>
 
                 <div class="conversation-composer">
-                    <textarea x-model="draft" rows="1" @keydown="handleComposerKeydown($event)" @input="autoResize($el)"
+                    <textarea x-model="draft" rows="1" @keydown="handleComposerKeydown($event)" @input="autoResize($el); onTypingInput();"
                               :placeholder="isNote ? @js(__('ui.conversation_show_page.note_placeholder')) : @js(__('ui.conversation_show_page.message_placeholder'))"
                               class="conversation-textarea"></textarea>
                     <button @click="send()" :disabled="!draft.trim() || sending || state !== 'claimed'" class="btn btn-primary conversation-send-btn">
@@ -603,6 +603,8 @@ function conversationPro() {
         showReassign: false,
         reassignAgentId: '',
         sideTab: 'details',
+        _presenceState: null,
+        _presenceTimer: null,
 
         get canAct() {
             const role = '{{ auth()->user()->role }}';
@@ -626,6 +628,28 @@ function conversationPro() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? ''
                 }
             }).catch(() => {});
+        },
+
+        sendPresence(presence) {
+            if (this._presenceState === presence) return;
+            this._presenceState = presence;
+            fetch(`/api/conversations/${this.conversationId}/presence`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? ''
+                },
+                body: JSON.stringify({ presence })
+            }).catch(() => {});
+        },
+
+        onTypingInput() {
+            if (this.state !== 'claimed' || this.isNote) return;
+            if (this._presenceState !== 'composing') this.sendPresence('composing');
+            clearTimeout(this._presenceTimer);
+            this._presenceTimer = setTimeout(() => this.sendPresence('paused'), 3000);
         },
 
         setQuickReply(text) {
@@ -691,6 +715,7 @@ function conversationPro() {
         async send() {
             if (!this.draft.trim() || this.sending || this.state !== 'claimed') return;
             this.sending = true;
+            clearTimeout(this._presenceTimer);
             const body = this.draft.trim();
             this.draft = '';
             const endpoint = this.isNote
@@ -716,6 +741,7 @@ function conversationPro() {
                     const message = this.normalizeMessage(await res.json());
                     this.messages = this.sortMessages([...this.messages, message]);
                     this.scrollToBottom();
+                    this.sendPresence('available');
                 }
             } catch {
                 this.draft = body;

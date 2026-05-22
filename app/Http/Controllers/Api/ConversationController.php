@@ -219,4 +219,34 @@ class ConversationController extends Controller
             'ai_suspended' => (bool) $data['ai_suspended'],
         ]);
     }
+
+    public function updatePresence(Conversation $conversation, Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'presence' => ['required', \Illuminate\Validation\Rule::in(['unavailable', 'available', 'composing', 'recording', 'paused'])],
+        ]);
+
+        try {
+            $instance = $conversation->instance;
+            $phone    = $conversation->customer->phone_e164;
+
+            if (!$phone || !$instance?->gateway_instance_id) {
+                return response()->json(['ok' => false], 422);
+            }
+
+            $gateway = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $gateway->updatePresence($instance->gateway_instance_id, $phone, $data['presence']);
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->debug('updatePresence error', [
+                'conversation_id' => $conversation->id,
+                'presence'        => $data['presence'],
+                'error'           => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
 }
