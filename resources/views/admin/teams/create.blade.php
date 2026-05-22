@@ -37,7 +37,7 @@
     </div>
 </div>
 
-<div>
+<div x-data="teamQuickCreate()">
     <form action="{{ route($panelPrefix . '.teams.store') }}" method="POST" data-loading>
         @csrf
 
@@ -69,7 +69,16 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="members">{{ __('ui.team_form_page.team_members') }}</label>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+                            <label class="form-label" for="members" style="margin-bottom:0">{{ __('ui.team_form_page.team_members') }}</label>
+                            @if(auth()->user()->hasAnyRole(['admin', 'super_admin']))
+                            <button type="button" @click="openUserModal()"
+                                    class="btn btn-outline btn-sm"
+                                    style="height:26px;padding:0 .5rem;font-size:.75rem">
+                                <i class="ri-add-line"></i> Créer un utilisateur
+                            </button>
+                            @endif
+                        </div>
                         <select id="members" name="members[]" multiple
                                 data-no-ss
                                 data-members-ss
@@ -256,4 +265,134 @@ document.addEventListener('DOMContentLoaded', function () {
     updateDisplay();
 });
 </script>
+
+@if(auth()->user()->hasAnyRole(['admin', 'super_admin']))
+{{-- ── Create User Modal ── --}}
+<div x-show="userModal" x-cloak class="modal-overlay show" style="z-index:1100" @click.self="userModal=false" @keydown.escape.window="userModal=false">
+    <div class="modal-box" style="max-width:440px;text-align:left;padding:1.5rem" @click.stop>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+            <h3 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin:0">
+                <i class="ri-user-add-line" style="color:var(--brand);margin-right:.375rem"></i>
+                Créer un utilisateur
+            </h3>
+            <button type="button" @click="userModal=false" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem">
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Nom complet <span style="color:var(--brand)">*</span></label>
+                <input type="text" x-model="userForm.name" class="form-control" placeholder="Prénom Nom" @keydown.enter.prevent="createUser()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Email <span style="color:var(--brand)">*</span></label>
+                <input type="email" x-model="userForm.email" class="form-control" placeholder="email@example.com" @keydown.enter.prevent="createUser()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Mot de passe <span style="font-weight:400;color:var(--text-muted)">(auto-généré si vide)</span></label>
+                <input type="password" x-model="userForm.password" class="form-control" placeholder="••••••••" @keydown.enter.prevent="createUser()">
+            </div>
+            <div x-show="userError" x-text="userError"
+                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
+            <button type="button" @click="userModal=false" class="btn btn-outline">Annuler</button>
+            <button type="button" @click="createUser()" :disabled="userSaving || !userForm.name.trim() || !userForm.email.trim()" class="btn btn-primary">
+                <span x-show="!userSaving"><i class="ri-check-line"></i> Créer</span>
+                <span x-show="userSaving"><span class="btn-spinner"></span> Création…</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function teamQuickCreate() {
+    return {
+        userModal:  false,
+        userSaving: false,
+        userError:  '',
+        userForm:   { name: '', email: '', password: '' },
+
+        openUserModal() {
+            this.userError = '';
+            this.userForm  = { name: '', email: '', password: '' };
+            this.userModal = true;
+        },
+
+        async createUser() {
+            if (!this.userForm.name.trim() || !this.userForm.email.trim()) return;
+            this.userError  = '';
+            this.userSaving = true;
+            try {
+                const res = await fetch(@json(route($panelPrefix . '.users.store')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({
+                        name:     this.userForm.name.trim(),
+                        email:    this.userForm.email.trim(),
+                        password: this.userForm.password || null,
+                        role:     'agent',
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    this.userError = err.message || Object.values(err.errors || {})[0]?.[0] || 'Erreur';
+                    return;
+                }
+                const user = await res.json();
+                injectUserIntoSS(user);
+                this.userForm  = { name: '', email: '', password: '' };
+                this.userModal = false;
+                window.showToast?.('success', user.name + ' ajouté(e).');
+            } catch (e) {
+                this.userError = 'Erreur réseau. Réessayez.';
+            } finally {
+                this.userSaving = false;
+            }
+        },
+    };
+}
+
+function injectUserIntoSS(user) {
+    const select = document.querySelector('select[data-members-ss]');
+    if (!select) return;
+
+    const label = user.name + ' (' + ucFirstTeam(user.role) + ') - ' + user.email;
+
+    const option = document.createElement('option');
+    option.value    = user.id;
+    option.text     = label;
+    option.selected = true;
+    select.add(option);
+
+    const wrap = select.nextElementSibling;
+    if (!wrap || !wrap.classList.contains('ss-wrap')) return;
+
+    const list         = wrap.querySelector('.ss-list');
+    const displayInput = wrap.querySelector('.ss-input');
+    if (!list || !displayInput) return;
+
+    const emptyEl = list.querySelector('.ss-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    const item = document.createElement('div');
+    item.className       = 'ss-item ss-selected';
+    item.dataset.value   = user.id;
+    item.dataset.label   = label;
+    item.textContent     = label;
+    list.appendChild(item);
+
+    const sel = Array.from(select.selectedOptions);
+    displayInput.value = sel.length === 1 ? sel[0].textContent.trim() : sel.length + ' selected';
+}
+
+function ucFirstTeam(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+}
+</script>
+@endif
 @endsection
