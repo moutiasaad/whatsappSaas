@@ -17,9 +17,11 @@ class SendOutgoingMessage implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public $queue = 'whatsapp';
 
-    public function __construct(private Message $message) {}
+    public function __construct(private Message $message)
+    {
+        $this->onQueue('whatsapp');
+    }
 
     public function handle(): void
     {
