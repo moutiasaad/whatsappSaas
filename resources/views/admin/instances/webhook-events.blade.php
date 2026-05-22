@@ -3,7 +3,7 @@
 @section('title', 'Webhook Events — ' . $instance->name)
 
 @section('breadcrumb')
-    <a href="{{ route(auth()->user()->homeRouteName() . '.instances.index') }}">Instances</a>
+    <a href="{{ route(auth()->user()->routeNamePrefix() . '.instances.index') }}">Instances</a>
     <span>/ {{ $instance->name }} / Webhook Events</span>
 @endsection
 
@@ -14,7 +14,7 @@
         <div class="page-subtitle">{{ $instance->name }} — derniers {{ $events->count() }} événements reçus</div>
     </div>
     <div class="page-header-actions">
-        <a href="{{ route(auth()->user()->homeRouteName() . '.instances.index') }}" class="btn btn-outline">
+        <a href="{{ route(auth()->user()->routeNamePrefix() . '.instances.index') }}" class="btn btn-outline">
             <i class="ri-arrow-left-line"></i> Retour
         </a>
         <button onclick="location.reload()" class="btn btn-primary">

@@ -141,7 +141,7 @@
                                         </button>
                                     </template>
 
-                                    <a href="{{ route(auth()->user()->homeRouteName() . '.instances.webhook-events', $instance) }}" class="btn btn-ghost btn-icon" title="Webhook Events" style="color:#6366f1">
+                                    <a href="{{ route(auth()->user()->routeNamePrefix() . '.instances.webhook-events', $instance) }}" class="btn btn-ghost btn-icon" title="Webhook Events" style="color:#6366f1">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                     </a>
                                     <a href="{{ route('admin.instances.edit', $instance) }}" class="btn btn-ghost btn-icon" title="Edit">
