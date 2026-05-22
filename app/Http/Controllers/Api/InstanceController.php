@@ -55,6 +55,9 @@ class InstanceController extends Controller
                 ]);
             }
 
+            // Register webhook immediately so the gateway can reach us as soon as the QR is scanned
+            $this->ensureWebhookRegistered($gateway, $instance);
+
             $qr = $gateway->getQrCode($instance->gateway_instance_id);
             $instance->update(['qr_code' => $qr, 'status' => 'connecting', 'last_status_at' => now()]);
 
@@ -73,22 +76,8 @@ class InstanceController extends Controller
             $status = $gateway->getStatus($instance->gateway_instance_id);
             $phoneNumber = $this->extractPhoneNumber($details);
 
-            if ($status === 'connected' && ! $instance->webhook_enabled) {
-                try {
-                    $gateway->setWebhook(
-                        $instance->gateway_instance_id,
-                        $this->webhookUrl($instance),
-                        $this->defaultWebhookEvents()
-                    );
-
-                    $instance->update([
-                        'webhook_enabled'   => true,
-                        'webhook_url'       => $this->webhookUrl($instance),
-                        'webhook_last_set'  => now(),
-                    ]);
-                } catch (\Throwable $webhookException) {
-                    report($webhookException);
-                }
+            if ($status === 'connected') {
+                $this->ensureWebhookRegistered($gateway, $instance);
             }
 
             $instance->update(array_filter([
@@ -117,6 +106,27 @@ class InstanceController extends Controller
     private function gateway(WhatsAppInstance $instance): EvolutionApiClient
     {
         return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+    }
+
+    private function ensureWebhookRegistered(EvolutionApiClient $gateway, WhatsAppInstance $instance): void
+    {
+        $url = $this->webhookUrl($instance);
+
+        // Skip if already registered with the current URL
+        if ($instance->webhook_enabled && $instance->webhook_url === $url) {
+            return;
+        }
+
+        try {
+            $gateway->setWebhook($instance->gateway_instance_id, $url, $this->defaultWebhookEvents());
+            $instance->update([
+                'webhook_enabled'  => true,
+                'webhook_url'      => $url,
+                'webhook_last_set' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     private function defaultWebhookEvents(): array

@@ -7,7 +7,9 @@
       "PowerShell(ls -Force \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Gestion\\\\ERP\" | Where-Object {$_.PSIsContainer} | Select-Object Name)",
       "Bash(php artisan *)",
       "Bash(grep -v \"^$\")",
-      "Bash(grep \"landing\\\\|GET.*\\\\/$\")"
+      "Bash(grep \"landing\\\\|GET.*\\\\/$\")",
+      "Bash(php -l app/Http/Controllers/Api/InstanceController.php app/Models/WhatsAppInstance.php)",
+      "Bash(php -l app/Models/WhatsAppInstance.php)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -16,16 +16,19 @@ class WhatsAppInstance extends Model
 
     protected $fillable = [
         'tenant_id', 'name', 'gateway', 'gateway_instance_id', 'webhook_token',
-        'webhook_secret', 'phone_number', 'status', 'last_status_at', 'last_message_at',
+        'webhook_secret', 'webhook_enabled', 'webhook_url', 'webhook_last_set',
+        'phone_number', 'status', 'last_status_at', 'last_message_at',
         'qr_code', 'gateway_url', 'gateway_api_key', 'team_id', 'settings',
     ];
 
     protected $casts = [
-        'tenant_id'      => 'integer',
-        'team_id'        => 'integer',
-        'settings'       => 'array',
-        'last_status_at' => 'datetime',
-        'last_message_at'=> 'datetime',
+        'tenant_id'        => 'integer',
+        'team_id'          => 'integer',
+        'webhook_enabled'  => 'boolean',
+        'webhook_last_set' => 'datetime',
+        'settings'         => 'array',
+        'last_status_at'   => 'datetime',
+        'last_message_at'  => 'datetime',
     ];
 
     protected $hidden = ['webhook_secret', 'gateway_api_key'];
