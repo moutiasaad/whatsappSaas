@@ -301,6 +301,7 @@ function conversationsPage() {
         tab: '{{ request("tab", "pool") }}',
         isSuperAdmin: @json(auth()->user()->isSuperAdmin()),
         showUrlTpl: @json(route($panelPrefix . '.conversations.show', ['conversation' => '__ID__'])),
+        indexUrl: @json(route($panelPrefix . '.conversations.index')),
         search: '',
         tenants: @json($tenantsJs),
         instances: @json($instancesJs),
@@ -329,9 +330,12 @@ function conversationsPage() {
         canClaimPool: @json(auth()->user()->isAgent() || auth()->user()->isSupervisor() || auth()->user()->isSuperAdmin()),
 
         init() {
-            this.fetchConversations();
+            this.loadData();
             this.fetchCounts();
             this.subscribeRealtime();
+            window.addEventListener('pageshow', (e) => {
+                if (e.persisted) this.loadData();
+            });
         },
 
         switchTab(t) {
@@ -349,7 +353,7 @@ function conversationsPage() {
         reload() {
             this.page = 1;
             this.conversations = [];
-            this.fetchConversations();
+            this.loadData();
             this.fetchCounts();
         },
 
@@ -368,7 +372,7 @@ function conversationsPage() {
             return params;
         },
 
-        async fetchConversations(append = false) {
+        async loadData(append = false) {
             if (!append) {
                 this.loading = true;
                 this.page = 1;
@@ -381,7 +385,7 @@ function conversationsPage() {
                 const params = this.buildParams(this.tab);
                 params.set('page', String(this.page));
 
-                const res = await fetch(`/api/conversations?${params.toString()}`, {
+                const res = await fetch(`${this.indexUrl}?${params.toString()}`, {
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                         'Accept': 'application/json'
@@ -411,7 +415,7 @@ function conversationsPage() {
             try {
                 const [poolRes, mineRes] = await Promise.all(
                     ['pool', 'mine'].map((tab) =>
-                        fetch(`/api/conversations?${this.buildParams(tab).toString()}`, {
+                        fetch(`${this.indexUrl}?${this.buildParams(tab).toString()}`, {
                             credentials: 'same-origin',
                             headers: { 'Accept': 'application/json' }
                         })
@@ -426,7 +430,7 @@ function conversationsPage() {
         },
 
         loadMore() {
-            this.fetchConversations(true);
+            this.loadData(true);
         },
 
         async claimConversation(conv) {

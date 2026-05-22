@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Api\ConversationController as ApiConversationController;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsAppInstance;
+use Illuminate\Http\Request;
 
 class ConversationWebController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->expectsJson()) {
+            return app(ApiConversationController::class)
+                ->index($request)
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
+
         $actor = auth()->user();
         $isSuperAdmin = $actor->isSuperAdmin();
 

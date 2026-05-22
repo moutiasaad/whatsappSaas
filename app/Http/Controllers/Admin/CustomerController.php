@@ -27,55 +27,58 @@ class CustomerController extends Controller
             ->orderBy('name')
             ->get();
 
-        $baseQuery = Customer::query()
-            ->with('tenant:id,name')
-            ->withCount('conversations')
-            ->withMax('conversations', 'last_message_at')
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $search = trim((string) $request->string('search'));
-                $query->where(function ($inner) use ($search) {
-                    $inner->where('phone_e164', 'like', "%{$search}%")
-                        ->orWhere('display_name', 'like', "%{$search}%");
-                });
-            })
-            ->when($isSuperAdmin && $request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', (int) $request->integer('tenant_id')))
-            ->when($request->filled('instance_id'), function ($query) use ($request) {
-                $instanceId = (int) $request->integer('instance_id');
-                $query->whereHas('conversations', fn ($conv) => $conv->where('instance_id', $instanceId));
-            })
-            ->when($request->filled('has_conversations'), function ($query) use ($request) {
-                if ($request->string('has_conversations')->value() === '1') {
-                    $query->has('conversations');
-                } else {
-                    $query->doesntHave('conversations');
-                }
-            })
-            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('updated_at', '>=', $request->string('date_from')->value()))
-            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('updated_at', '<=', $request->string('date_to')->value()));
+        if ($request->expectsJson()) {
+            $baseQuery = Customer::query()
+                ->with('tenant:id,name')
+                ->withCount('conversations')
+                ->withMax('conversations', 'last_message_at')
+                ->when($request->filled('search'), function ($query) use ($request) {
+                    $search = trim((string) $request->string('search'));
+                    $query->where(function ($inner) use ($search) {
+                        $inner->where('phone_e164', 'like', "%{$search}%")
+                            ->orWhere('display_name', 'like', "%{$search}%");
+                    });
+                })
+                ->when($isSuperAdmin && $request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', (int) $request->integer('tenant_id')))
+                ->when($request->filled('instance_id'), function ($query) use ($request) {
+                    $instanceId = (int) $request->integer('instance_id');
+                    $query->whereHas('conversations', fn ($conv) => $conv->where('instance_id', $instanceId));
+                })
+                ->when($request->filled('has_conversations'), function ($query) use ($request) {
+                    if ($request->string('has_conversations')->value() === '1') {
+                        $query->has('conversations');
+                    } else {
+                        $query->doesntHave('conversations');
+                    }
+                })
+                ->when($request->filled('date_from'), fn ($q) => $q->whereDate('updated_at', '>=', $request->string('date_from')->value()))
+                ->when($request->filled('date_to'), fn ($q) => $q->whereDate('updated_at', '<=', $request->string('date_to')->value()));
 
-        $customers = (clone $baseQuery);
+            $stats = [
+                'total'              => (clone $baseQuery)->count(),
+                'with_conversations' => (clone $baseQuery)->has('conversations')->count(),
+                'active_7d'          => (clone $baseQuery)->where('updated_at', '>=', now()->subDays(7))->count(),
+                'dormant_30d'        => (clone $baseQuery)->where('updated_at', '<', now()->subDays(30))->count(),
+            ];
 
-        match ($request->string('sort')->value()) {
-            'activity_asc' => $customers->orderBy('updated_at'),
-            'name_asc' => $customers->orderBy('display_name')->orderBy('phone_e164'),
-            'name_desc' => $customers->orderByDesc('display_name')->orderByDesc('phone_e164'),
-            'conversations_desc' => $customers->orderByDesc('conversations_count')->orderByDesc('updated_at'),
-            'conversations_asc' => $customers->orderBy('conversations_count')->orderByDesc('updated_at'),
-            default => $customers->orderByDesc('updated_at'),
-        };
+            $listQuery = clone $baseQuery;
+            match ($request->string('sort')->value()) {
+                'activity_asc'       => $listQuery->orderBy('updated_at'),
+                'name_asc'           => $listQuery->orderBy('display_name')->orderBy('phone_e164'),
+                'name_desc'          => $listQuery->orderByDesc('display_name')->orderByDesc('phone_e164'),
+                'conversations_desc' => $listQuery->orderByDesc('conversations_count')->orderByDesc('updated_at'),
+                'conversations_asc'  => $listQuery->orderBy('conversations_count')->orderByDesc('updated_at'),
+                default              => $listQuery->orderByDesc('updated_at'),
+            };
 
-        $customers = $customers
-            ->paginate(30)
-            ->withQueryString();
+            $paginated = $listQuery->paginate((int) ($request->integer('per_page') ?: 30));
 
-        $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'with_conversations' => (clone $baseQuery)->has('conversations')->count(),
-            'active_7d' => (clone $baseQuery)->where('updated_at', '>=', now()->subDays(7))->count(),
-            'dormant_30d' => (clone $baseQuery)->where('updated_at', '<', now()->subDays(30))->count(),
-        ];
+            return response()->json(
+                array_merge($paginated->toArray(), ['stats' => $stats])
+            )->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        }
 
-        return view('admin.customers.index', compact('customers', 'tenants', 'instances', 'stats', 'isSuperAdmin'));
+        return view('admin.customers.index', compact('tenants', 'instances', 'isSuperAdmin'));
     }
 
     public function show(Request $request, Customer $customer)
