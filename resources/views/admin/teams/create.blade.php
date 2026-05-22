@@ -127,7 +127,7 @@
             </button>
         </div>
     </form>
-</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const select = document.querySelector('select[data-members-ss]');
@@ -298,12 +298,14 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
             <button type="button" @click="userModal=false" class="btn btn-outline">Annuler</button>
-            <button type="button" @click="createUser()" :disabled="userSaving || !userForm.name.trim() || !userForm.email.trim()" class="btn btn-primary">
+            <button type="button" @click="createUser()" :disabled="userSaving" class="btn btn-primary">
                 <span x-show="!userSaving"><i class="ri-check-line"></i> Créer</span>
                 <span x-show="userSaving"><span class="btn-spinner"></span> Création…</span>
             </button>
         </div>
     </div>
+</div>
+@endif
 </div>
 
 <script>
@@ -321,7 +323,6 @@ function teamQuickCreate() {
         },
 
         async createUser() {
-            if (!this.userForm.name.trim() || !this.userForm.email.trim()) return;
             this.userErrors = {};
             this.userSaving = true;
             try {
@@ -400,5 +401,4 @@ function ucFirstTeam(str) {
     return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 }
 </script>
-@endif
 @endsection
