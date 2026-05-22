@@ -5,7 +5,9 @@
       "Bash(Select-Object Name)",
       "PowerShell(ls -Force \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" | Where-Object {$_.PSIsContainer})",
       "PowerShell(ls -Force \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Gestion\\\\ERP\" | Where-Object {$_.PSIsContainer} | Select-Object Name)",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep \"landing\\\\|GET.*\\\\/$\")"
     ]
   },
   "enableAllProjectMcpServers": true,

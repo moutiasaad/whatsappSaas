@@ -174,11 +174,3 @@ $registerPanelRoutes('super-admin', 'super_admin', ['super_admin'], true);
 $registerPanelRoutes('tenant-admin', 'tenant_admin', ['admin'], true);
 $registerPanelRoutes('supervisor', 'supervisor', ['supervisor'], false);
 $registerPanelRoutes('agent', 'agent', ['agent'], false);
-
-Route::get('/', function () {
-    if (!auth()->check()) {
-        return redirect()->route('login');
-    }
-
-    return redirect()->route(auth()->user()->homeRouteName());
-});
