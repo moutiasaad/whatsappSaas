@@ -33,6 +33,7 @@ class ConversationService
                 'tenant_id'       => $instance->tenant_id,
                 'instance_id'     => $instance->id,
                 'customer_id'     => $customer->id,
+                'team_id'         => $instance->team_id,
                 'state'           => 'pool',
                 'last_message_at' => now(),
             ]);

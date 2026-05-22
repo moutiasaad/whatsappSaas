@@ -46,7 +46,12 @@ class ConversationController extends Controller
         };
 
         if ($user->isAgent() || $user->isSupervisor()) {
-            $query->whereIn('team_id', $user->teams->pluck('id'));
+            $teamIds = $user->teams->pluck('id');
+            $query->where(function ($q) use ($teamIds) {
+                $q->whereIn('team_id', $teamIds)->orWhereNull('team_id');
+            })->where('tenant_id', $user->tenant_id);
+        } elseif ($user->isAdmin()) {
+            $query->where('tenant_id', $user->tenant_id);
         }
 
         if ($user->isSuperAdmin() && !empty($data['tenant_id'])) {

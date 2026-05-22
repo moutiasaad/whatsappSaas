@@ -31,6 +31,7 @@ class ConversationPolicy
         if ($user->isSuperAdmin()) return $conversation->isPool();
         if (!$this->inSameTenant($user, $conversation)) return false;
         if (!$conversation->isPool()) return false;
+        if ($user->isAdmin()) return true;
         if ($user->isAgent() || $user->isSupervisor()) {
             return $this->canAccessTeam($user, $conversation);
         }
