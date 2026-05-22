@@ -84,14 +84,16 @@
                     @foreach($events as $event)
                     @php
                         $payload = is_array($event->payload) ? $event->payload : json_decode($event->payload, true) ?? [];
-                        $from = data_get($payload, 'data.key.remoteJid')
-                            ?? data_get($payload, 'data.from')
-                            ?? data_get($payload, 'key.remoteJid')
-                            ?? data_get($payload, 'from')
+                        // iStoreBox sends data as a list — unwrap first element
+                        $d = $payload['data'] ?? [];
+                        $d0 = (is_array($d) && isset($d[0]) && is_array($d[0])) ? $d[0] : $d;
+                        $from = data_get($d0, 'key.remoteJid')
+                            ?? data_get($d0, 'remoteJid')
+                            ?? data_get($d0, 'from')
                             ?? '—';
-                        $msgText = data_get($payload, 'data.message.conversation')
-                            ?? data_get($payload, 'data.message.extendedTextMessage.text')
-                            ?? data_get($payload, 'data.text')
+                        $msgText = data_get($d0, 'message.conversation')
+                            ?? data_get($d0, 'message.extendedTextMessage.text')
+                            ?? data_get($d0, 'text')
                             ?? '—';
                     @endphp
                     <tr>

@@ -148,8 +148,14 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function extractMessage(array $payload): array
     {
+        // iStoreBox wraps every event in a list: "data": [{...}] — unwrap to first element
+        $data = data_get($payload, 'data');
+        if (is_array($data) && isset($data[0]) && is_array($data[0])) {
+            $data = $data[0];
+        }
+
         $candidates = [
-            data_get($payload, 'data'),           // iStoreBox: {"event":..,"instance":..,"data":{key,pushName,message,...}}
+            $data,                                // iStoreBox: data[0] contains key, pushName, message, ...
             data_get($payload, 'message'),
             data_get($payload, 'data.message'),
             data_get($payload, 'messages.0'),
