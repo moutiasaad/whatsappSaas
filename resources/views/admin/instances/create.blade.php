@@ -62,7 +62,7 @@
                         <button type="button" @click="openTeamModal()"
                                 class="btn btn-outline btn-sm"
                                 style="flex-shrink:0;height:38px;padding:0 .65rem;font-size:1.1rem;line-height:1"
-                                title="{{ __('ui.instance_create_page.create_team_tooltip', default: 'Créer une équipe') }}">
+                                title="Créer une équipe">
                             <i class="ri-add-line"></i>
                         </button>
                     </div>
