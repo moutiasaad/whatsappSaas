@@ -103,10 +103,56 @@
                 </div>
             </div>
 
-            <livewire:conversation-messages
-                :conversation-id="$conversation->id"
-                :customer-initials="strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2))"
-            />
+            <div id="messages-scroll" class="conversation-stage">
+                <div x-show="hasMoreMessages" class="conversation-load-more">
+                    <button @click="loadMoreMessages()" :disabled="loadingMessages" class="btn btn-ghost btn-sm">
+                        <span x-show="!loadingMessages">{{ __('ui.conversation_show_page.load_earlier') }}</span>
+                        <span x-show="loadingMessages"><span class="btn-spinner" style="width:14px;height:14px;border-width:2px;"></span></span>
+                    </button>
+                </div>
+                <template x-for="(msg, index) in messages" :key="msg.id">
+                    <div>
+                        <template x-if="showDateSeparator(index)">
+                            <div class="conversation-date-separator">
+                                <span x-text="formatDateSeparator(msg.sort_ts)"></span>
+                            </div>
+                        </template>
+                        <div class="message-row" :class="msg.direction === 'out' ? 'message-row-out' : 'message-row-in'">
+                            <div class="message-avatar" :class="msg.direction === 'out' ? 'message-avatar-out' : 'message-avatar-in'">
+                                <span x-text="msg.direction === 'out' ? 'ME' : customerInitials"></span>
+                            </div>
+                            <div class="message-stack" :class="msg.direction === 'out' ? 'message-stack-out' : ''">
+                                <template x-if="msg.ai_metadata && msg.ai_metadata.is_note">
+                                    <div class="message-chip">Internal note</div>
+                                </template>
+                                <template x-if="msg.author_type === 'ai'">
+                                    <div class="message-chip message-chip-ai">AI reply</div>
+                                </template>
+                                <div class="message-bubble" :style="bubbleStyle(msg)">
+                                    <template x-if="msg.media_url && msg.type === 'image'">
+                                        <img :src="msg.media_url" class="msg-media-image">
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'video'">
+                                        <video :src="msg.media_url" controls class="msg-media-video" preload="metadata"></video>
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'audio'">
+                                        <audio :src="msg.media_url" controls class="msg-media-audio" preload="metadata"></audio>
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'document'">
+                                        <a :href="msg.media_url" target="_blank" class="msg-media-doc">
+                                            <i class="ri-file-download-line"></i>
+                                            <span x-text="(msg.ai_metadata && msg.ai_metadata.file_name) ? msg.ai_metadata.file_name : 'Document'"></span>
+                                        </a>
+                                    </template>
+                                    <div x-show="msg.body" class="message-body" x-text="msg.body"></div>
+                                    <div class="message-time" x-text="formatTime(msg.sort_ts)"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div id="scroll-anchor"></div>
+            </div>
 
             <div x-show="state !== 'closed'" class="conversation-composer-wrap">
                 <div class="conversation-quick-replies">
@@ -792,6 +838,7 @@ function conversationPro() {
         agentName: @json($conversation->ownerAgent?->name),
         agentId: {{ $conversation->owner_agent_id ?? 'null' }},
         aiSuspended: {{ $conversation->ai_suspended ? 'true' : 'false' }},
+        customerInitials: '{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}',
 
         messages: [],
         cursor: null,
@@ -821,6 +868,8 @@ function conversationPro() {
         },
 
         async init() {
+            await this.loadMessages();
+            this.scrollToBottom();
             this.subscribeChannel();
             this.markRead();
             this.setupWsTracking();
@@ -870,12 +919,22 @@ function conversationPro() {
             this.startPolling();
         },
 
-        _refreshMessages() {
-            if (!window.Livewire) return;
-            const el = document.getElementById('messages-scroll');
-            if (!el) return;
-            const wireId = el.getAttribute('wire:id');
-            if (wireId) Livewire.find(wireId)?.$refresh();
+        async _refreshMessages() {
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/messages?per_page=20`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const incoming = (data.data || []).map(m => this.normalizeMessage(m));
+                const maxId = this.messages.reduce((mx, m) => Math.max(mx, m.id || 0), 0);
+                const fresh = incoming.filter(m => (m.id || 0) > maxId);
+                if (fresh.length > 0) {
+                    this.messages = this.sortMessages([...this.messages, ...fresh]);
+                    this.$nextTick(() => this.scrollToBottom());
+                }
+            } catch {}
         },
 
         startPolling() {
@@ -1059,8 +1118,14 @@ function conversationPro() {
                     window.showToast?.('error', err.message || 'Failed to send');
                     this.draft = body;
                 } else {
-                    await res.json();
-                    this._refreshMessages();
+                    const msgData = await res.json();
+                    if (msgData && msgData.id) {
+                        const normalized = this.normalizeMessage(msgData);
+                        if (!this.messages.some(m => m.id === normalized.id)) {
+                            this.messages = this.sortMessages([...this.messages, normalized]);
+                        }
+                    }
+                    this.$nextTick(() => this.scrollToBottom());
                     this.sendPresence('available');
                 }
             } catch {
@@ -1336,22 +1401,12 @@ function conversationPro() {
 
 @push('scripts')
 <script>
-function scrollMessagesToBottom() {
-    const anchor = document.getElementById('scroll-anchor');
-    if (anchor) anchor.scrollIntoView({ behavior: 'instant' });
-}
-document.addEventListener('DOMContentLoaded', scrollMessagesToBottom);
-
-// Livewire v4 fires 'livewire:updated' after every DOM patch
-document.addEventListener('livewire:updated', scrollMessagesToBottom);
-
-// Hook into Livewire's commit cycle as a reliable fallback
-document.addEventListener('livewire:init', function () {
-    Livewire.hook('commit', ({ succeed }) => {
-        succeed(() => {
-            setTimeout(scrollMessagesToBottom, 50);
-        });
-    });
+// Alpine's init() handles the initial scroll after loadMessages().
+// This is a safety fallback in case Alpine hasn't fully mounted yet.
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        document.getElementById('scroll-anchor')?.scrollIntoView({ behavior: 'instant' });
+    }, 600);
 });
 </script>
 @endpush
