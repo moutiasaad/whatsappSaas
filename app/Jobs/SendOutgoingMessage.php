@@ -3,10 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\MessageSent;
-use App\Models\Conversation;
-use App\Models\Customer;
 use App\Models\Message;
-use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,12 +18,16 @@ class SendOutgoingMessage implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+    public int $messageId;
 
-    public function __construct(private Message $message) {}
+    public function __construct(Message $message)
+    {
+        $this->messageId = $message->id;
+    }
 
     public function handle(): void
     {
-        $message      = Message::withoutGlobalScopes()->find($this->message->id);
+        $message      = Message::withoutGlobalScopes()->find($this->messageId);
         $conversation = $message?->conversation()->withoutGlobalScopes()->first();
         $instance     = $conversation?->instance()->withoutGlobalScopes()->first();
         $customer     = $conversation?->customer()->withoutGlobalScopes()->first();
