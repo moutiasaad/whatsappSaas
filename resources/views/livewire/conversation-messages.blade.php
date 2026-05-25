@@ -61,5 +61,9 @@
         </div>
     @endforeach
 
-    <div id="scroll-anchor"></div>
+    {{-- $wire is Livewire's magic prop — only works from inside the component view --}}
+    <div id="scroll-anchor"
+         x-data
+         x-init="setInterval(function(){ $wire.$refresh(); }, 3000)">
+    </div>
 </div>
