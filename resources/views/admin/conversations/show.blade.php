@@ -925,16 +925,22 @@ function conversationPro() {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json' }
                 });
-                if (!res.ok) return;
+                if (!res.ok) {
+                    console.warn('[poll] HTTP error', res.status);
+                    return;
+                }
                 const data = await res.json();
                 const incoming = (data.data || []).map(m => this.normalizeMessage(m));
                 const maxId = this.messages.reduce((mx, m) => Math.max(mx, m.id || 0), 0);
                 const fresh = incoming.filter(m => (m.id || 0) > maxId);
+                console.debug('[poll] maxId:', maxId, '| api returned:', incoming.length, '| new:', fresh.length);
                 if (fresh.length > 0) {
                     this.messages = this.sortMessages([...this.messages, ...fresh]);
                     this.$nextTick(() => this.scrollToBottom());
                 }
-            } catch {}
+            } catch(e) {
+                console.error('[poll] error:', e);
+            }
         },
 
         startPolling() {
