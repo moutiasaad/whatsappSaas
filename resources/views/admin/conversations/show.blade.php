@@ -1347,3 +1347,14 @@ function conversationPro() {
 }
 </script>
 @endsection
+
+@push('scripts')
+<script>
+function scrollMessagesToBottom() {
+    const anchor = document.getElementById('scroll-anchor');
+    if (anchor) anchor.scrollIntoView({ behavior: 'instant' });
+}
+document.addEventListener('DOMContentLoaded', scrollMessagesToBottom);
+document.addEventListener('livewire:update', scrollMessagesToBottom);
+</script>
+@endpush

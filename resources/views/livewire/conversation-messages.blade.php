@@ -1,18 +1,4 @@
-<div
-    wire:poll.4000ms
-    id="messages-scroll"
-    class="conversation-stage"
-    x-init="
-        new MutationObserver(() => {
-            const stage = $el;
-            const anchor = document.getElementById('scroll-anchor');
-            if (!anchor) return;
-            const nearBottom = stage.scrollHeight - stage.scrollTop - stage.clientHeight < 300;
-            if (nearBottom) anchor.scrollIntoView({ behavior: 'instant' });
-        }).observe($el, { childList: true, subtree: true });
-        $el.scrollTop = $el.scrollHeight;
-    "
->
+<div wire:poll.4000ms id="messages-scroll" class="conversation-stage">
     @if($hasMore)
         <div class="conversation-load-more">
             <button wire:click="loadMore" class="btn btn-ghost btn-sm">

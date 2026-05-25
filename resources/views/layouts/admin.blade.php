@@ -15,8 +15,7 @@
 
     @livewireStyles
 
-    {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+    {{-- Alpine.js is provided by Livewire v3 — do not load CDN separately --}}
 
     {{-- Laravel Echo + Pusher (for Reverb real-time) --}}
     <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
