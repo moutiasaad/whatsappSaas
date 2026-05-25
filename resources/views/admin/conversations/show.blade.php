@@ -911,18 +911,17 @@ function conversationPro() {
             window._echoStateListeners.push(function(connected) {
                 self.wsConnected = connected;
                 if (connected) {
-                    self.stopPolling();
                     self.pollNewMessages();
-                } else {
-                    self.startPolling();
                 }
             });
-            if (!this.wsConnected) this.startPolling();
+            // Always poll — WebSocket adds messages instantly when working;
+            // polling is the guaranteed fallback regardless of WS state.
+            this.startPolling();
         },
 
         startPolling() {
             this.stopPolling();
-            this._pollTimer = setInterval(() => this.pollNewMessages(), 5000);
+            this._pollTimer = setInterval(() => this.pollNewMessages(), 4000);
         },
 
         stopPolling() {
