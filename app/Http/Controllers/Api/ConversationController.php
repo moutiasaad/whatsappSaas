@@ -182,38 +182,7 @@ class ConversationController extends Controller
 
         $conversation->update(['unread_count' => 0]);
 
-        $ids = $conversation->messages()
-            ->where('direction', 'in')
-            ->whereNotNull('external_message_id')
-            ->pluck('external_message_id')
-            ->filter(fn($id) => is_numeric($id))
-            ->map(fn($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->toArray();
-
-        if (!empty($ids)) {
-            $instance = $conversation->instance;
-            try {
-                $gateway = new EvolutionApiClient(
-                    $instance->effectiveGatewayUrl(),
-                    $instance->effectiveGatewayApiKey()
-                );
-                $result = $gateway->markMessagesRead($instance->gateway_instance_id, $ids);
-                Log::channel('whatsapp')->debug('markRead sent', [
-                    'conversation_id' => $conversation->id,
-                    'ids_count'       => count($ids),
-                    'result'          => $result,
-                ]);
-            } catch (\Exception $e) {
-                Log::channel('whatsapp')->warning('markRead gateway error', [
-                    'conversation_id' => $conversation->id,
-                    'error'           => $e->getMessage(),
-                ]);
-            }
-        }
-
-        return response()->json(['message' => 'Read.', 'ids_sent' => count($ids)]);
+        return response()->json(['message' => 'Read.']);
     }
 
     public function toggleAi(Conversation $conversation, Request $request): JsonResponse
