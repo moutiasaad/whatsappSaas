@@ -34,11 +34,11 @@ class SendOutgoingMessage implements ShouldQueue
 
         if (!$message || !$conversation || !$instance || !$customer) {
             Log::channel('whatsapp')->warning('SendOutgoingMessage: skipped — missing relations', [
-                'message_id'      => $this->message->id,
-                'has_message'     => (bool) $message,
+                'message_id'       => $this->messageId,
+                'has_message'      => (bool) $message,
                 'has_conversation' => (bool) $conversation,
-                'has_instance'    => (bool) $instance,
-                'has_customer'    => (bool) $customer,
+                'has_instance'     => (bool) $instance,
+                'has_customer'     => (bool) $customer,
             ]);
             return;
         }
