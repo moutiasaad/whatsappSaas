@@ -50,7 +50,8 @@
       "Bash(powershell -Command '\\(Get-Content '\\\\''__TRACKED_VAR__'\\\\''\\) -replace '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcast;'\\\\'', '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcastNow;'\\\\'' | Set-Content '\\\\''__TRACKED_VAR__'\\\\''')",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" -MaxDepth 1 -Filter \"*.md\")",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\\" | ForEach-Object { $_.Name })",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\images\\\\\" | ForEach-Object { $_.Name })"
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\images\\\\\" | ForEach-Object { $_.Name })",
+      "Bash(composer require *)"
     ]
   },
   "enableAllProjectMcpServers": true,

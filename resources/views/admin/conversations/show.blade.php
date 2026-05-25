@@ -103,51 +103,10 @@
                 </div>
             </div>
 
-            <div id="messages-scroll" class="conversation-stage">
-                <div x-show="hasMoreMessages" class="conversation-load-more">
-                    <button @click="loadMoreMessages()" :disabled="loadingMessages" class="btn btn-ghost btn-sm">
-                        <span x-show="!loadingMessages">{{ __('ui.conversation_show_page.load_earlier') }}</span>
-                        <span x-show="loadingMessages">{{ __('ui.conversation_show_page.loading') }}</span>
-                    </button>
-                </div>
-
-                <template x-for="(msg, index) in messages" :key="msg.id">
-                    <div>
-                        <div x-show="showDateSeparator(index)" class="conversation-date-separator">
-                            <span x-text="formatDateSeparator(msg.sort_ts)"></span>
-                        </div>
-                        <div class="message-row" :class="msg.direction === 'out' ? 'message-row-out' : 'message-row-in'">
-                            <div class="message-avatar" :class="msg.direction === 'out' ? 'message-avatar-out' : 'message-avatar-in'">
-                                <span x-text="msg.direction === 'out' ? 'ME' : '{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}'"></span>
-                            </div>
-                            <div class="message-stack" :class="msg.direction === 'out' ? 'message-stack-out' : ''">
-                                <div class="message-chip" x-show="msg.ai_metadata?.is_note">Internal note</div>
-                                <div class="message-chip message-chip-ai" x-show="msg.author_type === 'ai'">AI reply</div>
-                                <div class="message-bubble" :style="bubbleStyle(msg)">
-                                    <template x-if="msg.media_url && msg.type === 'image'">
-                                        <img :src="msg.media_url" class="msg-media-image" @click="window.open(msg.media_url,'_blank')">
-                                    </template>
-                                    <template x-if="msg.media_url && msg.type === 'video'">
-                                        <video :src="msg.media_url" controls class="msg-media-video" preload="metadata"></video>
-                                    </template>
-                                    <template x-if="msg.media_url && msg.type === 'audio'">
-                                        <audio :src="msg.media_url" controls class="msg-media-audio" preload="metadata"></audio>
-                                    </template>
-                                    <template x-if="msg.media_url && msg.type === 'document'">
-                                        <a :href="msg.media_url" target="_blank" class="msg-media-doc">
-                                            <i class="ri-file-download-line"></i>
-                                            <span x-text="msg.ai_metadata?.file_name || 'Document'"></span>
-                                        </a>
-                                    </template>
-                                    <div x-show="msg.body" class="message-body" x-text="msg.body"></div>
-                                    <div class="message-time" x-text="formatMessageStamp(msg.sort_ts)"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-                <div id="scroll-anchor"></div>
-            </div>
+            <livewire:conversation-messages
+                :conversation-id="$conversation->id"
+                :customer-initials="strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2))"
+            />
 
             <div x-show="state !== 'closed'" class="conversation-composer-wrap">
                 <div class="conversation-quick-replies">
@@ -862,20 +821,12 @@ function conversationPro() {
         },
 
         async init() {
-            await this.loadMessages();
-            this.scrollToBottom();
             this.subscribeChannel();
             this.markRead();
             this.setupWsTracking();
             this.checkCustomerNumber();
-            // Unconditional polling — cannot be cancelled by WS state changes
-            const self = this;
-            setInterval(function() { self.pollNewMessages(); }, 4000);
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
-                    this.pollNewMessages();
-                    this.markRead();
-                }
+                if (!document.hidden) this.markRead();
             });
         },
 
@@ -1122,9 +1073,8 @@ function conversationPro() {
                     window.showToast?.('error', err.message || 'Failed to send');
                     this.draft = body;
                 } else {
-                    const message = this.normalizeMessage(await res.json());
-                    this.messages = this.sortMessages([...this.messages, message]);
-                    this.scrollToBottom();
+                    await res.json();
+                    Livewire.dispatch('messages-refresh');
                     this.sendPresence('available');
                 }
             } catch {
@@ -1286,21 +1236,12 @@ function conversationPro() {
             if (!window.Echo) return;
             const tenantId = {{ $conversation->tenant_id }};
             window.Echo.private(`tenant.${tenantId}.conversation.${this.conversationId}`)
-                .listen('.message.received', (e) => {
-                    this.messages = this.sortMessages([...this.messages, this.normalizeMessage(e.message)]);
-                    this.scrollToBottom();
+                .listen('.message.received', () => {
+                    Livewire.dispatch('messages-refresh');
                     this.markRead();
                 })
-                .listen('.message.sent', (e) => {
-                    const idx = this.messages.findIndex(m => m.id === e.message.id);
-                    if (idx >= 0) {
-                        this.messages[idx] = this.normalizeMessage(e.message);
-                        this.messages = this.sortMessages([...this.messages]);
-                    }
-                    else {
-                        this.messages = this.sortMessages([...this.messages, this.normalizeMessage(e.message)]);
-                        this.scrollToBottom();
-                    }
+                .listen('.message.sent', () => {
+                    Livewire.dispatch('messages-refresh');
                 })
                 .listen('.conversation.claimed', (e) => {
                     this.state = 'claimed';
