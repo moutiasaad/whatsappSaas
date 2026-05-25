@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('ui.dashboard')) — {{ Auth::user()->tenant->name ?? config('app.name') }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -164,15 +168,13 @@
 
         .sidebar-logo-icon {
             width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--brand), var(--brand-dark));
             border-radius: var(--radius);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         }
-
-        .sidebar-logo-icon i { color: #fff; font-size: 18px; }
 
         .sidebar-logo-text { display: flex; flex-direction: column; }
         .sidebar-logo-name { font-size: 15px; font-weight: 700; color: #f0f6fc; letter-spacing: -.3px; }
@@ -1534,10 +1536,10 @@
         <div class="sidebar-logo-zone">
             <a href="{{ route($panelPrefix . '.dashboard') }}" class="sidebar-logo">
                 <div class="sidebar-logo-icon">
-                    <i class="ri-whatsapp-line"></i>
+                    <img src="{{ asset('images/wavadesk-icon-teal.svg') }}" alt="wavadesk" width="36" height="36">
                 </div>
                 <div class="sidebar-logo-text">
-                    <span class="sidebar-logo-name">WA Support</span>
+                    <span class="sidebar-logo-name">wavadesk</span>
                     <span class="sidebar-logo-sub">SaaS Platform</span>
                 </div>
             </a>

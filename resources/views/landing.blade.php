@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('landing.page_title') }}</title>
     <meta name="description" content="{{ __('landing.page_desc') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -59,7 +63,7 @@
         nav { position:sticky; top:0; z-index:100; background:rgba(255,255,255,.92); backdrop-filter:blur(14px); border-bottom:1px solid var(--border); animation:navSlide .5s ease both; }
         .nav-inner { display:flex; align-items:center; justify-content:space-between; padding:14px 0; }
         .nav-logo { display:flex; align-items:center; gap:10px; font-size:19px; font-weight:800; color:var(--text); text-decoration:none; }
-        .nav-logo-icon { width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,var(--brand),var(--brand-dark)); display:flex; align-items:center; justify-content:center; color:#fff; transition:transform .25s; }
+        .nav-logo-icon { width:36px; height:36px; border-radius:9px; overflow:hidden; display:flex; align-items:center; justify-content:center; transition:transform .25s; }
         .nav-logo:hover .nav-logo-icon { transform:rotate(-8deg) scale(1.1); }
         .nav-links { display:flex; align-items:center; gap:28px; }
         .nav-links a { font-size:14px; font-weight:500; color:var(--muted); text-decoration:none; transition:color .2s; position:relative; }
@@ -245,9 +249,9 @@
         <div class="nav-inner">
             <a href="{{ route('landing') }}" class="nav-logo">
                 <div class="nav-logo-icon">
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                    <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="36" height="36">
                 </div>
-                {{ config('app.name', 'WA Support') }}
+                wavadesk
             </a>
 
             <div class="nav-links">
@@ -584,11 +588,9 @@
     <div class="container">
         <div class="footer-inner">
             <div class="footer-brand">
-                <a href="{{ route('landing') }}" class="logo">
-                    <div class="nav-logo-icon" style="width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff">
-                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
-                    </div>
-                    {{ config('app.name', 'WA Support') }}
+                <a href="{{ route('landing') }}" class="logo" style="display:flex;align-items:center;gap:8px;text-decoration:none;font-size:16px;font-weight:800;color:#f8fafc">
+                    <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="30" height="30" style="border-radius:7px">
+                    wavadesk
                 </a>
                 <p>{{ __('landing.footer_tagline') }}</p>
             </div>

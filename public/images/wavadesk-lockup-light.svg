@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="100" viewBox="0 0 420 100" fill="none"><g transform="translate(10,10)">
+    
+    <rect x="2" y="2" width="60" height="60" rx="16" fill="#ffffff" stroke="#0f7e7a" stroke-width="2"/>
+    <path d="M10 40 C 17 40, 17 22, 26 22 C 35 22, 35 42, 44 42 C 51 42, 51 26, 58 26"
+          stroke="#0f7e7a" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+    <circle cx="10" cy="40" r="4" fill="#0f7e7a"/>
+    <circle cx="58" cy="26" r="4" fill="#15b6a8"/>
+  </g><text x="108" y="66" font-family="'Sora',sans-serif" font-weight="600" font-size="56" fill="#0d1417">wavadesk</text></svg>

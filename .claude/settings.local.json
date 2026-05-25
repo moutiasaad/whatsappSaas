@@ -47,7 +47,10 @@
       "Bash(xargs grep -l \"broadcast\\\\|pusher\\\\|reverb\")",
       "Bash(sed -i 's/ShouldBroadcast$/ShouldBroadcastNow/' app/Events/MessageReceived.php app/Events/MessageSent.php app/Events/ConversationClaimed.php app/Events/ConversationReleased.php app/Events/ConversationClosed.php app/Events/ConversationReopened.php)",
       "Bash(sed -i 's/use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcast;/use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcastNow;/' app/Events/MessageReceived.php app/Events/MessageSent.php app/Events/ConversationClaimed.php app/Events/ConversationReleased.php app/Events/ConversationClosed.php app/Events/ConversationReopened.php)",
-      "Bash(powershell -Command '\\(Get-Content '\\\\''__TRACKED_VAR__'\\\\''\\) -replace '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcast;'\\\\'', '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcastNow;'\\\\'' | Set-Content '\\\\''__TRACKED_VAR__'\\\\''')"
+      "Bash(powershell -Command '\\(Get-Content '\\\\''__TRACKED_VAR__'\\\\''\\) -replace '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcast;'\\\\'', '\\\\''use Illuminate\\\\\\\\Contracts\\\\\\\\Broadcasting\\\\\\\\ShouldBroadcastNow;'\\\\'' | Set-Content '\\\\''__TRACKED_VAR__'\\\\''')",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" -MaxDepth 1 -Filter \"*.md\")",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\\" | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\images\\\\\" | ForEach-Object { $_.Name })"
     ]
   },
   "enableAllProjectMcpServers": true,
