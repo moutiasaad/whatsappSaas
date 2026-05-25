@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\AgentTyping;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\User;
@@ -126,6 +127,107 @@ class ConversationController extends Controller
         return response()->json($conversation->load(['customer', 'ownerAgent', 'team', 'instance']));
     }
 
+    public function workspace(Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $conversation->load(['customer', 'ownerAgent', 'team', 'instance', 'tenant']);
+
+        $messages = \App\Models\Message::query()
+            ->where('conversation_id', $conversation->id)
+            ->orderByDesc('id')
+            ->limit(41)
+            ->get();
+
+        $hasMore = $messages->count() > 40;
+        if ($hasMore) {
+            $messages = $messages->take(40);
+        }
+        $ordered = $messages->reverse()->values();
+
+        $events = $conversation->events()->with('actor')->orderByDesc('created_at')->limit(50)->get();
+
+        $teamAgents = $conversation->team
+            ? $conversation->team->users()
+                ->whereIn('role', ['agent', 'supervisor'])
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : User::query()
+                ->whereIn('role', ['agent', 'supervisor'])
+                ->where('is_active', true)
+                ->where('tenant_id', $conversation->tenant_id)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+        $customerConversationCount = Conversation::where('customer_id', $conversation->customer_id)->count();
+
+        $aiMode = $conversation->tenant?->aiSettings?->mode ?? 'off';
+
+        return response()->json([
+            'conversation' => [
+                'id'              => $conversation->id,
+                'tenant_id'       => $conversation->tenant_id,
+                'state'           => $conversation->state,
+                'owner_agent_id'  => $conversation->owner_agent_id,
+                'ai_suspended'    => (bool) $conversation->ai_suspended,
+                'last_message_at' => optional($conversation->last_message_at)->toIso8601String(),
+                'created_at'      => optional($conversation->created_at)->toIso8601String(),
+            ],
+            'customer' => [
+                'id'              => $conversation->customer?->id,
+                'display_name'    => $conversation->customer?->displayNameOrPhone,
+                'phone_e164'      => $conversation->customer?->phone_e164,
+                'profile_pic_url' => $conversation->customer?->profile_pic_url,
+            ],
+            'instance' => $conversation->instance ? [
+                'id'   => $conversation->instance->id,
+                'name' => $conversation->instance->name,
+            ] : null,
+            'team' => $conversation->team ? [
+                'id'   => $conversation->team->id,
+                'name' => $conversation->team->name,
+            ] : null,
+            'tenant' => $conversation->tenant ? [
+                'id'   => $conversation->tenant->id,
+                'name' => $conversation->tenant->name,
+            ] : null,
+            'owner_agent' => $conversation->ownerAgent ? [
+                'id'   => $conversation->ownerAgent->id,
+                'name' => $conversation->ownerAgent->name,
+            ] : null,
+            'messages' => [
+                'data'        => $ordered->map(fn ($m) => [
+                    'id'                  => $m->id,
+                    'conversation_id'     => $m->conversation_id,
+                    'direction'           => $m->direction,
+                    'author_type'         => $m->author_type,
+                    'author_id'           => $m->author_id,
+                    'type'                => $m->type,
+                    'body'                => $m->body,
+                    'media_url'           => $m->media_url,
+                    'media_mime'          => $m->media_mime,
+                    'status'              => $m->status,
+                    'ai_metadata'         => $m->ai_metadata,
+                    'external_message_id' => $m->external_message_id,
+                    'sent_at'             => optional($m->sent_at)->toIso8601String(),
+                    'created_at'          => optional($m->created_at)->toIso8601String(),
+                ])->all(),
+                'next_cursor' => $hasMore ? $ordered->first()->id : null,
+            ],
+            'events' => $events->map(fn ($e) => [
+                'id'         => $e->id,
+                'type'       => $e->type,
+                'actor_name' => $e->actor?->name,
+                'created_at' => optional($e->created_at)->toIso8601String(),
+            ])->all(),
+            'team_agents'                 => $teamAgents->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->all(),
+            'customer_conversation_count' => $customerConversationCount,
+            'ai_mode'                     => $aiMode,
+            'ai_suspended'                => (bool) $conversation->ai_suspended,
+        ]);
+    }
+
     public function claim(Conversation $conversation, Request $request): JsonResponse
     {
         $this->authorize('claim', $conversation);
@@ -234,21 +336,30 @@ class ConversationController extends Controller
             'presence' => ['required', \Illuminate\Validation\Rule::in(['unavailable', 'available', 'composing', 'recording', 'paused'])],
         ]);
 
+        // Broadcast typing to other agents viewing the same conversation
+        try {
+            broadcast(new AgentTyping($conversation, $request->user(), $data['presence']))->toOthers();
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->debug('AgentTyping broadcast failed', [
+                'conversation_id' => $conversation->id,
+                'error'           => $e->getMessage(),
+            ]);
+        }
+
+        // Forward to WhatsApp gateway so the customer also sees the typing dots
         try {
             $instance = $conversation->instance;
             $phone    = $conversation->customer->phone_e164;
 
-            if (!$phone || !$instance?->gateway_instance_id) {
-                return response()->json(['ok' => false], 422);
+            if ($phone && $instance?->gateway_instance_id) {
+                $gateway = new EvolutionApiClient(
+                    $instance->effectiveGatewayUrl(),
+                    $instance->effectiveGatewayApiKey()
+                );
+                $gateway->updatePresence($instance->gateway_instance_id, $phone, $data['presence']);
             }
-
-            $gateway = new EvolutionApiClient(
-                $instance->effectiveGatewayUrl(),
-                $instance->effectiveGatewayApiKey()
-            );
-            $gateway->updatePresence($instance->gateway_instance_id, $phone, $data['presence']);
         } catch (\Exception $e) {
-            Log::channel('whatsapp')->debug('updatePresence error', [
+            Log::channel('whatsapp')->debug('updatePresence gateway error', [
                 'conversation_id' => $conversation->id,
                 'presence'        => $data['presence'],
                 'error'           => $e->getMessage(),

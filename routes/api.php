@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\AgentPresenceController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\InstanceController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +19,7 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         // Conversations
         Route::get('/conversations', [ConversationController::class, 'index']);
         Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
+        Route::get('/conversations/{conversation}/workspace', [ConversationController::class, 'workspace']);
         Route::post('/conversations/{conversation}/claim', [ConversationController::class, 'claim']);
         Route::post('/conversations/{conversation}/release', [ConversationController::class, 'release']);
         Route::post('/conversations/{conversation}/close', [ConversationController::class, 'close']);
@@ -32,6 +35,16 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
         Route::post('/conversations/{conversation}/notes', [MessageController::class, 'storeNote']);
         Route::post('/media/upload', [MessageController::class, 'uploadMedia']);
+
+        // Saved replies (canned responses)
+        Route::get('/saved-replies', [SavedReplyController::class, 'index']);
+        Route::post('/saved-replies', [SavedReplyController::class, 'store']);
+        Route::put('/saved-replies/{savedReply}', [SavedReplyController::class, 'update']);
+        Route::delete('/saved-replies/{savedReply}', [SavedReplyController::class, 'destroy']);
+
+        // Agent presence / online roster
+        Route::post('/agents/heartbeat', [AgentPresenceController::class, 'heartbeat']);
+        Route::get('/agents/online', [AgentPresenceController::class, 'online']);
     });
 
     Route::middleware('role:admin,super_admin')->group(function () {

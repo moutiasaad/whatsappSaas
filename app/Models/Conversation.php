@@ -35,7 +35,7 @@ class Conversation extends Model
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
     public function team(): BelongsTo { return $this->belongsTo(Team::class); }
     public function ownerAgent(): BelongsTo { return $this->belongsTo(User::class, 'owner_agent_id'); }
-    public function messages(): HasMany { return $this->hasMany(Message::class)->orderBy('created_at'); }
+    public function messages(): HasMany { return $this->hasMany(Message::class); }
     public function events(): HasMany { return $this->hasMany(ConversationEvent::class)->orderBy('created_at'); }
 
     public function isPool(): bool { return $this->state === 'pool'; }
