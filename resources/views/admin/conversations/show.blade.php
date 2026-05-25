@@ -868,6 +868,9 @@ function conversationPro() {
             this.markRead();
             this.setupWsTracking();
             this.checkCustomerNumber();
+            // Unconditional polling — cannot be cancelled by WS state changes
+            const self = this;
+            setInterval(function() { self.pollNewMessages(); }, 4000);
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) {
                     this.pollNewMessages();
