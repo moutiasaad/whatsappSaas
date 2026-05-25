@@ -73,7 +73,7 @@ class MessageController extends Controller
             'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
         ]);
 
-        SendOutgoingMessage::dispatch($message);
+        SendOutgoingMessage::dispatch($message)->onQueue('whatsapp');
 
         return response()->json($message->fresh(), 201);
     }

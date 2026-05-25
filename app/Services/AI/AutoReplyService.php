@@ -90,7 +90,7 @@ class AutoReplyService
             'ai_metadata'     => ['mode' => 'autonomous'],
         ]);
 
-        SendOutgoingMessage::dispatch($message);
+        SendOutgoingMessage::dispatch($message)->onQueue('whatsapp');
         return $message;
     }
 
