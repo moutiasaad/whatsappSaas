@@ -228,13 +228,21 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function extractExternalId(array $payload, array $msg): ?string
     {
-        $id = data_get($msg, 'id')
-            ?? data_get($msg, 'key.id')
-            ?? data_get($msg, 'keyId')
+        // Prefer the numeric gateway ID (needed for /chat/readMessages which expects integers)
+        $numericId = data_get($msg, 'id')
             ?? data_get($payload, 'id')
             ?? data_get($payload, 'data.id');
 
-        return is_string($id) || is_int($id) ? (string) $id : null;
+        if (is_numeric($numericId)) {
+            return (string) (int) $numericId;
+        }
+
+        // Fall back to WhatsApp string keyId for deduplication only
+        $stringId = data_get($msg, 'key.id')
+            ?? data_get($msg, 'keyId')
+            ?? data_get($payload, 'data.keyId');
+
+        return is_string($stringId) || is_int($stringId) ? (string) $stringId : null;
     }
 
     private function extractText(array $msg): ?string

@@ -37,6 +37,15 @@
                         <div class="conversation-thread-state">
                             <span class="presence-dot" :class="wsConnected ? '' : 'presence-dot-reconnecting'"></span>
                             <span x-text="wsConnected ? @js(__('ui.conversation_show_page.live_workspace')) : 'Reconnexion...'"></span>
+                            <span class="wa-number-badge wa-number-checking" x-show="numberStatus === 'checking'" title="Checking WhatsApp number…">
+                                <span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                            </span>
+                            <span class="wa-number-badge wa-number-ok" x-show="numberStatus === 'exists'" title="Registered on WhatsApp">
+                                <i class="ri-whatsapp-line"></i> WhatsApp ✓
+                            </span>
+                            <span class="wa-number-badge wa-number-fail" x-show="numberStatus === 'missing'" title="This number is not registered on WhatsApp">
+                                <i class="ri-whatsapp-line"></i> Not on WhatsApp
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -115,7 +124,22 @@
                                 <div class="message-chip" x-show="msg.ai_metadata?.is_note">Internal note</div>
                                 <div class="message-chip message-chip-ai" x-show="msg.author_type === 'ai'">AI reply</div>
                                 <div class="message-bubble" :style="bubbleStyle(msg)">
-                                    <div class="message-body" x-text="msg.body || '-'"></div>
+                                    <template x-if="msg.media_url && msg.type === 'image'">
+                                        <img :src="msg.media_url" class="msg-media-image" @click="window.open(msg.media_url,'_blank')">
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'video'">
+                                        <video :src="msg.media_url" controls class="msg-media-video" preload="metadata"></video>
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'audio'">
+                                        <audio :src="msg.media_url" controls class="msg-media-audio" preload="metadata"></audio>
+                                    </template>
+                                    <template x-if="msg.media_url && msg.type === 'document'">
+                                        <a :href="msg.media_url" target="_blank" class="msg-media-doc">
+                                            <i class="ri-file-download-line"></i>
+                                            <span x-text="msg.ai_metadata?.file_name || 'Document'"></span>
+                                        </a>
+                                    </template>
+                                    <div x-show="msg.body" class="message-body" x-text="msg.body"></div>
                                     <div class="message-time" x-text="formatMessageStamp(msg.sort_ts)"></div>
                                 </div>
                             </div>
@@ -135,11 +159,49 @@
                     </button>
                 </div>
 
+                {{-- Media attachment preview --}}
+                <div x-show="mediaAttachment" class="media-preview-bar" x-cloak>
+                    <div class="media-preview-inner">
+                        <template x-if="mediaAttachment?.type === 'image'">
+                            <img :src="mediaAttachment.url" class="media-preview-thumb" alt="preview">
+                        </template>
+                        <template x-if="mediaAttachment?.type !== 'image'">
+                            <div class="media-preview-icon">
+                                <i :class="{
+                                    'ri-video-line': mediaAttachment?.type === 'video',
+                                    'ri-music-2-line': mediaAttachment?.type === 'audio',
+                                    'ri-file-line': mediaAttachment?.type === 'document',
+                                }"></i>
+                            </div>
+                        </template>
+                        <div class="media-preview-meta">
+                            <div class="media-preview-name" x-text="mediaAttachment?.file_name"></div>
+                            <div class="media-preview-type" x-text="mediaAttachment?.type"></div>
+                        </div>
+                        <button type="button" class="media-preview-remove" @click="clearMedia()" title="Remove">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+                    <div x-show="mediaUploading" class="media-upload-progress">
+                        <div class="media-upload-bar" :style="`width:${uploadProgress}%`"></div>
+                    </div>
+                </div>
+
                 <div class="conversation-composer">
+                    <input type="file" x-ref="fileInput" class="hidden"
+                           accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip"
+                           @change="onFileSelected($event)">
+                    <button type="button" class="btn btn-ghost composer-attach-btn"
+                            :disabled="state !== 'claimed' || isNote || mediaUploading"
+                            @click="$refs.fileInput.click()"
+                            title="Attach file">
+                        <span x-show="!mediaUploading"><i class="ri-attachment-2"></i></span>
+                        <span x-show="mediaUploading"><span class="btn-spinner"></span></span>
+                    </button>
                     <textarea x-model="draft" rows="1" @keydown="handleComposerKeydown($event)" @input="autoResize($el); onTypingInput();"
-                              :placeholder="isNote ? @js(__('ui.conversation_show_page.note_placeholder')) : @js(__('ui.conversation_show_page.message_placeholder'))"
+                              :placeholder="mediaAttachment ? 'Add a caption (optional)…' : (isNote ? @js(__('ui.conversation_show_page.note_placeholder')) : @js(__('ui.conversation_show_page.message_placeholder')))"
                               class="conversation-textarea"></textarea>
-                    <button @click="send()" :disabled="!draft.trim() || sending || state !== 'claimed'" class="btn btn-primary conversation-send-btn">
+                    <button @click="send()" :disabled="(!draft.trim() && !mediaAttachment) || sending || state !== 'claimed' || mediaUploading" class="btn btn-primary conversation-send-btn">
                         <span x-show="!sending"><i class="ri-send-plane-2-line"></i> {{ __('ui.conversation_show_page.send') }}</span>
                         <span x-show="sending"><span class="btn-spinner"></span></span>
                     </button>
@@ -162,7 +224,11 @@
                     </div>
                     <div class="conv-avatar conversation-profile-avatar">{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}</div>
                 </div>
-                <div class="conversation-profile-contact">{{ $conversation->customer->phone_e164 }}</div>
+                <div class="conversation-profile-contact">
+                    {{ $conversation->customer->phone_e164 }}
+                    <span class="wa-profile-badge wa-number-ok" x-show="numberStatus === 'exists'"><i class="ri-whatsapp-line"></i></span>
+                    <span class="wa-profile-badge wa-number-fail" x-show="numberStatus === 'missing'"><i class="ri-close-circle-line"></i></span>
+                </div>
                 <div class="conversation-profile-icons">
                     <span><i class="ri-phone-line"></i></span>
                     <span><i class="ri-whatsapp-line"></i></span>
@@ -395,6 +461,41 @@
     text-align: right;
     margin-top: 6px;
 }
+.msg-media-image {
+    display: block;
+    max-width: 240px;
+    max-height: 200px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 6px;
+    object-fit: cover;
+}
+.msg-media-video {
+    display: block;
+    max-width: 280px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+}
+.msg-media-audio {
+    display: block;
+    width: 100%;
+    min-width: 200px;
+    margin-bottom: 6px;
+}
+.msg-media-doc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0,0,0,.06);
+    text-decoration: none;
+    font-size: .82rem;
+    font-weight: 600;
+    color: inherit;
+    margin-bottom: 6px;
+}
+.msg-media-doc i { font-size: 1.2rem; }
 .conversation-date-separator {
     display: flex;
     justify-content: center;
@@ -447,6 +548,133 @@
 .conversation-send-btn {
     min-width: 108px;
     height: 46px;
+}
+.wa-number-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: .03em;
+}
+.wa-number-checking {
+    background: rgba(100,116,139,.12);
+    color: var(--text-muted);
+}
+.wa-number-ok {
+    background: rgba(34,197,94,.12);
+    color: #15803d;
+}
+.wa-number-fail {
+    background: rgba(239,68,68,.10);
+    color: #b91c1c;
+}
+.wa-profile-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    font-size: .75rem;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+.wa-profile-badge.wa-number-ok { background: rgba(34,197,94,.25); color: #15803d; }
+.wa-profile-badge.wa-number-fail { background: rgba(239,68,68,.18); color: #b91c1c; }
+.composer-attach-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+.composer-attach-btn:hover:not(:disabled) {
+    color: var(--brand);
+    background: rgba(37,99,235,.08);
+}
+.media-preview-bar {
+    margin-bottom: 10px;
+    border-radius: 12px;
+    border: 1.5px solid var(--card-border);
+    overflow: hidden;
+    background: #f8fafc;
+}
+.media-preview-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+}
+.media-preview-thumb {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.media-preview-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background: linear-gradient(135deg,#e0f2fe,#bfdbfe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #1d4ed8;
+    flex-shrink: 0;
+}
+.media-preview-meta {
+    flex: 1;
+    min-width: 0;
+}
+.media-preview-name {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.media-preview-type {
+    font-size: .72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: .04em;
+    margin-top: 2px;
+}
+.media-preview-remove {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(239,68,68,.1);
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: .9rem;
+}
+.media-preview-remove:hover { background: rgba(239,68,68,.18); }
+.media-upload-progress {
+    height: 3px;
+    background: #e5e7eb;
+}
+.media-upload-bar {
+    height: 100%;
+    background: var(--brand);
+    transition: width .2s ease;
 }
 .conversation-composer-hint,
 .conversation-closed-banner {
@@ -622,6 +850,11 @@ function conversationPro() {
         _presenceState: null,
         _presenceTimer: null,
 
+        mediaAttachment: null,
+        mediaUploading: false,
+        uploadProgress: 0,
+        numberStatus: null,
+
         get canAct() {
             const role = '{{ auth()->user()->role }}';
             if (['admin', 'super_admin', 'supervisor'].includes(role)) return true;
@@ -634,9 +867,30 @@ function conversationPro() {
             this.subscribeChannel();
             this.markRead();
             this.setupWsTracking();
+            this.checkCustomerNumber();
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) this.pollNewMessages();
+                if (!document.hidden) {
+                    this.pollNewMessages();
+                    this.markRead();
+                }
             });
+        },
+
+        async checkCustomerNumber() {
+            this.numberStatus = 'checking';
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/check-number`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) { this.numberStatus = null; return; }
+                const data = await res.json();
+                if (data.exists === true)       this.numberStatus = 'exists';
+                else if (data.exists === false) this.numberStatus = 'missing';
+                else                            this.numberStatus = null;
+            } catch {
+                this.numberStatus = null;
+            }
         },
 
         markRead() {
@@ -716,6 +970,56 @@ function conversationPro() {
             this._presenceTimer = setTimeout(() => this.sendPresence('paused'), 3000);
         },
 
+        clearMedia() {
+            this.mediaAttachment = null;
+            this.uploadProgress  = 0;
+            if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+        },
+
+        async onFileSelected(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            this.mediaUploading  = true;
+            this.uploadProgress  = 0;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/media/upload');
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name=csrf-token]').content);
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        this.uploadProgress = Math.round((e.loaded / e.total) * 100);
+                    }
+                });
+
+                const result = await new Promise((resolve, reject) => {
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            reject(new Error(xhr.responseText));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Upload failed'));
+                    xhr.send(formData);
+                });
+
+                this.mediaAttachment = result;
+                this.uploadProgress  = 100;
+            } catch (e) {
+                window.showToast?.('error', 'File upload failed');
+                this.clearMedia();
+            } finally {
+                this.mediaUploading = false;
+            }
+        },
+
         setQuickReply(text) {
             this.draft = text;
             this.$nextTick(() => {
@@ -777,14 +1081,28 @@ function conversationPro() {
         },
 
         async send() {
-            if (!this.draft.trim() || this.sending || this.state !== 'claimed') return;
+            const hasText  = this.draft.trim();
+            const hasMedia = !!this.mediaAttachment;
+            if ((!hasText && !hasMedia) || this.sending || this.state !== 'claimed' || this.mediaUploading) return;
+
             this.sending = true;
             clearTimeout(this._presenceTimer);
-            const body = this.draft.trim();
-            this.draft = '';
+            const body      = this.draft.trim();
+            const media     = this.mediaAttachment;
+            this.draft      = '';
+            this.clearMedia();
+
             const endpoint = this.isNote
                 ? `/api/conversations/${this.conversationId}/notes`
                 : `/api/conversations/${this.conversationId}/messages`;
+
+            const payload = { body: body || null };
+            if (media && !this.isNote) {
+                payload.media_url  = media.url;
+                payload.type       = media.type;
+                payload.file_name  = media.file_name;
+                payload.media_path = media.media_path;
+            }
 
             try {
                 const res = await fetch(endpoint, {
@@ -795,7 +1113,7 @@ function conversationPro() {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
-                    body: JSON.stringify({ body })
+                    body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
                     const err = await res.json();

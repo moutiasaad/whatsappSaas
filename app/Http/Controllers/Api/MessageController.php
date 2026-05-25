@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
@@ -39,10 +40,20 @@ class MessageController extends Controller
         $request->validate([
             'body'      => 'required_without:media_url|nullable|string|max:4096',
             'media_url' => 'nullable|url',
-            'type'      => 'in:text,image,video,audio,document',
+            'type'       => 'nullable|in:text,image,video,audio,document',
+            'file_name'  => 'nullable|string|max:255',
+            'media_path' => 'nullable|string|max:500',
         ]);
 
         $conversation->update(['unread_count' => 0]);
+
+        $aiMeta = null;
+        if ($request->file_name || $request->media_path) {
+            $aiMeta = array_filter([
+                'file_name'  => $request->file_name,
+                'media_path' => $request->media_path,
+            ]);
+        }
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
@@ -54,6 +65,7 @@ class MessageController extends Controller
             'body'            => $request->body,
             'media_url'       => $request->media_url,
             'status'          => 'pending',
+            'ai_metadata'     => $aiMeta,
         ]);
 
         $conversation->update([
@@ -93,5 +105,33 @@ class MessageController extends Controller
         } catch (\Throwable) {}
 
         return response()->json($message, 201);
+    }
+
+    public function uploadMedia(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|max:20480|mimes:jpeg,jpg,png,gif,webp,mp4,mov,avi,mp3,ogg,aac,pdf,doc,docx,xls,xlsx,ppt,pptx,zip',
+        ]);
+
+        $file      = $request->file('file');
+        $mimeType  = $file->getMimeType();
+        $origName  = $file->getClientOriginalName();
+        $path      = $file->store('media', 'public');
+        $url       = Storage::disk('public')->url($path);
+
+        $waType = match (true) {
+            str_starts_with($mimeType, 'image/') => 'image',
+            str_starts_with($mimeType, 'video/') => 'video',
+            str_starts_with($mimeType, 'audio/') => 'audio',
+            default                               => 'document',
+        };
+
+        return response()->json([
+            'url'        => $url,
+            'type'       => $waType,
+            'file_name'  => $origName,
+            'mime_type'  => $mimeType,
+            'media_path' => $path,
+        ]);
     }
 }

@@ -83,27 +83,83 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    public function checkNumbers(string $instanceId, array $numbers): array
+    {
+        $normalized = array_values(array_map(function (string $n): string {
+            $digits = preg_replace('/\D+/', '', $n);
+            return $digits ?: $n;
+        }, $numbers));
+
+        return $this->post("/chat/whatsappNumbers/{$instanceId}", ['numbers' => $normalized]);
+    }
+
     public function sendText(string $instanceId, string $to, string $body): array
     {
         return $this->post("/message/sendText/{$instanceId}", [
             'number'      => $this->normalizeRecipient($to),
-            'options'     => ['delay' => 1200],
+            'options'     => [
+                'delay'    => 1200,
+                'presence' => 'composing',
+            ],
             'textMessage' => ['text' => $body],
         ]);
     }
 
-    public function sendMedia(string $instanceId, string $to, string $url, string $type, ?string $caption = null): array
+    public function sendMedia(string $instanceId, string $to, string $url, string $type, ?string $caption = null, ?string $fileName = null): array
     {
+        $mediaMessage = ['mediatype' => $type, 'media' => $url];
+        if ($caption !== null && $caption !== '') {
+            $mediaMessage['caption'] = $caption;
+        }
+        if ($fileName !== null && $fileName !== '') {
+            $mediaMessage['fileName'] = $fileName;
+        }
+
         return $this->post("/message/sendMedia/{$instanceId}", [
             'number'       => $this->normalizeRecipient($to),
-            'options'      => ['delay' => 1200],
-            'mediaMessage' => ['mediatype' => $type, 'media' => $url, 'caption' => $caption],
+            'options'      => [
+                'delay'    => 1200,
+                'presence' => $type === 'audio' ? 'recording' : 'composing',
+            ],
+            'mediaMessage' => $mediaMessage,
         ]);
+    }
+
+    public function sendMediaFile(string $instanceId, string $to, string $filePath, string $fileName, string $type, ?string $caption = null): array
+    {
+        $presence = $type === 'audio' ? 'recording' : 'composing';
+
+        $request = Http::withHeaders(['apikey' => $this->apiKey])
+            ->attach('attachment', file_get_contents($filePath), $fileName);
+
+        $formData = [
+            'number'    => $this->normalizeRecipient($to),
+            'mediatype' => $type,
+            'delay'     => '1200',
+            'presence'  => $presence,
+        ];
+        if ($caption !== null && $caption !== '') {
+            $formData['caption'] = $caption;
+        }
+
+        return $request
+            ->post(rtrim($this->baseUrl, '/') . "/message/sendMediaFile/{$instanceId}", $formData)
+            ->throw()
+            ->json();
     }
 
     public function markMessagesRead(string $instanceId, array $ids): array
     {
-        return $this->patch("/chat/readMessages/{$instanceId}", ['ids' => $ids]);
+        $numericIds = array_values(array_filter(
+            array_map(fn($id) => is_numeric($id) ? (int) $id : null, $ids),
+            fn($id) => $id !== null
+        ));
+
+        if (empty($numericIds)) {
+            return ['message' => 'No numeric ids', 'read' => 'skipped'];
+        }
+
+        return $this->post("/chat/readMessages/{$instanceId}", ['ids' => $numericIds]);
     }
 
     public function updatePresence(string $instanceId, string $number, string $presence): void

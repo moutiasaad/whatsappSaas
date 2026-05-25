@@ -180,15 +180,17 @@ class ConversationController extends Controller
     {
         $this->authorize('view', $conversation);
 
+        $conversation->update(['unread_count' => 0]);
+
         $ids = $conversation->messages()
             ->where('direction', 'in')
             ->whereNotNull('external_message_id')
             ->pluck('external_message_id')
-            ->map(fn($id) => is_numeric($id) ? (int) $id : $id)
+            ->filter(fn($id) => is_numeric($id))
+            ->map(fn($id) => (int) $id)
+            ->unique()
             ->values()
             ->toArray();
-
-        $conversation->update(['unread_count' => 0]);
 
         if (!empty($ids)) {
             $instance = $conversation->instance;
@@ -197,7 +199,12 @@ class ConversationController extends Controller
                     $instance->effectiveGatewayUrl(),
                     $instance->effectiveGatewayApiKey()
                 );
-                $gateway->markMessagesRead($instance->gateway_instance_id, $ids);
+                $result = $gateway->markMessagesRead($instance->gateway_instance_id, $ids);
+                Log::channel('whatsapp')->debug('markRead sent', [
+                    'conversation_id' => $conversation->id,
+                    'ids_count'       => count($ids),
+                    'result'          => $result,
+                ]);
             } catch (\Exception $e) {
                 Log::channel('whatsapp')->warning('markRead gateway error', [
                     'conversation_id' => $conversation->id,
@@ -206,7 +213,7 @@ class ConversationController extends Controller
             }
         }
 
-        return response()->json(['message' => 'Read.']);
+        return response()->json(['message' => 'Read.', 'ids_sent' => count($ids)]);
     }
 
     public function toggleAi(Conversation $conversation, Request $request): JsonResponse
@@ -218,6 +225,38 @@ class ConversationController extends Controller
             'message' => $data['ai_suspended'] ? 'AI suspended.' : 'AI resumed.',
             'ai_suspended' => (bool) $data['ai_suspended'],
         ]);
+    }
+
+    public function checkNumber(Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $instance = $conversation->instance;
+        $phone    = $conversation->customer->phone_e164;
+
+        if (!$phone || !$instance?->gateway_instance_id) {
+            return response()->json(['exists' => null, 'error' => 'Missing phone or instance'], 422);
+        }
+
+        try {
+            $gateway = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $results = $gateway->checkNumbers($instance->gateway_instance_id, [$phone]);
+            $first   = $results[0] ?? null;
+
+            return response()->json([
+                'exists' => $first['exists'] ?? null,
+                'jid'    => $first['jid'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->warning('checkNumber error', [
+                'conversation_id' => $conversation->id,
+                'error'           => $e->getMessage(),
+            ]);
+            return response()->json(['exists' => null, 'error' => 'Gateway check failed'], 502);
+        }
     }
 
     public function updatePresence(Conversation $conversation, Request $request): JsonResponse

@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SendOutgoingMessage implements ShouldQueue
 {
@@ -53,9 +54,33 @@ class SendOutgoingMessage implements ShouldQueue
         try {
             $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
 
-            $result = $message->type === 'text'
-                ? $gateway->sendText($instance->gateway_instance_id, $customer->phone_e164, $message->body)
-                : $gateway->sendMedia($instance->gateway_instance_id, $customer->phone_e164, $message->media_url, $message->type);
+            if ($message->type === 'text') {
+                $result = $gateway->sendText($instance->gateway_instance_id, $customer->phone_e164, $message->body);
+            } else {
+                $mediaPath = data_get($message->ai_metadata, 'media_path');
+                $fileName  = data_get($message->ai_metadata, 'file_name') ?? basename((string) $message->media_url);
+                $caption   = $message->body ?: null;
+
+                if ($mediaPath && Storage::disk('public')->exists($mediaPath)) {
+                    $result = $gateway->sendMediaFile(
+                        $instance->gateway_instance_id,
+                        $customer->phone_e164,
+                        Storage::disk('public')->path($mediaPath),
+                        $fileName,
+                        $message->type,
+                        $caption,
+                    );
+                } else {
+                    $result = $gateway->sendMedia(
+                        $instance->gateway_instance_id,
+                        $customer->phone_e164,
+                        $message->media_url,
+                        $message->type,
+                        $caption,
+                        $fileName,
+                    );
+                }
+            }
 
             Log::channel('whatsapp')->info('SendOutgoingMessage: gateway response', [
                 'message_id' => $message->id,

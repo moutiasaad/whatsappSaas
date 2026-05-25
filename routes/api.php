@@ -25,11 +25,13 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         Route::post('/conversations/{conversation}/toggle-ai', [ConversationController::class, 'toggleAi']);
         Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead']);
         Route::post('/conversations/{conversation}/presence', [ConversationController::class, 'updatePresence']);
+        Route::get('/conversations/{conversation}/check-number', [ConversationController::class, 'checkNumber']);
 
         // Messages
         Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
         Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
         Route::post('/conversations/{conversation}/notes', [MessageController::class, 'storeNote']);
+        Route::post('/media/upload', [MessageController::class, 'uploadMedia']);
     });
 
     Route::middleware('role:admin,super_admin')->group(function () {
