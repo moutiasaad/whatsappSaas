@@ -864,9 +864,6 @@ function conversationPro() {
             window._echoStateListeners = window._echoStateListeners || [];
             window._echoStateListeners.push(function(connected) {
                 self.wsConnected = connected;
-                if (connected) {
-                    self.pollNewMessages();
-                }
             });
             // Always poll — WebSocket adds messages instantly when working;
             // polling is the guaranteed fallback regardless of WS state.
@@ -875,30 +872,15 @@ function conversationPro() {
 
         startPolling() {
             this.stopPolling();
-            this._pollTimer = setInterval(() => this.pollNewMessages(), 4000);
+            this._pollTimer = setInterval(() => {
+                if (window.Livewire) {
+                    Livewire.dispatch('messages-refresh');
+                }
+            }, 3000);
         },
 
         stopPolling() {
             if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
-        },
-
-        async pollNewMessages() {
-            try {
-                const res = await fetch(`/api/conversations/${this.conversationId}/messages?per_page=20`, {
-                    credentials: 'same-origin',
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                const fresh = (data.data || []).map(m => this.normalizeMessage(m));
-                const existingIds = new Set(this.messages.map(m => m.id));
-                const added = fresh.filter(m => !existingIds.has(m.id));
-                if (added.length > 0) {
-                    this.messages = this.sortMessages([...this.messages, ...added]);
-                    this.$nextTick(() => this.scrollToBottom());
-                    this.markRead();
-                }
-            } catch(e) {}
         },
 
         sendPresence(presence) {
@@ -1355,6 +1337,17 @@ function scrollMessagesToBottom() {
     if (anchor) anchor.scrollIntoView({ behavior: 'instant' });
 }
 document.addEventListener('DOMContentLoaded', scrollMessagesToBottom);
-document.addEventListener('livewire:update', scrollMessagesToBottom);
+
+// Livewire v4 fires 'livewire:updated' after every DOM patch
+document.addEventListener('livewire:updated', scrollMessagesToBottom);
+
+// Hook into Livewire's commit cycle as a reliable fallback
+document.addEventListener('livewire:init', function () {
+    Livewire.hook('commit', ({ succeed }) => {
+        succeed(() => {
+            setTimeout(scrollMessagesToBottom, 50);
+        });
+    });
+});
 </script>
 @endpush

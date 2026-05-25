@@ -1,4 +1,4 @@
-<div wire:poll.4000ms id="messages-scroll" class="conversation-stage">
+<div id="messages-scroll" class="conversation-stage">
     @if($hasMore)
         <div class="conversation-load-more">
             <button wire:click="loadMore" class="btn btn-ghost btn-sm">
