@@ -870,13 +870,17 @@ function conversationPro() {
             this.startPolling();
         },
 
+        _refreshMessages() {
+            if (!window.Livewire) return;
+            const el = document.getElementById('messages-scroll');
+            if (!el) return;
+            const wireId = el.getAttribute('wire:id');
+            if (wireId) Livewire.find(wireId)?.$refresh();
+        },
+
         startPolling() {
             this.stopPolling();
-            this._pollTimer = setInterval(() => {
-                if (window.Livewire) {
-                    Livewire.dispatch('messages-refresh');
-                }
-            }, 3000);
+            this._pollTimer = setInterval(() => this._refreshMessages(), 3000);
         },
 
         stopPolling() {
@@ -1056,7 +1060,7 @@ function conversationPro() {
                     this.draft = body;
                 } else {
                     await res.json();
-                    Livewire.dispatch('messages-refresh');
+                    this._refreshMessages();
                     this.sendPresence('available');
                 }
             } catch {
@@ -1219,11 +1223,11 @@ function conversationPro() {
             const tenantId = {{ $conversation->tenant_id }};
             window.Echo.private(`tenant.${tenantId}.conversation.${this.conversationId}`)
                 .listen('.message.received', () => {
-                    Livewire.dispatch('messages-refresh');
+                    this._refreshMessages();
                     this.markRead();
                 })
                 .listen('.message.sent', () => {
-                    Livewire.dispatch('messages-refresh');
+                    this._refreshMessages();
                 })
                 .listen('.conversation.claimed', (e) => {
                     this.state = 'claimed';
