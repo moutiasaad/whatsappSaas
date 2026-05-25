@@ -202,8 +202,8 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $raw = trim($raw);
 
-        // Group JIDs are not customer phones
-        if (str_contains($raw, '@g.us')) {
+        // Non-phone JIDs — groups, broadcasts (WhatsApp status updates), newsletters
+        if (str_contains($raw, '@g.us') || str_contains($raw, '@broadcast') || str_contains($raw, '@newsletter')) {
             return null;
         }
 
@@ -212,11 +212,13 @@ class ProcessIncomingMessage implements ShouldQueue
             return $raw;
         }
 
-        // Strip @s.whatsapp.net suffix and keep digits only
-        $raw = preg_replace('/@.*/', '', $raw) ?: $raw;
-        $raw = preg_replace('/\D+/', '', $raw) ?: $raw;
+        // Strip @s.whatsapp.net suffix, then keep digits only.
+        // Do NOT fall back to $raw after digit stripping — if nothing remains the source
+        // was not a phone number (e.g. the literal string "status").
+        $raw    = preg_replace('/@.*/', '', $raw) ?? $raw;
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
 
-        return $raw !== '' ? $raw : null;
+        return $digits !== '' ? $digits : null;
     }
 
     private function isFromMe(array $msg): bool

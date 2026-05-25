@@ -85,10 +85,14 @@ class EvolutionApiClient implements GatewayClientInterface
 
     public function checkNumbers(string $instanceId, array $numbers): array
     {
-        $normalized = array_values(array_map(function (string $n): string {
+        $normalized = array_values(array_filter(array_map(function (string $n): ?string {
             $digits = preg_replace('/\D+/', '', $n);
-            return $digits ?: $n;
-        }, $numbers));
+            return $digits !== '' ? $digits : null;
+        }, $numbers)));
+
+        if (empty($normalized)) {
+            return [];
+        }
 
         return $this->post("/chat/whatsappNumbers/{$instanceId}", ['numbers' => $normalized]);
     }
@@ -230,9 +234,13 @@ class EvolutionApiClient implements GatewayClientInterface
             return $to;
         }
 
-        $digits = preg_replace('/\D+/', '', $to) ?: $to;
+        $digits = preg_replace('/\D+/', '', $to) ?? '';
 
-        return str_contains($digits, '@') ? $digits : "{$digits}@s.whatsapp.net";
+        if ($digits === '') {
+            throw new \InvalidArgumentException("Cannot send to non-numeric recipient: {$to}");
+        }
+
+        return "{$digits}@s.whatsapp.net";
     }
 
     private function defaultWebhookEvents(): array
