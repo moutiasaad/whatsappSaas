@@ -24,7 +24,7 @@ class SetLocale
         }
 
         if (!$locale || !in_array($locale, $supportedLocales, true)) {
-            $locale = $request->getPreferredLanguage($supportedLocales) ?: $defaultLocale;
+            $locale = $defaultLocale;
 
             if ($request->hasSession()) {
                 $request->session()->put('locale', $locale);
