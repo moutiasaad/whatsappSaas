@@ -90,7 +90,7 @@
             --topbar-bg:      #ffffff;
             --topbar-border:  #e5e7eb;
 
-            --page-bg:        #f0fdf4;
+            --page-bg:        #f3f4f6;
             --content-bg:     #ffffff;
             --card-bg:        #ffffff;
             --card-border:    #e5e7eb;
