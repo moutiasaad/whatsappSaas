@@ -333,7 +333,7 @@
                     <div class="chat-messages">
                         <div class="msg msg-in">Bonjour, je voudrais connaître les délais de livraison ?</div>
                         <div class="msg msg-ai">
-                            <div class="msg-ai-badge">✦ IA Claude</div>
+                            <div class="msg-ai-badge">✦ AI Support</div>
                             Bonjour ! Nos délais de livraison standard sont de 3 à 5 jours ouvrables. Pour les commandes urgentes, nous proposons une livraison express en 24h. 📦
                         </div>
                         <div class="msg msg-in">Merci ! Et pour les retours ?</div>

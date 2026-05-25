@@ -3,7 +3,7 @@
 return [
     // Meta
     'page_title' => 'Support WhatsApp IA — Gérez chaque conversation plus vite',
-    'page_desc'  => 'Plateforme SaaS de support client WhatsApp avec IA Claude, routage multi-équipes, instances illimitées et analytics. Essai gratuit inclus.',
+    'page_desc'  => 'Plateforme SaaS de support client WhatsApp avec IA Support, routage multi-équipes, instances illimitées et analytics. Essai gratuit inclus.',
 
     // Navbar
     'nav_features' => 'Fonctionnalités',
@@ -18,7 +18,7 @@ return [
     'hero_title_1'   => 'Gérez chaque conversation',
     'hero_title_2'   => 'WhatsApp',
     'hero_title_3'   => 'plus vite, plus intelligemment',
-    'hero_sub'       => 'Unifiez votre support sur plusieurs numéros et équipes. IA Claude, file d\'attente en temps réel et historique complet des conversations.',
+    'hero_sub'       => 'Unifiez votre support sur plusieurs numéros et équipes. IA Support, file d\'attente en temps réel et historique complet des conversations.',
     'hero_btn_start' => 'Démarrer l\'essai gratuit',
     'hero_btn_demo'  => 'Voir les fonctionnalités',
     'trust_no_card'  => 'Aucune carte requise',
@@ -29,7 +29,7 @@ return [
     // Hero stats
     'stat_instances'       => 'Multi-instances',
     'stat_instances_label' => 'Numéros WhatsApp illimités',
-    'stat_ai'              => 'IA Claude',
+    'stat_ai'              => 'IA Support',
     'stat_ai_label'        => 'Réponses automatiques',
     'stat_teams'           => 'Multi-équipes',
     'stat_teams_label'     => 'Routage en temps réel',
@@ -37,7 +37,7 @@ return [
     'stat_realtime_label'  => 'Pool & notifications',
 
     // Marquee
-    'marquee_ai'          => 'IA Claude intégrée',
+    'marquee_ai'          => 'IA Support intégrée',
     'marquee_routing'     => 'Routage intelligent',
     'marquee_multiagent'  => 'Multi-agents',
     'marquee_instances'   => 'Instances illimitées',
@@ -50,7 +50,7 @@ return [
     'features_badge'         => 'Fonctionnalités',
     'features_title'         => 'Tout ce qu\'il faut pour un support WhatsApp professionnel',
     'features_sub'           => 'De l\'IA autonome aux équipes multi-agents, une plateforme pensée pour votre croissance.',
-    'feat_ai_name'           => 'Réponse IA Claude',
+    'feat_ai_name'           => 'Réponse IA Support',
     'feat_ai_desc'           => 'L\'IA répond automatiquement selon votre base de connaissances. Mode suggestion, autonome ou hybride avec mots-clés d\'escalade.',
     'feat_routing_name'      => 'Routage multi-équipes',
     'feat_routing_desc'      => 'Chaque instance WhatsApp est liée à une équipe. Les conversations entrent dans le pool et sont prises par les agents.',
@@ -81,7 +81,7 @@ return [
     'limit_instances_pl' => ':n instances WhatsApp',
     'limit_convos'       => ':n conversations/mois',
     'limit_unlimited'    => 'Illimité',
-    'feat_ai_included'   => 'IA Claude incluse',
+    'feat_ai_included'   => 'IA Support incluse',
     'feat_ai_not'        => 'Sans IA',
     'feat_knowledge'     => 'Base de connaissances',
     'feat_audit'         => 'Journal d\'audit',
@@ -96,7 +96,7 @@ return [
     'step_2_title' => 'Connectez WhatsApp',
     'step_2_desc'  => 'Scannez le QR code pour lier votre numéro WhatsApp Business en moins d\'une minute.',
     'step_3_title' => 'Configurez l\'IA',
-    'step_3_desc'  => 'Ajoutez votre base de connaissances et activez les réponses automatiques Claude.',
+    'step_3_desc'  => 'Ajoutez votre base de connaissances et activez les réponses automatiques IA.',
     'step_4_title' => 'Recevez des conversations',
     'step_4_desc'  => 'Vos agents prennent les conversations du pool et répondent en temps réel.',
 
@@ -107,7 +107,7 @@ return [
     'faq_1_q'   => 'Puis-je connecter plusieurs numéros WhatsApp ?',
     'faq_1_a'   => 'Oui. Chaque numéro est géré comme une instance distincte. Votre forfait détermine le nombre d\'instances autorisées.',
     'faq_2_q'   => 'Comment fonctionne l\'IA ?',
-    'faq_2_a'   => 'L\'IA utilise Claude d\'Anthropic. Elle répond automatiquement aux clients selon votre base de connaissances. Configurable en mode suggestion, autonome ou hybride.',
+    'faq_2_a'   => 'L\'IA répond automatiquement aux clients selon votre base de connaissances. Configurable en mode suggestion, autonome ou hybride.',
     'faq_3_q'   => 'Puis-je tester sans carte bancaire ?',
     'faq_3_a'   => 'Oui. L\'essai gratuit ne requiert aucune carte. Vous upgradez quand vous êtes prêt.',
     'faq_4_q'   => 'Comment fonctionne le routage des équipes ?',

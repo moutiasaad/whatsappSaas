@@ -3,7 +3,7 @@
 return [
     // Meta
     'page_title' => 'AI WhatsApp Support — Handle Every Conversation Smarter',
-    'page_desc'  => 'SaaS platform for WhatsApp customer support with Claude AI, multi-team routing, unlimited instances and analytics. Free trial included.',
+    'page_desc'  => 'SaaS platform for WhatsApp customer support with AI Support, multi-team routing, unlimited instances and analytics. Free trial included.',
 
     // Navbar
     'nav_features' => 'Features',
@@ -18,7 +18,7 @@ return [
     'hero_title_1'   => 'Handle every',
     'hero_title_2'   => 'WhatsApp conversation',
     'hero_title_3'   => 'faster, smarter',
-    'hero_sub'       => 'Unify your support across multiple numbers and teams. Claude AI, real-time queue management, and full conversation history.',
+    'hero_sub'       => 'Unify your support across multiple numbers and teams. AI Support, real-time queue management, and full conversation history.',
     'hero_btn_start' => 'Start free trial',
     'hero_btn_demo'  => 'See features',
     'trust_no_card'  => 'No card required',
@@ -29,7 +29,7 @@ return [
     // Hero stats
     'stat_instances'       => 'Multi-instance',
     'stat_instances_label' => 'Unlimited WhatsApp numbers',
-    'stat_ai'              => 'Claude AI',
+    'stat_ai'              => 'AI Support',
     'stat_ai_label'        => 'Automated replies',
     'stat_teams'           => 'Multi-team',
     'stat_teams_label'     => 'Real-time routing',
@@ -37,7 +37,7 @@ return [
     'stat_realtime_label'  => 'Pool & notifications',
 
     // Marquee
-    'marquee_ai'         => 'Built-in Claude AI',
+    'marquee_ai'         => 'Built-in AI Support',
     'marquee_routing'    => 'Smart routing',
     'marquee_multiagent' => 'Multi-agent',
     'marquee_instances'  => 'Unlimited instances',
@@ -50,7 +50,7 @@ return [
     'features_badge'         => 'Features',
     'features_title'         => 'Everything you need for professional WhatsApp support',
     'features_sub'           => 'From autonomous AI to multi-agent teams, a platform built for your growth.',
-    'feat_ai_name'           => 'Claude AI Replies',
+    'feat_ai_name'           => 'AI Support Replies',
     'feat_ai_desc'           => 'AI auto-responds based on your knowledge base. Suggestion, autonomous, or hybrid mode with escalation keywords.',
     'feat_routing_name'      => 'Multi-team routing',
     'feat_routing_desc'      => 'Each WhatsApp instance is linked to a team. Conversations enter the pool and are claimed by agents.',
@@ -81,7 +81,7 @@ return [
     'limit_instances_pl' => ':n WhatsApp instances',
     'limit_convos'       => ':n conversations/month',
     'limit_unlimited'    => 'Unlimited',
-    'feat_ai_included'   => 'Claude AI included',
+    'feat_ai_included'   => 'AI Support included',
     'feat_ai_not'        => 'No AI',
     'feat_knowledge'     => 'Knowledge base',
     'feat_audit'         => 'Audit log',
@@ -96,7 +96,7 @@ return [
     'step_2_title' => 'Connect WhatsApp',
     'step_2_desc'  => 'Scan the QR code to link your WhatsApp Business number in under a minute.',
     'step_3_title' => 'Configure the AI',
-    'step_3_desc'  => 'Add your knowledge base and enable Claude automated replies.',
+    'step_3_desc'  => 'Add your knowledge base and enable automated AI replies.',
     'step_4_title' => 'Receive conversations',
     'step_4_desc'  => 'Agents claim conversations from the pool and reply in real time.',
 
@@ -107,7 +107,7 @@ return [
     'faq_1_q'   => 'Can I connect multiple WhatsApp numbers?',
     'faq_1_a'   => 'Yes. Each number is managed as a separate instance. Your plan determines how many instances you can have.',
     'faq_2_q'   => 'How does the AI work?',
-    'faq_2_a'   => 'The AI uses Anthropic\'s Claude. It automatically replies to customers based on your knowledge base. Configurable in suggestion, autonomous, or hybrid mode.',
+    'faq_2_a'   => 'The AI automatically replies to customers based on your knowledge base. Configurable in suggestion, autonomous, or hybrid mode.',
     'faq_3_q'   => 'Can I try it without a credit card?',
     'faq_3_a'   => 'Yes. The free trial requires no card. Upgrade when you\'re ready.',
     'faq_4_q'   => 'How does team routing work?',

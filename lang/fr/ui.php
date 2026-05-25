@@ -449,7 +449,7 @@ return [
         'title' => 'Paramètres IA',
         'breadcrumb' => 'Paramètres IA',
         'page_title' => 'Réponse automatique IA',
-        'subtitle' => 'Configurez Claude AI pour assister ou gérer automatiquement les conversations clients',
+        'subtitle' => 'Configurez l\'IA pour assister ou gérer automatiquement les conversations clients',
         'ai_mode' => 'Mode IA',
         'modes' => [
             'off' => ['label' => 'Désactivé', 'desc' => 'IA désactivée'],

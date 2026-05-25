@@ -448,7 +448,7 @@ return [
         'title' => 'AI Settings',
         'breadcrumb' => 'AI Settings',
         'page_title' => 'AI Auto-Reply',
-        'subtitle' => 'Configure Claude AI to assist or autonomously handle customer conversations',
+        'subtitle' => 'Configure AI to assist or autonomously handle customer conversations',
         'ai_mode' => 'AI Mode',
         'modes' => [
             'off' => ['label' => 'Off', 'desc' => 'AI disabled'],
