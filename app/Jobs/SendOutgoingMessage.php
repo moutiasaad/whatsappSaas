@@ -18,10 +18,7 @@ class SendOutgoingMessage implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(private Message $message)
-    {
-        $this->onQueue('whatsapp');
-    }
+    public function __construct(private Message $message) {}
 
     public function handle(): void
     {
@@ -56,7 +53,9 @@ class SendOutgoingMessage implements ShouldQueue
                 'sent_at'             => now(),
             ]);
 
-            broadcast(new MessageSent($this->message->fresh()));
+            try {
+                broadcast(new MessageSent($this->message->fresh()));
+            } catch (\Throwable) {}
 
         } catch (\Exception $e) {
             $this->message->update(['status' => 'failed']);

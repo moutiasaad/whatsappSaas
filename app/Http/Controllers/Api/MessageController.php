@@ -9,7 +9,6 @@ use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
@@ -62,14 +61,7 @@ class MessageController extends Controller
             'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
         ]);
 
-        try {
-            SendOutgoingMessage::dispatch($message);
-        } catch (\Throwable $e) {
-            Log::warning("Outgoing message dispatch failed [{$message->id}]: {$e->getMessage()}");
-            $message->refresh();
-        }
-
-        broadcast(new MessageSent($message->fresh()))->toOthers();
+        SendOutgoingMessage::dispatch($message);
 
         return response()->json($message->fresh(), 201);
     }
@@ -96,7 +88,9 @@ class MessageController extends Controller
             'last_message_preview' => '[Note] ' . $message->body,
         ]);
 
-        broadcast(new MessageSent($message->fresh()))->toOthers();
+        try {
+            broadcast(new MessageSent($message->fresh()))->toOthers();
+        } catch (\Throwable) {}
 
         return response()->json($message, 201);
     }
