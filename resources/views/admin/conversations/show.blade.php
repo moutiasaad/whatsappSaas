@@ -234,13 +234,14 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 1rem;
-    min-height: calc(100vh - 11.5rem);
+    height: calc(100vh - 11.5rem);
 }
 .conversation-main {
     padding: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
     background:
         radial-gradient(circle at top left, rgba(16,185,129,.10), transparent 28%),
         radial-gradient(circle at top right, rgba(37,99,235,.10), transparent 24%),
@@ -463,6 +464,8 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    min-height: 0;
+    overflow-y: auto;
 }
 .conversation-profile-card {
     padding: 18px;
@@ -574,7 +577,8 @@
 @media (max-width: 1180px) {
     .conversation-shell {
         grid-template-columns: 1fr;
-        min-height: auto;
+        height: auto;
+        min-height: calc(100vh - 11.5rem);
     }
 }
 @media (max-width: 720px) {
