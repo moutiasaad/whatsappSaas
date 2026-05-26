@@ -61,10 +61,10 @@
                 </button>
             </div>
             <div class="cw-tabs">
-                <button :class="{active: listTab==='all'}"    @click="onListTabChange('all')">{{ __('ui.conversations_index.tab_all') ?? 'All' }}</button>
-                <button :class="{active: listTab==='mine'}"   @click="onListTabChange('mine')">{{ __('ui.conversations_index.tab_mine') ?? 'Mine' }}</button>
-                <button :class="{active: listTab==='pool'}"   @click="onListTabChange('pool')">{{ __('ui.conversations_index.tab_pool') ?? 'Pool' }}</button>
-                <button :class="{active: listTab==='closed'}" @click="onListTabChange('closed')">{{ __('ui.conversations_index.tab_closed') ?? 'Closed' }}</button>
+                <button :class="{active: listTab==='mine'}"   @click="onListTabChange('mine')">{{ __('ui.conversations_page.my_conversations') }}</button>
+                <button :class="{active: listTab==='pool'}"   @click="onListTabChange('pool')">{{ __('ui.conversations_page.pool') }}</button>
+                <button :class="{active: listTab==='all'}"    @click="onListTabChange('all')">{{ __('ui.conversations_page.all') }}</button>
+                <button :class="{active: listTab==='closed'}" @click="onListTabChange('closed')">{{ __('ui.conversations_page.closed') }}</button>
             </div>
         </div>
 
@@ -310,11 +310,9 @@
                  @dragover.prevent="onDragOver($event)"
                  @dragleave.prevent="onDragLeave($event)"
                  @drop.prevent="onDrop($event)">
-                <input type="file" x-ref="fileInput" class="hidden"
+                <input type="file" x-ref="fileInput" style="display:none"
                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip"
                        @change="onFileSelected($event)">
-                <input type="file" x-ref="fileInputImage" class="hidden" accept="image/*,video/*" @change="onFileSelected($event)">
-                <input type="file" x-ref="fileInputAudio" class="hidden" accept="audio/*" @change="onFileSelected($event)">
 
                 <div class="cw-attach-group" :class="{ 'is-disabled': state !== 'claimed' || isNote || mediaUploading }">
                     <button type="button" class="cw-attach-btn cw-attach-main"
@@ -324,13 +322,13 @@
                         <span x-show="mediaUploading"><span class="btn-spinner"></span></span>
                     </button>
                     <div class="cw-attach-fly" x-show="state === 'claimed' && !isNote">
-                        <button type="button" class="cw-attach-fly-btn" @click="$refs.fileInputImage.click()" :title="i18n.attach_image">
+                        <button type="button" class="cw-attach-fly-btn" @click="$refs.fileInput.click()" :title="i18n.attach_image">
                             <i class="ri-image-line"></i>
                         </button>
                         <button type="button" class="cw-attach-fly-btn" @click="$refs.fileInput.click()" :title="i18n.attach_document">
                             <i class="ri-file-text-line"></i>
                         </button>
-                        <button type="button" class="cw-attach-fly-btn" @click="$refs.fileInputAudio.click()" :title="i18n.attach_audio">
+                        <button type="button" class="cw-attach-fly-btn" @click="$refs.fileInput.click()" :title="i18n.attach_audio">
                             <i class="ri-mic-line"></i>
                         </button>
                     </div>
@@ -1176,45 +1174,65 @@
 /* Attach button group with fly-out */
 .cw-attach-group { position: relative; display: flex; }
 .cw-attach-btn {
-    width: 38px; height: 38px;
+    width: 40px; height: 40px;
+    border: none;
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569; border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+    transition: all .18s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 1px 3px rgba(15,23,42,.08);
+}
+.cw-attach-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    color: #4338ca;
+    transform: rotate(-10deg) scale(1.08);
+    box-shadow: 0 4px 12px rgba(99,102,241,.2);
+}
+.cw-attach-btn:disabled { opacity: .35; cursor: not-allowed; }
+.cw-attach-fly {
+    position: absolute;
+    bottom: calc(100% + 10px); left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 6px;
+    display: flex; gap: 4px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .14), 0 2px 8px rgba(15,23,42,.06);
+    opacity: 0;
+    pointer-events: none;
+    transition: all .18s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap;
+}
+.cw-attach-fly::after {
+    content: '';
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #fff;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.06));
+}
+.cw-attach-group:hover .cw-attach-fly,
+.cw-attach-group:focus-within .cw-attach-fly {
+    opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0);
+}
+.cw-attach-group.is-disabled .cw-attach-fly { display: none; }
+.cw-attach-fly-btn {
+    width: 40px; height: 40px;
     border: none; background: transparent;
-    color: #64748b; border-radius: 10px;
+    color: #475569; border-radius: 10px;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.1rem;
     transition: all .15s;
+    flex-direction: column;
+    gap: 2px;
 }
-.cw-attach-btn:hover:not(:disabled) { background: #eef2ff; color: #4338ca; transform: rotate(-12deg); }
-.cw-attach-btn:disabled { opacity: .4; cursor: not-allowed; }
-.cw-attach-fly {
-    position: absolute;
-    bottom: calc(100% + 8px); left: 0;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 4px;
-    display: flex; gap: 2px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(6px);
-    transition: all .15s;
-}
-.cw-attach-group:hover .cw-attach-fly,
-.cw-attach-group:focus-within .cw-attach-fly {
-    opacity: 1; pointer-events: auto; transform: translateY(0);
-}
-.cw-attach-group.is-disabled .cw-attach-fly { display: none; }
-.cw-attach-fly-btn {
-    width: 36px; height: 36px;
-    border: none; background: transparent;
-    color: #475569; border-radius: 8px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.05rem;
-    transition: all .12s;
-}
-.cw-attach-fly-btn:hover { background: #eef2ff; color: #4338ca; }
+.cw-attach-fly-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-2px); }
+.cw-attach-fly-btn i { font-size: 1.2rem; }
 
 /* Drag-drop overlay */
 .cw-composer-drop {
@@ -1653,7 +1671,7 @@ function conversationPro() {
         // Left rail
         list: @json($listJson),
         listQuery: '',
-        listTab: 'all',
+        listTab: 'mine',
         _listTimer: null,
         _listSearchTimer: null,
         _meId: {{ auth()->id() }},
