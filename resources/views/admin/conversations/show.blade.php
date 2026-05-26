@@ -934,10 +934,22 @@
     opacity: .75;
 }
 .cw-ticks { font-size: .78rem; line-height: 1; }
-.cw-ticks-sent     { color: rgba(255,255,255,.7); }
-.cw-ticks-delivered{ color: rgba(255,255,255,.7); }
-.cw-ticks-read     { color: #38bdf8; }
-.cw-ticks-failed   { color: #fca5a5; }
+.cw-tick-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    animation: cw-tick-pop .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes cw-tick-pop {
+    from { opacity: 0; transform: scale(.5); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.cw-tick-wrap i { font-size: .82rem; }
+.cw-tick-clock i { color: rgba(255,255,255,.65); }
+.cw-tick-blue i  { color: #38bdf8; }
+.cw-ticks-sent     .cw-tick-wrap i { color: rgba(255,255,255,.65); }
+.cw-ticks-failed   .cw-tick-wrap i { color: #fca5a5; }
+.cw-ticks-pending  .cw-tick-wrap i { color: rgba(255,255,255,.55); }
 .cw-media-img {
     max-width: 260px;
     max-height: 220px;
@@ -2022,9 +2034,24 @@ function conversationPro() {
                 const data = await res.json();
                 const incoming = (data.data || []).map(m => this.normalizeMessage(m));
                 const maxId = this.messages.reduce((mx, m) => Math.max(mx, m.id || 0), 0);
+
+                // Patch status on existing messages that progressed (pending→sent→delivered→read)
+                const statusMap = new Map(incoming.map(m => [m.id, m.status]));
+                let patched = false;
+                const patchedMessages = this.messages.map(m => {
+                    const incoming_status = statusMap.get(m.id);
+                    if (incoming_status && incoming_status !== m.status) {
+                        patched = true;
+                        return { ...m, status: incoming_status };
+                    }
+                    return m;
+                });
+                if (patched) this.messages = patchedMessages;
+
+                // Append genuinely new messages
                 const fresh = incoming.filter(m => (m.id || 0) > maxId);
                 if (fresh.length > 0) {
-                    this.messages = this.sortMessages([...this.messages, ...fresh]);
+                    this.messages = this.sortMessages([...(patched ? patchedMessages : this.messages), ...fresh]);
                     this.$nextTick(() => this.scrollToBottom());
                     if (fresh.some(m => m.direction === 'in')) this.markRead();
                 }
@@ -2486,17 +2513,22 @@ function conversationPro() {
         tickClass(msg) {
             const s = (msg.status || '').toLowerCase();
             if (s === 'read')      return 'cw-ticks-read';
-            if (s === 'failed')    return 'cw-ticks-failed';
             if (s === 'delivered') return 'cw-ticks-delivered';
+            if (s === 'failed')    return 'cw-ticks-failed';
+            if (s === 'pending')   return 'cw-ticks-pending';
             return 'cw-ticks-sent';
         },
 
         ticksHtml(msg) {
             const s = (msg.status || '').toLowerCase();
-            if (s === 'failed')    return '<i class="ri-error-warning-line"></i>';
-            if (s === 'pending')   return '<i class="ri-time-line"></i>';
-            if (s === 'sent')      return '<i class="ri-check-line"></i>';
-            return '<i class="ri-check-double-line"></i>';
+            if (s === 'failed')
+                return '<span class="cw-tick-wrap"><i class="ri-close-circle-line"></i></span>';
+            if (s === 'pending')
+                return '<span class="cw-tick-wrap cw-tick-clock"><i class="ri-time-line"></i></span>';
+            if (s === 'sent')
+                return '<span class="cw-tick-wrap"><i class="ri-check-line"></i></span>';
+            // delivered or read — blue double-check
+            return '<span class="cw-tick-wrap cw-tick-blue"><i class="ri-check-double-line"></i></span>';
         },
 
         normalizeMessage(msg) {
