@@ -1770,12 +1770,25 @@ function conversationPro() {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json' }
                 });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) {
+                    let msg = `HTTP ${res.status}`;
+                    try { const e = await res.json(); msg = e.message || msg; } catch {}
+                    console.error('[switchTo] server error:', msg);
+                    window.showToast?.('error', `${this.i18n.load_workspace_failed} (${msg})`);
+                    return;
+                }
                 const data = await res.json();
-                this.applyWorkspace(data);
+                try {
+                    this.applyWorkspace(data);
+                } catch (applyErr) {
+                    console.error('[switchTo] applyWorkspace error:', applyErr);
+                    window.showToast?.('error', this.i18n.load_workspace_failed);
+                    return;
+                }
                 history.pushState({ conversationId: id }, '', `${this._basePath}/${id}`);
             } catch (e) {
-                window.showToast?.('error', this.i18n.load_workspace_failed);
+                console.error('[switchTo] network error:', e);
+                window.showToast?.('error', this.i18n.network_error);
             } finally {
                 this._switching = false;
             }

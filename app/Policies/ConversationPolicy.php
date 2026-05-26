@@ -24,9 +24,10 @@ class ConversationPolicy
         if (!$this->inSameTenant($user, $conversation)) return false;
         if ($user->isAdmin()) return true;
         if ($user->isSupervisor()) return $this->canAccessTeam($user, $conversation);
-        // Agents can view any conversation in their team (pool + claimed by others),
-        // consistent with what the left rail already shows them.
-        return $this->canAccessTeam($user, $conversation);
+        // Own conversation always visible; also any conversation in the agent's team
+        // (consistent with what the left rail shows — pool + teammates' conversations).
+        return $conversation->owner_agent_id === $user->id
+            || $this->canAccessTeam($user, $conversation);
     }
 
     public function claim(User $user, Conversation $conversation): bool
