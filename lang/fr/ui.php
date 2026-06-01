@@ -521,6 +521,8 @@ Toujours :
         'col_resolution'  => 'Résolution',
         'col_avg_response'=> 'Rép. moy.',
         'no_data'         => 'Aucune donnée pour cette période',
+        'teams_label'     => 'équipes',
+        'agents_label'    => 'agents',
     ],
     'audit_log_page' => [
         'title' => 'Journal d’audit',

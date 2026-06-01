@@ -520,6 +520,8 @@ Always:
         'col_resolution'  => 'Resolution',
         'col_avg_response'=> 'Avg Response',
         'no_data'         => 'No data for this period',
+        'teams_label'     => 'teams',
+        'agents_label'    => 'agents',
     ],
     'audit_log_page' => [
         'title' => 'Audit Log',
