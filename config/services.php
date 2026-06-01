@@ -41,4 +41,8 @@ return [
         'webhook_base_url' => env('WHATSAPP_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost')),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
 ];

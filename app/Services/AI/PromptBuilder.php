@@ -10,43 +10,55 @@ class PromptBuilder
 {
     public function buildSystemPrompt(Tenant $tenant): string
     {
+        $settings = $tenant->aiSettings;
+
+        // Use the admin-configured system prompt if set; otherwise fall back to a default
+        $customPrompt = trim((string) ($settings?->system_prompt ?? ''));
+
+        if ($customPrompt !== '') {
+            $base = $customPrompt;
+        } else {
+            $base = implode("\n", [
+                "You are a helpful customer support assistant for {$tenant->name}.",
+                "Be concise, warm, and professional.",
+                "If you don't know the answer, politely say so and suggest the customer contact a human agent.",
+            ]);
+        }
+
+        // Append Knowledge Base entries on top of whatever base prompt is set
         $entries = KnowledgeEntry::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get();
 
+        $parts = [$base];
+
         $profile  = $entries->firstWhere('type', 'company_profile');
         $faqs     = $entries->where('type', 'faq');
         $policies = $entries->where('type', 'policy');
         $custom   = $entries->firstWhere('type', 'custom_instruction');
 
-        $parts = [
-            "You are a helpful customer support assistant for {$tenant->name}.",
-            "Answer ONLY using the knowledge base provided. If unsure, politely say you don't know and suggest contacting a human agent.",
-            "Be concise, warm, and professional.",
-        ];
-
         if ($profile) {
-            $parts[] = "\n## Company\n{$profile->body}";
+            $parts[] = "## Company\n{$profile->body}";
         }
 
         if ($faqs->isNotEmpty()) {
-            $parts[] = "\n## FAQs";
+            $parts[] = "## FAQs";
             foreach ($faqs as $faq) {
                 $parts[] = "Q: {$faq->title}\nA: {$faq->body}";
             }
         }
 
         if ($policies->isNotEmpty()) {
-            $parts[] = "\n## Policies";
+            $parts[] = "## Policies";
             foreach ($policies as $policy) {
                 $parts[] = "### {$policy->title}\n{$policy->body}";
             }
         }
 
         if ($custom) {
-            $parts[] = "\n## Instructions\n{$custom->body}";
+            $parts[] = "## Additional Instructions\n{$custom->body}";
         }
 
         return implode("\n\n", $parts);

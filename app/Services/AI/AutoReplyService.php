@@ -15,30 +15,67 @@ class AutoReplyService
     {
         $settings = $conversation->tenant->aiSettings;
 
-        if (!$settings || $settings->mode === 'off') return null;
-        if (!$conversation->isAiEligible()) return null;
+        if (!$settings || $settings->mode === 'off') {
+            Log::channel('whatsapp')->debug('AI: skipped — mode off or no settings', [
+                'conversation_id' => $conversation->id,
+                'mode' => $settings?->mode ?? 'none',
+            ]);
+            return null;
+        }
+
+        if (!$conversation->isAiEligible()) {
+            Log::channel('whatsapp')->debug('AI: skipped — not eligible', [
+                'conversation_id' => $conversation->id,
+                'state'           => $conversation->state,
+                'ai_suspended'    => $conversation->ai_suspended,
+            ]);
+            return null;
+        }
+
         if (!$settings->hasQuota()) {
             $this->disableAndNotify($conversation->tenant);
             return null;
         }
 
+        $apiKey = config('services.anthropic.key');
+        if (!$apiKey) {
+            Log::channel('whatsapp')->error('AI: ANTHROPIC_API_KEY is not set in .env — cannot reply', [
+                'conversation_id' => $conversation->id,
+            ]);
+            return null;
+        }
+
         try {
-            $client = new \Anthropic\Client(config('services.anthropic.key'));
+            $client = new \Anthropic\Client($apiKey);
 
             $response = $client->messages()->create([
-                'model'     => 'claude-sonnet-4-20250514',
-                'max_tokens'=> 1024,
-                'system'    => $this->promptBuilder->buildSystemPrompt($conversation->tenant),
-                'messages'  => $this->promptBuilder->buildMessages($conversation),
+                'model'      => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 1024,
+                'system'     => $this->promptBuilder->buildSystemPrompt($conversation->tenant),
+                'messages'   => $this->promptBuilder->buildMessages($conversation),
             ]);
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
             $settings->increment('tokens_used_this_period', $tokens);
 
-            $text = $response->content[0]->text ?? '';
+            $text = trim($response->content[0]->text ?? '');
+
+            if ($text === '') {
+                Log::channel('whatsapp')->warning('AI: empty response', ['conversation_id' => $conversation->id]);
+                return null;
+            }
+
+            Log::channel('whatsapp')->info('AI: generated reply', [
+                'conversation_id' => $conversation->id,
+                'mode'            => $settings->mode,
+                'tokens'          => $tokens,
+            ]);
 
             if ($this->shouldEscalate($text, $settings)) {
                 $conversation->update(['ai_suspended' => true]);
+                Log::channel('whatsapp')->info('AI: escalation keyword detected — suspended', [
+                    'conversation_id' => $conversation->id,
+                ]);
                 return null;
             }
 
@@ -49,7 +86,10 @@ class AutoReplyService
             return $this->sendAutonomously($conversation, $text);
 
         } catch (\Exception $e) {
-            Log::error("AI reply failed for conversation {$conversation->id}: {$e->getMessage()}");
+            Log::channel('whatsapp')->error('AI: reply failed', [
+                'conversation_id' => $conversation->id,
+                'error'           => $e->getMessage(),
+            ]);
             return null;
         }
     }
