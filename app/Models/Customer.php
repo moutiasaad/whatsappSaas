@@ -23,6 +23,15 @@ class Customer extends Model
 
     public function getDisplayNameOrPhoneAttribute(): string
     {
-        return $this->display_name ?: $this->phone_e164;
+        return $this->display_name ?: $this->displayPhone;
+    }
+
+    public function getDisplayPhoneAttribute(): string
+    {
+        $phone = (string) ($this->phone_e164 ?? '');
+        // Strip WhatsApp JID suffix (@lid, @s.whatsapp.net, @c.us, etc.)
+        $number = (string) preg_replace('/@\S+/', '', $phone);
+        if ($number === '') return $phone;
+        return ctype_digit($number) ? '+' . $number : $number;
     }
 }

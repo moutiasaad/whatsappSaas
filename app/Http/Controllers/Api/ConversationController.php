@@ -177,7 +177,7 @@ class ConversationController extends Controller
             'customer' => [
                 'id'              => $conversation->customer?->id,
                 'display_name'    => $conversation->customer?->displayNameOrPhone,
-                'phone_e164'      => $conversation->customer?->phone_e164,
+                'phone_e164'      => $conversation->customer?->displayPhone,
                 'profile_pic_url' => $conversation->customer?->profile_pic_url,
             ],
             'instance' => $conversation->instance ? [

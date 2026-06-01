@@ -1654,7 +1654,7 @@ function conversationPro() {
         // Customer + workspace meta (reactive across AJAX switches)
         customerId: {{ $conversation->customer_id ?? 'null' }},
         customerName: @json($conversation->customer->displayNameOrPhone),
-        customerPhone: @json($conversation->customer->phone_e164),
+        customerPhone: @json($conversation->customer->displayPhone),
         customerProfilePic: @json($conversation->customer->profile_pic_url ?? null),
         customerInitials: '{{ strtoupper(substr($conversation->customer->displayNameOrPhone, 0, 2)) }}',
         tenantName: @json($conversation->tenant?->name),
