@@ -83,6 +83,18 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    public function findContacts(string $instanceId, string $remoteJid): array
+    {
+        try {
+            $result = $this->post("/chat/findContacts/{$instanceId}", [
+                'where' => ['remoteJid' => $remoteJid],
+            ]);
+            return is_array($result) ? $result : [];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     public function checkNumbers(string $instanceId, array $numbers): array
     {
         $normalized = array_values(array_filter(array_map(function (string $n): ?string {

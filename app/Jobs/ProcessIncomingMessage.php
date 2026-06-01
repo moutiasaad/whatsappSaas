@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use App\Events\MessageReceived;
+use App\Models\Customer;
 use App\Models\Message;
 use App\Models\WebhookEvent;
+use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use App\Services\AI\AutoReplyService;
 use App\Services\Conversations\ConversationService;
 use Carbon\Carbon;
@@ -62,6 +64,19 @@ class ProcessIncomingMessage implements ShouldQueue
         $msg     = $this->extractMessage($payload);
         $contact = $this->extractContact($payload, $msg);
         $from    = $this->extractFrom($payload, $msg);
+
+        // Resolve @lid (Meta linked device ID) to a real phone number via gateway contact lookup
+        if ($from && str_contains($from, '@lid')) {
+            $resolved = $this->resolveLidToPhone($from, $instance);
+            if ($resolved) {
+                // Patch any existing customer record keyed by the LID JID
+                Customer::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $instance->tenant_id)
+                    ->where('phone_e164', $from)
+                    ->update(['phone_e164' => $resolved]);
+                $from = $resolved;
+            }
+        }
 
         if (!$from) {
             Log::channel('whatsapp')->warning('Job: could not extract sender', [
@@ -183,6 +198,34 @@ class ProcessIncomingMessage implements ShouldQueue
             ?? '';
 
         return ['name' => is_string($name) ? trim($name) : ''];
+    }
+
+    private function resolveLidToPhone(string $lidJid, $instance): ?string
+    {
+        try {
+            $gateway = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $contacts = $gateway->findContacts($instance->gateway_instance_id, $lidJid);
+            foreach ($contacts as $contact) {
+                $jid = (string) data_get($contact, 'remoteJid', '');
+                if (str_contains($jid, '@s.whatsapp.net') || str_contains($jid, '@c.us')) {
+                    $digits = preg_replace('/\D+/', '', preg_replace('/@\S+/', '', $jid) ?? $jid);
+                    if ($digits !== '') {
+                        Log::channel('whatsapp')->info('Job: resolved @lid to phone', [
+                            'lid' => $lidJid, 'phone' => $digits,
+                        ]);
+                        return $digits;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp')->warning('Job: @lid resolution failed', [
+                'lid' => $lidJid, 'error' => $e->getMessage(),
+            ]);
+        }
+        return null;
     }
 
     private function extractFrom(array $payload, array $msg): ?string
