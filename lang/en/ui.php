@@ -446,6 +446,7 @@ return [
     ],
 
     'add' => 'Add',
+    'manage' => 'Manage',
     'ai_settings_page' => [
         'title' => 'AI Settings',
         'breadcrumb' => 'AI Settings',
@@ -512,6 +513,12 @@ Always:
         'hybrid_info' => 'In hybrid mode the AI replies autonomously until an escalation keyword is detected, then hands off to agents with suggested drafts.',
         'no_keywords' => 'No keywords added yet',
         'keyword_hint' => 'Press Enter or comma to add · AI pauses when any keyword is detected',
+        'quick_tests' => 'Quick tests',
+        'try_sample' => 'Click to test',
+        'sample_1' => 'What are your business hours?',
+        'sample_2' => 'I need help with my order.',
+        'sample_3' => 'How can I contact support?',
+        'clear_response' => 'Clear',
     ],
     'reports_page' => [
         'title'           => 'Reports',

@@ -47,13 +47,16 @@ class AiController extends Controller
             $client = new \Anthropic\Client(config('services.anthropic.key'));
 
             $response = $client->messages()->create([
-                'model'     => 'claude-sonnet-4-20250514',
-                'max_tokens'=> 512,
-                'system'    => $builder->buildSystemPrompt($tenant),
-                'messages'  => [['role' => 'user', 'content' => $request->question]],
+                'model'      => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 512,
+                'system'     => $builder->buildSystemPrompt($tenant),
+                'messages'   => [['role' => 'user', 'content' => $request->question]],
             ]);
 
-            return response()->json(['answer' => $response->content[0]->text ?? '']);
+            return response()->json([
+                'answer'      => $response->content[0]->text ?? '',
+                'tokens_used' => ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0),
+            ]);
 
         } catch (\Exception $e) {
             Log::error("AI test failed: {$e->getMessage()}");

@@ -513,6 +513,12 @@ Toujours :
         'hybrid_info' => "En mode hybride, l'IA répond automatiquement jusqu'à la détection d'un mot-clé d'escalade, puis passe la main aux agents.",
         'no_keywords' => 'Aucun mot-clé ajouté',
         'keyword_hint' => "Appuyez sur Entrée ou virgule pour ajouter. L'IA se met en pause lors de la détection.",
+        'quick_tests' => 'Tests rapides',
+        'try_sample' => 'Cliquer pour tester',
+        'sample_1' => 'Quels sont vos horaires ?',
+        'sample_2' => "J'ai besoin d'aide pour ma commande.",
+        'sample_3' => 'Comment contacter le support ?',
+        'clear_response' => 'Effacer',
     ],
     'reports_page' => [
         'title'           => 'Rapports',

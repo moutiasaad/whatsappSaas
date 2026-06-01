@@ -10,46 +10,134 @@
 @php
 $panelPrefix = auth()->user()->routeNamePrefix();
 $languages = [
-    'auto' => ['label' => __('ui.ai_settings_page.lang_auto'),       'flag' => '🌐'],
-    'fr'   => ['label' => __('ui.ai_settings_page.lang_fr'),          'flag' => '🇫🇷'],
-    'en'   => ['label' => __('ui.ai_settings_page.lang_en'),          'flag' => '🇬🇧'],
-    'ar'   => ['label' => __('ui.ai_settings_page.lang_ar'),          'flag' => '🇸🇦'],
-    'es'   => ['label' => __('ui.ai_settings_page.lang_es'),          'flag' => '🇪🇸'],
-    'pt'   => ['label' => __('ui.ai_settings_page.lang_pt'),          'flag' => '🇵🇹'],
-    'de'   => ['label' => __('ui.ai_settings_page.lang_de'),          'flag' => '🇩🇪'],
-    'it'   => ['label' => __('ui.ai_settings_page.lang_it'),          'flag' => '🇮🇹'],
+    'auto' => ['label' => __('ui.ai_settings_page.lang_auto'),  'flag' => '🌐', 'code' => 'Auto'],
+    'fr'   => ['label' => __('ui.ai_settings_page.lang_fr'),    'flag' => '🇫🇷', 'code' => 'FR'],
+    'en'   => ['label' => __('ui.ai_settings_page.lang_en'),    'flag' => '🇬🇧', 'code' => 'EN'],
+    'ar'   => ['label' => __('ui.ai_settings_page.lang_ar'),    'flag' => '🇸🇦', 'code' => 'AR'],
+    'es'   => ['label' => __('ui.ai_settings_page.lang_es'),    'flag' => '🇪🇸', 'code' => 'ES'],
+    'pt'   => ['label' => __('ui.ai_settings_page.lang_pt'),    'flag' => '🇵🇹', 'code' => 'PT'],
+    'de'   => ['label' => __('ui.ai_settings_page.lang_de'),    'flag' => '🇩🇪', 'code' => 'DE'],
+    'it'   => ['label' => __('ui.ai_settings_page.lang_it'),    'flag' => '🇮🇹', 'code' => 'IT'],
 ];
 $modes = [
     'off' => [
         'label' => __('ui.ai_settings_page.modes.off.label'),
         'desc'  => __('ui.ai_settings_page.modes.off.desc'),
         'color' => '#6b7280',
-        'bg'    => 'rgba(107,114,128,.08)',
+        'shadow'=> 'rgba(107,114,128,.18)',
+        'bg'    => 'rgba(107,114,128,.07)',
         'icon'  => 'ri-close-circle-line',
     ],
     'suggestion' => [
         'label' => __('ui.ai_settings_page.modes.suggestion.label'),
         'desc'  => __('ui.ai_settings_page.modes.suggestion.desc'),
         'color' => '#f59e0b',
-        'bg'    => 'rgba(245,158,11,.08)',
-        'icon'  => 'ri-lightbulb-line',
+        'shadow'=> 'rgba(245,158,11,.22)',
+        'bg'    => 'rgba(245,158,11,.07)',
+        'icon'  => 'ri-lightbulb-flash-line',
     ],
     'autonomous' => [
         'label' => __('ui.ai_settings_page.modes.autonomous.label'),
         'desc'  => __('ui.ai_settings_page.modes.autonomous.desc'),
         'color' => '#10b981',
-        'bg'    => 'rgba(16,185,129,.08)',
+        'shadow'=> 'rgba(16,185,129,.22)',
+        'bg'    => 'rgba(16,185,129,.07)',
         'icon'  => 'ri-flashlight-line',
     ],
     'hybrid' => [
         'label' => __('ui.ai_settings_page.modes.hybrid.label'),
         'desc'  => __('ui.ai_settings_page.modes.hybrid.desc'),
         'color' => '#8b5cf6',
-        'bg'    => 'rgba(139,92,246,.08)',
+        'shadow'=> 'rgba(139,92,246,.22)',
+        'bg'    => 'rgba(139,92,246,.07)',
         'icon'  => 'ri-git-branch-line',
     ],
 ];
+$sampleTests = [
+    __('ui.ai_settings_page.sample_1'),
+    __('ui.ai_settings_page.sample_2'),
+    __('ui.ai_settings_page.sample_3'),
+];
 @endphp
+
+<style>
+.ai-mode-card {
+    border: 2px solid var(--card-border);
+    border-radius: 1rem;
+    padding: 1.375rem 1rem 1.125rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .18s, box-shadow .18s, background .18s, transform .12s;
+    width: 100%;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+}
+.ai-mode-card:hover { transform: translateY(-1px); }
+.ai-mode-card .mode-icon {
+    width: 2.75rem; height: 2.75rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto .875rem; font-size: 1.25rem;
+    transition: background .18s, color .18s;
+    background: var(--page-bg); color: var(--text-muted);
+}
+.ai-mode-card .mode-label {
+    font-weight: 700; font-size: .875rem; margin-bottom: .3rem;
+    color: var(--text-primary); transition: color .18s;
+}
+.ai-mode-card .mode-desc {
+    font-size: .75rem; color: var(--text-muted); line-height: 1.4;
+}
+.ai-mode-card::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 0; height: 3px; border-radius: 3px 3px 0 0;
+    transition: width .2s;
+}
+.lang-btn {
+    border: 1.5px solid var(--card-border); border-radius: .625rem;
+    padding: .5rem .375rem; cursor: pointer; font-size: .8rem;
+    text-align: center; transition: all .15s; background: transparent;
+    color: var(--text-secondary);
+    display: flex; flex-direction: column; align-items: center; gap: .2rem;
+}
+.lang-btn:hover { border-color: var(--brand); color: var(--brand); }
+.lang-btn .lang-flag { font-size: 1.125rem; line-height: 1; }
+.lang-btn .lang-code { font-size: .7rem; font-weight: 700; letter-spacing: .04em; }
+.count-btn {
+    width: 2.5rem; height: 2.5rem; border: 1.5px solid var(--card-border); border-radius: .625rem;
+    cursor: pointer; font-size: .875rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; flex-shrink: 0;
+    background: transparent; color: var(--text-secondary);
+}
+.count-btn:hover { border-color: var(--brand); color: var(--brand); }
+.sample-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .3rem .75rem; border-radius: 999px; font-size: .75rem;
+    border: 1px solid var(--card-border); background: var(--page-bg);
+    cursor: pointer; transition: all .15s; color: var(--text-secondary);
+    white-space: nowrap;
+}
+.sample-chip:hover { border-color: var(--brand); color: var(--brand); background: rgba(16,185,129,.05); }
+.ai-response-box {
+    padding: 1rem; border-radius: .75rem;
+    background: rgba(16,185,129,.05); border: 1px solid rgba(16,185,129,.18);
+}
+.ai-response-label {
+    font-size: .6875rem; font-weight: 700; color: var(--brand);
+    text-transform: uppercase; letter-spacing: .07em;
+    display: flex; align-items: center; gap: .375rem; margin-bottom: .5rem;
+}
+.ai-response-text {
+    font-size: .8125rem; color: var(--text-secondary);
+    white-space: pre-wrap; line-height: 1.6;
+}
+.info-badge {
+    padding: .75rem 1rem; border-radius: .625rem;
+    display: flex; gap: .625rem; align-items: flex-start;
+    font-size: .8125rem; color: var(--text-secondary);
+}
+</style>
 
 <div x-data="aiSettingsPage()" x-cloak>
 
@@ -76,28 +164,24 @@ $modes = [
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;">
                 @foreach($modes as $value => $mode)
                 <button type="button"
+                        class="ai-mode-card"
                         @click="selectedMode = '{{ $value }}'"
                         :style="selectedMode === '{{ $value }}'
-                            ? 'border-color:{{ $mode['color'] }};background:{{ $mode['bg'] }};'
-                            : 'border-color:var(--card-border);background:transparent;'"
-                        style="border:2px solid;border-radius:1rem;padding:1.25rem 1rem;text-align:center;cursor:pointer;transition:all .18s;width:100%;">
-                    <div :style="selectedMode === '{{ $value }}'
-                                ? 'background:{{ $mode['color'] }};color:#fff;'
-                                : 'background:var(--page-bg);color:var(--text-muted);'"
-                         style="width:2.75rem;height:2.75rem;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .875rem;transition:all .18s;font-size:1.25rem;">
+                            ? 'border-color:{{ $mode['color'] }};background:{{ $mode['bg'] }};box-shadow:0 4px 18px {{ $mode['shadow'] }};'
+                            : ''">
+                    <div class="mode-icon"
+                         :style="selectedMode === '{{ $value }}'
+                             ? 'background:{{ $mode['color'] }};color:#fff;'
+                             : ''">
                         <i class="{{ $mode['icon'] }}"></i>
                     </div>
-                    <div :style="selectedMode === '{{ $value }}' ? 'color:{{ $mode['color'] }}' : 'color:var(--text-primary)'"
-                         style="font-weight:700;font-size:.875rem;margin-bottom:.375rem;transition:color .18s;">
+                    <div class="mode-label"
+                         :style="selectedMode === '{{ $value }}' ? 'color:{{ $mode['color'] }}' : ''">
                         {{ $mode['label'] }}
                     </div>
-                    <div style="font-size:.75rem;color:var(--text-muted);line-height:1.4;">
-                        {{ $mode['desc'] }}
-                    </div>
+                    <div class="mode-desc">{{ $mode['desc'] }}</div>
                     <div x-show="selectedMode === '{{ $value }}'"
-                         style="margin-top:.75rem;display:flex;justify-content:center;">
-                        <span style="width:.5rem;height:.5rem;border-radius:50%;background:{{ $mode['color'] }};display:inline-block;"></span>
-                    </div>
+                         style="position:absolute;bottom:0;left:12%;right:12%;height:3px;border-radius:3px 3px 0 0;background:{{ $mode['color'] }};"></div>
                 </button>
                 @endforeach
             </div>
@@ -127,12 +211,14 @@ $modes = [
                 </div>
 
                 {{-- Off state placeholder --}}
-                <div class="card" x-show="selectedMode === 'off'" style="padding:2rem;text-align:center;">
-                    <div style="font-size:2rem;margin-bottom:.75rem;">🤖</div>
-                    <div style="font-weight:600;font-size:.9375rem;color:var(--text-primary);margin-bottom:.375rem;">
+                <div class="card" x-show="selectedMode === 'off'" style="padding:2.5rem;text-align:center;">
+                    <div style="width:3.5rem;height:3.5rem;border-radius:50%;background:rgba(107,114,128,.1);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#6b7280;">
+                        <i class="ri-robot-off-line"></i>
+                    </div>
+                    <div style="font-weight:700;font-size:.9375rem;color:var(--text-primary);margin-bottom:.375rem;">
                         {{ __('ui.ai_settings_page.ai_disabled') }}
                     </div>
-                    <div style="font-size:.8125rem;color:var(--text-muted);">
+                    <div style="font-size:.8125rem;color:var(--text-muted);max-width:22rem;margin:0 auto;">
                         {{ __('ui.ai_settings_page.ai_disabled_desc') }}
                     </div>
                 </div>
@@ -147,17 +233,18 @@ $modes = [
                         </div>
                     </div>
                     <div style="padding:0 1.5rem 1.5rem;">
-                        <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.75rem;min-height:2.25rem;padding:.5rem;background:var(--page-bg);border-radius:.625rem;border:1px solid var(--card-border);">
+                        <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.75rem;min-height:2.5rem;padding:.625rem .75rem;background:var(--page-bg);border-radius:.625rem;border:1px solid var(--card-border);">
                             <template x-if="keywords.length === 0">
                                 <span style="font-size:.75rem;color:var(--text-muted);align-self:center;">
                                     {{ __('ui.ai_settings_page.no_keywords') }}
                                 </span>
                             </template>
                             <template x-for="(kw, i) in keywords" :key="i">
-                                <span style="display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .625rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:999px;font-size:.8125rem;color:#ef4444;">
+                                <span style="display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .625rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:999px;font-size:.8125rem;color:#ef4444;">
                                     <span x-text="kw"></span>
                                     <button type="button" @click="remove(i)"
-                                            style="background:none;border:none;cursor:pointer;color:#ef4444;padding:0;line-height:1;font-size:1rem;display:flex;align-items:center;">
+                                            style="background:none;border:none;cursor:pointer;color:#ef4444;padding:0;line-height:1;font-size:.875rem;display:flex;align-items:center;opacity:.7;transition:opacity .1s;"
+                                            onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7">
                                         <i class="ri-close-line"></i>
                                     </button>
                                 </span>
@@ -194,38 +281,39 @@ $modes = [
                     <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
 
                         {{-- Reply Language --}}
-                        <div class="form-group">
+                        <div class="form-group"
+                             x-data="{ lang: '{{ old('reply_language', $settings->reply_language ?? 'auto') }}' }">
                             <label class="form-label">{{ __('ui.ai_settings_page.reply_language') }}</label>
-                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;"
-                                 x-data="{ lang: '{{ old('reply_language', $settings->reply_language ?? 'auto') }}' }">
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:.375rem;">
                                 @foreach($languages as $code => $lang)
                                 <button type="button"
+                                        class="lang-btn"
                                         @click="lang = '{{ $code }}'"
                                         :style="lang === '{{ $code }}'
                                             ? 'border-color:var(--brand);background:rgba(16,185,129,.08);color:var(--brand);font-weight:600;'
-                                            : 'border-color:var(--card-border);background:transparent;color:var(--text-secondary);'"
-                                        style="border:1.5px solid;border-radius:.625rem;padding:.5rem .25rem;cursor:pointer;font-size:.8rem;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:.2rem;">
-                                    <span style="font-size:1.1rem;">{{ $lang['flag'] }}</span>
-                                    <span>{{ $lang['label'] }}</span>
+                                            : ''">
+                                    <span class="lang-flag">{{ $lang['flag'] }}</span>
+                                    <span class="lang-code">{{ $lang['code'] }}</span>
+                                    <span style="font-size:.7rem;">{{ $lang['label'] }}</span>
                                 </button>
                                 @endforeach
-                                <input type="hidden" name="reply_language" :value="lang">
                             </div>
-                            <div class="form-hint">{{ __('ui.ai_settings_page.reply_language_hint') }}</div>
+                            <div class="form-hint" style="margin-top:.375rem;">{{ __('ui.ai_settings_page.reply_language_hint') }}</div>
+                            <input type="hidden" name="reply_language" :value="lang">
                         </div>
 
-                        {{-- Suggestion count (only for suggestion / hybrid) --}}
+                        {{-- Suggestion count --}}
                         <div x-show="selectedMode === 'suggestion' || selectedMode === 'hybrid'">
                             <label class="form-label">{{ __('ui.ai_settings_page.suggestion_count') }}</label>
                             <div style="display:flex;gap:.5rem;align-items:center;margin-top:.375rem;"
                                  x-data="{ count: {{ old('suggestion_count', $settings->suggestion_count ?? 3) }} }">
                                 @foreach([1,2,3,4,5] as $n)
                                 <button type="button"
+                                        class="count-btn"
                                         @click="count = {{ $n }}"
                                         :style="count === {{ $n }}
-                                            ? 'background:var(--brand);color:#fff;border-color:var(--brand);'
-                                            : 'background:transparent;color:var(--text-secondary);border-color:var(--card-border);'"
-                                        style="width:2.5rem;height:2.5rem;border:1.5px solid;border-radius:.625rem;cursor:pointer;font-size:.875rem;font-weight:600;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;">
+                                            ? 'background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 2px 8px rgba(16,185,129,.3);'
+                                            : ''">
                                     {{ $n }}
                                 </button>
                                 @endforeach
@@ -239,22 +327,18 @@ $modes = [
                             </div>
                         </div>
 
-                        {{-- Autonomous info badge --}}
+                        {{-- Autonomous info --}}
                         <div x-show="selectedMode === 'autonomous'"
-                             style="padding:.75rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:.625rem;display:flex;gap:.625rem;align-items:flex-start;">
+                             class="info-badge" style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);">
                             <i class="ri-flashlight-line" style="color:#10b981;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
-                            <div style="font-size:.8125rem;color:var(--text-secondary);">
-                                {{ __('ui.ai_settings_page.autonomous_info') }}
-                            </div>
+                            <span>{{ __('ui.ai_settings_page.autonomous_info') }}</span>
                         </div>
 
-                        {{-- Hybrid info badge --}}
+                        {{-- Hybrid info --}}
                         <div x-show="selectedMode === 'hybrid'"
-                             style="padding:.75rem;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:.625rem;display:flex;gap:.625rem;align-items:flex-start;">
+                             class="info-badge" style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);">
                             <i class="ri-git-branch-line" style="color:#8b5cf6;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
-                            <div style="font-size:.8125rem;color:var(--text-secondary);">
-                                {{ __('ui.ai_settings_page.hybrid_info') }}
-                            </div>
+                            <span>{{ __('ui.ai_settings_page.hybrid_info') }}</span>
                         </div>
 
                     </div>
@@ -279,10 +363,10 @@ $modes = [
                         </div>
 
                         @if($settings->monthly_token_quota > 0)
-                        <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;">
+                        <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;border:1px solid var(--card-border);">
                             <div style="display:flex;justify-content:space-between;font-size:.8125rem;margin-bottom:.5rem;">
                                 <span style="color:var(--text-secondary);">{{ __('ui.ai_settings_page.this_period') }}</span>
-                                <span style="font-weight:600;">{{ $settings->quotaPercentage() }}%</span>
+                                <span style="font-weight:700;">{{ $settings->quotaPercentage() }}%</span>
                             </div>
                             <div class="progress-bar">
                                 <div class="progress-fill {{ $settings->quotaPercentage() > 90 ? 'danger' : ($settings->quotaPercentage() > 70 ? 'warning' : '') }}"
@@ -297,48 +381,93 @@ $modes = [
                     </div>
                 </div>
 
-                {{-- Test Sandbox --}}
+                {{-- ── Test Sandbox ────────────────────────────────────────── --}}
                 <div class="card" x-show="selectedMode !== 'off'" x-data="aiTest()">
                     <div class="card-header">
-                        <div>
+                        <div style="flex:1">
                             <div class="card-title">{{ __('ui.ai_settings_page.test_sandbox') }}</div>
                             <div class="card-subtitle">{{ __('ui.ai_settings_page.test_sandbox_hint') }}</div>
                         </div>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.75rem;">
-                        <textarea x-model="testMessage" rows="3" class="form-control"
-                                  placeholder="{{ __('ui.ai_settings_page.test_placeholder') }}"></textarea>
-                        <button type="button" @click="runTest()" :disabled="testing || !testMessage.trim()"
-                                class="btn btn-outline btn-sm">
-                            <span x-show="!testing"><i class="ri-send-plane-line"></i> {{ __('ui.ai_settings_page.run_test') }}</span>
-                            <span x-show="testing" style="display:flex;align-items:center;gap:.375rem;">
-                                <div class="spinner" style="width:.875rem;height:.875rem;border-width:2px;"></div>
-                                {{ __('ui.ai_settings_page.testing') }}
-                            </span>
+                        <button type="button" x-show="response || error" @click="response=null;error=null;tokensUsed=null"
+                                class="btn btn-ghost btn-sm" style="flex-shrink:0;">
+                            <i class="ri-refresh-line"></i> {{ __('ui.ai_settings_page.clear_response') }}
                         </button>
-                        <div x-show="response"
-                             style="padding:.875rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:.625rem;">
-                            <div style="font-size:.6875rem;font-weight:700;color:var(--brand);margin-bottom:.375rem;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:.375rem;">
-                                <i class="ri-sparkling-2-line"></i> {{ __('ui.ai_settings_page.ai_response') }}
+                    </div>
+                    <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.875rem;">
+
+                        {{-- Quick sample chips --}}
+                        <div>
+                            <div style="font-size:.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">
+                                <i class="ri-magic-line" style="font-size:.8rem;"></i> {{ __('ui.ai_settings_page.quick_tests') }}
                             </div>
-                            <div style="font-size:.8125rem;color:var(--text-secondary);white-space:pre-wrap;" x-text="response"></div>
-                            <div x-show="tokensUsed" style="font-size:.6875rem;color:var(--text-muted);margin-top:.5rem;"
-                                 x-text="`${tokensUsed} {{ __('ui.ai_settings_page.tokens_used') }}`"></div>
+                            <div style="display:flex;flex-wrap:wrap;gap:.375rem;">
+                                @foreach($sampleTests as $sample)
+                                <button type="button" class="sample-chip"
+                                        @click="testMessage = '{{ $sample }}'; runTest()">
+                                    <i class="ri-sparkling-2-line" style="font-size:.8rem;opacity:.7;"></i>
+                                    {{ $sample }}
+                                </button>
+                                @endforeach
+                            </div>
                         </div>
-                        <div x-show="error"
-                             style="padding:.75rem;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:.625rem;font-size:.8125rem;color:#ef4444;"
-                             x-text="error"></div>
+
+                        {{-- Textarea --}}
+                        <div style="position:relative;">
+                            <textarea x-model="testMessage" rows="3" class="form-control"
+                                      placeholder="{{ __('ui.ai_settings_page.test_placeholder') }}"
+                                      style="resize:vertical;padding-bottom:2.5rem;"></textarea>
+                            <button type="button"
+                                    @click="runTest()"
+                                    :disabled="testing || !testMessage.trim()"
+                                    style="position:absolute;bottom:.5rem;right:.5rem;padding:.375rem .875rem;border-radius:.5rem;border:none;cursor:pointer;font-size:.8125rem;font-weight:600;display:flex;align-items:center;gap:.375rem;transition:all .15s;"
+                                    :style="(testing || !testMessage.trim())
+                                        ? 'background:var(--page-bg);color:var(--text-muted);cursor:not-allowed;'
+                                        : 'background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(16,185,129,.3);'">
+                                <template x-if="!testing">
+                                    <span style="display:flex;align-items:center;gap:.3rem;">
+                                        <i class="ri-sparkling-2-fill"></i> {{ __('ui.ai_settings_page.run_test') }}
+                                    </span>
+                                </template>
+                                <template x-if="testing">
+                                    <span style="display:flex;align-items:center;gap:.375rem;">
+                                        <div class="spinner" style="width:.8rem;height:.8rem;border-width:2px;"></div>
+                                        {{ __('ui.ai_settings_page.testing') }}
+                                    </span>
+                                </template>
+                            </button>
+                        </div>
+
+                        {{-- AI Response --}}
+                        <div x-show="response" x-transition class="ai-response-box">
+                            <div class="ai-response-label">
+                                <i class="ri-robot-2-line"></i> {{ __('ui.ai_settings_page.ai_response') }}
+                                <span x-show="tokensUsed"
+                                      style="margin-left:auto;font-weight:400;color:var(--text-muted);letter-spacing:0;"
+                                      x-text="tokensUsed + ' {{ __('ui.ai_settings_page.tokens_used') }}'"></span>
+                            </div>
+                            <div class="ai-response-text" x-text="response"></div>
+                        </div>
+
+                        {{-- Error --}}
+                        <div x-show="error" x-transition
+                             style="padding:.75rem 1rem;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:.625rem;font-size:.8125rem;color:#ef4444;display:flex;gap:.5rem;align-items:flex-start;">
+                            <i class="ri-error-warning-line" style="flex-shrink:0;margin-top:.05rem;"></i>
+                            <span x-text="error"></span>
+                        </div>
+
                     </div>
                 </div>
 
                 {{-- Knowledge Base link --}}
-                <div style="padding:1rem 1.25rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:.875rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+                <div style="padding:1rem 1.25rem;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:.875rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                     <div style="display:flex;gap:.75rem;align-items:center;">
                         <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(16,185,129,.15);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
                             <i class="ri-book-2-line"></i>
                         </div>
                         <div>
-                            <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);">{{ __('ui.ai_settings_page.knowledge_base') }}</div>
+                            <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);">
+                                {{ __('ui.ai_settings_page.knowledge_base') }}
+                            </div>
                             <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem;">
                                 {{ $knowledgeCount }} {{ __('ui.ai_settings_page.entries') }} · {{ __('ui.ai_settings_page.knowledge_base_hint') }}
                             </div>
@@ -353,10 +482,10 @@ $modes = [
         </div>
 
         {{-- Save / Cancel --}}
-        <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;gap:.5rem;">
+        <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;gap:.5rem;padding-top:1rem;border-top:1px solid var(--card-border);">
             <a href="{{ route($panelPrefix . '.dashboard') }}" class="btn btn-outline">{{ __('ui.cancel') }}</a>
             <button type="submit" class="btn btn-primary">
-                <i class="ri-save-line"></i> {{ __('ui.ai_settings_page.save_settings') }}
+                <i class="ri-save-3-line"></i> {{ __('ui.ai_settings_page.save_settings') }}
             </button>
         </div>
     </form>
@@ -387,31 +516,33 @@ function keywordManager(initial) {
 function aiTest() {
     return {
         testMessage: '',
-        testing: false,
-        response: null,
-        tokensUsed: null,
-        error: null,
+        testing:     false,
+        response:    null,
+        tokensUsed:  null,
+        error:       null,
 
         async runTest() {
-            this.testing = true;
+            if (!this.testMessage.trim()) return;
+            this.testing  = true;
             this.response = null;
-            this.error = null;
+            this.error    = null;
             try {
                 const res = await fetch('/api/ai/test', {
-                    method: 'POST', credentials: 'same-origin',
+                    method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                        'Accept':       'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                     },
-                    body: JSON.stringify({ message: this.testMessage })
+                    body: JSON.stringify({ question: this.testMessage }),
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    this.response = data.response;
-                    this.tokensUsed = data.tokens_used;
+                    this.response   = data.answer;
+                    this.tokensUsed = data.tokens_used || null;
                 } else {
-                    this.error = data.message || '{{ __('ui.ai_settings_page.test_failed') }}';
+                    this.error = data.message || data.errors?.question?.[0] || '{{ __('ui.ai_settings_page.test_failed') }}';
                 }
             } catch {
                 this.error = '{{ __('ui.ai_settings_page.network_error') }}';
