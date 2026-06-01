@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\ConversationWebController;
 use App\Http\Controllers\Admin\CustomerController;
@@ -118,6 +119,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
                 Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
                 Route::post('/teams/bulk', [TeamController::class, 'bulk'])->name('teams.bulk');
+
+                // Reports
+                Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+                Route::get('/reports/data', [ReportController::class, 'data'])->name('reports.data');
 
                 // Audit Log
                 Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');

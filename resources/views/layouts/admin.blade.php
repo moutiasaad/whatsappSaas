@@ -1671,6 +1671,13 @@
 
             <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
 
+            @if(Auth::user()->isAdmin() || Auth::user()->isSuperAdmin())
+            <a href="{{ route($panelPrefix . '.reports.index') }}" class="{{ $navActive([$panelPrefix . '.reports.*']) }}">
+                <i class="ri-bar-chart-2-line"></i>
+                <span>{{ __('ui.sidebar.reports') }}</span>
+            </a>
+            @endif
+
             <a href="{{ route($panelPrefix . '.audit-log.index') }}" class="{{ $navActive([$panelPrefix . '.audit-log.*']) }}">
                 <i class="ri-file-list-3-line"></i>
                 <span>{{ __('ui.sidebar.audit_log') }}</span>
