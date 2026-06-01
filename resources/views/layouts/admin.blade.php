@@ -1564,11 +1564,11 @@
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
                     {{ __('ui.sidebar.platform_owner_desc') }}
                 </div>
-            @elseif(Auth::user()->isAdmin())
+            {{-- @elseif(Auth::user()->isAdmin())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.tenant_admin') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
                     {{ __('ui.sidebar.tenant_admin_desc') }}
-                </div>
+                </div> --}}
             @elseif(Auth::user()->isSupervisor())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.supervisor') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">

@@ -51,7 +51,14 @@
       "Bash(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" -MaxDepth 1 -Filter \"*.md\")",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\\" | ForEach-Object { $_.Name })",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\public\\\\images\\\\\" | ForEach-Object { $_.Name })",
-      "Bash(composer require *)"
+      "Bash(composer require *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\resources\\\\views\\\\layouts\\\\admin.blade.php\")",
+      "Bash(Select-Object -Last 50)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('require',{}\\).get\\('livewire/livewire','not found'\\)\\)\")",
+      "Bash(New-Item -ItemType Directory -Path \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\\\\resources\\\\views\\\\admin\\\\reports\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"dir created\")",
+      "PowerShell(New-Item *)"
     ]
   },
   "enableAllProjectMcpServers": true,
