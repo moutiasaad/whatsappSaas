@@ -99,23 +99,30 @@
                     @endif
                 </div>
                 @if(!$isCurrent)
-                <button class="btn btn-outline btn-sm" style="width:100%"
-                        onclick="alert('Stripe integration coming soon.')">
-                    {{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'Upgrade' : 'Switch' }}
-                </button>
+                <form method="POST" action="{{ route('payment.upgrade') }}">
+                    @csrf
+                    <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                    <button type="submit" class="btn btn-outline btn-sm" style="width:100%">
+                        <i class="{{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'ri-arrow-up-circle-line' : 'ri-refresh-line' }}"></i>
+                        {{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'Upgrade' : 'Switch' }}
+                    </button>
+                </form>
                 @else
-                <div style="text-align:center;font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">Active plan</div>
+                <div style="text-align:center;font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">
+                    <i class="ri-checkbox-circle-line" style="color:var(--brand)"></i> Active plan
+                </div>
                 @endif
             </div>
             @endforeach
         </div>
     </div>
 
-    {{-- Stripe placeholder --}}
+    {{-- Stripe note --}}
     <div style="padding:1.25rem;background:var(--page-bg);border:1px solid var(--card-border);border-radius:.875rem;display:flex;align-items:center;gap:.875rem">
-        <svg style="color:var(--text-muted);flex-shrink:0" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <svg style="color:var(--text-muted);flex-shrink:0" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <div style="font-size:.8125rem;color:var(--text-muted)">
-            Payment processing via Stripe. Connect your Stripe account in <code style="background:var(--card-bg);padding:.1rem .375rem;border-radius:.25rem">.env</code> to enable plan upgrades and invoice history.
+            Payments are processed securely via <strong>Stripe</strong>. Clicking Upgrade or Switch will redirect you to a secure checkout page.
         </div>
     </div>
 </div>

@@ -33,9 +33,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
 });
 
-// Payment (Flouci)
+// Payment (Stripe)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
 Route::post('/payment/initiate', [PaymentController::class, 'initiate'])->name('payment.initiate');
+Route::post('/payment/upgrade', [PaymentController::class, 'upgrade'])->name('payment.upgrade')->middleware('auth');
 Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/failed', [PaymentController::class, 'failed'])->name('payment.failed');
 Route::post('/payment/webhook', [PaymentController::class, 'webhook'])->name('payment.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

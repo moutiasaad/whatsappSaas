@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
 use App\Models\User;
@@ -13,6 +14,21 @@ use Illuminate\Support\Facades\Log;
 class PaymentController extends Controller
 {
     public function __construct(private StripeService $stripe) {}
+
+    public function upgrade(Request $request)
+    {
+        $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
+            'plan_id'   => 'required|exists:plans,id',
+        ]);
+
+        $tenant = Tenant::findOrFail($request->tenant_id);
+        $plan   = Plan::findOrFail($request->plan_id);
+
+        $tenant->update(['plan_id' => $plan->id]);
+
+        return redirect()->route('payment.checkout', $tenant);
+    }
 
     public function checkout(Tenant $tenant)
     {

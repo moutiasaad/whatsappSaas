@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\Plan;
+use App\Models\TenantPayment;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -14,8 +16,19 @@ class SettingsController extends Controller
             return redirect()->route('super_admin.platform.global-settings');
         }
 
-        $tenant = $this->currentTenant();
-        return view('admin.settings.index', compact('tenant'));
+        $tenant = $this->currentTenant()->load('plan');
+
+        $latestPayment = TenantPayment::where('tenant_id', $tenant->id)
+            ->where('status', 'completed')
+            ->latest('paid_at')
+            ->first();
+
+        $upgradePlans = Plan::where('is_active', true)
+            ->where('id', '!=', $tenant->plan_id)
+            ->orderBy('price_monthly')
+            ->get();
+
+        return view('admin.settings.index', compact('tenant', 'latestPayment', 'upgradePlans'));
     }
 
     public function update(Request $request)
