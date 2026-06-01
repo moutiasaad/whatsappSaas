@@ -451,13 +451,38 @@
             <div class="modal-send-icon"><i class="ri-user-settings-line"></i></div>
             <h3>{{ __('ui.conversation_show_page.reassign_title') }}</h3>
             <p>{{ __('ui.conversation_show_page.reassign_desc') }}</p>
-            <div style="margin:12px 0 18px;">
-                <select x-model="reassignAgentId" class="form-control" data-no-ss>
-                    <option value="">{{ __('ui.conversation_show_page.select_agent') }}</option>
-                    <template x-for="agent in teamAgents" :key="agent.id">
-                        <option :value="agent.id" x-text="agent.name"></option>
-                    </template>
-                </select>
+            <div style="margin:12px 0 18px;"
+                 x-data="{ ssOpen: false, ssSearch: '' }"
+                 @click.outside="ssOpen = false">
+                <div class="ss-wrap" :class="{ open: ssOpen }">
+                    <input type="text" readonly class="ss-trigger form-control"
+                           :value="reassignAgentId ? (teamAgents.find(a => a.id == reassignAgentId)?.name ?? '') : @js(__('ui.conversation_show_page.select_agent'))"
+                           :style="reassignAgentId ? '' : 'color:var(--text-muted)'"
+                           @click="ssOpen = !ssOpen; ssSearch = ''; if (ssOpen) $nextTick(() => $refs.reassignSearch?.focus())"
+                           style="cursor:pointer;" />
+                    <i class="ri-arrow-down-s-line ss-chevron"></i>
+                    <div class="ss-dropdown">
+                        <div class="ss-search-row">
+                            <div class="ss-search-inner">
+                                <i class="ri-search-2-line" style="color:var(--text-muted);font-size:14px;"></i>
+                                <input type="text" x-ref="reassignSearch" x-model="ssSearch"
+                                       placeholder="{{ __('ui.select_filter_hint') }}"
+                                       class="ss-search-input" @click.stop />
+                            </div>
+                        </div>
+                        <div class="ss-list">
+                            <template x-for="agent in teamAgents.filter(a => !ssSearch || a.name.toLowerCase().includes(ssSearch.toLowerCase()))" :key="agent.id">
+                                <div class="ss-item" :class="{ 'ss-selected': reassignAgentId == agent.id }"
+                                     @mousedown.prevent="reassignAgentId = agent.id; ssOpen = false; ssSearch = ''"
+                                     x-text="agent.name"></div>
+                            </template>
+                            <div class="ss-empty"
+                                 x-show="teamAgents.filter(a => !ssSearch || a.name.toLowerCase().includes(ssSearch.toLowerCase())).length === 0">
+                                {{ __('ui.select_no_results') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline" @click="showReassign = false">{{ __('ui.conversation_show_page.cancel') }}</button>
