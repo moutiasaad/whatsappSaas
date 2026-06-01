@@ -84,9 +84,10 @@ class PaymentController extends Controller
 
             return redirect($session->url);
         } catch (\Throwable $e) {
-            Log::error('Stripe initiate failed', ['error' => $e->getMessage()]);
+            Log::error('Stripe initiate failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $msg = config('app.debug') ? $e->getMessage() : __('auth.register.payment_init_failed');
             return redirect()->route('payment.checkout', $tenant->id)
-                ->withErrors(['payment' => __('auth.register.payment_init_failed')]);
+                ->withErrors(['payment' => $msg]);
         }
     }
 
