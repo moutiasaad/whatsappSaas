@@ -63,7 +63,7 @@
             @if($payment?->amount)
             <div class="detail-row">
                 <span class="detail-label">{{ __('auth.register.order_total') }}</span>
-                <span class="detail-value">TND {{ number_format((float)$payment->amount, 3) }}</span>
+                <span class="detail-value">USD {{ number_format((float)$payment->amount, 2) }}</span>
             </div>
             @endif
         </div>

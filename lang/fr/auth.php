@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'login' => [
@@ -80,8 +80,8 @@ return [
         'order_admin'              => 'Administrateur',
         'order_limits'             => 'Limites',
         'order_total'              => 'Total',
-        'flouci_info'              => 'Paiement sécurisé via Flouci. Carte bancaire ou paiement mobile acceptés.',
-        'pay_btn'                  => 'Payer TND :amount',
+        'stripe_info'              => 'Paiement sécurisé par Stripe. Toutes les cartes bancaires acceptées.',
+        'pay_btn'                  => 'Payer USD :amount',
         'back_to_register'         => 'Retour à l\'inscription',
         'secure_payment'           => 'Paiement sécurisé · Cryptage SSL',
         'subscription_already_active' => 'Votre abonnement est déjà actif.',

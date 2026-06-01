@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
 use App\Models\User;
-use App\Services\FlouciService;
+use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function __construct(private FlouciService $flouci) {}
+    public function __construct(private StripeService $stripe) {}
 
     public function checkout(Tenant $tenant)
     {
@@ -43,37 +43,48 @@ class PaymentController extends Controller
             return redirect()->route('register');
         }
 
-        $admin         = $tenant->users()->where('role', 'admin')->first();
-        $amount        = (float) $plan->price_monthly;
-        $amountMillimes = (int) round($amount * 1000);
+        $admin        = $tenant->users()->where('role', 'admin')->first();
+        $amount       = (float) $plan->price_monthly;
+        $amountCents  = (int) round($amount * 100);
 
         try {
-            $result = $this->flouci->initPayment([
-                'amount_millimes' => $amountMillimes,
-                'currency'        => 'TND',
-                'description'     => "Abonnement {$plan->name} — {$tenant->name}",
-                'first_name'      => $admin ? explode(' ', $admin->name)[0] : '',
-                'last_name'       => $admin ? (explode(' ', $admin->name)[1] ?? '') : '',
-                'email'           => $admin?->email ?? '',
-                'order_id'        => 'TENANT-' . $tenant->id . '-' . time(),
-                'client_id'       => $tenant->name,
-                'accept_card'     => true,
+            $session = $this->stripe->createCheckoutSession([
+                'payment_method_types' => ['card'],
+                'line_items'           => [[
+                    'price_data' => [
+                        'currency'     => 'usd',
+                        'product_data' => [
+                            'name'        => $plan->name . ' — ' . $tenant->name,
+                            'description' => "Monthly subscription for {$tenant->name}",
+                        ],
+                        'unit_amount' => $amountCents,
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode'          => 'payment',
+                'customer_email'=> $admin?->email,
+                'success_url'   => route('payment.success') . '?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'    => route('payment.failed'),
+                'metadata'      => [
+                    'tenant_id' => (string) $tenant->id,
+                    'plan_id'   => (string) $plan->id,
+                ],
             ]);
 
             TenantPayment::create([
-                'tenant_id'         => $tenant->id,
-                'plan_id'           => $plan->id,
-                'amount'            => $amount,
-                'currency'          => 'TND',
-                'flouci_payment_id' => $result['paymentId'],
-                'flouci_pay_url'    => $result['payUrl'],
-                'status'            => 'pending',
-                'flouci_response'   => $result['raw'],
+                'tenant_id'           => $tenant->id,
+                'plan_id'             => $plan->id,
+                'amount'              => $amount,
+                'currency'            => 'USD',
+                'stripe_session_id'   => $session->id,
+                'stripe_checkout_url' => $session->url,
+                'status'              => 'pending',
+                'gateway_response'    => ['session_id' => $session->id],
             ]);
 
-            return redirect($result['payUrl']);
+            return redirect($session->url);
         } catch (\Throwable $e) {
-            Log::error('Flouci initiate failed', ['error' => $e->getMessage()]);
+            Log::error('Stripe initiate failed', ['error' => $e->getMessage()]);
             return redirect()->route('payment.checkout', $tenant->id)
                 ->withErrors(['payment' => __('auth.register.payment_init_failed')]);
         }
@@ -81,16 +92,16 @@ class PaymentController extends Controller
 
     public function success(Request $request)
     {
-        $paymentId = $this->extractPaymentId($request);
+        $sessionId = $request->query('session_id');
 
-        if (!$paymentId) {
+        if (!$sessionId) {
             return view('payment.success', ['tenant' => null, 'plan' => null, 'payment' => null, 'redirectToDash' => false]);
         }
 
-        $payment = TenantPayment::where('flouci_payment_id', $paymentId)->first();
+        $payment = TenantPayment::where('stripe_session_id', $sessionId)->first();
 
         if ($payment && !$payment->isCompleted()) {
-            $this->processPayment($payment, $paymentId);
+            $this->processPayment($payment, $sessionId);
             $payment->refresh();
             $payment->load('tenant', 'plan');
         }
@@ -125,20 +136,33 @@ class PaymentController extends Controller
 
     public function webhook(Request $request)
     {
-        $paymentId = $this->extractPaymentId($request);
+        $payload   = $request->getContent();
+        $signature = $request->header('Stripe-Signature', '');
 
-        if (!$paymentId) {
-            return response()->json(['error' => 'missing payment_id'], 400);
-        }
+        $webhookSecret = config('services.stripe.webhook_secret');
 
-        $payment = TenantPayment::where('flouci_payment_id', $paymentId)->first();
+        try {
+            if ($webhookSecret && $signature) {
+                $event = $this->stripe->constructWebhookEvent($payload, $signature);
+            } else {
+                $data  = json_decode($payload, true);
+                $event = (object) ['type' => $data['type'] ?? '', 'data' => (object) ['object' => (object) ($data['data']['object'] ?? [])]];
+            }
 
-        if (!$payment) {
-            return response()->json(['error' => 'payment not found'], 404);
-        }
+            if ($event->type === 'checkout.session.completed') {
+                $session   = $event->data->object;
+                $sessionId = is_object($session) ? $session->id : ($session['id'] ?? null);
 
-        if (!$payment->isCompleted()) {
-            $this->processPayment($payment, $paymentId);
+                if ($sessionId) {
+                    $payment = TenantPayment::where('stripe_session_id', $sessionId)->first();
+                    if ($payment && !$payment->isCompleted()) {
+                        $this->processPayment($payment, $sessionId);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Stripe webhook failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 400);
         }
 
         return response()->json(['status' => 'ok']);
@@ -146,9 +170,9 @@ class PaymentController extends Controller
 
     public function failed(Request $request)
     {
-        $paymentId = $this->extractPaymentId($request);
-        $payment   = $paymentId
-            ? TenantPayment::where('flouci_payment_id', $paymentId)->with('tenant', 'plan')->first()
+        $sessionId = $request->query('session_id');
+        $payment   = $sessionId
+            ? TenantPayment::where('stripe_session_id', $sessionId)->with('tenant', 'plan')->first()
             : null;
 
         if ($payment && $payment->isPending()) {
@@ -158,16 +182,16 @@ class PaymentController extends Controller
         return view('payment.failed', ['payment' => $payment]);
     }
 
-    private function processPayment(TenantPayment $payment, string $paymentId): void
+    private function processPayment(TenantPayment $payment, string $sessionId): void
     {
         try {
-            $data = $this->flouci->getPayment($paymentId);
+            $session = $this->stripe->retrieveSession($sessionId);
 
-            if ($this->flouci->isCompleted($data)) {
+            if ($this->stripe->isCompleted($session)) {
                 $payment->update([
-                    'status'          => 'completed',
-                    'paid_at'         => now(),
-                    'flouci_response' => $data,
+                    'status'           => 'completed',
+                    'paid_at'          => now(),
+                    'gateway_response' => $session->toArray(),
                 ]);
 
                 $payment->tenant->update([
@@ -176,23 +200,14 @@ class PaymentController extends Controller
                     'is_active'           => true,
                 ]);
 
-                Log::info('Tenant activated via Flouci', [
+                Log::info('Tenant activated via Stripe', [
                     'tenant_id'  => $payment->tenant_id,
                     'plan_id'    => $payment->plan_id,
-                    'payment_id' => $paymentId,
+                    'session_id' => $sessionId,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('processPayment failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
+            Log::error('processPayment failed', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
         }
-    }
-
-    private function extractPaymentId(Request $request): ?string
-    {
-        return $request->input('payment_id')
-            ?? $request->query('payment_id')
-            ?? $request->input('payment_ref')
-            ?? data_get($request->all(), 'result.payment_id')
-            ?? data_get($request->all(), 'payment_id');
     }
 }

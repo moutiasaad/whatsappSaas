@@ -9,13 +9,13 @@ class TenantPayment extends Model
 {
     protected $fillable = [
         'tenant_id', 'plan_id', 'amount', 'currency',
-        'flouci_payment_id', 'flouci_pay_url',
-        'status', 'flouci_response', 'paid_at',
+        'stripe_session_id', 'stripe_checkout_url',
+        'status', 'gateway_response', 'paid_at',
     ];
 
     protected $casts = [
-        'amount'           => 'decimal:3',
-        'flouci_response'  => 'array',
+        'amount'           => 'decimal:2',
+        'gateway_response' => 'array',
         'paid_at'          => 'datetime',
     ];
 

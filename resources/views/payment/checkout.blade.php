@@ -35,9 +35,8 @@
         .order-total .order-label { font-size:16px; font-weight:700; color:var(--text); }
         .order-total .order-value { font-size:22px; font-weight:900; color:var(--brand); }
 
-        .badge-pill { display:inline-flex; align-items:center; gap:5px; background:var(--brand-xlight); color:var(--brand); font-size:12px; font-weight:700; padding:3px 10px; border-radius:100px; }
-
-        .flouci-info { background:var(--brand-xlight); border:1px solid var(--brand-light); border-radius:12px; padding:14px 16px; margin:20px 0; display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--brand-dark); }
+        .stripe-info { background:#f0f4ff; border:1px solid #c7d2fe; border-radius:12px; padding:14px 16px; margin:20px 0; display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#4f46e5; }
+        .stripe-badge { display:inline-flex; align-items:center; gap:5px; background:#635bff; color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.3px; }
 
         .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; font-size:13px; color:#dc2626; margin-bottom:18px; display:flex; align-items:flex-start; gap:8px; }
 
@@ -47,7 +46,7 @@
         .btn-back { display:block; text-align:center; margin-top:14px; font-size:13px; color:var(--muted); text-decoration:none; }
         .btn-back:hover { color:var(--brand); }
 
-        .security-note { text-align:center; font-size:12px; color:var(--muted); margin-top:16px; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .security-note { text-align:center; font-size:12px; color:var(--muted); margin-top:16px; display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; }
     </style>
 </head>
 <body>
@@ -98,19 +97,22 @@
             @endif
             <div class="order-row order-total" style="padding-top:18px;margin-top:8px;border-top:2px solid var(--border);border-bottom:none">
                 <span class="order-label">{{ __('auth.register.order_total') }}</span>
-                <span class="order-value">TND {{ number_format($amount, 3) }}</span>
+                <span class="order-value">USD {{ number_format($amount, 2) }}</span>
             </div>
 
-            <div class="flouci-info">
+            <div class="stripe-info">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>{{ __('auth.register.flouci_info') }}</span>
+                <div>
+                    {{ __('auth.register.stripe_info') }}
+                    &nbsp;<span class="stripe-badge">stripe</span>
+                </div>
             </div>
 
             <form method="POST" action="{{ route('payment.initiate') }}" onsubmit="handlePay(this)">
                 @csrf
                 <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
                 <button type="submit" class="btn-pay" id="payBtn">
-                    {{ __('auth.register.pay_btn', ['amount' => number_format($amount, 3)]) }}
+                    {{ __('auth.register.pay_btn', ['amount' => number_format($amount, 2)]) }}
                 </button>
             </form>
 

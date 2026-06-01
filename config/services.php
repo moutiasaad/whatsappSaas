@@ -45,4 +45,10 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'stripe' => [
+        'secret'         => env('STRIPE_SECRET_KEY'),
+        'public'         => env('STRIPE_PUBLIC_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];
