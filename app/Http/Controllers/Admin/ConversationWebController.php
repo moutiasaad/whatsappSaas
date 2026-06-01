@@ -30,15 +30,11 @@ class ConversationWebController extends Controller
 
         $actor = auth()->user();
 
-        // Agents go straight to the workspace — redirect to their most recent active conversation
+        // Agents go straight to the workspace — redirect to their most recently active claimed conversation
         if ($actor->isAgent()) {
-            $teamIds = $actor->teams()->pluck('teams.id');
             $first = Conversation::query()
                 ->where('tenant_id', $actor->tenant_id)
-                ->where(function ($q) use ($actor, $teamIds) {
-                    $q->where('owner_agent_id', $actor->id)
-                      ->orWhereIn('team_id', $teamIds);
-                })
+                ->where('owner_agent_id', $actor->id)
                 ->where('state', '!=', 'closed')
                 ->orderByDesc('last_message_at')
                 ->first();
