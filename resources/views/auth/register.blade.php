@@ -244,7 +244,7 @@
                         <div class="check">✓</div>
                         <div class="p-name">{{ $plan->name }}</div>
                         <div class="p-price">
-                            {{ $isFree ? __('landing.plan_free_label') : 'TND ' . number_format((float)$plan->price_monthly, 0) . __('landing.plan_per_month') }}
+                            {{ $isFree ? __('landing.plan_free_label') : '$' . number_format((float)$plan->price_monthly, 0) . __('landing.plan_per_month') }}
                         </div>
                     </label>
                     @endforeach

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'login' => [
@@ -80,7 +80,7 @@ return [
         'order_limits'             => 'الحدود',
         'order_total'              => 'المجموع',
         'flouci_info'              => 'دفع آمن عبر Flouci. يُقبل البطاقة البنكية أو الدفع بالهاتف.',
-        'pay_btn'                  => 'ادفع TND :amount',
+        'pay_btn'                  => 'ادفع USD :amount',
         'back_to_register'         => 'العودة إلى التسجيل',
         'secure_payment'           => 'دفع آمن · تشفير SSL',
         'subscription_already_active' => 'اشتراكك نشط بالفعل.',

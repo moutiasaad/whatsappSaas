@@ -452,7 +452,7 @@
                     <div class="plan-price"><span class="plan-free-price">{{ __('landing.plan_free_label') }}</span></div>
                 @else
                     <div class="plan-price" id="price-{{ $plan->id }}">
-                        <span class="plan-curr">TND</span>
+                        <span class="plan-curr">$</span>
                         <span class="plan-amount" data-monthly="{{ number_format((float)$plan->price_monthly, 0) }}" data-annual="{{ $plan->price_annual ? number_format((float)$plan->price_annual/12, 0) : number_format((float)$plan->price_monthly * 0.8, 0) }}">
                             {{ number_format((float)$plan->price_monthly, 0) }}
                         </span>
