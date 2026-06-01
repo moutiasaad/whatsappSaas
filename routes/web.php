@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InstanceWebController;
 use App\Http\Controllers\Admin\KnowledgeController;
+use App\Http\Controllers\Admin\SavedReplyWebController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
@@ -132,7 +133,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
             });
 
-            // Knowledge Base and AI settings (tenant admin only)
+            // Knowledge Base, AI settings, Saved Replies (tenant admin only)
             Route::middleware('role:admin')->group(function () {
                 // Knowledge Base
                 Route::get('/knowledge', [KnowledgeController::class, 'index'])->name('knowledge.index');
@@ -144,6 +145,9 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // AI Settings
                 Route::get('/ai-settings', [AiSettingsController::class, 'index'])->name('ai-settings.index');
                 Route::put('/ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
+
+                // Saved Replies
+                Route::get('/saved-replies', [SavedReplyWebController::class, 'index'])->name('saved-replies.index');
             });
 
             // SaaS control plane (super admin only)

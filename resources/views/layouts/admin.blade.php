@@ -1667,6 +1667,11 @@
                     <i class="ri-sparkling-2-line"></i>
                     <span>{{ __('ui.sidebar.ai_settings') }}</span>
                 </a>
+
+                <a href="{{ route($panelPrefix . '.saved-replies.index') }}" class="{{ $navActive([$panelPrefix . '.saved-replies.*']) }}">
+                    <i class="ri-chat-3-line"></i>
+                    <span>{{ __('ui.sidebar.saved_replies') }}</span>
+                </a>
             @endif
 
             <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
