@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProcessIncomingMessage implements ShouldQueue
 {
@@ -129,7 +130,7 @@ class ProcessIncomingMessage implements ShouldQueue
         $conversation->increment('unread_count');
         $conversation->update([
             'last_message_at'      => $message->sent_at ?? now(),
-            'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
+            'last_message_preview' => Str::limit($message->body ?: ($message->media_url ? ucfirst((string) $message->type) : ''), 200),
         ]);
 
         broadcast(new MessageReceived($message))->toOthers();

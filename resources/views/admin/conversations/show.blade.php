@@ -1940,15 +1940,17 @@ function conversationPro() {
             } catch {}
         },
 
-        applySavedReply(reply) {
+        applySavedReply(reply, fromShortcut = false) {
             if (!reply) return;
-            const ta = document.querySelector('.cw-textarea');
             const insert = reply.body || '';
-            if (ta && this.draft) {
-                this.draft = `${this.draft.replace(/\/\S*$/, '')}${insert}`;
+            if (fromShortcut && this.draft) {
+                // Replace the trailing /shortcut that triggered the auto-complete
+                this.draft = this.draft.replace(/\/\S*$/, '') + insert;
             } else {
+                // Always replace the full draft when clicking from picker or quick buttons
                 this.draft = insert;
             }
+            this.showRepliesPicker = false;
             this.$nextTick(() => {
                 const el = document.querySelector('.cw-textarea');
                 if (el) { this.autoResize(el); el.focus(); }

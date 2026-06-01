@@ -10,6 +10,7 @@ use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -70,7 +71,7 @@ class MessageController extends Controller
 
         $conversation->update([
             'last_message_at'      => now(),
-            'last_message_preview' => $message->body ?: ($message->media_url ? ucfirst((string) $message->type) : null),
+            'last_message_preview' => Str::limit($message->body ?: ($message->media_url ? ucfirst((string) $message->type) : ''), 200),
         ]);
 
         SendOutgoingMessage::dispatch($message)->onQueue('whatsapp');
@@ -97,7 +98,7 @@ class MessageController extends Controller
 
         $conversation->update([
             'last_message_at'      => now(),
-            'last_message_preview' => '[Note] ' . $message->body,
+            'last_message_preview' => Str::limit('[Note] ' . $message->body, 200),
         ]);
 
         try {
