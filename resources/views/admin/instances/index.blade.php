@@ -37,11 +37,13 @@
             <div class="page-title">{{ __('ui.instances_page.title') }}</div>
             <div class="page-subtitle">{{ __('ui.instances_page.subtitle') }}</div>
         </div>
+        @if(!($hasInstance ?? false))
         <div class="page-header-actions">
             <a href="{{ route($panelPrefix . '.instances.create') }}" class="btn btn-primary">
                 <i class="ri-add-line"></i> {{ __('ui.instances_page.new_instance') }}
             </a>
         </div>
+        @endif
     </div>
 
     <div class="stats-grid" style="margin-bottom:1.5rem">
@@ -78,7 +80,9 @@
             </div>
             <h4>{{ __('ui.instances_page.no_instances_yet') }}</h4>
             <p>{{ __('ui.instances_page.no_instances_desc') }}</p>
+            @if(!($hasInstance ?? false))
             <a href="{{ route($panelPrefix . '.instances.create') }}" class="btn btn-primary">{{ __('ui.instances_page.add_instance') }}</a>
+            @endif
         </div>
     </div>
 

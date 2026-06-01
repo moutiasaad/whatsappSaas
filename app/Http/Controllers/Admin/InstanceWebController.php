@@ -35,13 +35,23 @@ class InstanceWebController extends Controller
                 ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
         }
 
-        return view('admin.instances.index');
+        $tenantId   = auth()->user()->tenant_id;
+        $hasInstance = $tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists();
+
+        return view('admin.instances.index', compact('hasInstance'));
     }
 
     public function create()
     {
+        $tenantId = auth()->user()->tenant_id;
+
+        if ($tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists()) {
+            return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
+                ->with('error', __('ui.controller_messages.instance_limit_reached'));
+        }
+
         $teams  = Team::where('is_active', true)->orderBy('name')->get();
-        $agents = \App\Models\User::where('tenant_id', auth()->user()->tenant_id)
+        $agents = \App\Models\User::where('tenant_id', $tenantId)
             ->whereIn('role', ['agent', 'supervisor'])
             ->where('is_active', true)
             ->orderBy('name')
@@ -51,6 +61,13 @@ class InstanceWebController extends Controller
 
     public function store(Request $request)
     {
+        $tenantId = auth()->user()->tenant_id;
+
+        if ($tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists()) {
+            return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
+                ->with('error', __('ui.controller_messages.instance_limit_reached'));
+        }
+
         $data = $request->validate([
             'name'           => 'required|string|max:100',
             'gateway'        => 'required|in:evolution_api,waha,cloud_api',

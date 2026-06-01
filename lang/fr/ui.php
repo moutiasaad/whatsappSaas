@@ -992,6 +992,7 @@ Toujours :
         'instance_created' => 'Instance ":name" créée.',
         'instance_updated' => 'Instance mise à jour.',
         'instance_deleted' => 'Instance ":name" supprimée.',
+        'instance_limit_reached' => 'Votre compte est limité à une seule instance WhatsApp.',
         'knowledge_created' => 'Entrée de connaissance créée.',
         'knowledge_updated' => 'Entrée mise à jour.',
         'knowledge_deleted' => 'Entrée supprimée.',

@@ -991,6 +991,7 @@ Always:
         'instance_created' => 'Instance ":name" created.',
         'instance_updated' => 'Instance updated.',
         'instance_deleted' => 'Instance ":name" deleted.',
+        'instance_limit_reached' => 'Your account is limited to one WhatsApp instance.',
         'knowledge_created' => 'Knowledge entry created.',
         'knowledge_updated' => 'Entry updated.',
         'knowledge_deleted' => 'Entry deleted.',
