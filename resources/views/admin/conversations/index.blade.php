@@ -196,7 +196,14 @@
                                 <span class="conv-time" x-text="timeAgo(conv.last_message_at)"></span>
                             </div>
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
-                                <span class="conv-preview" x-text="conv.last_message_preview || '-'"></span>
+                                <div style="min-width:0;flex:1;">
+                                    <span class="conv-preview" x-text="conv.last_message_preview || '-'"></span>
+                                    <div x-show="conv.state === 'claimed' && conv.owner_agent?.name"
+                                         style="font-size:.6875rem;color:#3b82f6;margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                        <i class="ri-user-line" style="font-size:.625rem;"></i>
+                                        <span x-text="conv.owner_agent.name"></span>
+                                    </div>
+                                </div>
                                 <div style="display:flex;align-items:center;gap:.375rem;flex-shrink:0;">
                                     <span x-show="conv.unread_count > 0" class="unread-badge" x-text="conv.unread_count"></span>
                                     <span x-show="conv.state === 'claimed'" class="badge badge-blue" style="font-size:.6875rem;">

@@ -150,7 +150,10 @@
 
             <div class="cw-thread-actions">
                 <span x-show="state === 'pool'"    class="cw-state-badge cw-state-pool"><i class="ri-time-line"></i> <span x-text="i18n.state_pool"></span></span>
-                <span x-show="state === 'claimed'" class="cw-state-badge cw-state-claimed"><i class="ri-user-line"></i> <span x-text="i18n.state_claimed"></span></span>
+                <span x-show="state === 'claimed'" class="cw-state-badge cw-state-claimed">
+                    <i class="ri-user-line"></i>
+                    <span x-text="agentName ? (i18n.state_claimed + ' · ' + agentName) : i18n.state_claimed"></span>
+                </span>
                 <span x-show="state === 'closed'"  class="cw-state-badge cw-state-closed"><i class="ri-check-double-line"></i> <span x-text="i18n.state_closed"></span></span>
                 <span x-show="aiSuspended" class="cw-state-badge cw-state-neutral">{{ __('ui.conversation_show_page.ai_off') }}</span>
 
