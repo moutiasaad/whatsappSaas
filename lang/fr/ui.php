@@ -128,6 +128,8 @@ return [
         'hours_ago' => 'h',
         'days_ago' => 'j',
         'ai_off' => 'IA désactivée',
+        'filtered_by_customer' => 'Filtré par client',
+        'clear_filter' => 'Effacer le filtre'
     ],
     'customers_page' => [
         'title' => 'Clients',

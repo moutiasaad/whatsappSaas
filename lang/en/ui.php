@@ -127,6 +127,8 @@ return [
         'hours_ago' => 'h ago',
         'days_ago' => 'd ago',
         'ai_off' => 'AI Off',
+        'filtered_by_customer' => 'Filtered by customer',
+        'clear_filter' => 'Clear filter',
     ],
     'customers_page' => [
         'title' => 'Customers',

@@ -75,6 +75,19 @@
         </div>
     </div>
 
+    {{-- Customer filter banner --}}
+    <div x-show="customerFilter"
+         style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.625rem 1rem;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:.75rem;margin-bottom:.875rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:var(--text-primary);">
+            <i class="ri-user-line" style="color:#3b82f6;"></i>
+            <span>{{ __('ui.conversations_page.filtered_by_customer') }}:</span>
+            <strong x-text="customerFilter"></strong>
+        </div>
+        <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm" style="color:#3b82f6;">
+            <i class="ri-close-line"></i> {{ __('ui.conversations_page.clear_filter') }}
+        </button>
+    </div>
+
     <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem;">
         <div class="filter-input-wrap">
             <i class="ri-search-line"></i>
@@ -299,6 +312,7 @@ function conversationsPage() {
     return {
         i18n: @json($conversationI18n),
         tab: '{{ request("tab", "pool") }}',
+        customerFilter: null,
         isSuperAdmin: @json(auth()->user()->isSuperAdmin()),
         showUrlTpl: @json(route($panelPrefix . '.conversations.show', ['conversation' => '__ID__'])),
         indexUrl: @json(route($panelPrefix . '.conversations.index')),
@@ -312,6 +326,7 @@ function conversationsPage() {
             instance_id: '',
             team_id: '',
             agent_id: '',
+            customer_id: '',
             state: '',
             has_unread: '',
             ai_suspended: '',
@@ -330,6 +345,22 @@ function conversationsPage() {
         canClaimPool: @json(auth()->user()->isAgent() || auth()->user()->isSupervisor() || auth()->user()->isSuperAdmin()),
 
         init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const customerId = urlParams.get('customer_id');
+            if (customerId) {
+                this.filters.customer_id = customerId;
+                this.tab = urlParams.get('tab') || 'all';
+                // Resolve customer name for the banner
+                fetch(`{{ route($panelPrefix . '.customers.index') }}?id=${customerId}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    const c = data?.data?.[0];
+                    this.customerFilter = c ? (c.display_name || c.phone_e164 || '#' + customerId) : '#' + customerId;
+                })
+                .catch(() => { this.customerFilter = '#' + customerId; });
+            }
             this.loadData();
             this.fetchCounts();
             this.subscribeRealtime();
@@ -508,11 +539,13 @@ function conversationsPage() {
 
         clearFilters() {
             this.search = '';
+            this.customerFilter = null;
             this.filters = {
                 tenant_id: '',
                 instance_id: '',
                 team_id: '',
                 agent_id: '',
+                customer_id: '',
                 state: '',
                 has_unread: '',
                 ai_suspended: '',
@@ -520,6 +553,10 @@ function conversationsPage() {
                 date_to: '',
                 sort: 'last_message_desc'
             };
+            // Remove customer_id from URL so a page refresh doesn't re-apply it
+            const url = new URL(window.location.href);
+            url.searchParams.delete('customer_id');
+            history.replaceState(null, '', url.toString());
             this.reload();
         },
 

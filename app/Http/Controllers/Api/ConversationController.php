@@ -27,6 +27,7 @@ class ConversationController extends Controller
             'team_id' => 'nullable|integer|exists:teams,id',
             'instance_id' => 'nullable|integer|exists:whatsapp_instances,id',
             'agent_id' => 'nullable|integer|exists:users,id',
+            'customer_id' => 'nullable|integer|exists:customers,id',
             'state' => ['nullable', Rule::in(['pool', 'claimed', 'closed'])],
             'ai_suspended' => 'nullable|boolean',
             'has_unread' => 'nullable|boolean',
@@ -71,6 +72,10 @@ class ConversationController extends Controller
 
         if (!empty($data['agent_id'])) {
             $query->where('owner_agent_id', (int) $data['agent_id']);
+        }
+
+        if (!empty($data['customer_id'])) {
+            $query->where('customer_id', (int) $data['customer_id']);
         }
 
         if (!empty($data['state'])) {

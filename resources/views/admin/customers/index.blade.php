@@ -197,7 +197,7 @@
                                         <a :href="customerUrl(customer.id)" class="action-btn" title="{{ __('ui.customers_page.view') }}">
                                             <i class="ri-eye-line"></i>
                                         </a>
-                                        <a :href="conversationsUrl" class="action-btn" title="{{ __('ui.customers_page.open_conversations') }}">
+                                        <a :href="conversationsUrl + '?customer_id=' + customer.id + '&tab=all'" class="action-btn" title="{{ __('ui.customers_page.open_conversations') }}">
                                             <i class="ri-message-3-line"></i>
                                         </a>
                                     </div>
