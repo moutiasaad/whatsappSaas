@@ -11,8 +11,10 @@ use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsAppInstance;
+use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ConversationWebController extends Controller
 {
@@ -80,6 +82,9 @@ class ConversationWebController extends Controller
 
         $conversation->load(['customer', 'instance', 'ownerAgent', 'team', 'tenant']);
 
+        // Resolve @lid JID to real phone on first view (one-time, then stored)
+        $this->maybeResolveLidPhone($conversation);
+
         $events = $conversation->events()->with('actor')->orderByDesc('created_at')->limit(50)->get();
 
         $teamAgents = $this->loadAssignableAgents($conversation);
@@ -141,6 +146,50 @@ class ConversationWebController extends Controller
             $bag[$k] = __('ui.conversation_show_page.' . $k);
         }
         return $bag;
+    }
+
+    private function maybeResolveLidPhone(Conversation $conversation): void
+    {
+        $customer = $conversation->customer;
+        $instance = $conversation->instance;
+
+        if (!$customer || !$instance || !str_contains((string) $customer->phone_e164, '@lid')) {
+            return;
+        }
+
+        try {
+            $gateway  = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $contacts = $gateway->findContacts($instance->gateway_instance_id, $customer->phone_e164);
+
+            Log::channel('whatsapp')->info('LID resolve: gateway returned', [
+                'lid'      => $customer->phone_e164,
+                'contacts' => $contacts,
+            ]);
+
+            foreach ((array) $contacts as $contact) {
+                $jid = (string) data_get($contact, 'remoteJid', '');
+                if (str_contains($jid, '@s.whatsapp.net') || str_contains($jid, '@c.us')) {
+                    $digits = preg_replace('/\D+/', '', preg_replace('/@\S+/', '', $jid) ?? $jid);
+                    if ($digits !== '') {
+                        $customer->update(['phone_e164' => $digits]);
+                        $customer->phone_e164 = $digits;
+                        Log::channel('whatsapp')->info('LID resolve: updated customer', [
+                            'customer_id' => $customer->id,
+                            'phone'       => $digits,
+                        ]);
+                        return;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp')->warning('LID resolve failed on show()', [
+                'customer_id' => $customer->id,
+                'error'       => $e->getMessage(),
+            ]);
+        }
     }
 
     private function loadAssignableAgents(Conversation $conversation): \Illuminate\Support\Collection
