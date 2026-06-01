@@ -26,14 +26,16 @@
         </div>
     </div>
 
-    {{-- Loading --}}
-    <div x-show="loading" class="spinner-wrap" style="min-height:300px">
+    {{-- Initial load spinner (only before first data arrives) --}}
+    <div x-show="loading && !hasData" class="spinner-wrap" style="min-height:300px">
         <div>
             <div class="spinner" style="margin:0 auto 1rem"></div>
         </div>
     </div>
 
-    <div x-show="!loading">
+    {{-- Content: always in DOM after first load so canvas dimensions are preserved --}}
+    <div x-show="hasData"
+         :style="refreshing ? 'opacity:.45;pointer-events:none;transition:opacity .15s' : 'transition:opacity .15s'">
 
         {{-- KPI stat cards --}}
         <div class="stats-grid" style="margin-bottom:1.5rem">
@@ -266,6 +268,8 @@ function reportsPage() {
     return {
         period: 30,
         loading: true,
+        hasData: false,
+        refreshing: false,
         kpi: {},
         team_leaderboard: [],
         agent_leaderboard: [],
@@ -287,7 +291,14 @@ function reportsPage() {
         },
 
         load() {
-            this.loading = true;
+            if (this.hasData) {
+                // Subsequent refresh: keep charts in DOM, just dim them
+                this.refreshing = true;
+            } else {
+                // First load: show full spinner
+                this.loading = true;
+            }
+
             fetch(`{{ route($panelPrefix . '.reports.data') }}?period=${this.period}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             })
@@ -300,11 +311,19 @@ function reportsPage() {
                 this.hourly_heatmap    = data.hourly_heatmap;
                 this.state_breakdown   = data.state_breakdown;
                 this.ai_vs_agent       = data.ai_vs_agent;
-                this.loading = false;
-                // Wait for DOM repaint before measuring canvas dimensions
-                setTimeout(() => this._renderCharts(), 80);
+
+                if (this.hasData) {
+                    // Canvases are visible — re-render directly, no timeout needed
+                    this._renderCharts();
+                    this.refreshing = false;
+                } else {
+                    // First load: canvases just became visible, wait one frame
+                    this.loading = false;
+                    this.hasData = true;
+                    setTimeout(() => this._renderCharts(), 80);
+                }
             })
-            .catch(() => { this.loading = false; });
+            .catch(() => { this.loading = false; this.refreshing = false; });
         },
 
         _destroy(key) {
