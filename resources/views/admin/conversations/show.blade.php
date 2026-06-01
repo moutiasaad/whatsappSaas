@@ -138,8 +138,10 @@
                             <span class="cw-typing-dot"></span>
                             <span class="cw-typing-text" x-text="peerTypingName ? i18n.agent_typing.replace(':name', peerTypingName) : i18n.typing"></span>
                         </span>
-                        <span class="cw-dot-sep"></span>
-                        <span x-text="customerPhone"></span>
+                        <template x-if="customerPhone">
+                            <span class="cw-dot-sep"></span>
+                        </template>
+                        <span x-show="customerPhone" x-text="customerPhone"></span>
                         <span class="cw-wa-badge cw-wa-ok" x-show="numberStatus === 'exists'" :title="i18n.whatsapp"><i class="ri-whatsapp-line"></i></span>
                         <span class="cw-wa-badge cw-wa-fail" x-show="numberStatus === 'missing'" :title="i18n.not_on_whatsapp"><i class="ri-close-circle-line"></i></span>
                     </div>
@@ -373,19 +375,23 @@
             </div>
             <div class="cw-profile-name" x-text="customerName"></div>
             <div class="cw-profile-company" x-text="tenantName || @js(__('ui.conversation_show_page.workspace_contact'))"></div>
-            <div class="cw-profile-phone">
+            <div class="cw-profile-phone" x-show="customerPhone">
                 <i class="ri-phone-line"></i> <span x-text="customerPhone"></span>
             </div>
             <div class="cw-profile-actions">
                 <a :href="customerProfileUrl" class="cw-profile-btn" :title="i18n.profile">
                     <i class="ri-user-line"></i>
                 </a>
-                <a :href="`https://wa.me/${(customerPhone||'').replace(/^\+/, '')}`" target="_blank" class="cw-profile-btn" :title="i18n.whatsapp">
-                    <i class="ri-whatsapp-line"></i>
-                </a>
-                <a :href="`tel:${customerPhone}`" class="cw-profile-btn" :title="i18n.call">
-                    <i class="ri-phone-line"></i>
-                </a>
+                <template x-if="customerPhone">
+                    <a :href="`https://wa.me/${customerPhone.replace(/^\+/, '')}`" target="_blank" class="cw-profile-btn" :title="i18n.whatsapp">
+                        <i class="ri-whatsapp-line"></i>
+                    </a>
+                </template>
+                <template x-if="customerPhone">
+                    <a :href="`tel:${customerPhone}`" class="cw-profile-btn" :title="i18n.call">
+                        <i class="ri-phone-line"></i>
+                    </a>
+                </template>
             </div>
         </div>
 
