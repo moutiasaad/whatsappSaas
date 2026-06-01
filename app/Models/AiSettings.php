@@ -12,15 +12,17 @@ class AiSettings extends Model
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id', 'mode', 'system_prompt', 'escalation_keywords',
+        'tenant_id', 'mode', 'reply_language', 'suggestion_count',
+        'system_prompt', 'escalation_keywords',
         'monthly_token_quota', 'tokens_used_this_period', 'quota_reset_at',
     ];
 
     protected $casts = [
-        'escalation_keywords' => 'array',
-        'monthly_token_quota' => 'integer',
-        'tokens_used_this_period' => 'integer',
-        'quota_reset_at'      => 'datetime',
+        'escalation_keywords'    => 'array',
+        'monthly_token_quota'    => 'integer',
+        'tokens_used_this_period'=> 'integer',
+        'suggestion_count'       => 'integer',
+        'quota_reset_at'         => 'datetime',
     ];
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }

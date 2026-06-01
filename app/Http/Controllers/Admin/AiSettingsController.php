@@ -31,6 +31,8 @@ class AiSettingsController extends Controller
     {
         $data = $request->validate([
             'mode'                => 'required|in:off,suggestion,autonomous,hybrid',
+            'reply_language'      => 'nullable|string|max:10',
+            'suggestion_count'    => 'nullable|integer|min:1|max:5',
             'system_prompt'       => 'nullable|string|max:4000',
             'monthly_token_quota' => 'nullable|integer|min:0',
             'escalation_keywords' => 'nullable|string',
@@ -41,6 +43,8 @@ class AiSettingsController extends Controller
 
         $settings->update([
             'mode'                => $data['mode'],
+            'reply_language'      => $data['reply_language'] ?? 'auto',
+            'suggestion_count'    => $data['suggestion_count'] ?? 3,
             'system_prompt'       => $data['system_prompt'] ?? null,
             'monthly_token_quota' => $data['monthly_token_quota'] ?? 0,
             'escalation_keywords' => json_decode($data['escalation_keywords'] ?? '[]', true),
