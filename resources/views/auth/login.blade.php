@@ -339,12 +339,12 @@
     <div class="right-panel">
         <div class="login-box">
             <div class="login-header">
-                <div class="login-logo">
+                <a href="{{ route('landing') }}" class="login-logo" style="text-decoration:none">
                     <div class="logo-icon">
                         <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="44" height="44">
                     </div>
                     <span>wavadesk</span>
-                </div>
+                </a>
                 <form method="POST" action="{{ route('locale.update') }}">
                     @csrf
                     <input type="hidden" name="redirect" value="{{ url()->full() }}">
