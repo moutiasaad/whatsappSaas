@@ -27,6 +27,11 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 // Landing page
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 
+// Legal pages
+Route::get('/legal/terms',   [LandingController::class, 'terms'])->name('legal.terms');
+Route::get('/legal/privacy', [LandingController::class, 'privacy'])->name('legal.privacy');
+Route::get('/legal/cookies', [LandingController::class, 'cookies'])->name('legal.cookies');
+
 // Registration
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');

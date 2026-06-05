@@ -132,7 +132,9 @@ return [
     'footer_company'   => 'Company',
     'footer_contact'   => 'Contact',
     'footer_legal'     => 'Legal',
-    'footer_privacy'   => 'Privacy',
-    'footer_terms'     => 'Terms',
+    'footer_privacy'   => 'Privacy Policy',
+    'footer_terms'     => 'Terms of Service',
+    'footer_cookies'   => 'Cookie Policy',
     'footer_copyright' => '© :year :app — All rights reserved',
+    'legal_updated'    => 'Last updated: :date',
 ];

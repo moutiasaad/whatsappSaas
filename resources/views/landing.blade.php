@@ -607,8 +607,9 @@
             </div>
             <div class="footer-col">
                 <h4>{{ __('landing.footer_legal') }}</h4>
-                <a href="#">{{ __('landing.footer_privacy') }}</a>
-                <a href="#">{{ __('landing.footer_terms') }}</a>
+                <a href="{{ route('legal.privacy') }}">{{ __('landing.footer_privacy') }}</a>
+                <a href="{{ route('legal.terms') }}">{{ __('landing.footer_terms') }}</a>
+                <a href="{{ route('legal.cookies') }}">{{ __('landing.footer_cookies') }}</a>
             </div>
         </div>
         <div class="footer-bottom">

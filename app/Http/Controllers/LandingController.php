@@ -17,4 +17,19 @@ class LandingController extends Controller
 
         return view('landing', compact('plans'));
     }
+
+    public function terms()
+    {
+        return view('legal.terms');
+    }
+
+    public function privacy()
+    {
+        return view('legal.privacy');
+    }
+
+    public function cookies()
+    {
+        return view('legal.cookies');
+    }
 }

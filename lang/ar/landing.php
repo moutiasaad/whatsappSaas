@@ -132,7 +132,9 @@ return [
     'footer_company'   => 'الشركة',
     'footer_contact'   => 'التواصل',
     'footer_legal'     => 'القانوني',
-    'footer_privacy'   => 'الخصوصية',
-    'footer_terms'     => 'الشروط',
+    'footer_privacy'   => 'سياسة الخصوصية',
+    'footer_terms'     => 'شروط الاستخدام',
+    'footer_cookies'   => 'سياسة ملفات تعريف الارتباط',
     'footer_copyright' => '© :year :app — جميع الحقوق محفوظة',
+    'legal_updated'    => 'آخر تحديث: :date',
 ];
