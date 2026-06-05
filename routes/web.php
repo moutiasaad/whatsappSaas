@@ -37,6 +37,9 @@ Route::get('/legal/cookies', [LandingController::class, 'cookies'])->name('legal
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::get('/register/verify-otp', [RegisterController::class, 'showOtp'])->name('register.otp');
+    Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.otp.verify');
+    Route::post('/register/resend-otp', [RegisterController::class, 'resendOtp'])->name('register.otp.resend');
 });
 
 // Payment (Stripe)
