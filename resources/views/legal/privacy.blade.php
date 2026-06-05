@@ -1,7 +1,7 @@
 @extends('layouts.legal')
 
-@section('title', __('landing.footer_privacy'))
-@section('subtitle', __('landing.legal_updated', ['date' => 'June 1, 2025']))
+@section('title', $dbPage?->title ?? __('landing.footer_privacy'))
+@section('subtitle', __('landing.legal_updated', ['date' => $dbPage?->updated_at?->format('F j, Y') ?? 'June 1, 2025']))
 
 @section('toc')
 <a href="#controller">1. Data Controller</a>
@@ -19,6 +19,9 @@
 @endsection
 
 @section('content')
+@if($dbPage?->content)
+{!! $dbPage->content !!}
+@else
 <h2 id="controller">1. Data Controller</h2>
 <p>wavadesk operates the platform available at <strong>wavadesk.com</strong>. For the purposes of applicable data protection law (including the GDPR), wavadesk acts as the data controller for account and usage data, and as a data processor for the customer conversation data that Tenants process through the platform.</p>
 
@@ -100,4 +103,5 @@
 
 <h2 id="contact-pp">12. Contact</h2>
 <p>For privacy-related questions or to exercise your rights, contact our Data Protection team at <a href="mailto:privacy@wavadesk.com">privacy@wavadesk.com</a>.</p>
+@endif
 @endsection

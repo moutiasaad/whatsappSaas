@@ -1,7 +1,7 @@
 @extends('layouts.legal')
 
-@section('title', __('landing.footer_cookies'))
-@section('subtitle', __('landing.legal_updated', ['date' => 'June 1, 2025']))
+@section('title', $dbPage?->title ?? __('landing.footer_cookies'))
+@section('subtitle', __('landing.legal_updated', ['date' => $dbPage?->updated_at?->format('F j, Y') ?? 'June 1, 2025']))
 
 @section('toc')
 <a href="#what-are-cookies">1. What Are Cookies</a>
@@ -14,6 +14,9 @@
 @endsection
 
 @section('content')
+@if($dbPage?->content)
+{!! $dbPage->content !!}
+@else
 <h2 id="what-are-cookies">1. What Are Cookies?</h2>
 <p>Cookies are small text files that a website stores on your device when you visit. They allow the site to remember information about your visit — such as your login session or language preference — making the experience more consistent and useful.</p>
 <p>We also use similar technologies such as local storage and session storage for the same purposes.</p>
@@ -96,4 +99,5 @@
 
 <h2 id="contact-cookies">7. Contact</h2>
 <p>If you have questions about our use of cookies, please contact us at <a href="mailto:privacy@wavadesk.com">privacy@wavadesk.com</a>.</p>
+@endif
 @endsection

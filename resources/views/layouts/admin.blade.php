@@ -1608,6 +1608,11 @@
                 <i class="ri-pulse-line"></i>
                 <span>{{ __('ui.sidebar.system_health') }}</span>
             </a>
+
+            <a href="{{ route($panelPrefix . '.platform.legal-pages.index') }}" class="{{ $navActive([$panelPrefix . '.platform.legal-pages*']) }}">
+                <i class="ri-file-shield-2-line"></i>
+                <span>{{ __('ui.sidebar.legal_pages') }}</span>
+            </a>
             @endif
 
             <a href="{{ route($panelPrefix . '.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.conversations.*']) }}">

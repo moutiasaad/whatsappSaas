@@ -1,7 +1,7 @@
 @extends('layouts.legal')
 
-@section('title', __('landing.footer_terms'))
-@section('subtitle', __('landing.legal_updated', ['date' => 'June 1, 2025']))
+@section('title', $dbPage?->title ?? __('landing.footer_terms'))
+@section('subtitle', __('landing.legal_updated', ['date' => $dbPage?->updated_at?->format('F j, Y') ?? 'June 1, 2025']))
 
 @section('toc')
 <a href="#acceptance">1. Acceptance</a>
@@ -18,6 +18,9 @@
 @endsection
 
 @section('content')
+@if($dbPage?->content)
+{!! $dbPage->content !!}
+@else
 <h2 id="acceptance">1. Acceptance of Terms</h2>
 <p>By accessing or using wavadesk ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the Service. These terms apply to all users, including tenants, administrators, supervisors, and agents.</p>
 
@@ -92,4 +95,5 @@
 
 <h2 id="contact-terms">11. Contact</h2>
 <p>For questions about these Terms, please contact us at <a href="mailto:legal@wavadesk.com">legal@wavadesk.com</a>.</p>
+@endif
 @endsection

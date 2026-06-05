@@ -1242,6 +1242,7 @@ Toujours :
         'subscription_plans' => 'Forfaits d\'abonnement',
         'global_settings' => 'Paramètres globaux',
         'system_health' => 'État du système',
+        'legal_pages'   => 'Pages légales',
         'conversations' => 'Conversations',
         'customers' => 'Clients',
         'teams' => 'Équipes',

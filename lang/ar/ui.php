@@ -1170,6 +1170,7 @@ return [
         'subscription_plans' => 'خطط الاشتراك',
         'global_settings' => 'الإعدادات العامة',
         'system_health' => 'صحة النظام',
+        'legal_pages'   => 'الصفحات القانونية',
         'conversations' => 'المحادثات',
         'customers' => 'العملاء',
         'teams' => 'الفرق',

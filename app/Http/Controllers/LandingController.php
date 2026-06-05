@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LegalPage;
 use App\Models\Plan;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,16 +21,19 @@ class LandingController extends Controller
 
     public function terms()
     {
-        return view('legal.terms');
+        $dbPage = LegalPage::forSlug('terms', app()->getLocale());
+        return view('legal.terms', ['dbPage' => $dbPage]);
     }
 
     public function privacy()
     {
-        return view('legal.privacy');
+        $dbPage = LegalPage::forSlug('privacy', app()->getLocale());
+        return view('legal.privacy', ['dbPage' => $dbPage]);
     }
 
     public function cookies()
     {
-        return view('legal.cookies');
+        $dbPage = LegalPage::forSlug('cookies', app()->getLocale());
+        return view('legal.cookies', ['dbPage' => $dbPage]);
     }
 }

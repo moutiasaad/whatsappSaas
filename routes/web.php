@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\LegalPageController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\BillingController;
@@ -179,6 +180,11 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/platform/global-settings', [SuperAdminPlatformController::class, 'updateGlobalSettings'])->name('platform.global-settings.update');
                 Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
                 Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+
+                // Legal page editor
+                Route::get('/platform/legal-pages', [LegalPageController::class, 'index'])->name('platform.legal-pages.index');
+                Route::get('/platform/legal-pages/{slug}/{locale}/edit', [LegalPageController::class, 'edit'])->name('platform.legal-pages.edit');
+                Route::put('/platform/legal-pages/{slug}/{locale}', [LegalPageController::class, 'update'])->name('platform.legal-pages.update');
             });
         });
 };

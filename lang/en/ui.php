@@ -1241,6 +1241,7 @@ Always:
         'subscription_plans' => 'Subscription Plans',
         'global_settings' => 'Global Settings',
         'system_health' => 'System Health',
+        'legal_pages'   => 'Legal Pages',
         'conversations' => 'Conversations',
         'customers' => 'Customers',
         'teams' => 'Teams',
