@@ -123,15 +123,11 @@
             position: relative;
         }
 
-        .locale-switch-wrap {
-            position: absolute;
-            top: -2rem;
-            right: 0;
-        }
-
-        html[dir="rtl"] .locale-switch-wrap {
-            right: auto;
-            left: 0;
+        .login-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
         }
 
         .locale-select {
@@ -150,7 +146,6 @@
             display: flex;
             align-items: center;
             gap: .75rem;
-            margin-bottom: 2.5rem;
         }
 
         .logo-icon {
@@ -299,7 +294,8 @@
             h2, .sub { color: #f1f5f9; }
             label { color: #cbd5e1; }
             .login-logo span { color: #f1f5f9; }
-            .locale-select { background: #1a2332; border-color: rgba(255,255,255,.12); color: #f1f5f9; }
+            .locale-select { background: #1a2332; border-color: rgba(255,255,255,.15); color: #f1f5f9; }
+            .login-header { border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: 1.5rem; margin-bottom: 2rem; }
             input[type=email], input[type=password], input[type=text] {
                 background: #1a2332; border-color: rgba(255,255,255,.1); color: #f1f5f9;
             }
@@ -342,7 +338,13 @@
     {{-- Right: Login Form --}}
     <div class="right-panel">
         <div class="login-box">
-            <div class="locale-switch-wrap">
+            <div class="login-header">
+                <div class="login-logo">
+                    <div class="logo-icon">
+                        <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="44" height="44">
+                    </div>
+                    <span>wavadesk</span>
+                </div>
                 <form method="POST" action="{{ route('locale.update') }}">
                     @csrf
                     <input type="hidden" name="redirect" value="{{ url()->full() }}">
@@ -354,13 +356,6 @@
                         @endforeach
                     </select>
                 </form>
-            </div>
-
-            <div class="login-logo">
-                <div class="logo-icon">
-                    <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="44" height="44">
-                </div>
-                <span>wavadesk</span>
             </div>
 
             <h2>{{ $heading ?? __('auth.login.welcome_back') }}</h2>
