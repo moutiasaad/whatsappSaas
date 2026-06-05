@@ -198,7 +198,7 @@
         .how-desc  { font-size:14px; color:var(--muted); line-height:1.6; }
 
         /* ── faq ── */
-        .faq-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:56px; }
+        .faq-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:56px; align-items:start; }
         @media(max-width:720px) { .faq-grid { grid-template-columns:1fr; } }
         .faq-item { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
         .faq-q { width:100%; background:none; border:none; padding:20px 22px; text-align:left; font-size:15px; font-weight:600; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; font-family:inherit; }
@@ -465,13 +465,13 @@
                     @if($plan->max_users)
                     <div class="plan-feat">
                         <div class="plan-feat-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-                        <span><strong>{{ $plan->max_users }}</strong> {{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}</span>
+                        <span>{{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}</span>
                     </div>
                     @endif
                     @if($plan->max_instances)
                     <div class="plan-feat">
                         <div class="plan-feat-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-                        <span><strong>{{ $plan->max_instances }}</strong> {{ $plan->max_instances > 1 ? __('landing.limit_instances_pl', ['n' => $plan->max_instances]) : __('landing.limit_instances', ['n' => 1]) }}</span>
+                        <span>{{ $plan->max_instances > 1 ? __('landing.limit_instances_pl', ['n' => $plan->max_instances]) : __('landing.limit_instances', ['n' => 1]) }}</span>
                     </div>
                     @endif
                     @if($plan->max_conversations_per_month)
