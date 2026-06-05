@@ -22,25 +22,28 @@ class DashboardController extends Controller
             return $this->superAdminDashboard();
         }
 
+        $tenantId = $tenant->id;
+
         $stats = [
-            'total_conversations' => Conversation::count(),
-            'conversations_today' => Conversation::whereDate('created_at', today())->count(),
-            'pool_count'          => Conversation::pool()->count(),
-            'agents_online'       => User::where('tenant_id', $tenant->id)->where('role', 'agent')->where('is_active', true)->count(),
-            'total_agents'        => User::where('tenant_id', $tenant->id)->where('role', 'agent')->count(),
-            'messages_today'      => Message::whereDate('created_at', today())->count(),
-            'messages_growth'     => $this->messagesGrowth(),
+            'total_conversations' => Conversation::where('tenant_id', $tenantId)->count(),
+            'conversations_today' => Conversation::where('tenant_id', $tenantId)->whereDate('created_at', today())->count(),
+            'pool_count'          => Conversation::where('tenant_id', $tenantId)->pool()->count(),
+            'agents_online'       => User::where('tenant_id', $tenantId)->where('role', 'agent')->where('is_active', true)->count(),
+            'total_agents'        => User::where('tenant_id', $tenantId)->where('role', 'agent')->count(),
+            'messages_today'      => Message::whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId))->whereDate('created_at', today())->count(),
+            'messages_growth'     => $this->messagesGrowth($tenantId),
         ];
 
         $activeConversations = Conversation::with(['customer', 'instance', 'ownerAgent'])
+            ->where('tenant_id', $tenantId)
             ->whereIn('state', ['pool', 'claimed'])
             ->orderByDesc('last_message_at')
             ->limit(8)
             ->get();
 
-        $instances = WhatsAppInstance::orderBy('name')->get();
+        $instances = WhatsAppInstance::where('tenant_id', $tenantId)->orderBy('name')->get();
 
-        $teamLoad = Team::withCount([
+        $teamLoad = Team::where('tenant_id', $tenantId)->withCount([
             'conversations as active_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
         ])->get()->map(function ($t) {
             $t->capacity = max(1, $t->users()->where('role', 'agent')->count() * 5);
@@ -48,6 +51,7 @@ class DashboardController extends Controller
         });
 
         $recentEvents = ConversationEvent::with('actor')
+            ->whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId))
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -81,10 +85,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function messagesGrowth(): int
+    private function messagesGrowth(int $tenantId): int
     {
-        $today     = Message::whereDate('created_at', today())->count();
-        $yesterday = Message::whereDate('created_at', today()->subDay())->count();
+        $base      = Message::whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId));
+        $today     = (clone $base)->whereDate('created_at', today())->count();
+        $yesterday = (clone $base)->whereDate('created_at', today()->subDay())->count();
         if ($yesterday === 0) return 0;
         return (int) round((($today - $yesterday) / $yesterday) * 100);
     }
