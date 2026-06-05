@@ -10,6 +10,8 @@ return [
         'remember_me' => 'Se souvenir de moi',
         'forgot_password' => 'Mot de passe oublié ?',
         'secure_access' => 'Accès sécurisé · Toutes les données sont chiffrées en transit',
+        'no_account'    => "Vous n'avez pas de compte ?",
+        'sign_up_here'  => "S'inscrire ici",
         'placeholder_email' => 'vous@entreprise.com',
         'marketing' => [
             'badge' => 'Plateforme support client WhatsApp',

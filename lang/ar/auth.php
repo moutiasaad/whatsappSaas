@@ -10,6 +10,8 @@ return [
         'remember_me' => 'تذكرني',
         'forgot_password' => 'هل نسيت كلمة المرور؟',
         'secure_access' => 'دخول آمن · جميع البيانات مشفرة أثناء النقل',
+        'no_account'    => 'ليس لديك حساب؟',
+        'sign_up_here'  => 'سجّل هنا',
         'placeholder_email' => 'you@company.com',
         'marketing' => [
             'badge' => 'منصة دعم عملاء واتساب',

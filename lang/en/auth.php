@@ -10,6 +10,8 @@ return [
         'remember_me' => 'Remember me',
         'forgot_password' => 'Forgot password?',
         'secure_access' => 'Secure access · All data encrypted in transit',
+        'no_account'    => "Don't have an account?",
+        'sign_up_here'  => 'Sign up here',
         'placeholder_email' => 'you@company.com',
         'marketing' => [
             'badge' => 'WhatsApp Customer Support Platform',

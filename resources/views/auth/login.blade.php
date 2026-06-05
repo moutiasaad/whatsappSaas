@@ -403,6 +403,11 @@
             <div class="divider">
                 {{ __('auth.login.secure_access') }}
             </div>
+
+            <div style="margin-top:1.25rem;text-align:center;font-size:.875rem;color:#64748b">
+                {{ __('auth.login.no_account') }}
+                <a href="{{ route('register') }}" style="color:var(--brand);font-weight:600;text-decoration:none;margin-left:.25rem">{{ __('auth.login.sign_up_here') }}</a>
+            </div>
         </div>
     </div>
 
