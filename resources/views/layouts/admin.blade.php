@@ -486,18 +486,6 @@
             border: 1.5px solid #fff;
         }
 
-        .topbar-avatar {
-            width: 34px; height: 34px;
-            border-radius: var(--radius-full);
-            background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-            display: flex; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 700; color: #fff;
-            cursor: pointer;
-            overflow: hidden;
-            border: 2px solid var(--brand-light);
-        }
-
-        .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Notification badge on bell */
         .notif-badge {
@@ -1924,10 +1912,6 @@
                     </div>
                 </div>
 
-                <div class="topbar-avatar" title="{{ Auth::user()->name ?? '' }}">
-                    <img src="{{ Auth::user()?->avatar_url }}" alt="" onerror="this.style.display='none'">
-                    {{ strtoupper(substr(Auth::user()?->name ?? 'U', 0, 1)) }}
-                </div>
             </div>
         </header>
 

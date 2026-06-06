@@ -39,7 +39,8 @@ class KnowledgeController extends Controller
         ]);
         AuditLog::record('knowledge.created', $entry);
 
-        return redirect()->route('admin.knowledge.index')
+        $prefix = auth()->user()->routeNamePrefix();
+        return redirect()->route($prefix . '.knowledge.index')
             ->with('success', __('ui.controller_messages.knowledge_created'));
     }
 
@@ -60,7 +61,8 @@ class KnowledgeController extends Controller
         $entry->update($data + ['is_active' => $request->boolean('is_active')]);
         AuditLog::record('knowledge.updated', $entry);
 
-        return redirect()->route('admin.knowledge.index')
+        $prefix = auth()->user()->routeNamePrefix();
+        return redirect()->route($prefix . '.knowledge.index')
             ->with('success', __('ui.controller_messages.knowledge_updated'));
     }
 
@@ -68,7 +70,8 @@ class KnowledgeController extends Controller
     {
         AuditLog::record('knowledge.deleted', $entry, ['title' => $entry->title]);
         $entry->delete();
-        return redirect()->route('admin.knowledge.index')
+        $prefix = auth()->user()->routeNamePrefix();
+        return redirect()->route($prefix . '.knowledge.index')
             ->with('success', __('ui.controller_messages.knowledge_deleted'));
     }
 }
