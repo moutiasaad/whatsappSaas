@@ -344,43 +344,6 @@ $sampleTests = [
                     </div>
                 </div>
 
-                {{-- Token Quota --}}
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">{{ __('ui.ai_settings_page.token_quota') }}</div>
-                            <div class="card-subtitle">{{ __('ui.ai_settings_page.monthly_usage_limit') }}</div>
-                        </div>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.ai_settings_page.monthly_token_limit') }}</label>
-                            <input type="number" name="monthly_token_quota" min="0"
-                                   value="{{ old('monthly_token_quota', $settings->monthly_token_quota) }}"
-                                   class="form-control @error('monthly_token_quota') error @enderror">
-                            @error('monthly_token_quota') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-hint">{{ __('ui.ai_settings_page.unlimited_hint') }}</div>
-                        </div>
-
-                        @if($settings->monthly_token_quota > 0)
-                        <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;border:1px solid var(--card-border);">
-                            <div style="display:flex;justify-content:space-between;font-size:.8125rem;margin-bottom:.5rem;">
-                                <span style="color:var(--text-secondary);">{{ __('ui.ai_settings_page.this_period') }}</span>
-                                <span style="font-weight:700;">{{ $settings->quotaPercentage() }}%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill {{ $settings->quotaPercentage() > 90 ? 'danger' : ($settings->quotaPercentage() > 70 ? 'warning' : '') }}"
-                                     style="width:{{ $settings->quotaPercentage() }}%"></div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;margin-top:.5rem;font-size:.75rem;color:var(--text-muted);">
-                                <span>{{ number_format($settings->tokens_used_this_period) }} {{ __('ui.ai_settings_page.used') }}</span>
-                                <span>{{ __('ui.ai_settings_page.resets_on', ['date' => $settings->quota_reset_at?->format('M j')]) }}</span>
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-
                 {{-- ── Test Sandbox ────────────────────────────────────────── --}}
                 <div class="card" x-show="selectedMode !== 'off'" x-data="aiTest()">
                     <div class="card-header">
