@@ -2551,7 +2551,7 @@
 
     <script>
     /* ====================================================
-       NOTIFICATION BELL
+       NOTIFICATION BELL — real-time via Reverb + AJAX fallback
     ==================================================== */
     (function() {
         const btn   = document.getElementById('notifBtn');
@@ -2561,23 +2561,40 @@
 
         if (!btn || !panel) return;
 
-        const typeIcons = { manual: 'ri-notification-3-line', renewal: 'ri-refresh-line', system: 'ri-information-line' };
+        const typeIcons = {
+            manual:  'ri-notification-3-line',
+            renewal: 'ri-refresh-line',
+            system:  'ri-information-line',
+        };
+        let unreadCount = 0;
+
+        /* ---- helpers ---- */
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
 
         function timeAgo(iso) {
             const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
-            if (diff < 60)   return '{{ __('ui.notifications_page.just_now') }}';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm';
+            if (diff < 60)    return '{{ __('ui.notifications_page.just_now') }}';
+            if (diff < 3600)  return Math.floor(diff / 60) + 'm';
             if (diff < 86400) return Math.floor(diff / 3600) + 'h';
             return Math.floor(diff / 86400) + 'd';
         }
 
-        function renderNotifications(items) {
-            if (!items.length) {
-                list.innerHTML = '<div class="notif-empty"><i class="ri-notification-off-line"></i>{{ __('ui.notifications_page.empty') }}</div>';
-                return;
+        function setBadge(count) {
+            unreadCount = Math.max(0, count);
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
             }
-            list.innerHTML = items.map(n => `
-                <div class="notif-item ${n.read_at ? '' : 'unread'}" data-id="${n.id}" onclick="notifMarkRead(${n.id}, this)">
+        }
+
+        function buildItem(n) {
+            return `
+                <div class="notif-item ${n.read_at ? '' : 'unread'}" data-id="${n.id}"
+                     onclick="notifMarkRead(${n.id}, this)">
                     <div class="notif-item-icon ${n.type}">
                         <i class="${typeIcons[n.type] || typeIcons.manual}"></i>
                     </div>
@@ -2587,27 +2604,25 @@
                         <div class="notif-item-time">${timeAgo(n.created_at)}</div>
                     </div>
                     ${!n.read_at ? '<div class="notif-unread-dot"></div>' : ''}
-                </div>
-            `).join('');
+                </div>`;
         }
 
-        function escapeHtml(str) {
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        function renderList(items) {
+            if (!items.length) {
+                list.innerHTML = '<div class="notif-empty"><i class="ri-notification-off-line"></i>{{ __('ui.notifications_page.empty') }}</div>';
+                return;
+            }
+            list.innerHTML = items.map(buildItem).join('');
         }
 
+        /* ---- AJAX fetch ---- */
         async function fetchCount() {
             try {
                 const r = await fetch('/api/notifications/unread-count', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const d = await r.json();
-                const count = d.count || 0;
-                if (count > 0) {
-                    badge.textContent = count > 99 ? '99+' : count;
-                    badge.style.display = 'flex';
-                } else {
-                    badge.style.display = 'none';
-                }
+                setBadge(d.count || 0);
             } catch (e) { /* silent */ }
         }
 
@@ -2618,59 +2633,107 @@
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const d = await r.json();
-                renderNotifications(d.data || []);
+                renderList(d.data || []);
             } catch (e) {
                 list.innerHTML = '<div class="notif-empty"><i class="ri-error-warning-line"></i>Failed to load</div>';
             }
         }
 
+        /* ---- mark read ---- */
         window.notifMarkRead = async function(id, el) {
-            if (el.classList.contains('unread')) {
-                el.classList.remove('unread');
-                const dot = el.querySelector('.notif-unread-dot');
-                if (dot) dot.remove();
-                try {
-                    await fetch(`/api/notifications/${id}/read`, {
-                        method: 'PATCH',
-                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-                    fetchCount();
-                } catch (e) { /* silent */ }
-            }
+            if (!el.classList.contains('unread')) return;
+            el.classList.remove('unread');
+            el.querySelector('.notif-unread-dot')?.remove();
+            setBadge(unreadCount - 1);
+            try {
+                await fetch(`/api/notifications/${id}/read`, {
+                    method:  'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN':     document.querySelector('meta[name=csrf-token]')?.content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+            } catch (e) { /* silent */ }
         };
 
         window.notifMarkAllRead = async function() {
             list.querySelectorAll('.notif-item.unread').forEach(el => {
                 el.classList.remove('unread');
-                const dot = el.querySelector('.notif-unread-dot');
-                if (dot) dot.remove();
+                el.querySelector('.notif-unread-dot')?.remove();
             });
-            badge.style.display = 'none';
+            setBadge(0);
             try {
                 await fetch('/api/notifications/read-all', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'X-Requested-With': 'XMLHttpRequest' }
+                    method:  'POST',
+                    headers: {
+                        'X-CSRF-TOKEN':     document.querySelector('meta[name=csrf-token]')?.content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                 });
             } catch (e) { /* silent */ }
         };
 
-        // Toggle panel
+        /* ---- real-time: prepend incoming notification ---- */
+        function onNotificationCreated(data) {
+            // Bump badge
+            setBadge(unreadCount + 1);
+
+            // Prepend to open panel list
+            const emptyEl = list.querySelector('.notif-empty');
+            if (emptyEl) emptyEl.remove();
+            list.insertAdjacentHTML('afterbegin', buildItem(data));
+
+            // Keep max 20 items in DOM
+            const items = list.querySelectorAll('.notif-item');
+            if (items.length > 20) items[items.length - 1].remove();
+
+            // Toast
+            if (typeof showToast === 'function') {
+                showToast('success', escapeHtml(data.title), escapeHtml((data.body || '').substring(0, 80)));
+            }
+        }
+
+        /* ---- WebSocket subscription ---- */
+        function subscribeEcho() {
+            if (!window.Echo) return;
+            window.Echo
+                .private('user.{{ Auth::id() }}')
+                .listen('.notification.created', function(data) {
+                    onNotificationCreated(data);
+                });
+        }
+
+        // Subscribe when Echo connects (may already be connected on DOMContentLoaded)
+        if (window._echoConnected) {
+            subscribeEcho();
+        } else {
+            window._echoStateListeners = window._echoStateListeners || [];
+            window._echoStateListeners.push(function(connected) {
+                if (connected) subscribeEcho();
+            });
+        }
+
+        // Fallback: also try after DOMContentLoaded in case the listener fires before Echo init
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(subscribeEcho, 800);
+        });
+
+        /* ---- toggle panel ---- */
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             const open = panel.classList.toggle('open');
             if (open) fetchNotifications();
         });
 
-        // Close on outside click
         document.addEventListener('click', function(e) {
             if (!panel.contains(e.target) && e.target !== btn) {
                 panel.classList.remove('open');
             }
         });
 
-        // Poll unread count every 60 seconds
+        /* ---- initial count fetch + poll fallback every 5 min ---- */
         fetchCount();
-        setInterval(fetchCount, 60000);
+        setInterval(fetchCount, 300000);
     })();
     </script>
 </body>

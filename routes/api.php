@@ -20,6 +20,7 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
         Route::get('/notifications', [NotificationApiController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationApiController::class, 'unreadCount']);
+        Route::get('/notifications/history', [NotificationApiController::class, 'history']);
         Route::patch('/notifications/{id}/read', [NotificationApiController::class, 'markRead']);
         Route::post('/notifications/read-all', [NotificationApiController::class, 'markAllRead']);
     });

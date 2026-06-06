@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\NotificationCreated;
 use App\Models\AppNotification;
 use App\Models\Tenant;
 use App\Models\User;
@@ -43,7 +44,7 @@ class SendRenewalReminders extends Command
                     $planName = $tenant->plan?->name ?? 'your plan';
                     $expiryDate = $tenant->subscription_ends_at->format('d/m/Y');
 
-                    AppNotification::create([
+                    $notif = AppNotification::create([
                         'tenant_id' => $tenant->id,
                         'user_id'   => $admin->id,
                         'sender_id' => null,
@@ -56,6 +57,7 @@ class SendRenewalReminders extends Command
                             'expiry_date'    => $expiryDate,
                         ],
                     ]);
+                    broadcast(new NotificationCreated($notif));
                 }
             }
 

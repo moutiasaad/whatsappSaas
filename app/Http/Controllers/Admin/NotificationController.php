@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\NotificationCreated;
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\Tenant;
@@ -82,7 +83,7 @@ class NotificationController extends Controller
             }
 
             foreach ($recipients as $recipient) {
-                AppNotification::create([
+                $notif = AppNotification::create([
                     'tenant_id' => $recipient->tenant_id,
                     'user_id'   => $recipient->id,
                     'sender_id' => $sender->id,
@@ -90,10 +91,16 @@ class NotificationController extends Controller
                     'title'     => $data['title'],
                     'body'      => $data['body'],
                 ]);
+                broadcast(new NotificationCreated($notif));
             }
 
-            $count = $recipients->count();
-            return back()->with('success', __('ui.notifications_page.sent_to_all', ['count' => $count]));
+            $count     = $recipients->count();
+            $message   = __('ui.notifications_page.sent_to_all', ['count' => $count]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => true, 'message' => $message, 'count' => $count]);
+            }
+            return back()->with('success', $message);
         }
 
         // Specific user
@@ -103,7 +110,7 @@ class NotificationController extends Controller
             abort(403);
         }
 
-        AppNotification::create([
+        $notif = AppNotification::create([
             'tenant_id' => $targetUser->tenant_id,
             'user_id'   => $targetUser->id,
             'sender_id' => $sender->id,
@@ -111,7 +118,13 @@ class NotificationController extends Controller
             'title'     => $data['title'],
             'body'      => $data['body'],
         ]);
+        broadcast(new NotificationCreated($notif));
 
-        return back()->with('success', __('ui.notifications_page.sent_to_user', ['name' => $targetUser->name]));
+        $message = __('ui.notifications_page.sent_to_user', ['name' => $targetUser->name]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => $message]);
+        }
+        return back()->with('success', $message);
     }
 }

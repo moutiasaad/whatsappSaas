@@ -30,9 +30,14 @@ Broadcast::channel('tenant.{tenant}.conversation.{conv}', function ($user, $tena
     return $conversation->owner_agent_id === $user->id;
 });
 
-// Personal notifications.
+// Personal notifications (tenant-scoped).
 Broadcast::channel('tenant.{tenant}.user.{userId}', function ($user, $tenant, $userId) {
     return (string) $user->tenant_id === (string) $tenant && (string) $user->id === (string) $userId;
+});
+
+// Personal notification channel — tenant-agnostic, works for super_admin (tenant_id = null).
+Broadcast::channel('user.{userId}', function ($user, $userId) {
+    return (string) $user->id === (string) $userId;
 });
 
 // Instance health updates (admins only).

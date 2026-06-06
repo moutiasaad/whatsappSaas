@@ -40,6 +40,33 @@ class NotificationApiController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function history(Request $request)
+    {
+        $user = $request->user();
+
+        $query = \App\Models\AppNotification::with('sender:id,name')
+            ->when(!$user->isSuperAdmin(), fn($q) => $q->where('tenant_id', $user->tenant_id))
+            ->whereNotNull('sender_id')
+            ->latest();
+
+        $paginated = $query->paginate(15);
+
+        $paginated->getCollection()->transform(function ($n) {
+            return [
+                'id'          => $n->id,
+                'title'       => $n->title,
+                'body_preview'=> \Illuminate\Support\Str::limit($n->body, 80),
+                'type'        => $n->type,
+                'type_label'  => ucfirst($n->type),
+                'sender_name' => $n->sender?->name ?? 'System',
+                'date'        => $n->created_at->diffForHumans(),
+                'created_at'  => $n->created_at->toISOString(),
+            ];
+        });
+
+        return response()->json($paginated);
+    }
+
     public function tenantUsers(Request $request, int $tenantId)
     {
         if (!$request->user()->isSuperAdmin()) {
