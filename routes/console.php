@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\SendRenewalReminders;
 use App\Jobs\PollInstanceHealth;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -11,3 +12,6 @@ Artisan::command('inspire', function () {
 
 // Poll all WhatsApp instance health every 2 minutes
 Schedule::job(new PollInstanceHealth)->everyTwoMinutes();
+
+// Send renewal reminder notifications daily at 8am
+Schedule::command(SendRenewalReminders::class)->dailyAt('08:00');

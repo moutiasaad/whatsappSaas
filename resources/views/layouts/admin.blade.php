@@ -499,6 +499,113 @@
 
         .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
+        /* Notification badge on bell */
+        .notif-badge {
+            position: absolute;
+            top: 4px; right: 4px;
+            min-width: 16px; height: 16px;
+            background: var(--red);
+            border-radius: var(--radius-full);
+            border: 1.5px solid #fff;
+            font-size: 9px; font-weight: 700; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+            padding: 0 3px;
+        }
+
+        /* Notification dropdown panel */
+        .notif-wrap { position: relative; }
+        .notif-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg, 10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,.12);
+            z-index: 1100;
+            overflow: hidden;
+            display: none;
+        }
+        .notif-panel.open { display: block; }
+        html[dir="rtl"] .notif-panel { right: auto; left: 0; }
+
+        .notif-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .notif-panel-header-title {
+            font-size: .875rem; font-weight: 600; color: var(--text-primary);
+        }
+        .notif-mark-all {
+            font-size: .75rem; color: var(--brand);
+            background: none; border: none; cursor: pointer; padding: 0;
+        }
+        .notif-mark-all:hover { text-decoration: underline; }
+
+        .notif-list { max-height: 340px; overflow-y: auto; }
+        .notif-item {
+            display: flex; gap: .75rem; align-items: flex-start;
+            padding: .875rem 1rem;
+            border-bottom: 1px solid var(--card-border);
+            cursor: default;
+            transition: background .15s;
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item.unread { background: rgba(var(--brand-rgb, 16,185,129), .04); }
+        .notif-item:hover { background: var(--page-bg); }
+
+        .notif-item-icon {
+            width: 34px; height: 34px; border-radius: var(--radius-full);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; flex-shrink: 0;
+        }
+        .notif-item-icon.manual  { background: #ecfdf5; color: #059669; }
+        .notif-item-icon.renewal { background: #fffbeb; color: #d97706; }
+        .notif-item-icon.system  { background: #eff6ff; color: #3b82f6; }
+
+        .notif-item-body { flex: 1; min-width: 0; }
+        .notif-item-title {
+            font-size: .8125rem; font-weight: 600; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .notif-item-body-text {
+            font-size: .75rem; color: var(--text-secondary);
+            margin-top: 2px;
+            display: -webkit-box; -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .notif-item-time {
+            font-size: .6875rem; color: var(--text-muted);
+            margin-top: 4px; white-space: nowrap;
+        }
+        .notif-unread-dot {
+            width: 7px; height: 7px;
+            background: var(--brand); border-radius: 50%;
+            flex-shrink: 0; margin-top: 6px;
+        }
+
+        .notif-panel-footer {
+            padding: .625rem 1rem;
+            border-top: 1px solid var(--card-border);
+            text-align: center;
+        }
+        .notif-panel-footer a {
+            font-size: .8125rem; color: var(--brand);
+            text-decoration: none;
+        }
+        .notif-panel-footer a:hover { text-decoration: underline; }
+
+        .notif-empty {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: .875rem;
+        }
+        .notif-empty i { font-size: 2rem; display: block; margin-bottom: .5rem; opacity: .5; }
+
         /* Impersonation banner */
         .impersonation-banner {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
@@ -1679,6 +1786,11 @@
                 </a>
             @endif
 
+            <a href="{{ route($panelPrefix . '.notifications.index') }}" class="{{ $navActive([$panelPrefix . '.notifications.*']) }}">
+                <i class="ri-notification-3-line"></i>
+                <span>{{ __('ui.sidebar.notifications') }}</span>
+            </a>
+
             <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
 
             @if(Auth::user()->isAdmin() || Auth::user()->isSuperAdmin())
@@ -1783,9 +1895,34 @@
                     @endif
                 </a>
 
-                <button class="topbar-btn" id="notifBtn" title="{{ __('ui.notifications') }}">
-                    <i class="ri-notification-3-line"></i>
-                </button>
+                {{-- Notification bell --}}
+                <div class="notif-wrap" id="notifWrap">
+                    <button class="topbar-btn" id="notifBtn" title="{{ __('ui.notifications') }}">
+                        <i class="ri-notification-3-line"></i>
+                        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel">
+                        <div class="notif-panel-header">
+                            <span class="notif-panel-header-title">{{ __('ui.notifications') }}</span>
+                            <button class="notif-mark-all" id="notifMarkAll" onclick="notifMarkAllRead()">
+                                {{ __('ui.notifications_page.mark_all_read') }}
+                            </button>
+                        </div>
+                        <div class="notif-list" id="notifList">
+                            <div class="notif-empty">
+                                <i class="ri-loader-4-line"></i>
+                                {{ __('ui.notifications_page.loading') }}
+                            </div>
+                        </div>
+                        <div class="notif-panel-footer">
+                            @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
+                                <a href="{{ route($panelPrefix . '.notifications.index') }}">
+                                    {{ __('ui.notifications_page.manage') }}
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
 
                 <div class="topbar-avatar" title="{{ Auth::user()->name ?? '' }}">
                     <img src="{{ Auth::user()?->avatar_url }}" alt="" onerror="this.style.display='none'">
@@ -2411,5 +2548,130 @@
 
     @stack('scripts')
     @livewireScripts
+
+    <script>
+    /* ====================================================
+       NOTIFICATION BELL
+    ==================================================== */
+    (function() {
+        const btn   = document.getElementById('notifBtn');
+        const panel = document.getElementById('notifPanel');
+        const badge = document.getElementById('notifBadge');
+        const list  = document.getElementById('notifList');
+
+        if (!btn || !panel) return;
+
+        const typeIcons = { manual: 'ri-notification-3-line', renewal: 'ri-refresh-line', system: 'ri-information-line' };
+
+        function timeAgo(iso) {
+            const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (diff < 60)   return '{{ __('ui.notifications_page.just_now') }}';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+            return Math.floor(diff / 86400) + 'd';
+        }
+
+        function renderNotifications(items) {
+            if (!items.length) {
+                list.innerHTML = '<div class="notif-empty"><i class="ri-notification-off-line"></i>{{ __('ui.notifications_page.empty') }}</div>';
+                return;
+            }
+            list.innerHTML = items.map(n => `
+                <div class="notif-item ${n.read_at ? '' : 'unread'}" data-id="${n.id}" onclick="notifMarkRead(${n.id}, this)">
+                    <div class="notif-item-icon ${n.type}">
+                        <i class="${typeIcons[n.type] || typeIcons.manual}"></i>
+                    </div>
+                    <div class="notif-item-body">
+                        <div class="notif-item-title">${escapeHtml(n.title)}</div>
+                        <div class="notif-item-body-text">${escapeHtml(n.body)}</div>
+                        <div class="notif-item-time">${timeAgo(n.created_at)}</div>
+                    </div>
+                    ${!n.read_at ? '<div class="notif-unread-dot"></div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        async function fetchCount() {
+            try {
+                const r = await fetch('/api/notifications/unread-count', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const d = await r.json();
+                const count = d.count || 0;
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) { /* silent */ }
+        }
+
+        async function fetchNotifications() {
+            list.innerHTML = '<div class="notif-empty"><i class="ri-loader-4-line"></i>{{ __('ui.notifications_page.loading') }}</div>';
+            try {
+                const r = await fetch('/api/notifications', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const d = await r.json();
+                renderNotifications(d.data || []);
+            } catch (e) {
+                list.innerHTML = '<div class="notif-empty"><i class="ri-error-warning-line"></i>Failed to load</div>';
+            }
+        }
+
+        window.notifMarkRead = async function(id, el) {
+            if (el.classList.contains('unread')) {
+                el.classList.remove('unread');
+                const dot = el.querySelector('.notif-unread-dot');
+                if (dot) dot.remove();
+                try {
+                    await fetch(`/api/notifications/${id}/read`, {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    fetchCount();
+                } catch (e) { /* silent */ }
+            }
+        };
+
+        window.notifMarkAllRead = async function() {
+            list.querySelectorAll('.notif-item.unread').forEach(el => {
+                el.classList.remove('unread');
+                const dot = el.querySelector('.notif-unread-dot');
+                if (dot) dot.remove();
+            });
+            badge.style.display = 'none';
+            try {
+                await fetch('/api/notifications/read-all', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'X-Requested-With': 'XMLHttpRequest' }
+                });
+            } catch (e) { /* silent */ }
+        };
+
+        // Toggle panel
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const open = panel.classList.toggle('open');
+            if (open) fetchNotifications();
+        });
+
+        // Close on outside click
+        document.addEventListener('click', function(e) {
+            if (!panel.contains(e.target) && e.target !== btn) {
+                panel.classList.remove('open');
+            }
+        });
+
+        // Poll unread count every 60 seconds
+        fetchCount();
+        setInterval(fetchCount, 60000);
+    })();
+    </script>
 </body>
 </html>

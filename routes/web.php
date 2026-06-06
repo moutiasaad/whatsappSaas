@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\LegalPageController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
@@ -141,6 +142,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Settings
                 Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
                 Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+
+                // Notifications
+                Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+                Route::post('/notifications', [NotificationController::class, 'send'])->name('notifications.send');
             });
 
             // Knowledge Base, AI settings, Saved Replies (tenant admin only)

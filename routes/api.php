@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AgentPresenceController;
+use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\InstanceController;
@@ -14,6 +15,18 @@ Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'ha
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(function () {
+
+    // Notifications (all roles)
+    Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
+        Route::get('/notifications', [NotificationApiController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationApiController::class, 'unreadCount']);
+        Route::patch('/notifications/{id}/read', [NotificationApiController::class, 'markRead']);
+        Route::post('/notifications/read-all', [NotificationApiController::class, 'markAllRead']);
+    });
+
+    // Notification tenant-user lookup (super_admin only — checked inside controller)
+    Route::get('/notifications/tenant-users/{tenantId}', [NotificationApiController::class, 'tenantUsers'])
+        ->middleware('auth');
 
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
         // Conversations
