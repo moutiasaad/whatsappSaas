@@ -38,7 +38,7 @@
          :style="refreshing ? 'opacity:.45;pointer-events:none;transition:opacity .15s' : 'transition:opacity .15s'">
 
         {{-- KPI stat cards --}}
-        <div class="stats-grid" style="margin-bottom:1.5rem">
+        <div class="stats-grid" style="margin-bottom:1.5rem;grid-template-columns:repeat(3,1fr)">
             <div class="stat-card">
                 <div class="stat-card-icon"><i class="ri-message-3-line"></i></div>
                 <div class="stat-card-value" x-text="kpi.total_conversations ?? '—'"></div>
