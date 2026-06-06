@@ -5,6 +5,7 @@ return [
     'language' => 'Language',
     'logout' => 'Logout',
     'processing' => 'Processing...',
+    'page' => 'Page',
     'confirm_action' => 'Confirm Action',
     'confirm_deletion' => 'Confirm Deletion',
     'cancel' => 'Cancel',
