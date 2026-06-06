@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;max-width:900px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:stretch;">
 
         {{-- ── Change Password ─────────────────────────────────────────── --}}
         <div class="card" id="password">
