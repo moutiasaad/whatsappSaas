@@ -139,6 +139,9 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Audit Log
                 Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
 
+                // Billing — accessible to both admin and super_admin (controller gates by role)
+                Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+
                 // Settings
                 Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
                 Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
@@ -187,7 +190,6 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/platform/global-settings/edit', [SuperAdminPlatformController::class, 'editGlobalSettings'])->name('platform.global-settings.edit');
                 Route::put('/platform/global-settings', [SuperAdminPlatformController::class, 'updateGlobalSettings'])->name('platform.global-settings.update');
                 Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
-                Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
 
                 // Legal page editor
                 Route::get('/platform/legal-pages', [LegalPageController::class, 'index'])->name('platform.legal-pages.index');

@@ -90,6 +90,8 @@ return [
         // checkout
         'checkout_title'           => 'Paiement — :app',
         'checkout_heading'         => 'Finaliser votre abonnement',
+        'upgrade_heading'          => 'Mettre à niveau votre forfait',
+        'back_to_billing'          => 'Retour à la facturation',
         'order_plan'               => 'Forfait',
         'order_workspace'          => 'Espace de travail',
         'order_admin'              => 'Administrateur',

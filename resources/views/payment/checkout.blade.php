@@ -62,7 +62,7 @@
 <main>
     <div class="checkout-box">
         <div class="checkout-header">
-            <h1>{{ __('auth.register.checkout_heading') }}</h1>
+            <h1>@auth{{ __('auth.register.upgrade_heading', ['default' => 'Upgrade Plan']) }}@else{{ __('auth.register.checkout_heading') }}@endauth</h1>
             <p>{{ $tenant->name }}</p>
         </div>
 
@@ -116,7 +116,13 @@
                 </button>
             </form>
 
-            <a href="{{ route('register') }}" class="btn-back">← {{ __('auth.register.back_to_register') }}</a>
+            @auth
+                <a href="{{ route(auth()->user()->routeNamePrefix() . '.billing.index') }}" class="btn-back">
+                    ← {{ __('auth.register.back_to_billing', ['default' => 'Back to Billing']) }}
+                </a>
+            @else
+                <a href="{{ route('register') }}" class="btn-back">← {{ __('auth.register.back_to_register') }}</a>
+            @endauth
 
             <div class="security-note">
                 <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>

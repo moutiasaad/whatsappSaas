@@ -34,11 +34,16 @@ class PaymentController extends Controller
     {
         $plan = $tenant->plan;
 
+        // Free plan — authenticated admin goes to their dashboard, guest goes to register
         if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            if (Auth::check()) {
+                return redirect()->route(Auth::user()->homeRouteName());
+            }
             return redirect()->route('register');
         }
 
-        if ($tenant->subscription_status === 'active') {
+        // Already active — only block guests (new signups), not admins doing upgrades/renewals
+        if (!Auth::check() && $tenant->subscription_status === 'active') {
             return redirect()->route('login')->with('info', __('auth.register.subscription_already_active'));
         }
 
@@ -211,10 +216,18 @@ class PaymentController extends Controller
                     'gateway_response' => $session->toArray(),
                 ]);
 
-                $payment->tenant->update([
-                    'subscription_status' => 'trial',
-                    'trial_ends_at'       => now()->addDays(30),
-                    'is_active'           => true,
+                $tenant    = $payment->tenant;
+                $isUpgrade = $tenant->is_active; // existing tenant upgrading / renewing
+
+                $tenant->update($isUpgrade ? [
+                    'plan_id'              => $payment->plan_id,
+                    'subscription_status'  => 'active',
+                    'subscription_ends_at' => now()->addMonth(),
+                    'is_active'            => true,
+                ] : [
+                    'subscription_status'  => 'trial',
+                    'trial_ends_at'        => now()->addDays(30),
+                    'is_active'            => true,
                 ]);
 
                 Log::info('Tenant activated via Stripe', [

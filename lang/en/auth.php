@@ -89,6 +89,8 @@ return [
         'otp_back'                 => 'Back to registration',
         'checkout_title'           => 'Payment — :app',
         'checkout_heading'         => 'Complete your subscription',
+        'upgrade_heading'          => 'Upgrade your plan',
+        'back_to_billing'          => 'Back to Billing',
         'order_plan'               => 'Plan',
         'order_workspace'          => 'Workspace',
         'order_admin'              => 'Admin',
