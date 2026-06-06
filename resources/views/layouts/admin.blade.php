@@ -1819,6 +1819,9 @@
                     <div class="sidebar-user-role">{{ __('ui.roles.' . Auth::user()->role, ['role' => str_replace('_', ' ', Auth::user()->role)]) }}</div>
                 </div>
                 <div class="sidebar-user-actions">
+                    <a href="{{ route($panelPrefix . '.profile.show') }}" class="sidebar-user-btn" title="{{ __('ui.profile_page.title') }}">
+                        <i class="ri-user-settings-line"></i>
+                    </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="sidebar-user-btn" title="{{ __('ui.logout') }}">

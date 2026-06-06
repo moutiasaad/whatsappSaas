@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InstanceWebController;
 use App\Http\Controllers\Admin\KnowledgeController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SavedReplyWebController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
@@ -88,6 +89,12 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Impersonation leave route (when admin is currently impersonating)
             Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
+
+            // Profile — all roles
+            Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+            Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+            Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
+            Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
 
             if (!$includeManagement && in_array('supervisor', $roles, true)) {
                 Route::middleware('role:supervisor')->group(function () {

@@ -1350,5 +1350,26 @@ Toujours :
         'loading'            => 'Chargement...',
         'just_now'           => 'À l\'instant',
     ],
+
+    'profile_page' => [
+        'title'                  => 'Mon profil',
+        'subtitle'               => 'Modifiez votre mot de passe et votre adresse e-mail',
+        'change_password'        => 'Changer le mot de passe',
+        'change_password_hint'   => 'Choisissez un mot de passe fort d\'au moins 8 caractères',
+        'current_password'       => 'Mot de passe actuel',
+        'new_password'           => 'Nouveau mot de passe',
+        'confirm_password'       => 'Confirmer le nouveau mot de passe',
+        'save_password'          => 'Enregistrer le mot de passe',
+        'current_password_wrong' => 'Le mot de passe actuel saisi est incorrect.',
+        'password_updated'       => 'Mot de passe mis à jour avec succès.',
+        'change_email'           => 'Changer l\'e-mail',
+        'change_email_hint'      => 'Un code de vérification à 6 chiffres sera envoyé à votre nouvelle adresse',
+        'current_email'          => 'E-mail actuel',
+        'new_email'              => 'Nouvelle adresse e-mail',
+        'new_email_placeholder'  => 'nouveau@exemple.com',
+        'send_otp'               => 'Envoyer le code de vérification',
+        'email_updated'          => 'Adresse e-mail mise à jour avec succès.',
+        'email_taken'            => 'Cette adresse e-mail est déjà utilisée.',
+    ],
 ];
 

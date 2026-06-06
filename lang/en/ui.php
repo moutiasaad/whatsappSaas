@@ -1351,5 +1351,26 @@ Always:
         'loading'            => 'Loading...',
         'just_now'           => 'Just now',
     ],
+
+    'profile_page' => [
+        'title'                  => 'My Profile',
+        'subtitle'               => 'Update your password and email address',
+        'change_password'        => 'Change Password',
+        'change_password_hint'   => 'Choose a strong password of at least 8 characters',
+        'current_password'       => 'Current password',
+        'new_password'           => 'New password',
+        'confirm_password'       => 'Confirm new password',
+        'save_password'          => 'Save password',
+        'current_password_wrong' => 'The current password you entered is incorrect.',
+        'password_updated'       => 'Password updated successfully.',
+        'change_email'           => 'Change Email',
+        'change_email_hint'      => 'A 6-digit verification code will be sent to your new address',
+        'current_email'          => 'Current email',
+        'new_email'              => 'New email address',
+        'new_email_placeholder'  => 'new@example.com',
+        'send_otp'               => 'Send verification code',
+        'email_updated'          => 'Email address updated successfully.',
+        'email_taken'            => 'This email address is already in use.',
+    ],
 ];
 
