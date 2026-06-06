@@ -29,6 +29,8 @@ class AiSettings extends Model
 
     public function hasQuota(): bool
     {
+        // 0 means unlimited
+        if ($this->monthly_token_quota === 0) return true;
         return $this->tokens_used_this_period < $this->monthly_token_quota;
     }
 

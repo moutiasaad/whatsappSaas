@@ -35,12 +35,20 @@ class PromptBuilder
         $parts = [$base];
 
         $profile  = $entries->firstWhere('type', 'company_profile');
+        $products = $entries->where('type', 'product');
         $faqs     = $entries->where('type', 'faq');
         $policies = $entries->where('type', 'policy');
         $custom   = $entries->firstWhere('type', 'custom_instruction');
 
         if ($profile) {
             $parts[] = "## Company\n{$profile->body}";
+        }
+
+        if ($products->isNotEmpty()) {
+            $parts[] = "## Products & Services";
+            foreach ($products as $product) {
+                $parts[] = "### {$product->title}\n{$product->body}";
+            }
         }
 
         if ($faqs->isNotEmpty()) {
@@ -66,7 +74,7 @@ class PromptBuilder
 
     public function buildMessages(Conversation $conversation, int $limit = 20): array
     {
-        return $conversation->messages()
+        $raw = $conversation->messages()
             ->latest()
             ->limit($limit)
             ->get()
@@ -77,5 +85,22 @@ class PromptBuilder
             ])
             ->values()
             ->toArray();
+
+        // Claude requires strictly alternating user/assistant roles — merge consecutive same-role messages
+        $merged = [];
+        foreach ($raw as $msg) {
+            if (!empty($merged) && $merged[array_key_last($merged)]['role'] === $msg['role']) {
+                $merged[array_key_last($merged)]['content'] .= "\n" . $msg['content'];
+            } else {
+                $merged[] = $msg;
+            }
+        }
+
+        // First message must be 'user' — drop any leading assistant turns
+        while (!empty($merged) && $merged[0]['role'] !== 'user') {
+            array_shift($merged);
+        }
+
+        return $merged;
     }
 }
