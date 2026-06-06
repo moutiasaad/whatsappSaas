@@ -1794,9 +1794,13 @@
             </a>
 
             @if(Auth::user()->isSuperAdmin())
-                <a href="{{ route($panelPrefix . '.billing.index') }}" class="{{ $navActive([$panelPrefix . '.billing.*']) }}">
+                <a href="{{ route($panelPrefix . '.billing.index') }}" class="{{ $navActive([$panelPrefix . '.billing.index']) }}">
                     <i class="ri-bank-card-line"></i>
                     <span>{{ __('ui.sidebar.billing') }}</span>
+                </a>
+                <a href="{{ route($panelPrefix . '.billing.payments') }}" class="{{ $navActive([$panelPrefix . '.billing.payments']) }}" style="padding-left:2.75rem;font-size:.8125rem;">
+                    <i class="ri-receipt-line"></i>
+                    <span>{{ __('ui.sidebar.payments') }}</span>
                 </a>
             @endif
 

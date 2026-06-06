@@ -148,6 +148,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
                 // Billing — accessible to both admin and super_admin (controller gates by role)
                 Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+                Route::get('/billing/payments', [BillingController::class, 'payments'])->name('billing.payments');
 
                 // Settings
                 Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
