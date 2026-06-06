@@ -216,17 +216,13 @@ class PaymentController extends Controller
                     'gateway_response' => $session->toArray(),
                 ]);
 
-                $tenant    = $payment->tenant;
-                $isUpgrade = $tenant->is_active; // existing tenant upgrading / renewing
+                $tenant = $payment->tenant;
 
-                $tenant->update($isUpgrade ? [
+                // Payment completed = subscription is always active, regardless of new vs upgrade
+                $tenant->update([
                     'plan_id'              => $payment->plan_id,
                     'subscription_status'  => 'active',
                     'subscription_ends_at' => now()->addMonth(),
-                    'is_active'            => true,
-                ] : [
-                    'subscription_status'  => 'trial',
-                    'trial_ends_at'        => now()->addDays(30),
                     'is_active'            => true,
                 ]);
 
