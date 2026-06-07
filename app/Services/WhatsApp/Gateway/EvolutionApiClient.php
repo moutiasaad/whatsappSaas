@@ -175,7 +175,7 @@ class EvolutionApiClient implements GatewayClientInterface
             return ['message' => 'No numeric ids', 'read' => 'skipped'];
         }
 
-        return $this->post("/chat/readMessages/{$instanceId}", ['ids' => $numericIds]);
+        return $this->patch("/chat/readMessages/{$instanceId}", ['ids' => $numericIds]);
     }
 
     public function updatePresence(string $instanceId, string $number, string $presence): void

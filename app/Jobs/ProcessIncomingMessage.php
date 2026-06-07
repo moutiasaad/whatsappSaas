@@ -397,12 +397,18 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function extractConnectionState(array $payload): string
     {
+        // CodeChat qrcode.updated events have no state field — instance is connecting
+        if (data_get($payload, 'data.qrcode') !== null) {
+            return 'connecting';
+        }
+
         return strtolower((string) (
             data_get($payload, 'state')
             ?? data_get($payload, 'connectionStatus')
             ?? data_get($payload, 'status')
             ?? data_get($payload, 'data.state')
             ?? data_get($payload, 'data.connectionStatus')
+            ?? data_get($payload, 'data.status')  // CodeChat status.instance event
             ?? ''
         ));
     }
