@@ -59,10 +59,10 @@ class EvolutionApiClient implements GatewayClientInterface
             ));
 
             return match ($rawStatus) {
-                'open', 'online', 'connected' => 'connected',
-                'connecting', 'pairing', 'pending' => 'connecting',
-                'close', 'closed', 'offline', 'disconnected' => 'disconnected',
-                default => 'disconnected',
+                'open', 'online', 'connected'                    => 'connected',
+                'connecting', 'pairing', 'pending', 'qr', 'qrcode' => 'connecting',
+                'close', 'closed', 'offline', 'disconnected'    => 'disconnected',
+                default                                          => 'disconnected',
             };
         } catch (\Exception) {
             return 'disconnected';

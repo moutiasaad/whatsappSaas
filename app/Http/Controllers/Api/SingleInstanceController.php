@@ -28,13 +28,26 @@ class SingleInstanceController extends Controller
             $status  = $gateway->getStatus($instance->gateway_instance_id);
             $phone   = $this->extractPhone($details);
 
-            $instance->update(array_filter([
+            $updates = [
                 'status'         => $status,
-                'phone_number'   => $phone ?: $instance->phone_number,
                 'last_status_at' => now(),
-                'qr_code'        => $status === 'connected' ? null : $instance->qr_code,
-            ], fn($v) => $v !== null));
+            ];
 
+            if ($phone) {
+                $updates['phone_number'] = $phone;
+            }
+
+            if ($status === 'connected') {
+                $updates['qr_code'] = null;
+            } elseif ($status === 'connecting') {
+                // Keep QR fresh — re-fetch from gateway on each poll while waiting for scan
+                $freshQr = $gateway->getQrCode($instance->gateway_instance_id);
+                if ($freshQr) {
+                    $updates['qr_code'] = $freshQr;
+                }
+            }
+
+            $instance->update($updates);
             $instance->refresh();
         } catch (\Exception) {}
 

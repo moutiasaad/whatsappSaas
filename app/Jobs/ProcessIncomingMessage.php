@@ -140,13 +140,31 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function handleConnectionUpdate(array $payload, $instance): void
     {
-        $status = match($this->extractConnectionState($payload)) {
-            'open', 'online', 'connected' => 'connected',
-            'connecting' => 'connecting',
-            default      => 'disconnected',
+        $state = $this->extractConnectionState($payload);
+
+        $status = match($state) {
+            'open', 'online', 'connected'           => 'connected',
+            'connecting', 'qr', 'qrcode', 'pairing' => 'connecting',
+            default                                  => 'disconnected',
         };
 
-        $instance->update(['status' => $status, 'last_status_at' => now()]);
+        $updates = ['status' => $status, 'last_status_at' => now()];
+
+        // Capture fresh QR from qrcodeUpdated events so the frontend always shows a valid code
+        if ($status === 'connecting') {
+            $qr = data_get($payload, 'data.qr.base64')
+               ?? data_get($payload, 'data.base64')
+               ?? data_get($payload, 'qr.base64')
+               ?? data_get($payload, 'qr')
+               ?? data_get($payload, 'base64');
+            if (is_string($qr) && trim($qr) !== '') {
+                $updates['qr_code'] = str_starts_with($qr, 'data:') ? $qr : 'data:image/png;base64,' . preg_replace('/\s+/', '', $qr);
+            }
+        } elseif ($status === 'connected') {
+            $updates['qr_code'] = null;
+        }
+
+        $instance->update($updates);
         broadcast(new \App\Events\InstanceStatusChanged($instance->fresh()));
     }
 
