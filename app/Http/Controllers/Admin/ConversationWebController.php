@@ -71,7 +71,14 @@ class ConversationWebController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.conversations.index', compact('tenants', 'instances', 'teams', 'agents', 'isSuperAdmin'));
+        $apiKey = $actor->api_key;
+        if (!$apiKey) {
+            $actor->update(['api_key' => 'wvd_' . \Illuminate\Support\Str::random(48)]);
+            $actor->refresh();
+            $apiKey = $actor->api_key;
+        }
+
+        return view('admin.conversations.index', compact('tenants', 'instances', 'teams', 'agents', 'isSuperAdmin', 'apiKey'));
     }
 
     public function show(Conversation $conversation)
@@ -104,7 +111,14 @@ class ConversationWebController extends Controller
 
         $onlineAgents = $this->loadOnlineAgents($actor);
 
-        $i18n = $this->chatI18n();
+        $i18n   = $this->chatI18n();
+        $apiKey = $actor->api_key;
+
+        if (!$apiKey) {
+            $actor->update(['api_key' => 'wvd_' . \Illuminate\Support\Str::random(48)]);
+            $actor->refresh();
+            $apiKey = $actor->api_key;
+        }
 
         return view('admin.conversations.show', compact(
             'conversation',
@@ -117,7 +131,8 @@ class ConversationWebController extends Controller
             'messagesCursor',
             'savedReplies',
             'onlineAgents',
-            'i18n'
+            'i18n',
+            'apiKey'
         ));
     }
 

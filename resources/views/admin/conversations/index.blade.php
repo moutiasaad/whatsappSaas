@@ -289,6 +289,19 @@
 </style>
 
 <script>
+window._wvdApiKey = @json($apiKey ?? '');
+(function() {
+    var _orig = window.fetch;
+    window.fetch = function(url, opts) {
+        opts = opts || {};
+        var urlStr = (typeof url === 'string') ? url : (url.url || '');
+        if (urlStr.startsWith('/api/') && window._wvdApiKey) {
+            opts.headers = Object.assign({ 'X-Api-Key': window._wvdApiKey }, opts.headers || {});
+        }
+        return _orig.call(this, url, opts);
+    };
+})();
+
 @php
     $conversationI18n = [
         'conversation_claimed' => __('ui.conversations_page.conversation_claimed'),
