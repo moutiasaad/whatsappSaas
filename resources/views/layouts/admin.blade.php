@@ -1809,6 +1809,12 @@
                 <span>{{ __('ui.sidebar.settings') }}</span>
             </a>
             @endif
+
+            <a href="/docs/api" target="_blank" rel="noopener" style="margin-top:4px;">
+                <i class="ri-code-s-slash-line"></i>
+                <span>API Docs</span>
+                <i class="ri-external-link-line" style="margin-left:auto;font-size:11px;opacity:.5;"></i>
+            </a>
         </nav>
 
         @auth
