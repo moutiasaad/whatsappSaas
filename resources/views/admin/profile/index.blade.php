@@ -331,7 +331,7 @@ function apiKeyCard() {
             if (!confirm('Regenerate your API key? The current key will stop working immediately.')) return;
             this.loading = true;
             try {
-                const res = await fetch('{{ route('profile.regenerate-api-key') }}', {
+                const res = await fetch(window.location.pathname + '/regenerate-api-key', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
