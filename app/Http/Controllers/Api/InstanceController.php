@@ -92,14 +92,39 @@ class InstanceController extends Controller
 
             $qr = $gateway->getQrCode($instance->gateway_instance_id);
 
-            // Gateway instance is stuck (no QR returned) — restart and retry once
             if ($qr === null) {
+                // Maybe it's already connected — check before assuming it's stuck
+                $gatewayStatus = $gateway->getStatus($instance->gateway_instance_id);
+
+                if ($gatewayStatus === 'connected') {
+                    $instance->update(['status' => 'connected', 'qr_code' => null, 'last_status_at' => now()]);
+                    return response()->json(['status' => 'connected', 'qr_code' => null]);
+                }
+
+                // Genuinely stuck — delete gateway instance and recreate for a fresh QR
+                $oldGatewayId = $instance->gateway_instance_id;
                 try {
-                    $gateway->restart($instance->gateway_instance_id);
-                    sleep(1);
+                    $gateway->deleteInstance($oldGatewayId);
                 } catch (\Throwable) {}
 
-                $qr = $gateway->getQrCode($instance->gateway_instance_id);
+                sleep(1);
+
+                $result = $gateway->createInstance($oldGatewayId);
+                $newGatewayId = $result['name']
+                    ?? $result['instance']['instanceId']
+                    ?? $result['instanceName']
+                    ?? $oldGatewayId;
+
+                $instance->update([
+                    'gateway_instance_id' => $newGatewayId,
+                    'status'              => 'disconnected',
+                    'qr_code'             => null,
+                ]);
+                $instance->refresh();
+
+                $this->ensureWebhookRegistered($gateway, $instance);
+
+                $qr = $gateway->getQrCode($newGatewayId);
             }
 
             $instance->update(['qr_code' => $qr, 'status' => 'connecting', 'last_status_at' => now()]);
