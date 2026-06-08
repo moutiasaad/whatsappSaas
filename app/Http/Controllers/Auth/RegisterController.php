@@ -168,17 +168,17 @@ class RegisterController extends Controller
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        $pending['otp']        = $otp;
-        $pending['expires_at'] = now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp;
-        $pending['sent_at']    = now()->timestamp;
-        session(['_reg_pending' => $pending]);
-
         try {
             Mail::to($pending['data']['email'])->send(new OtpVerification($otp));
         } catch (\Throwable $e) {
             Log::error('OTP resend failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => __('auth.register.otp_send_failed')], 500);
         }
+
+        $pending['otp']        = $otp;
+        $pending['expires_at'] = now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp;
+        $pending['sent_at']    = now()->timestamp;
+        session(['_reg_pending' => $pending]);
 
         return response()->json(['ok' => true]);
     }
