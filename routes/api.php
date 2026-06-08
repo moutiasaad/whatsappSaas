@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DirectSendController;
+use App\Http\Controllers\Api\SingleInstanceController;
 use App\Http\Controllers\Api\AgentPresenceController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AiController;
@@ -21,6 +22,14 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
 
     // ── Direct message send (no conversation, auto-selects connected instance) ─
     Route::post('/send', [DirectSendController::class, 'send']);
+
+    // ── Single-instance management (auto-selects the tenant's first instance) ──
+    Route::prefix('instance')->group(function () {
+        Route::get('/',            [SingleInstanceController::class, 'show']);
+        Route::get('/status',      [SingleInstanceController::class, 'status']);
+        Route::post('/connect',    [SingleInstanceController::class, 'connect']);
+        Route::post('/disconnect', [SingleInstanceController::class, 'disconnect']);
+    });
 
     // ── Notifications (all roles, no subscription gate) ───────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
