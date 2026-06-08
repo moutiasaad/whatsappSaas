@@ -29,6 +29,7 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 
 // Landing page
 Route::get('/', [LandingController::class, 'index'])->name('landing');
+Route::get('/docs/api', fn () => response()->file(public_path('docs/api.html')))->name('docs.api');
 
 // Legal pages
 Route::get('/legal/terms',   [LandingController::class, 'terms'])->name('legal.terms');
