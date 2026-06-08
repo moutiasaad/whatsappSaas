@@ -15,17 +15,26 @@ class AuthenticateWithApiKey
             ?? $request->header('x-api-key')
             ?? $request->query('api_key');
 
-        if (!$key) {
+        if ($key) {
+            $user = User::where('api_key', $key)->first();
+
+            if (!$user) {
+                return response()->json(['message' => 'Invalid API key.'], 401);
+            }
+
+            Auth::login($user);
+            $request->setUserResolver(fn () => $user);
+
+            return $next($request);
+        }
+
+        // Fall back to session auth for web users
+        $user = Auth::guard('web')->user();
+
+        if (!$user) {
             return response()->json(['message' => 'API key required. Add X-Api-Key header.'], 401);
         }
 
-        $user = User::where('api_key', $key)->first();
-
-        if (!$user) {
-            return response()->json(['message' => 'Invalid API key.'], 401);
-        }
-
-        Auth::login($user);
         $request->setUserResolver(fn () => $user);
 
         return $next($request);
