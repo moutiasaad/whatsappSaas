@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-APP_PATH="${APP_PATH:-/var/www/wavadesk}"
+APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
 PHP_BIN="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
 
 cd "$APP_PATH"

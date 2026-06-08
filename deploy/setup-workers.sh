@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-APP_PATH="${APP_PATH:-/var/www/wavadesk}"
+APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
 APP_USER="${APP_USER:-www-data}"
 PHP_BIN="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
 LOG_DIR="/var/log/supervisor"
