@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToTenant
 {
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        return $this->withoutGlobalScope('tenant')->findOrFail($value);
+    }
+
     protected static function bootBelongsToTenant(): void
     {
         static::addGlobalScope('tenant', function (Builder $builder) {
