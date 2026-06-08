@@ -136,7 +136,8 @@
   <a href="#flow-messages">3. Send Messages</a>
 
   <div class="nav-section">Endpoints</div>
-  <a href="#ep-auth">Auth</a>
+  <a href="#ep-send">Direct Send</a>
+  <a href="#ep-instance">Single Instance</a>
   <a href="#ep-instances">Instances</a>
   <a href="#ep-conversations">Conversations</a>
   <a href="#ep-messages">Messages</a>
@@ -159,40 +160,25 @@
   <p>Wavadesk is a multi-tenant WhatsApp customer support platform. This API lets you control everything that happens in the dashboard programmatically — connect WhatsApp numbers, manage conversations, send messages, configure AI auto-reply, and more.</p>
 
   <div class="alert alert-info">
-    All API endpoints are under <code>https://wavadesk.com/api/</code>. Authentication uses Bearer tokens — no cookies or CSRF tokens required.
+    All API endpoints are under <code>https://wavadesk.com/api/</code>. Authentication uses a static <strong>API key</strong> — no login flow required.
   </div>
 
   <!-- Authentication -->
   <h2 id="authentication">Authentication</h2>
-  <p>Every request (except login) requires a <strong>Bearer token</strong> in the Authorization header. Get your token by calling the login endpoint once.</p>
+  <p>Every request requires your <strong>API key</strong> in the <code>X-Api-Key</code> header. Get your key from the <strong>Profile</strong> page in the Wavadesk dashboard (Settings → Profile → API Key).</p>
 
-  <h3>Step 1 — Login</h3>
-  <pre><code>POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@yourcompany.com",
-  "password": "your-password"
-}</code></pre>
-
-  <p>Response:</p>
-  <pre><code>{
-  "token": "1|abc123xyz...",
-  "user": {
-    "id": 8,
-    "name": "Ahmed Admin",
-    "email": "admin@yourcompany.com",
-    "role": "admin"
-  }
-}</code></pre>
-
-  <h3>Step 2 — Use the token</h3>
-  <p>Add the token to every subsequent request:</p>
-  <pre><code>Authorization: Bearer 1|abc123xyz...
+  <h3>Using your API key</h3>
+  <p>Add the key to every request as a header:</p>
+  <pre><code>X-Api-Key: wvd_yourApiKeyHere
 Accept: application/json</code></pre>
 
+  <p>Example with curl:</p>
+  <pre><code>curl -X GET https://wavadesk.com/api/conversations \
+  -H "X-Api-Key: wvd_yourApiKeyHere" \
+  -H "Accept: application/json"</code></pre>
+
   <div class="alert alert-warn">
-    Tokens do not expire automatically. Call <code>POST /api/auth/logout</code> to revoke a token when done.
+    Keep your API key secret. It grants full access to your tenant account. If compromised, regenerate it from the Profile page.
   </div>
 
   <!-- Base URL -->
@@ -201,12 +187,12 @@ Accept: application/json</code></pre>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Base URL</td><td><code>https://wavadesk.com/api</code></td></tr>
     <tr><td>Format</td><td>JSON — always send <code>Accept: application/json</code></td></tr>
-    <tr><td>Auth</td><td><code>Authorization: Bearer {token}</code></td></tr>
+    <tr><td>Auth</td><td><code>X-Api-Key: wvd_yourApiKey</code></td></tr>
     <tr><td>Content-Type</td><td><code>application/json</code> (for POST/PUT/PATCH)</td></tr>
   </table>
 
   <h3>Minimum headers for every request</h3>
-  <pre><code>Authorization: Bearer {your-token}
+  <pre><code>X-Api-Key: wvd_yourApiKey
 Accept: application/json
 Content-Type: application/json</code></pre>
 
@@ -215,7 +201,7 @@ Content-Type: application/json</code></pre>
   <p>All errors return JSON with a <code>message</code> field and sometimes a <code>code</code> field for programmatic handling.</p>
   <table>
     <tr><th>HTTP Status</th><th>Meaning</th><th>Common cause</th></tr>
-    <tr><td>401</td><td>Unauthenticated</td><td>Missing or invalid token</td></tr>
+    <tr><td>401</td><td>Unauthenticated</td><td>Missing or invalid X-Api-Key</td></tr>
     <tr><td>403</td><td>Forbidden</td><td>Role not permitted, or subscription inactive</td></tr>
     <tr><td>404</td><td>Not found</td><td>Resource doesn't exist or belongs to another tenant</td></tr>
     <tr><td>422</td><td>Validation error</td><td>Missing/invalid fields — check <code>errors</code> object</td></tr>
@@ -311,39 +297,115 @@ POST /api/conversations/{id}/close</code></pre>
 
   <!-- ── Endpoints ── -->
 
-  <h2 id="ep-auth">Auth Endpoints</h2>
+  <h2 id="ep-send">Direct Send</h2>
+  <p>Send a WhatsApp message to any number without managing conversations. The message and conversation are automatically persisted so they appear in the dashboard.</p>
 
   <div class="endpoint open">
     <div class="endpoint-header" onclick="toggle(this)">
       <span class="badge post">POST</span>
-      <span class="endpoint-url">/api/auth/login</span>
-      <span class="endpoint-desc">Get a Bearer token</span>
+      <span class="endpoint-url">/api/send</span>
+      <span class="endpoint-desc">Send a message to any number</span>
     </div>
     <div class="endpoint-body">
-      <p>No authentication required. Returns a token you use for all subsequent requests.</p>
+      <p>Uses the first connected WhatsApp instance on your account. A conversation record is created or reopened automatically so the exchange appears in the dashboard.</p>
       <h3>Request body</h3>
       <table>
         <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-        <tr><td>email</td><td>string</td><td>✓</td><td>Your account email</td></tr>
-        <tr><td>password</td><td>string</td><td>✓</td><td>Your account password</td></tr>
+        <tr><td>number</td><td>string</td><td>✓</td><td>Recipient phone (digits only, e.g. <code>21612345678</code>)</td></tr>
+        <tr><td>message</td><td>string</td><td>✓</td><td>Text to send (max 4096 chars)</td></tr>
       </table>
+      <h3>Example request</h3>
+      <pre><code>POST /api/send
+X-Api-Key: wvd_yourApiKey
+Content-Type: application/json
+
+{
+  "number": "21612345678",
+  "message": "Hello! Your order has been shipped."
+}</code></pre>
       <h3>Example response</h3>
       <pre><code>{
-  "token": "1|abc123...",
-  "user": { "id": 8, "name": "Ahmed", "email": "...", "role": "admin" }
+  "success": true,
+  "instance_id": 10,
+  "conversation_id": 43,
+  "data": { ... }
+}</code></pre>
+      <div class="alert alert-warn">Returns 422 if no connected WhatsApp instance is found on your account.</div>
+    </div>
+  </div>
+
+  <h2 id="ep-instance">Single Instance</h2>
+  <p>Manage the primary WhatsApp instance for your account. These endpoints use the first instance found for your tenant — no <code>{id}</code> parameter needed.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/instance</span>
+      <span class="endpoint-desc">Get instance details</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Returns the current state of your primary WhatsApp instance.</p>
+      <pre><code>{
+  "id": 10,
+  "name": "Support Line",
+  "status": "connected",
+  "phone_number": "21627541269",
+  "qr_code": null,
+  "last_status_at": "2026-06-08T09:00:00.000000Z"
 }</code></pre>
     </div>
   </div>
 
   <div class="endpoint">
     <div class="endpoint-header" onclick="toggle(this)">
-      <span class="badge post">POST</span>
-      <span class="endpoint-url">/api/auth/logout</span>
-      <span class="endpoint-desc">Revoke current token</span>
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/instance/status</span>
+      <span class="endpoint-desc">Refresh and get live status</span>
     </div>
     <div class="endpoint-body">
-      <p>Invalidates the Bearer token used in this request. No body required.</p>
-      <pre><code>{ "message": "Logged out." }</code></pre>
+      <p>Polls the WhatsApp gateway for the live connection state and syncs the phone number. Use this after <code>/connect</code> to detect when the QR has been scanned.</p>
+      <pre><code>{
+  "id": 10,
+  "status": "connected",
+  "phone_number": "21627541269",
+  "qr_code": null,
+  "last_status_at": "2026-06-08T09:05:00.000000Z"
+}</code></pre>
+      <p>Poll this every 3–5 seconds after calling <code>/connect</code> until <code>status</code> is <code>connected</code>.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/instance/connect</span>
+      <span class="endpoint-desc">Get QR code to link WhatsApp</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Returns a base64 QR code image. Display it to the user — they scan it with their WhatsApp app to link the number.</p>
+      <table>
+        <tr><th>Query param</th><th>Type</th><th>Description</th></tr>
+        <tr><td>force</td><td>boolean</td><td>Set to <code>true</code> to generate a brand-new QR (replaces the gateway instance). Use when the user wants to link a different number.</td></tr>
+      </table>
+      <pre><code>POST /api/instance/connect
+// Response:
+{
+  "qr_code": "data:image/png;base64,iVBORw0KGgo...",
+  "status": "connecting"
+}</code></pre>
+      <div class="alert alert-info">If the instance is already <code>connected</code> the response returns <code>"status": "connected"</code> with no QR. Pass <code>?force=true</code> to force a new QR regardless.</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/instance/disconnect</span>
+      <span class="endpoint-desc">Disconnect from WhatsApp</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Logs out the WhatsApp session. Call <code>/connect</code> again to reconnect.</p>
+      <pre><code>{ "status": "disconnected", "message": "Disconnected." }</code></pre>
     </div>
   </div>
 

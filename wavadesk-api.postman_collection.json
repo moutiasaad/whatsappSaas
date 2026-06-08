@@ -1,44 +1,33 @@
 {
   "info": {
     "name": "Wavadesk API",
-    "description": "Full API collection for wavadesk.com — Bearer token auth. Call POST /api/auth/login first to get a token, then the collection pre-request script sets it automatically.",
+    "description": "Full API collection for wavadesk.com — API key auth. Copy your key from Settings → Profile → API Key in the Wavadesk dashboard and set it as the `api_key` collection variable.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "base_url",    "value": "https://wavadesk.com", "type": "string" },
-    { "key": "token",       "value": "",                      "type": "string", "description": "Auto-set by Login request test script" },
+    { "key": "api_key",     "value": "",                      "type": "string", "description": "Your Wavadesk API key (wvd_...)" },
     { "key": "instance_id", "value": "1",                     "type": "string" },
     { "key": "conv_id",     "value": "1",                     "type": "string" },
     { "key": "message_id",  "value": "1",                     "type": "string" },
     { "key": "reply_id",    "value": "1",                     "type": "string" }
   ],
   "auth": {
-    "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "type": "apikey",
+    "apikey": [
+      { "key": "key",   "value": "X-Api-Key",    "type": "string" },
+      { "key": "value", "value": "{{api_key}}",  "type": "string" },
+      { "key": "in",    "value": "header",        "type": "string" }
+    ]
   },
   "item": [
     {
-      "name": "Auth",
+      "name": "Direct Send",
+      "description": "Send a WhatsApp message to any number without managing conversations. Uses the first connected instance on your account.",
       "item": [
         {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json.token) {",
-                  "    pm.collectionVariables.set('token', json.token);",
-                  "    console.log('Token saved:', json.token);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
+          "name": "Send message",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
@@ -46,30 +35,76 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@yourtenant.com\",\n  \"password\": \"your-password\"\n}",
+              "raw": "{\n  \"number\": \"21612345678\",\n  \"message\": \"Hello from the API!\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{base_url}}/api/auth/login",
+              "raw": "{{base_url}}/api/send",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login"]
+              "path": ["api", "send"]
             },
-            "description": "Returns a Bearer token. The test script saves it as the `token` collection variable automatically."
+            "description": "Sends a WhatsApp message and persists the conversation in the dashboard. Returns instance_id and conversation_id."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Single Instance",
+      "description": "Manage the primary WhatsApp instance for your account. No {id} parameter — uses the first instance found for your tenant.",
+      "item": [
+        {
+          "name": "Get instance",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instance"]
+            },
+            "description": "Returns the current state of your primary WhatsApp instance."
           }
         },
         {
-          "name": "Logout",
+          "name": "Get live status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instance/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instance", "status"]
+            },
+            "description": "Polls the WhatsApp gateway for the live status and syncs the phone number. Poll every 3–5 s after /connect until status is connected."
+          }
+        },
+        {
+          "name": "Connect (get QR)",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Accept", "value": "application/json" }
-            ],
+            "header": [{ "key": "Accept", "value": "application/json" }],
             "url": {
-              "raw": "{{base_url}}/api/auth/logout",
+              "raw": "{{base_url}}/api/instance/connect",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "logout"]
+              "path": ["api", "instance", "connect"],
+              "query": [
+                { "key": "force", "value": "false", "description": "Set to true to generate a brand-new QR (unlinks the current number)", "disabled": true }
+              ]
             },
-            "description": "Revokes the current Bearer token."
+            "description": "Returns a base64 QR code. Display it to the user to scan. If already connected, returns status: connected with no QR. Pass ?force=true to force a fresh QR."
+          }
+        },
+        {
+          "name": "Disconnect",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instance/disconnect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instance", "disconnect"]
+            },
+            "description": "Logs out the WhatsApp session. Call /connect again to reconnect."
           }
         }
       ]
