@@ -143,14 +143,20 @@ class ProcessIncomingMessage implements ShouldQueue
         $state = $this->extractConnectionState($payload);
 
         $status = match($state) {
-            'open', 'online', 'connected'           => 'connected',
-            'connecting', 'qr', 'qrcode', 'pairing' => 'connecting',
-            default                                  => 'disconnected',
+            'open', 'online', 'connected'            => 'connected',
+            'connecting', 'qr', 'qrcode', 'pairing'  => 'connecting',
+            default                                   => 'disconnected',
         };
+
+        // Don't downgrade a connecting instance to disconnected from a webhook event —
+        // 'close' state fires on connection events before the QR is scanned.
+        if ($instance->status === 'connecting' && $status === 'disconnected') {
+            $status = 'connecting';
+        }
 
         $updates = ['status' => $status, 'last_status_at' => now()];
 
-        // Capture fresh QR from qrcodeUpdated events so the frontend always shows a valid code
+        // Extract fresh QR from qrcodeUpdated webhook events
         if ($status === 'connecting') {
             $qr = data_get($payload, 'data.qr.base64')
                ?? data_get($payload, 'data.base64')

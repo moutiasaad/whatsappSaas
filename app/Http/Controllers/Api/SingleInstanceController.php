@@ -23,29 +23,30 @@ class SingleInstanceController extends Controller
         }
 
         try {
-            $gateway = $this->gateway($instance);
-            $details = $gateway->fetchInstance($instance->gateway_instance_id);
-            $status  = $gateway->getStatus($instance->gateway_instance_id);
-            $phone   = $this->extractPhone($details);
+            $gateway        = $this->gateway($instance);
+            $details        = $gateway->fetchInstance($instance->gateway_instance_id);
+            $gatewayStatus  = $gateway->getStatus($instance->gateway_instance_id);
+            $phone          = $this->extractPhone($details);
 
-            $updates = [
-                'status'         => $status,
-                'last_status_at' => now(),
-            ];
+            // The gateway reports 'close' (→ disconnected) both while waiting for a QR
+            // scan AND after a real disconnect. Never downgrade from 'connecting' to
+            // 'disconnected' based solely on a gateway poll — only explicit disconnect
+            // actions should do that.
+            $newStatus = ($instance->status === 'connecting' && $gatewayStatus === 'disconnected')
+                ? 'connecting'
+                : $gatewayStatus;
+
+            $updates = ['status' => $newStatus, 'last_status_at' => now()];
 
             if ($phone) {
                 $updates['phone_number'] = $phone;
             }
 
-            if ($status === 'connected') {
+            if ($newStatus === 'connected') {
                 $updates['qr_code'] = null;
-            } elseif ($status === 'connecting') {
-                // Keep QR fresh — re-fetch from gateway on each poll while waiting for scan
-                $freshQr = $gateway->getQrCode($instance->gateway_instance_id);
-                if ($freshQr) {
-                    $updates['qr_code'] = $freshQr;
-                }
             }
+            // Do NOT call getQrCode() here — it regenerates the QR on the gateway,
+            // which invalidates the code the user is currently scanning.
 
             $instance->update($updates);
             $instance->refresh();
