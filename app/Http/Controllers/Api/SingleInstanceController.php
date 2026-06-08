@@ -57,6 +57,7 @@ class SingleInstanceController extends Controller
             // Force new QR: wipe the gateway instance so a fresh one is created below
             if ($force && $instance->gateway_instance_id) {
                 try { $gateway->deleteInstance($instance->gateway_instance_id); } catch (\Throwable) {}
+                sleep(2); // let the gateway fully tear down before recreating
                 $instance->update([
                     'gateway_instance_id' => null,
                     'status'              => 'disconnected',
