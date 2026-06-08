@@ -77,6 +77,8 @@ class SingleInstanceController extends Controller
                     'status'              => 'disconnected',
                     'qr_code'             => null,
                     'phone_number'        => null,
+                    'webhook_enabled'     => false,  // force re-registration on new gateway instance
+                    'webhook_url'         => null,
                 ]);
                 $instance->refresh();
             }
