@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wavadesk API Documentation</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3349;
+      --accent: #5b6af0;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --orange: #f97316;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --code-bg: #0d1117;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; }
+
+    /* Layout */
+    .wrapper { display: flex; min-height: 100vh; }
+    nav { width: 270px; min-width: 270px; background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 24px 0; }
+    main { flex: 1; padding: 48px 56px; max-width: 900px; }
+
+    /* Nav */
+    .nav-logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .nav-logo h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .nav-logo span { font-size: 12px; color: var(--muted); }
+    .nav-section { padding: 8px 24px 4px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    nav a { display: block; padding: 6px 24px; color: var(--muted); text-decoration: none; font-size: 14px; border-left: 2px solid transparent; transition: all 0.15s; }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+    nav a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(91,106,240,0.08); }
+
+    /* Content */
+    h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 22px; font-weight: 600; margin: 48px 0 16px; padding-top: 48px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--text); }
+    p { color: var(--muted); margin-bottom: 14px; }
+    p strong { color: var(--text); }
+    ul, ol { color: var(--muted); padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 4px; }
+    li strong { color: var(--text); }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .get    { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .post   { background: rgba(59,130,246,0.15); color: var(--blue); }
+    .put    { background: rgba(234,179,8,0.15);  color: var(--yellow); }
+    .patch  { background: rgba(249,115,22,0.15); color: var(--orange); }
+    .delete { background: rgba(239,68,68,0.15);  color: var(--red); }
+
+    /* Endpoint card */
+    .endpoint { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+    .endpoint-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; user-select: none; }
+    .endpoint-header:hover { background: var(--surface2); }
+    .endpoint-url { font-family: 'Courier New', monospace; font-size: 14px; color: var(--text); }
+    .endpoint-desc { margin-left: auto; font-size: 13px; color: var(--muted); }
+    .endpoint-body { border-top: 1px solid var(--border); padding: 18px; display: none; }
+    .endpoint.open .endpoint-body { display: block; }
+    .endpoint.open .endpoint-header { background: var(--surface2); }
+
+    /* Code */
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 10px 0 16px; }
+    code { font-family: 'Courier New', monospace; font-size: 13px; color: #c9d1d9; }
+    p code, li code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 13px; color: #a5d6ff; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 14px; }
+    th { text-align: left; padding: 8px 12px; background: var(--surface2); color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+    td:first-child { color: #a5d6ff; font-family: monospace; font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Alert boxes */
+    .alert { border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 14px; border-left: 3px solid; }
+    .alert-info  { background: rgba(59,130,246,0.08);  border-color: var(--blue);   color: #93c5fd; }
+    .alert-warn  { background: rgba(234,179,8,0.08);   border-color: var(--yellow); color: #fde68a; }
+    .alert-green { background: rgba(34,197,94,0.08);   border-color: var(--green);  color: #86efac; }
+
+    /* Flow diagram */
+    .flow { display: flex; align-items: center; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+    .flow-step { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 13px; text-align: center; }
+    .flow-step span { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .flow-arrow { color: var(--muted); padding: 0 8px; font-size: 18px; }
+
+    /* Status dots */
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .dot-green  { background: var(--green); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-red    { background: var(--red); }
+    .dot-blue   { background: var(--blue); }
+
+    /* Section intro */
+    .section-intro { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 24px; }
+
+    /* Scrollbar */
+    nav::-webkit-scrollbar { width: 4px; }
+    nav::-webkit-scrollbar-track { background: transparent; }
+    nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (max-width: 768px) {
+      .wrapper { flex-direction: column; }
+      nav { width: 100%; height: auto; position: relative; }
+      main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="nav-logo">
+    <h1>Wavadesk</h1>
+    <span>API Documentation v1</span>
+  </div>
+
+  <div class="nav-section">Getting Started</div>
+  <a href="#overview">Overview</a>
+  <a href="#authentication">Authentication</a>
+  <a href="#base-url">Base URL & Headers</a>
+  <a href="#errors">Error Handling</a>
+
+  <div class="nav-section">Dashboard Flow</div>
+  <a href="#flow-overview">How It Works</a>
+  <a href="#flow-instances">1. Connect WhatsApp</a>
+  <a href="#flow-conversations">2. Manage Conversations</a>
+  <a href="#flow-messages">3. Send Messages</a>
+
+  <div class="nav-section">Endpoints</div>
+  <a href="#ep-auth">Auth</a>
+  <a href="#ep-instances">Instances</a>
+  <a href="#ep-conversations">Conversations</a>
+  <a href="#ep-messages">Messages</a>
+  <a href="#ep-saved-replies">Saved Replies</a>
+  <a href="#ep-ai">AI Settings</a>
+  <a href="#ep-agents">Agents & Presence</a>
+  <a href="#ep-notifications">Notifications</a>
+
+  <div class="nav-section">Reference</div>
+  <a href="#roles">Roles & Permissions</a>
+  <a href="#statuses">Status Reference</a>
+  <a href="#webhooks">Webhooks</a>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+  <!-- Overview -->
+  <h1 id="overview">Wavadesk API</h1>
+  <p>Wavadesk is a multi-tenant WhatsApp customer support platform. This API lets you control everything that happens in the dashboard programmatically — connect WhatsApp numbers, manage conversations, send messages, configure AI auto-reply, and more.</p>
+
+  <div class="alert alert-info">
+    All API endpoints are under <code>https://wavadesk.com/api/</code>. Authentication uses Bearer tokens — no cookies or CSRF tokens required.
+  </div>
+
+  <!-- Authentication -->
+  <h2 id="authentication">Authentication</h2>
+  <p>Every request (except login) requires a <strong>Bearer token</strong> in the Authorization header. Get your token by calling the login endpoint once.</p>
+
+  <h3>Step 1 — Login</h3>
+  <pre><code>POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@yourcompany.com",
+  "password": "your-password"
+}</code></pre>
+
+  <p>Response:</p>
+  <pre><code>{
+  "token": "1|abc123xyz...",
+  "user": {
+    "id": 8,
+    "name": "Ahmed Admin",
+    "email": "admin@yourcompany.com",
+    "role": "admin"
+  }
+}</code></pre>
+
+  <h3>Step 2 — Use the token</h3>
+  <p>Add the token to every subsequent request:</p>
+  <pre><code>Authorization: Bearer 1|abc123xyz...
+Accept: application/json</code></pre>
+
+  <div class="alert alert-warn">
+    Tokens do not expire automatically. Call <code>POST /api/auth/logout</code> to revoke a token when done.
+  </div>
+
+  <!-- Base URL -->
+  <h2 id="base-url">Base URL &amp; Headers</h2>
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Base URL</td><td><code>https://wavadesk.com/api</code></td></tr>
+    <tr><td>Format</td><td>JSON — always send <code>Accept: application/json</code></td></tr>
+    <tr><td>Auth</td><td><code>Authorization: Bearer {token}</code></td></tr>
+    <tr><td>Content-Type</td><td><code>application/json</code> (for POST/PUT/PATCH)</td></tr>
+  </table>
+
+  <h3>Minimum headers for every request</h3>
+  <pre><code>Authorization: Bearer {your-token}
+Accept: application/json
+Content-Type: application/json</code></pre>
+
+  <!-- Errors -->
+  <h2 id="errors">Error Handling</h2>
+  <p>All errors return JSON with a <code>message</code> field and sometimes a <code>code</code> field for programmatic handling.</p>
+  <table>
+    <tr><th>HTTP Status</th><th>Meaning</th><th>Common cause</th></tr>
+    <tr><td>401</td><td>Unauthenticated</td><td>Missing or invalid token</td></tr>
+    <tr><td>403</td><td>Forbidden</td><td>Role not permitted, or subscription inactive</td></tr>
+    <tr><td>404</td><td>Not found</td><td>Resource doesn't exist or belongs to another tenant</td></tr>
+    <tr><td>422</td><td>Validation error</td><td>Missing/invalid fields — check <code>errors</code> object</td></tr>
+    <tr><td>500</td><td>Server error</td><td>Gateway unreachable or internal error</td></tr>
+  </table>
+
+  <h3>Subscription error codes</h3>
+  <table>
+    <tr><th>code</th><th>Meaning</th></tr>
+    <tr><td>subscription_inactive</td><td>Tenant account is disabled</td></tr>
+    <tr><td>trial_expired</td><td>Free trial period has ended</td></tr>
+    <tr><td>subscription_expired</td><td>Paid subscription has expired</td></tr>
+  </table>
+
+  <!-- Dashboard Flow -->
+  <h2 id="flow-overview">How the Dashboard Works</h2>
+  <p>The dashboard follows a simple 3-step flow. Understanding this helps you replicate any dashboard action via the API.</p>
+
+  <div class="flow">
+    <div class="flow-step">Connect WhatsApp<span>Create instance → Scan QR</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Receive Conversations<span>Webhook → inbox pool</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Agent Claims & Replies<span>Claim → send messages</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Close<span>Resolve or reassign</span></div>
+  </div>
+
+  <h2 id="flow-instances">1. Connect a WhatsApp Number</h2>
+  <div class="section-intro">
+    <p>Each WhatsApp number is called an <strong>Instance</strong>. You create one in the dashboard, scan a QR code to link it to a WhatsApp account, and it becomes the channel through which customers contact you.</p>
+  </div>
+
+  <h3>Via API:</h3>
+  <ol>
+    <li>Call <code>POST /api/instances</code> to create the instance record.</li>
+    <li>Call <code>POST /api/instances/{id}/connect</code> — the response contains a <code>qr_code</code> (base64 image).</li>
+    <li>Display that QR to the user to scan with their WhatsApp app.</li>
+    <li>Poll <code>GET /api/instances/{id}/status</code> every few seconds until <code>status</code> becomes <code>connected</code>.</li>
+  </ol>
+
+  <h3>Instance statuses:</h3>
+  <p>
+    <span class="status-dot dot-green"></span><strong>connected</strong> — linked and receiving messages<br>
+    <span class="status-dot dot-yellow"></span><strong>connecting</strong> — waiting for QR scan<br>
+    <span class="status-dot dot-red"></span><strong>disconnected</strong> — logged out or unreachable
+  </p>
+
+  <h2 id="flow-conversations">2. Conversations</h2>
+  <div class="section-intro">
+    <p>When a customer sends a WhatsApp message to your connected number, the system automatically creates a <strong>Conversation</strong> in the <strong>pool</strong> (unassigned inbox). Agents then claim conversations to handle them.</p>
+    <p>You can also start conversations outbound — dial out to any WhatsApp number using <code>POST /api/conversations/start</code>.</p>
+  </div>
+
+  <h3>Conversation states:</h3>
+  <p>
+    <span class="status-dot dot-blue"></span><strong>pool</strong> — waiting, not yet assigned to any agent<br>
+    <span class="status-dot dot-yellow"></span><strong>claimed</strong> — assigned to and being handled by an agent<br>
+    <span class="status-dot dot-green"></span><strong>closed</strong> — resolved
+  </p>
+
+  <h3>Typical agent workflow via API:</h3>
+  <pre><code>// 1. Get conversations waiting in the pool
+GET /api/conversations?tab=pool
+
+// 2. Claim one
+POST /api/conversations/{id}/claim
+
+// 3. Read the message history
+GET /api/conversations/{id}/messages
+
+// 4. Reply
+POST /api/conversations/{id}/messages
+{ "type": "text", "body": "Hello, I can help you!" }
+
+// 5. Close when done
+POST /api/conversations/{id}/close</code></pre>
+
+  <h2 id="flow-messages">3. Messages</h2>
+  <div class="section-intro">
+    <p>Messages can be text, images, documents, audio, or internal agent notes. Outbound messages are dispatched asynchronously — the API returns immediately and the message is delivered in the background.</p>
+  </div>
+
+  <h3>Message status lifecycle:</h3>
+  <div class="flow">
+    <div class="flow-step">pending<span>Created, not yet sent</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">sent<span>Delivered to WhatsApp</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">read<span>Customer opened it</span></div>
+  </div>
+  <p style="margin-top:8px">If delivery fails: status becomes <strong>failed</strong>.</p>
+
+  <!-- ── Endpoints ── -->
+
+  <h2 id="ep-auth">Auth Endpoints</h2>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/auth/login</span>
+      <span class="endpoint-desc">Get a Bearer token</span>
+    </div>
+    <div class="endpoint-body">
+      <p>No authentication required. Returns a token you use for all subsequent requests.</p>
+      <h3>Request body</h3>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>email</td><td>string</td><td>✓</td><td>Your account email</td></tr>
+        <tr><td>password</td><td>string</td><td>✓</td><td>Your account password</td></tr>
+      </table>
+      <h3>Example response</h3>
+      <pre><code>{
+  "token": "1|abc123...",
+  "user": { "id": 8, "name": "Ahmed", "email": "...", "role": "admin" }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/auth/logout</span>
+      <span class="endpoint-desc">Revoke current token</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Invalidates the Bearer token used in this request. No body required.</p>
+      <pre><code>{ "message": "Logged out." }</code></pre>
+    </div>
+  </div>
+
+  <!-- Instances -->
+  <h2 id="ep-instances">Instance Endpoints</h2>
+  <p>Manage WhatsApp numbers connected to your account. Requires role <strong>admin</strong> or <strong>super_admin</strong>.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/instances</span>
+      <span class="endpoint-desc">List all instances</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Returns all WhatsApp instances for your tenant with summary stats.</p>
+      <pre><code>{
+  "data": [
+    {
+      "id": 10,
+      "name": "Support Line",
+      "status": "connected",
+      "phone_number": "21627541269",
+      "team_id": 3,
+      "gateway_instance_id": "wa-4-10",
+      "webhook_enabled": true
+    }
+  ],
+  "stats": {
+    "connected": 1,
+    "connecting": 0,
+    "disconnected": 0
+  }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/instances</span>
+      <span class="endpoint-desc">Create a new instance</span>
+    </div>
+    <div class="endpoint-body">
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>name</td><td>string</td><td>✓</td><td>Display name (max 100 chars)</td></tr>
+        <tr><td>team_id</td><td>integer</td><td>—</td><td>Assign to a specific team</td></tr>
+      </table>
+      <pre><code>POST /api/instances
+{ "name": "Sales Line", "team_id": 3 }</code></pre>
+      <p>Returns the created instance with status <code>disconnected</code>. Call <code>/connect</code> next to get the QR code.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/instances/{id}/connect</span>
+      <span class="endpoint-desc">Get QR code to link WhatsApp</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Returns a base64 QR code image. Display it to the user — they scan it with their WhatsApp app to link the number.</p>
+      <pre><code>{
+  "qr_code": "data:image/png;base64,iVBORw0KGgo...",
+  "status": "connecting"
+}</code></pre>
+      <div class="alert alert-info">If the instance is already <code>connected</code>, the response returns <code>"status": "connected"</code> and no QR.</div>
+      <div class="alert alert-warn">If QR is null, the gateway instance is stuck. The API will automatically restart it and return a fresh QR.</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/instances/{id}/status</span>
+      <span class="endpoint-desc">Check connection status</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Fetches live status from the WhatsApp gateway and syncs the phone number.</p>
+      <pre><code>{
+  "status": "connected",
+  "qr_code": null,
+  "instance": { "id": 10, "phone_number": "21627541269", ... }
+}</code></pre>
+      <p>Poll this every 3–5 seconds after <code>/connect</code> until <code>status</code> is <code>connected</code>.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/instances/{id}/disconnect</span>
+      <span class="endpoint-desc">Disconnect from WhatsApp</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Logs out the WhatsApp session. The instance record stays in your account — call <code>/connect</code> again to reconnect.</p>
+      <pre><code>{ "message": "Instance disconnected." }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge delete">DELETE</span>
+      <span class="endpoint-url">/api/instances/{id}</span>
+      <span class="endpoint-desc">Delete instance permanently</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Disconnects from WhatsApp and permanently deletes the instance record. This cannot be undone.</p>
+      <pre><code>{ "message": "Instance deleted." }</code></pre>
+    </div>
+  </div>
+
+  <!-- Conversations -->
+  <h2 id="ep-conversations">Conversation Endpoints</h2>
+  <p>Available to all roles (admin, supervisor, agent). Subscription required.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/conversations</span>
+      <span class="endpoint-desc">List conversations</span>
+    </div>
+    <div class="endpoint-body">
+      <h3>Query parameters</h3>
+      <table>
+        <tr><th>Parameter</th><th>Values</th><th>Description</th></tr>
+        <tr><td>tab</td><td>mine / pool / all / closed</td><td>Filter by state and ownership</td></tr>
+        <tr><td>search</td><td>string</td><td>Search by customer name, phone, or last message</td></tr>
+        <tr><td>team_id</td><td>integer</td><td>Filter by team</td></tr>
+        <tr><td>instance_id</td><td>integer</td><td>Filter by WhatsApp number</td></tr>
+        <tr><td>per_page</td><td>1–100 (default 25)</td><td>Results per page</td></tr>
+        <tr><td>page</td><td>integer</td><td>Page number</td></tr>
+      </table>
+      <pre><code>GET /api/conversations?tab=pool&per_page=10</code></pre>
+      <p>Returns a paginated list. Each conversation includes the <code>customer</code>, <code>instance</code>, <code>team</code>, and <code>ownerAgent</code>.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/start</span>
+      <span class="endpoint-desc">Start an outbound conversation</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Verify a phone number on WhatsApp, create a conversation, and send the first message — all in one call.</p>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>instance_id</td><td>integer</td><td>✓</td><td>Which WhatsApp number to send from</td></tr>
+        <tr><td>phone</td><td>string</td><td>✓</td><td>Recipient phone (digits only, e.g. 21612345678)</td></tr>
+        <tr><td>message</td><td>string</td><td>✓</td><td>First message text (max 4096 chars)</td></tr>
+      </table>
+      <pre><code>POST /api/conversations/start
+{
+  "instance_id": 10,
+  "phone": "21612345678",
+  "message": "Hello! How can we help you today?"
+}</code></pre>
+      <div class="alert alert-warn">Returns 422 with <code>"code": "number_not_on_whatsapp"</code> if the number is not registered on WhatsApp.</div>
+      <div class="alert alert-warn">Returns 422 with <code>"code": "instance_not_connected"</code> if the instance is not connected.</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/claim</span>
+      <span class="endpoint-desc">Claim a conversation</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Assigns the conversation to the authenticated agent. Moves it from <code>pool</code> to <code>claimed</code>. No body required.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/release</span>
+      <span class="endpoint-desc">Release back to pool</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Un-assigns the conversation and returns it to the pool so another agent can take it. No body required.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/reassign</span>
+      <span class="endpoint-desc">Reassign to another agent</span>
+    </div>
+    <div class="endpoint-body">
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>agent_id</td><td>integer</td><td>✓</td><td>ID of the agent to assign to</td></tr>
+      </table>
+      <pre><code>POST /api/conversations/43/reassign
+{ "agent_id": 5 }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/close</span>
+      <span class="endpoint-desc">Close a conversation</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Marks the conversation as resolved. No body required. Use <code>/reopen</code> to reactivate it.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/toggle-ai</span>
+      <span class="endpoint-desc">Enable / disable AI auto-reply</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Toggles AI auto-reply on or off for this specific conversation. No body required.</p>
+      <pre><code>{ "ai_enabled": true }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge delete">DELETE</span>
+      <span class="endpoint-url">/api/conversations/{id}</span>
+      <span class="endpoint-desc">Delete conversation permanently</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Deletes the conversation and all its messages. This cannot be undone.</p>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <h2 id="ep-messages">Message Endpoints</h2>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/conversations/{id}/messages</span>
+      <span class="endpoint-desc">List messages</span>
+    </div>
+    <div class="endpoint-body">
+      <table>
+        <tr><th>Parameter</th><th>Description</th></tr>
+        <tr><td>per_page</td><td>Messages per page (default 50)</td></tr>
+        <tr><td>before_id</td><td>Load older messages before this message ID (for infinite scroll)</td></tr>
+      </table>
+      <p>Messages are ordered newest first. Each message has <code>direction</code> (<code>in</code> / <code>out</code>), <code>type</code>, <code>body</code>, <code>status</code>, and <code>author_type</code> (<code>customer</code> / <code>agent</code> / <code>ai</code>).</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/messages</span>
+      <span class="endpoint-desc">Send a message</span>
+    </div>
+    <div class="endpoint-body">
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>type</td><td>text / image / document / audio / video</td><td>✓</td><td>Message type</td></tr>
+        <tr><td>body</td><td>string</td><td>✓ for text</td><td>Text content or caption for media</td></tr>
+        <tr><td>media_url</td><td>string</td><td>For media types</td><td>Public URL of the file to send</td></tr>
+      </table>
+      <pre><code>// Text message
+POST /api/conversations/43/messages
+{ "type": "text", "body": "Your order has been shipped!" }
+
+// Image with caption
+POST /api/conversations/43/messages
+{
+  "type": "image",
+  "media_url": "https://example.com/invoice.jpg",
+  "body": "Here is your invoice."
+}</code></pre>
+      <div class="alert alert-info">Messages are sent asynchronously. The API returns immediately with <code>status: pending</code>. Status updates to <code>sent</code> once delivered to WhatsApp.</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/conversations/{id}/notes</span>
+      <span class="endpoint-desc">Add an internal note</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Internal notes are visible only to agents in the dashboard — they are never sent to the customer.</p>
+      <pre><code>{ "body": "Customer called earlier, issue is about invoice #1042." }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/media/upload</span>
+      <span class="endpoint-desc">Upload a file to send</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Upload a file and get back a URL to use in the <code>media_url</code> field of a message. Use <code>multipart/form-data</code>.</p>
+      <table>
+        <tr><th>Field</th><th>Description</th></tr>
+        <tr><td>file</td><td>The file to upload</td></tr>
+        <tr><td>conversation_id</td><td>The conversation this file belongs to</td></tr>
+      </table>
+      <pre><code>{ "url": "https://wavadesk.com/storage/media/abc123.pdf" }</code></pre>
+    </div>
+  </div>
+
+  <!-- Saved Replies -->
+  <h2 id="ep-saved-replies">Saved Replies</h2>
+  <p>Reusable canned responses agents can insert quickly during conversations.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/saved-replies</span>
+      <span class="endpoint-desc">List saved replies</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>[
+  { "id": 1, "title": "Greeting", "body": "Hello! How can I help you today?" },
+  { "id": 2, "title": "Closing",  "body": "Thank you for contacting us. Have a great day!" }
+]</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/saved-replies</span>
+      <span class="endpoint-desc">Create a saved reply</span>
+    </div>
+    <div class="endpoint-body">
+      <table>
+        <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+        <tr><td>title</td><td>✓</td><td>Short label agents see in the list</td></tr>
+        <tr><td>body</td><td>✓</td><td>Full message text</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- AI -->
+  <h2 id="ep-ai">AI Settings</h2>
+  <p>Configure the AI auto-reply assistant. Requires role <strong>admin</strong>.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/ai/settings</span>
+      <span class="endpoint-desc">Get AI configuration</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  "enabled": true,
+  "model": "gpt-4o-mini",
+  "system_prompt": "You are a helpful support agent for Acme Corp...",
+  "language": "ar"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge put">PUT</span>
+      <span class="endpoint-url">/api/ai/settings</span>
+      <span class="endpoint-desc">Update AI configuration</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>PUT /api/ai/settings
+{
+  "enabled": true,
+  "model": "gpt-4o-mini",
+  "system_prompt": "You are a helpful support agent. Always reply in Arabic.",
+  "language": "ar"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/ai/test</span>
+      <span class="endpoint-desc">Test the AI with a message</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>POST /api/ai/test
+{ "message": "What are your business hours?" }</code></pre>
+      <pre><code>{ "response": "Our business hours are Monday–Friday, 9am to 6pm." }</code></pre>
+    </div>
+  </div>
+
+  <!-- Agents -->
+  <h2 id="ep-agents">Agents &amp; Presence</h2>
+  <p>Track which agents are currently online.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/agents/heartbeat</span>
+      <span class="endpoint-desc">Mark yourself as online</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Call this every 30–60 seconds to maintain an "online" presence indicator. No body required.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/agents/online</span>
+      <span class="endpoint-desc">List online agents</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>[
+  { "id": 5, "name": "Sara Agent", "last_seen_at": "2026-06-08T09:00:00Z" }
+]</code></pre>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <h2 id="ep-notifications">Notifications</h2>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/notifications/unread-count</span>
+      <span class="endpoint-desc">Get unread count</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{ "count": 3 }</code></pre>
+      <p>Poll this to show a badge number in your UI.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge get">GET</span>
+      <span class="endpoint-url">/api/notifications</span>
+      <span class="endpoint-desc">List recent notifications</span>
+    </div>
+    <div class="endpoint-body">
+      <p>Returns recent notifications for the authenticated user — new conversations, reassignments, etc.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/notifications/read-all</span>
+      <span class="endpoint-desc">Mark all as read</span>
+    </div>
+    <div class="endpoint-body">
+      <p>No body required.</p>
+    </div>
+  </div>
+
+  <!-- Roles -->
+  <h2 id="roles">Roles &amp; Permissions</h2>
+  <p>Each user has one role. The role determines which endpoints they can access.</p>
+  <table>
+    <tr><th>Role</th><th>Can access</th></tr>
+    <tr><td>super_admin</td><td>Everything — across all tenants</td></tr>
+    <tr><td>admin</td><td>Instances, conversations, messages, AI settings, users, teams</td></tr>
+    <tr><td>supervisor</td><td>Conversations (all in their teams), reassign, close, reports</td></tr>
+    <tr><td>agent</td><td>Conversations assigned to their teams, claim, reply, close own conversations</td></tr>
+  </table>
+  <div class="alert alert-warn">Agents and supervisors only see conversations from teams they belong to.</div>
+
+  <!-- Statuses -->
+  <h2 id="statuses">Status Reference</h2>
+
+  <h3>Instance status</h3>
+  <table>
+    <tr><th>Status</th><th>Meaning</th></tr>
+    <tr><td>connected</td><td>WhatsApp is linked and active</td></tr>
+    <tr><td>connecting</td><td>Waiting for QR code to be scanned</td></tr>
+    <tr><td>disconnected</td><td>Logged out</td></tr>
+    <tr><td>error</td><td>Gateway error — reconnect required</td></tr>
+    <tr><td>banned</td><td>WhatsApp number was banned</td></tr>
+  </table>
+
+  <h3>Conversation state</h3>
+  <table>
+    <tr><th>State</th><th>Meaning</th></tr>
+    <tr><td>pool</td><td>Unassigned — waiting for an agent</td></tr>
+    <tr><td>claimed</td><td>Being handled by an agent</td></tr>
+    <tr><td>closed</td><td>Resolved</td></tr>
+  </table>
+
+  <h3>Message status</h3>
+  <table>
+    <tr><th>Status</th><th>Meaning</th></tr>
+    <tr><td>pending</td><td>Queued, not yet sent to WhatsApp</td></tr>
+    <tr><td>sent</td><td>Delivered to WhatsApp servers</td></tr>
+    <tr><td>read</td><td>Customer has read the message</td></tr>
+    <tr><td>failed</td><td>Gateway delivery failed</td></tr>
+  </table>
+
+  <!-- Webhooks -->
+  <h2 id="webhooks">Webhooks (Inbound)</h2>
+  <p>When a customer sends a WhatsApp message to your connected number, the gateway forwards it to Wavadesk via a webhook. This is handled automatically — you do not need to configure anything.</p>
+
+  <p>The webhook URL per instance is:</p>
+  <pre><code>https://wavadesk.com/api/webhooks/whatsapp/{webhook_token}</code></pre>
+
+  <p>The system then:</p>
+  <ol>
+    <li>Creates or finds the customer record by phone number.</li>
+    <li>Creates or finds an open conversation for that customer.</li>
+    <li>Stores the inbound message.</li>
+    <li>Notifies online agents in real-time.</li>
+    <li>Triggers AI auto-reply if enabled for that conversation.</li>
+  </ol>
+
+  <div class="alert alert-green">
+    No action needed on your side for inbound messages — just keep the instance connected and the webhook will handle everything.
+  </div>
+
+</main>
+</div>
+
+<script>
+  function toggle(header) {
+    header.parentElement.classList.toggle('open');
+  }
+
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  });
+</script>
+</body>
+</html>
