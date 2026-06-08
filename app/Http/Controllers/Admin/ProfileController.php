@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -17,7 +18,31 @@ class ProfileController extends Controller
 
     public function show()
     {
-        return view('admin.profile.index');
+        $user = Auth::user();
+
+        if (!$user->api_key) {
+            $user->update(['api_key' => $this->freshKey()]);
+            $user->refresh();
+        }
+
+        return view('admin.profile.index', ['apiKey' => $user->api_key]);
+    }
+
+    public function regenerateApiKey()
+    {
+        $user = Auth::user();
+        $user->update(['api_key' => $this->freshKey()]);
+
+        return response()->json(['api_key' => $user->fresh()->api_key]);
+    }
+
+    private function freshKey(): string
+    {
+        do {
+            $key = 'wvd_' . Str::random(48);
+        } while (\App\Models\User::where('api_key', $key)->exists());
+
+        return $key;
     }
 
     public function updatePassword(Request $request)

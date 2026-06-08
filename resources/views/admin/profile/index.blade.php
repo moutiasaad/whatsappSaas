@@ -170,6 +170,55 @@
         {{ __('ui.profile_page.email_updated') }}
     </div>
 
+    {{-- ── API Key ─────────────────────────────────────────────────────── --}}
+    <div class="card" style="margin-top:1.5rem;" x-data="apiKeyCard()">
+        <div class="card-header">
+            <div>
+                <div class="card-title">API Key</div>
+                <div class="card-subtitle">Use this key to authenticate all API requests via the <code>X-Api-Key</code> header.</div>
+            </div>
+            <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(91,106,240,.1);display:flex;align-items:center;justify-content:center;color:#5b6af0;flex-shrink:0;">
+                <i class="ri-key-2-line"></i>
+            </div>
+        </div>
+        <div class="card-body">
+
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+                <div style="flex:1;position:relative;">
+                    <input :type="visible ? 'text' : 'password'"
+                           :value="key"
+                           readonly
+                           style="width:100%;font-family:monospace;font-size:.8125rem;padding:.625rem 2.5rem .625rem .875rem;background:var(--bg-secondary,#f8fafc);border:1px solid var(--border-color,#e2e8f0);border-radius:.5rem;color:var(--text-primary,#1e293b);"
+                    />
+                    <button @click="visible=!visible" type="button"
+                            style="position:absolute;right:.625rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted,#64748b);font-size:1rem;line-height:1;">
+                        <i :class="visible ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+                    </button>
+                </div>
+
+                <button @click="copy()" type="button" class="btn btn-secondary" style="white-space:nowrap;display:flex;align-items:center;gap:.375rem;">
+                    <i :class="copied ? 'ri-check-line' : 'ri-clipboard-line'"></i>
+                    <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+                </button>
+            </div>
+
+            <div style="padding:.875rem;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:.625rem;font-size:.8125rem;color:#92400e;margin-bottom:1.25rem;">
+                <i class="ri-shield-keyhole-line" style="margin-right:.375rem;"></i>
+                Keep this key secret. Anyone with it can access your account via the API.
+            </div>
+
+            <button @click="regenerate()" type="button" class="btn btn-danger-outline" :disabled="loading"
+                    style="display:flex;align-items:center;gap:.5rem;">
+                <i class="ri-refresh-line" :class="{'ri-spin': loading}"></i>
+                <span x-text="loading ? 'Regenerating...' : 'Regenerate Key'"></span>
+            </button>
+            <p style="font-size:.75rem;color:var(--text-muted,#64748b);margin-top:.625rem;">
+                Regenerating invalidates the current key immediately. Update any integrations using it.
+            </p>
+
+        </div>
+    </div>
+
 </div>
 
 @push('scripts')
@@ -261,6 +310,42 @@ function profilePage() {
                 if (this.resendCooldown > 0) this.resendCooldown--;
                 else clearInterval(this._timer);
             }, 1000);
+        },
+    }
+}
+
+function apiKeyCard() {
+    return {
+        key:     '{{ $apiKey }}',
+        visible: false,
+        copied:  false,
+        loading: false,
+
+        copy() {
+            navigator.clipboard.writeText(this.key);
+            this.copied = true;
+            setTimeout(() => this.copied = false, 2000);
+        },
+
+        async regenerate() {
+            if (!confirm('Regenerate your API key? The current key will stop working immediately.')) return;
+            this.loading = true;
+            try {
+                const res = await fetch('{{ route('profile.regenerate-api-key') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.api_key) {
+                    this.key     = data.api_key;
+                    this.visible = true;
+                }
+            } finally {
+                this.loading = false;
+            }
         },
     }
 }

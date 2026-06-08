@@ -18,10 +18,10 @@ class User extends Authenticatable
 
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
-        'is_active', 'last_login_at', 'avatar_url',
+        'is_active', 'last_login_at', 'avatar_url', 'api_key',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'api_key'];
 
     protected function casts(): array
     {

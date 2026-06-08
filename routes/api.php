@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AgentPresenceController;
-use App\Http\Controllers\Api\ApiAuthController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ConversationController;
@@ -12,22 +11,14 @@ use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// Public — no auth, no CSRF
-Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])->group(function () {
-    Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
-        ->name('webhooks.whatsapp');
+// Webhook — public, no auth
+Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
+    ->name('webhooks.whatsapp');
 
-    Route::post('/auth/login', [ApiAuthController::class, 'login'])->name('api.login');
-});
+// All API routes authenticated via X-Api-Key header
+Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 
-Route::post('/auth/logout', [ApiAuthController::class, 'logout'])
-    ->middleware(['auth:sanctum'])
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
-    ->name('api.logout');
-
-Route::middleware(['auth:sanctum', \App\Http\Middleware\ResolveTenant::class])->group(function () {
-
-    // ── Notifications (all roles, no subscription gate) ──────────────────────
+    // ── Notifications (all roles, no subscription gate) ───────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
         Route::get('/notifications', [NotificationApiController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationApiController::class, 'unreadCount']);
@@ -83,12 +74,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\ResolveTenant::class])->
         Route::post('/instances/{instance}/connect', [InstanceController::class, 'connect']);
         Route::get('/instances/{instance}/status', [InstanceController::class, 'status']);
         Route::post('/instances/{instance}/disconnect', [InstanceController::class, 'disconnect']);
-        Route::post('/instances/{instance}/logout', [InstanceController::class, 'disconnect']); // alias
+        Route::post('/instances/{instance}/logout', [InstanceController::class, 'disconnect']);
         Route::delete('/instances/{instance}', [InstanceController::class, 'destroy']);
     });
 
     Route::middleware(['role:admin', 'subscription'])->group(function () {
-        // AI settings
         Route::get('/ai/settings', [AiController::class, 'show']);
         Route::put('/ai/settings', [AiController::class, 'update']);
         Route::post('/ai/test', [AiController::class, 'test']);

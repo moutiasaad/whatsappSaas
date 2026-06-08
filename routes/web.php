@@ -96,6 +96,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
             Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
             Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
+            Route::post('/profile/regenerate-api-key', [ProfileController::class, 'regenerateApiKey'])->name('profile.regenerate-api-key');
 
             if (!$includeManagement && in_array('supervisor', $roles, true)) {
                 Route::middleware('role:supervisor')->group(function () {
