@@ -67,6 +67,7 @@ class InstanceController extends Controller
         try {
             $gateway = $this->gateway($instance);
 
+            // Return cached QR if still valid
             if ($instance->qr_code && in_array($instance->status, ['connecting', 'qr_pending'], true)) {
                 return response()->json([
                     'qr_code' => $instance->qr_code,
@@ -74,6 +75,7 @@ class InstanceController extends Controller
                 ]);
             }
 
+            // Create gateway instance if it doesn't exist yet
             if (!$instance->gateway_instance_id) {
                 $gatewayName = 'wa-' . $instance->tenant_id . '-' . $instance->id;
                 $result      = $gateway->createInstance($gatewayName);
@@ -89,6 +91,17 @@ class InstanceController extends Controller
             $this->ensureWebhookRegistered($gateway, $instance);
 
             $qr = $gateway->getQrCode($instance->gateway_instance_id);
+
+            // Gateway instance is stuck (no QR returned) — restart and retry once
+            if ($qr === null) {
+                try {
+                    $gateway->restart($instance->gateway_instance_id);
+                    sleep(1);
+                } catch (\Throwable) {}
+
+                $qr = $gateway->getQrCode($instance->gateway_instance_id);
+            }
+
             $instance->update(['qr_code' => $qr, 'status' => 'connecting', 'last_status_at' => now()]);
 
             return response()->json(['qr_code' => $qr, 'status' => 'connecting']);
