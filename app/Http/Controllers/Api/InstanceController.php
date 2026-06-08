@@ -14,30 +14,56 @@ class InstanceController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(WhatsAppInstance::orderBy('name')->get());
+        $tenantId  = auth()->user()->tenant_id;
+        $instances = WhatsAppInstance::where('tenant_id', $tenantId)
+            ->orderBy('name')
+            ->get()
+            ->makeHidden(['gateway_api_key', 'webhook_token']);
+
+        return response()->json([
+            'data'  => $instances,
+            'stats' => [
+                'connected'    => $instances->where('status', 'connected')->count(),
+                'connecting'   => $instances->whereIn('status', ['connecting', 'qr_pending'])->count(),
+                'disconnected' => $instances->whereIn('status', ['disconnected', 'error', 'banned'])->count(),
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse
     {
+        $user     = auth()->user();
+        $tenantId = $user->tenant_id;
+
         $request->validate([
-            'name'           => 'required|string|max:100',
-            'gateway'        => 'required|in:evolution,waha,cloud',
-            'gateway_url'    => 'nullable|url',
-            'gateway_api_key'=> 'nullable|string',
+            'name'    => 'required|string|max:100',
+            'team_id' => 'nullable|integer|exists:teams,id',
         ]);
 
         $instance = WhatsAppInstance::create([
-            'name'            => $request->name,
-            'gateway'         => $request->gateway,
-            'gateway_url'     => $request->gateway_url ?: config('services.whatsapp.default_url'),
-            'gateway_api_key' => $request->gateway_api_key ?: config('services.whatsapp.default_api_key'),
+            'tenant_id'      => $tenantId,
+            'team_id'        => $request->team_id,
+            'name'           => $request->name,
+            'status'         => 'disconnected',
+            'webhook_token'  => Str::random(64),
+            'gateway_url'    => config('services.whatsapp.default_url'),
+            'gateway_api_key'=> config('services.whatsapp.default_api_key'),
         ]);
 
-        return response()->json($instance, 201);
+        return response()->json($instance->makeHidden(['gateway_api_key', 'webhook_token']), 201);
+    }
+
+    public function show(WhatsAppInstance $instance): JsonResponse
+    {
+        $this->authorizeInstance($instance);
+
+        return response()->json($instance->makeHidden(['gateway_api_key', 'webhook_token']));
     }
 
     public function connect(WhatsAppInstance $instance): JsonResponse
     {
+        $this->authorizeInstance($instance);
+
         try {
             $gateway = $this->gateway($instance);
 
@@ -50,14 +76,16 @@ class InstanceController extends Controller
 
             if (!$instance->gateway_instance_id) {
                 $gatewayName = 'wa-' . $instance->tenant_id . '-' . $instance->id;
-                $result = $gateway->createInstance($gatewayName);
+                $result      = $gateway->createInstance($gatewayName);
                 $instance->update([
-                    'gateway_instance_id' => $result['name'] ?? $result['instance']['instanceId'] ?? $result['instanceName'] ?? $gatewayName,
+                    'gateway_instance_id' => $result['name']
+                        ?? $result['instance']['instanceId']
+                        ?? $result['instanceName']
+                        ?? $gatewayName,
                 ]);
                 $instance->refresh();
             }
 
-            // Register webhook immediately so the gateway can reach us as soon as the QR is scanned
             $this->ensureWebhookRegistered($gateway, $instance);
 
             $qr = $gateway->getQrCode($instance->gateway_instance_id);
@@ -72,10 +100,12 @@ class InstanceController extends Controller
 
     public function status(WhatsAppInstance $instance): JsonResponse
     {
+        $this->authorizeInstance($instance);
+
         try {
-            $gateway = $this->gateway($instance);
-            $details = $gateway->fetchInstance($instance->gateway_instance_id);
-            $status = $gateway->getStatus($instance->gateway_instance_id);
+            $gateway     = $this->gateway($instance);
+            $details     = $gateway->fetchInstance($instance->gateway_instance_id);
+            $status      = $gateway->getStatus($instance->gateway_instance_id);
             $phoneNumber = $this->extractPhoneNumber($details);
 
             if ($status === 'connected') {
@@ -83,38 +113,90 @@ class InstanceController extends Controller
             }
 
             $instance->update(array_filter([
-                'status' => $status,
-                'phone_number' => $phoneNumber ?: $instance->phone_number,
+                'status'         => $status,
+                'phone_number'   => $phoneNumber ?: $instance->phone_number,
                 'last_status_at' => now(),
-            ], fn ($value) => $value !== null));
+            ], fn($v) => $v !== null));
+
             broadcast(new InstanceStatusChanged($instance->fresh()));
+
             return response()->json([
                 'status'   => $status,
                 'qr_code'  => $instance->qr_code,
-                'instance' => $instance->fresh(),
+                'instance' => $instance->fresh()->makeHidden(['gateway_api_key', 'webhook_token']),
             ]);
+
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
 
-    public function logout(WhatsAppInstance $instance): JsonResponse
+    public function disconnect(WhatsAppInstance $instance): JsonResponse
     {
-        $this->gateway($instance)->logout($instance->gateway_instance_id);
-        $instance->update(['status' => 'disconnected', 'qr_code' => null]);
-        return response()->json(['message' => 'Logged out.']);
+        $this->authorizeInstance($instance);
+
+        try {
+            $this->gateway($instance)->logout($instance->gateway_instance_id);
+        } catch (\Exception) {
+            // Gateway may already be unreachable — continue with local update
+        }
+
+        $instance->update([
+            'status'  => 'disconnected',
+            'qr_code' => null,
+        ]);
+
+        broadcast(new InstanceStatusChanged($instance->fresh()));
+
+        return response()->json(['message' => 'Instance disconnected.']);
+    }
+
+    public function destroy(WhatsAppInstance $instance): JsonResponse
+    {
+        $this->authorizeInstance($instance);
+
+        if ($instance->gateway_instance_id) {
+            try {
+                $this->gateway($instance)->deleteInstance($instance->gateway_instance_id);
+            } catch (\Exception) {
+                // Continue even if gateway deletion fails
+            }
+        }
+
+        $instance->delete();
+
+        return response()->json(['message' => 'Instance deleted.']);
+    }
+
+    // ─── Private helpers ─────────────────────────────────────────────────────
+
+    private function authorizeInstance(WhatsAppInstance $instance): void
+    {
+        $user = auth()->user();
+
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+
+        abort_unless(
+            (int) $instance->tenant_id === (int) $user->tenant_id,
+            403,
+            'This instance does not belong to your tenant.'
+        );
     }
 
     private function gateway(WhatsAppInstance $instance): EvolutionApiClient
     {
-        return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+        return new EvolutionApiClient(
+            $instance->effectiveGatewayUrl(),
+            $instance->effectiveGatewayApiKey()
+        );
     }
 
     private function ensureWebhookRegistered(EvolutionApiClient $gateway, WhatsAppInstance $instance): void
     {
         $url = $this->webhookUrl($instance);
 
-        // Skip if already registered with the current URL
         if ($instance->webhook_enabled && $instance->webhook_url === $url) {
             return;
         }
@@ -134,7 +216,6 @@ class InstanceController extends Controller
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::channel('whatsapp')->error('Webhook registration failed', [
                 'instance_id' => $instance->id,
-                'url'         => $url,
                 'error'       => $e->getMessage(),
             ]);
             report($e);
@@ -144,25 +225,25 @@ class InstanceController extends Controller
     private function defaultWebhookEvents(): array
     {
         return [
-            'qrcodeUpdated' => true,
-            'messagesSet' => false,
-            'messagesUpsert' => true,
-            'messagesUpdated' => true,
-            'sendMessage' => true,
-            'contactsSet' => true,
-            'contactsUpsert' => true,
-            'contactsUpdated' => true,
-            'chatsSet' => false,
-            'chatsUpsert' => true,
-            'chatsUpdated' => true,
-            'chatsDeleted' => true,
-            'presenceUpdated' => true,
-            'groupsUpsert' => true,
-            'groupsUpdated' => true,
-            'groupsParticipantsUpdated' => true,
-            'connectionUpdated' => true,
-            'statusInstance' => true,
-            'refreshToken' => true,
+            'qrcodeUpdated'              => true,
+            'messagesUpsert'             => true,
+            'messagesUpdated'            => true,
+            'sendMessage'                => true,
+            'contactsUpsert'             => true,
+            'contactsUpdated'            => true,
+            'chatsUpsert'                => true,
+            'chatsUpdated'               => true,
+            'presenceUpdated'            => true,
+            'connectionUpdated'          => true,
+            'statusInstance'             => true,
+            'messagesSet'                => false,
+            'contactsSet'                => true,
+            'chatsSet'                   => false,
+            'chatsDeleted'               => true,
+            'groupsUpsert'               => true,
+            'groupsUpdated'              => true,
+            'groupsParticipantsUpdated'  => true,
+            'refreshToken'               => true,
         ];
     }
 

@@ -22,8 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'role'      => \App\Http\Middleware\CheckRole::class,
-            'role_path' => \App\Http\Middleware\EnsureCanonicalRolePath::class,
+            'role'         => \App\Http\Middleware\CheckRole::class,
+            'role_path'    => \App\Http\Middleware\EnsureCanonicalRolePath::class,
+            'subscription' => \App\Http\Middleware\CheckSubscription::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

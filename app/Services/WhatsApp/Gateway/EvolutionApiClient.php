@@ -191,6 +191,11 @@ class EvolutionApiClient implements GatewayClientInterface
         $this->delete("/instance/delete/{$instanceId}");
     }
 
+    public function deleteInstance(string $instanceId): void
+    {
+        $this->delete("/instance/delete/{$instanceId}");
+    }
+
     public function restart(string $instanceId): void
     {
         $this->put("/instance/restart/{$instanceId}");
