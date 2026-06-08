@@ -1,0 +1,667 @@
+{
+  "info": {
+    "name": "Wavadesk API",
+    "description": "Full API collection for wavadesk.com — Bearer token auth. Call POST /api/auth/login first to get a token, then the collection pre-request script sets it automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",    "value": "https://wavadesk.com", "type": "string" },
+    { "key": "token",       "value": "",                      "type": "string", "description": "Auto-set by Login request test script" },
+    { "key": "instance_id", "value": "1",                     "type": "string" },
+    { "key": "conv_id",     "value": "1",                     "type": "string" },
+    { "key": "message_id",  "value": "1",                     "type": "string" },
+    { "key": "reply_id",    "value": "1",                     "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) {",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token saved:', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@yourtenant.com\",\n  \"password\": \"your-password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Returns a Bearer token. The test script saves it as the `token` collection variable automatically."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Revokes the current Bearer token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Instances",
+      "description": "WhatsApp instance management (role: admin, super_admin). Subscription required.",
+      "item": [
+        {
+          "name": "List instances",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances"]
+            }
+          }
+        },
+        {
+          "name": "Create instance",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My WhatsApp\",\n  \"team_id\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/instances",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances"]
+            }
+          }
+        },
+        {
+          "name": "Get instance",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances", "{{instance_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Connect instance (get QR)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances/{{instance_id}}/connect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances", "{{instance_id}}", "connect"]
+            }
+          }
+        },
+        {
+          "name": "Get instance status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances/{{instance_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances", "{{instance_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Disconnect instance",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances/{{instance_id}}/disconnect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances", "{{instance_id}}", "disconnect"]
+            }
+          }
+        },
+        {
+          "name": "Delete instance",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/instances/{{instance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "instances", "{{instance_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "description": "Conversation management. Subscription required.",
+      "item": [
+        {
+          "name": "List conversations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations?tab=all&per_page=25",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations"],
+              "query": [
+                { "key": "tab",      "value": "all",  "description": "mine | pool | all | closed" },
+                { "key": "per_page", "value": "25" },
+                { "key": "search",   "value": "",     "disabled": true },
+                { "key": "team_id",  "value": "",     "disabled": true },
+                { "key": "instance_id", "value": "",  "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start outbound conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_id\": {{instance_id}},\n  \"phone\": \"21612345678\",\n  \"message\": \"Hello, how can I help you?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/start",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "start"]
+            },
+            "description": "Verifies the number on WhatsApp, finds or creates a conversation, sends the first message."
+          }
+        },
+        {
+          "name": "Get conversation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get conversation workspace",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/workspace",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "workspace"]
+            }
+          }
+        },
+        {
+          "name": "Claim conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/claim",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "claim"]
+            }
+          }
+        },
+        {
+          "name": "Release conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/release",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "release"]
+            }
+          }
+        },
+        {
+          "name": "Close conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/close",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "close"]
+            }
+          }
+        },
+        {
+          "name": "Reopen conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/reopen",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "reopen"]
+            }
+          }
+        },
+        {
+          "name": "Reassign conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": 2\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/reassign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "reassign"]
+            }
+          }
+        },
+        {
+          "name": "Toggle AI on conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/toggle-ai",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "toggle-ai"]
+            }
+          }
+        },
+        {
+          "name": "Mark conversation read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Check number on WhatsApp",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/check-number",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "check-number"]
+            }
+          }
+        },
+        {
+          "name": "Delete conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "description": "Read and send messages within a conversation.",
+      "item": [
+        {
+          "name": "List messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/messages?per_page=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "messages"],
+              "query": [
+                { "key": "per_page", "value": "50" },
+                { "key": "before_id", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"text\",\n  \"body\": \"Hello from the API!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send note (internal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Internal note for the team.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conv_id}}/notes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conv_id}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Upload media",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "description": "File to upload" },
+                { "key": "conversation_id", "value": "{{conv_id}}", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/media/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "media", "upload"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved Replies",
+      "description": "Manage canned responses.",
+      "item": [
+        {
+          "name": "List saved replies",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/saved-replies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "saved-replies"]
+            }
+          }
+        },
+        {
+          "name": "Create saved reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Greeting\",\n  \"body\": \"Hello! How can I help you today?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/saved-replies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "saved-replies"]
+            }
+          }
+        },
+        {
+          "name": "Update saved reply",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Greeting Updated\",\n  \"body\": \"Hi! How may I assist you?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/saved-replies/{{reply_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "saved-replies", "{{reply_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete saved reply",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/saved-replies/{{reply_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "saved-replies", "{{reply_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Settings",
+      "description": "AI configuration (role: admin only). Subscription required.",
+      "item": [
+        {
+          "name": "Get AI settings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/ai/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update AI settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"model\": \"gpt-4o-mini\",\n  \"system_prompt\": \"You are a helpful support agent.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Test AI",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept",       "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hello, can you help me?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/test",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agents & Presence",
+      "description": "Online presence tracking.",
+      "item": [
+        {
+          "name": "Heartbeat (mark online)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/agents/heartbeat",
+              "host": ["{{base_url}}"],
+              "path": ["api", "agents", "heartbeat"]
+            }
+          }
+        },
+        {
+          "name": "List online agents",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/agents/online",
+              "host": ["{{base_url}}"],
+              "path": ["api", "agents", "online"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "In-app notifications.",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Unread count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/unread-count",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "unread-count"]
+            }
+          }
+        },
+        {
+          "name": "Notification history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "history"]
+            }
+          }
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/1/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "1", "read"]
+            }
+          }
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/read-all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "read-all"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AgentPresenceController;
+use App\Http\Controllers\Api\ApiAuthController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ConversationController;
@@ -11,12 +12,20 @@ use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// Webhook — public, no auth, no CSRF
-Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
-    ->name('webhooks.whatsapp')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+// Public — no auth, no CSRF
+Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])->group(function () {
+    Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
+        ->name('webhooks.whatsapp');
 
-Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(function () {
+    Route::post('/auth/login', [ApiAuthController::class, 'login'])->name('api.login');
+});
+
+Route::post('/auth/logout', [ApiAuthController::class, 'logout'])
+    ->middleware(['auth:sanctum'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('api.logout');
+
+Route::middleware(['auth:sanctum', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 
     // ── Notifications (all roles, no subscription gate) ──────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
@@ -27,8 +36,7 @@ Route::middleware(['auth', \App\Http\Middleware\ResolveTenant::class])->group(fu
         Route::post('/notifications/read-all', [NotificationApiController::class, 'markAllRead']);
     });
 
-    Route::get('/notifications/tenant-users/{tenantId}', [NotificationApiController::class, 'tenantUsers'])
-        ->middleware('auth');
+    Route::get('/notifications/tenant-users/{tenantId}', [NotificationApiController::class, 'tenantUsers']);
 
     // ── Subscription-protected routes ─────────────────────────────────────────
     Route::middleware(['role:admin,super_admin,supervisor,agent', 'subscription'])->group(function () {

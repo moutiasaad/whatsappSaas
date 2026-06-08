@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
 
+        // All /api/* routes are protected by auth:sanctum — no CSRF needed
+        $middleware->validateCsrfTokens(except: ['api/*']);
+
         $middleware->alias([
             'role'         => \App\Http\Middleware\CheckRole::class,
             'role_path'    => \App\Http\Middleware\EnsureCanonicalRolePath::class,
