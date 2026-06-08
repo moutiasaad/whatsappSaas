@@ -68,7 +68,8 @@ class SingleInstanceController extends Controller
             }
 
             if (!$instance->gateway_instance_id) {
-                $name   = 'wa-' . $instance->tenant_id . '-' . $instance->id;
+                $name   = 'wa-' . $instance->tenant_id . '-' . $instance->id
+                          . ($force ? '-' . time() : '');
                 $result = $gateway->createInstance($name);
                 $instance->update([
                     'gateway_instance_id' => $result['name']
