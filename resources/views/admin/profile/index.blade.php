@@ -115,7 +115,7 @@
     </div>
 
     {{-- ── OTP Modal ────────────────────────────────────────────────────── --}}
-    <div class="modal-overlay" x-show="showOtp" x-transition.opacity
+    <div class="modal-overlay" x-show="showOtp" x-transition.opacity :class="showOtp ? 'show' : ''"
          style="display:none;" @click.self="showOtp = false">
         <div class="modal-box" style="max-width:400px;" @click.stop>
             <div class="modal-icon" style="background:rgba(99,102,241,.1);color:#6366f1;">
