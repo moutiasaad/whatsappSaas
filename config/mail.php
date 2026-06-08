@@ -1,17 +1,5 @@
 <?php
 
-// Symfony Mailer only accepts `smtp` or `smtps` as the scheme.
-// Preserve compatibility with older `MAIL_ENCRYPTION=tls` style envs.
-$smtpScheme = env('MAIL_SCHEME');
-
-if (in_array($smtpScheme, ['tls', 'starttls'], true)) {
-    $smtpScheme = 'smtp';
-}
-
-if ($smtpScheme === null) {
-    $smtpScheme = env('MAIL_ENCRYPTION') === 'ssl' ? 'smtps' : 'smtp';
-}
-
 return [
 
     /*
@@ -51,14 +39,14 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => $smtpScheme,
             'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', '127.0.0.1'),
-            'port' => env('MAIL_PORT', 2525),
+            'host' => env('MAIL_HOST', 'live.smtp.mailtrap.io'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
-            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
         'ses' => [
