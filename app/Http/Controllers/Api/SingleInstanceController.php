@@ -44,12 +44,26 @@ class SingleInstanceController extends Controller
     public function connect(): JsonResponse
     {
         $instance = $this->instance();
+        $force    = request()->boolean('force', false);
 
         try {
             $gateway = $this->gateway($instance);
 
-            if ($instance->qr_code && in_array($instance->status, ['connecting', 'qr_pending'], true)) {
+            // Return cached QR immediately unless caller is forcing a fresh scan
+            if (!$force && $instance->qr_code && in_array($instance->status, ['connecting', 'qr_pending'], true)) {
                 return response()->json(['qr_code' => $instance->qr_code, 'status' => $instance->status]);
+            }
+
+            // Force new QR: wipe the gateway instance so a fresh one is created below
+            if ($force && $instance->gateway_instance_id) {
+                try { $gateway->deleteInstance($instance->gateway_instance_id); } catch (\Throwable) {}
+                $instance->update([
+                    'gateway_instance_id' => null,
+                    'status'              => 'disconnected',
+                    'qr_code'             => null,
+                    'phone_number'        => null,
+                ]);
+                $instance->refresh();
             }
 
             if (!$instance->gateway_instance_id) {
