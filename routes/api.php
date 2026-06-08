@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\AgentPresenceController;
 use App\Http\Controllers\Api\NotificationApiController;
 use App\Http\Controllers\Api\AiController;
@@ -17,6 +18,9 @@ Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'ha
 
 // All API routes authenticated via X-Api-Key header
 Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {
+
+    // ── Direct message send (no conversation, auto-selects connected instance) ─
+    Route::post('/send', [DirectSendController::class, 'send']);
 
     // ── Notifications (all roles, no subscription gate) ───────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
