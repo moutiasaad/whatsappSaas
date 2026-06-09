@@ -1799,10 +1799,17 @@
                 </a>
             @endif
 
+            @if(Auth::user()->isSuperAdmin())
+            <a href="{{ route($panelPrefix . '.profile.show') }}" class="{{ $navActive([$panelPrefix . '.profile.*']) }}">
+                <i class="ri-settings-3-line"></i>
+                <span>{{ __('ui.sidebar.settings') }}</span>
+            </a>
+            @else
             <a href="{{ route($panelPrefix . '.settings.index') }}" class="{{ $navActive([$panelPrefix . '.settings.*']) }}">
                 <i class="ri-settings-3-line"></i>
                 <span>{{ __('ui.sidebar.settings') }}</span>
             </a>
+            @endif
             @endif
 
             <a href="/docs/api" target="_blank" rel="noopener" style="margin-top:4px;">

@@ -113,9 +113,9 @@
                 </thead>
                 <tbody>
                     <template x-for="inst in instances" :key="inst.id">
-                        <tr>
+                        <tr @click="window.location.href = showUrlTpl.replace('__ID__', String(inst.id))" style="cursor:pointer" class="tr-hover">
                             <td>
-                                <div style="display:flex;align-items:center;gap:.75rem">
+                                <a :href="showUrlTpl.replace('__ID__', inst.id)" style="display:flex;align-items:center;gap:.75rem;text-decoration:none;color:inherit">
                                     <div style="width:2.5rem;height:2.5rem;border-radius:.75rem;background:linear-gradient(135deg,#0d1117,#1a2332);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;color:#25d366;flex-shrink:0">
                                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.124 1.535 5.86L.057 23.215a.75.75 0 00.906.934l5.474-1.437A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.712 9.712 0 01-4.967-1.365l-.356-.213-3.685.967.983-3.594-.232-.37A9.714 9.714 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
                                     </div>
@@ -123,7 +123,7 @@
                                         <div style="font-weight:600;font-size:.9375rem" x-text="inst.name"></div>
                                         <div style="font-size:.75rem;color:var(--text-muted)" x-text="inst.phone_number || i18n.no_number"></div>
                                     </div>
-                                </div>
+                                </a>
                             </td>
                             @if($isSuperAdmin ?? false)
                             <td style="font-size:.8125rem;color:var(--text-muted);" x-text="inst.tenant?.name ?? '—'"></td>
@@ -153,7 +153,7 @@
                                     <span x-text="statusLabel(inst.status)"></span>
                                 </span>
                             </td>
-                            <td>
+                            <td @click.stop>
                                 <div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap">
                                     <template x-if="inst.status === 'disconnected' || inst.status === 'error'">
                                         <button @click="connect(inst.id, inst.name)" :disabled="inst.loading" class="btn btn-primary btn-sm">
@@ -259,6 +259,7 @@ function instancesPage() {
         i18n:        @json($i18n),
         statusLabels: @js(__('ui.instances_page.status_labels')),
         indexUrl:    @json(route($panelPrefix . '.instances.index')),
+        showUrlTpl:  @json(route($panelPrefix . '.instances.show',           ['instance' => '__ID__'])),
         editUrlTpl:  @json(route($panelPrefix . '.instances.edit',           ['instance' => '__ID__'])),
         destroyUrlTpl: @json(route($panelPrefix . '.instances.destroy',      ['instance' => '__ID__'])),
         webhookEventsUrlTpl: @json(route($panelPrefix . '.instances.webhook-events', ['instance' => '__ID__'])),
@@ -458,6 +459,7 @@ function instancesPage() {
             return 'red';
         },
 
+        showUrl(id)           { return this.showUrlTpl.replace('__ID__', String(id)); },
         editUrl(id)           { return this.editUrlTpl.replace('__ID__', String(id)); },
         webhookEventsUrl(id)  { return this.webhookEventsUrlTpl.replace('__ID__', String(id)); },
 

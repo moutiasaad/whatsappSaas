@@ -95,6 +95,18 @@ class InstanceWebController extends Controller
             ->with('success', __('ui.controller_messages.instance_created', ['name' => $instance->name]));
     }
 
+    public function show(WhatsAppInstance $instance)
+    {
+        $instance->load(['tenant:id,name', 'team:id,name']);
+
+        $recentEvents = $instance->webhookEvents()
+            ->latest()
+            ->limit(10)
+            ->get(['id', 'event_type', 'processed_at', 'error', 'created_at']);
+
+        return view('admin.instances.show', compact('instance', 'recentEvents'));
+    }
+
     public function webhookEvents(WhatsAppInstance $instance)
     {
         $events = $instance->webhookEvents()

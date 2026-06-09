@@ -116,6 +116,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/instances', [InstanceWebController::class, 'index'])->name('instances.index');
                 Route::get('/instances/create', [InstanceWebController::class, 'create'])->name('instances.create');
                 Route::post('/instances', [InstanceWebController::class, 'store'])->name('instances.store');
+                Route::get('/instances/{instance}', [InstanceWebController::class, 'show'])->name('instances.show');
                 Route::get('/instances/{instance}/webhook-events', [InstanceWebController::class, 'webhookEvents'])->name('instances.webhook-events');
                 Route::post('/instances/{instance}/webhook-events/{event}/reprocess', [InstanceWebController::class, 'reprocessWebhookEvent'])->name('instances.webhook-events.reprocess');
                 Route::get('/instances/{instance}/edit', [InstanceWebController::class, 'edit'])->name('instances.edit');
