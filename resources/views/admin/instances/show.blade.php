@@ -223,7 +223,7 @@
                             @foreach($recentEvents as $event)
                             <tr>
                                 <td>
-                                    <span style="font-family:monospace;font-size:.8125rem;background:var(--sidebar-bg);padding:.2rem .5rem;border-radius:.375rem">
+                                    <span style="font-family:monospace;font-size:.8125rem;color:var(--text-secondary);background:var(--input-bg,rgba(0,0,0,.04));border:1px solid var(--card-border);padding:.15rem .45rem;border-radius:.375rem">
                                         {{ $event->event_type }}
                                     </span>
                                 </td>
