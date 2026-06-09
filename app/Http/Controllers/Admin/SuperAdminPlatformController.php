@@ -71,11 +71,13 @@ class SuperAdminPlatformController extends Controller
             $tenant = Tenant::create([
                 'name'                => $data['name'],
                 'slug'                => $slug,
-                'plan_id'             => $data['plan_id'] ?? null,
-                'subscription_status' => $data['subscription_status'],
-                'stripe_id'           => $data['stripe_id'] ?? null,
-                'settings'            => $this->parseSettings($data['settings'] ?? null),
-                'is_active'           => (bool) ($data['is_active'] ?? true),
+                'plan_id'                 => $data['plan_id'] ?? null,
+                'subscription_status'    => $data['subscription_status'],
+                'subscription_starts_at' => $data['subscription_starts_at'] ?? null,
+                'subscription_ends_at'   => $data['subscription_ends_at'] ?? null,
+                'stripe_id'              => $data['stripe_id'] ?? null,
+                'settings'               => $this->parseSettings($data['settings'] ?? null),
+                'is_active'              => (bool) ($data['is_active'] ?? true),
             ]);
 
             if (!empty($data['admin_email']) && !empty($data['admin_password'])) {
@@ -126,11 +128,13 @@ class SuperAdminPlatformController extends Controller
             $tenant->update([
                 'name'                => $data['name'],
                 'slug'                => $slug,
-                'plan_id'             => $data['plan_id'] ?? null,
-                'subscription_status' => $data['subscription_status'],
-                'stripe_id'           => $data['stripe_id'] ?? null,
-                'settings'            => $this->parseSettings($data['settings'] ?? null),
-                'is_active'           => (bool) ($data['is_active'] ?? false),
+                'plan_id'                 => $data['plan_id'] ?? null,
+                'subscription_status'    => $data['subscription_status'],
+                'subscription_starts_at' => $data['subscription_starts_at'] ?? null,
+                'subscription_ends_at'   => $data['subscription_ends_at'] ?? null,
+                'stripe_id'              => $data['stripe_id'] ?? null,
+                'settings'               => $this->parseSettings($data['settings'] ?? null),
+                'is_active'              => (bool) ($data['is_active'] ?? false),
             ]);
 
             if (!empty($data['admin_email']) || !empty($data['admin_password']) || !empty($data['admin_name'])) {
@@ -607,8 +611,10 @@ class SuperAdminPlatformController extends Controller
                 Rule::unique('tenants', 'slug')->ignore($tenant?->id),
             ],
             'plan_id'             => 'nullable|exists:plans,id',
-            'subscription_status' => 'required|in:active,suspended,cancelled',
-            'stripe_id'           => 'nullable|string|max:255',
+            'subscription_status'    => 'required|in:active,suspended,cancelled',
+            'subscription_starts_at' => 'nullable|date',
+            'subscription_ends_at'   => 'nullable|date|after_or_equal:subscription_starts_at',
+            'stripe_id'              => 'nullable|string|max:255',
             'settings'            => 'nullable|json',
             'is_active'           => 'nullable|boolean',
             'admin_name'          => 'nullable|string|max:150',

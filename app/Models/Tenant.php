@@ -10,15 +10,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Tenant extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'subscription_status', 'plan_id',
-        'trial_ends_at', 'stripe_id', 'settings', 'is_active',
+        'name', 'slug', 'subscription_status', 'subscription_starts_at', 'subscription_ends_at',
+        'plan_id', 'trial_ends_at', 'stripe_id', 'settings', 'is_active',
     ];
 
     protected $casts = [
-        'plan_id'         => 'integer',
-        'settings'       => 'array',
-        'trial_ends_at'  => 'datetime',
-        'is_active'      => 'boolean',
+        'plan_id'                 => 'integer',
+        'settings'               => 'array',
+        'trial_ends_at'          => 'datetime',
+        'subscription_starts_at' => 'datetime',
+        'subscription_ends_at'   => 'datetime',
+        'is_active'              => 'boolean',
     ];
 
     public function plan(): BelongsTo { return $this->belongsTo(Plan::class); }

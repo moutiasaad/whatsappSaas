@@ -30,6 +30,22 @@
     </div>
 
     <div class="form-group">
+        <label class="form-label" for="subscription_starts_at">{{ __('ui.tenant_form_fields.subscription_starts_at') }}</label>
+        <input id="subscription_starts_at" type="date" name="subscription_starts_at"
+               value="{{ old('subscription_starts_at', $tenant?->subscription_starts_at?->format('Y-m-d')) }}"
+               class="form-control @error('subscription_starts_at') error @enderror">
+        @error('subscription_starts_at') <div class="form-error">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="subscription_ends_at">{{ __('ui.tenant_form_fields.subscription_ends_at') }}</label>
+        <input id="subscription_ends_at" type="date" name="subscription_ends_at"
+               value="{{ old('subscription_ends_at', $tenant?->subscription_ends_at?->format('Y-m-d')) }}"
+               class="form-control @error('subscription_ends_at') error @enderror">
+        @error('subscription_ends_at') <div class="form-error">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="form-group">
         <label class="form-label" for="plan_id">{{ __('ui.tenant_form_fields.plan') }}</label>
         <select id="plan_id" name="plan_id" class="form-control @error('plan_id') error @enderror">
             <option value="">{{ __('ui.tenant_form_fields.no_plan') }}</option>
