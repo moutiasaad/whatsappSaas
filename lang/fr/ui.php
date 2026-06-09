@@ -21,6 +21,7 @@ return [
     'date_to' => 'Date de fin',
     'date_placeholder_from' => 'AAAA-MM-JJ',
     'date_placeholder_to' => 'AAAA-MM-JJ',
+    'clear' => 'Effacer',
     'delete' => 'Supprimer',
     'deleting' => 'Suppression...',
     'irreversible_warning' => 'Cette action est irréversible. Êtes-vous sûr ?',

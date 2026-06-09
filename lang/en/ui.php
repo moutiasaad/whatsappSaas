@@ -21,6 +21,7 @@ return [
     'date_to' => 'To date',
     'date_placeholder_from' => 'YYYY-MM-DD',
     'date_placeholder_to' => 'YYYY-MM-DD',
+    'clear' => 'Clear',
     'delete' => 'Delete',
     'irreversible_warning' => 'This action is irreversible. Are you sure?',
     'proceed_confirmation' => 'Are you sure you want to proceed?',
