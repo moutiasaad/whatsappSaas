@@ -83,7 +83,7 @@
             margin-bottom: 28px;
             animation: pulse-ring 2.5s ease-in-out infinite;
         }
-        .side-panel h2 { font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 12px; }
+        .side-panel h2 { font-size: 26px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 12px; }
         .side-panel h2 span { color: var(--brand); }
         .side-panel p { font-size: 14px; opacity: .75; line-height: 1.65; text-align: center; max-width: 340px; margin-bottom: 36px; }
         .side-steps { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 340px; }
