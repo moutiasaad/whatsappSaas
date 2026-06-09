@@ -137,4 +137,12 @@ return [
     'footer_cookies'   => 'Cookie Policy',
     'footer_copyright' => '© :year :app — All rights reserved',
     'legal_updated'    => 'Last updated: :date',
+
+    // Hero chat preview
+    'chat_status'      => 'Online',
+    'chat_msg1'        => 'Hello, I\'d like to know your delivery times?',
+    'chat_ai_reply'    => 'Hi! Our standard delivery is 3 to 5 business days. For urgent orders, we offer express delivery within 24h. 📦',
+    'chat_msg2'        => 'Thank you! What about returns?',
+    'chat_agent_reply' => 'You have 30 days to return any item. I\'ll send you the form.',
+    'chat_placeholder' => 'Reply...',
 ];

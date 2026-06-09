@@ -137,4 +137,12 @@ return [
     'footer_cookies'   => 'Politique de cookies',
     'footer_copyright' => '© :year :app — Tous droits réservés',
     'legal_updated'    => 'Dernière mise à jour : :date',
+
+    // Hero chat preview
+    'chat_status'      => 'En ligne',
+    'chat_msg1'        => 'Bonjour, je voudrais connaître les délais de livraison ?',
+    'chat_ai_reply'    => 'Bonjour ! Nos délais de livraison standard sont de 3 à 5 jours ouvrables. Pour les commandes urgentes, nous proposons une livraison express en 24h. 📦',
+    'chat_msg2'        => 'Merci ! Et pour les retours ?',
+    'chat_agent_reply' => 'Vous avez 30 jours pour effectuer un retour. Je vous envoie le formulaire.',
+    'chat_placeholder' => 'Répondre...',
 ];

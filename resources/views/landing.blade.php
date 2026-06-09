@@ -329,20 +329,20 @@
                         </div>
                         <div>
                             <div class="chat-name">Support WhatsApp</div>
-                            <div class="chat-status">● En ligne</div>
+                            <div class="chat-status">● {{ __('landing.chat_status') }}</div>
                         </div>
                     </div>
                     <div class="chat-messages">
-                        <div class="msg msg-in">Bonjour, je voudrais connaître les délais de livraison ?</div>
+                        <div class="msg msg-in">{{ __('landing.chat_msg1') }}</div>
                         <div class="msg msg-ai">
                             <div class="msg-ai-badge">✦ AI Support</div>
-                            Bonjour ! Nos délais de livraison standard sont de 3 à 5 jours ouvrables. Pour les commandes urgentes, nous proposons une livraison express en 24h. 📦
+                            {{ __('landing.chat_ai_reply') }}
                         </div>
-                        <div class="msg msg-in">Merci ! Et pour les retours ?</div>
-                        <div class="msg msg-out">Vous avez 30 jours pour effectuer un retour. Je vous envoie le formulaire.</div>
+                        <div class="msg msg-in">{{ __('landing.chat_msg2') }}</div>
+                        <div class="msg msg-out">{{ __('landing.chat_agent_reply') }}</div>
                     </div>
                     <div class="chat-input-bar">
-                        <input type="text" placeholder="Répondre..." disabled>
+                        <input type="text" placeholder="{{ __('landing.chat_placeholder') }}" disabled>
                         <button class="chat-send" disabled>
                             <svg width="14" height="14" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                         </button>
