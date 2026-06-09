@@ -5,6 +5,7 @@ return [
     'language' => 'اللغة',
     'logout' => 'تسجيل الخروج',
     'processing' => 'جارٍ المعالجة...',
+    'total_records' => 'سجل',
     'confirm_action' => 'تأكيد الإجراء',
     'confirm_deletion' => 'تأكيد الحذف',
     'cancel' => 'إلغاء',

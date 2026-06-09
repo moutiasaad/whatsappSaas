@@ -233,11 +233,19 @@
             </template>
         </div>
 
-        <div x-show="!loading && hasMore" style="padding:1rem;text-align:center;border-top:1px solid var(--card-border);">
-            <button @click="loadMore()" :disabled="loadingMore" class="btn btn-outline btn-sm">
-                            <template x-if="!loadingMore"><span><i class="ri-arrow-down-line"></i> {{ __('ui.conversations_page.load_more') }}</span></template>
-                <template x-if="loadingMore"><span><span class="btn-spinner"></span> {{ __('ui.conversations_page.loading_more') }}</span></template>
-            </button>
+        <div x-show="lastPage > 1" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--card-border);flex-wrap:wrap;gap:8px;">
+            <div style="font-size:12px;color:var(--text-muted);" x-text="total + ' {{ __('ui.total_records') }}'"></div>
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                <button @click="goToPage(page - 1)" :disabled="page <= 1 || loading" class="btn btn-outline btn-sm" style="padding:4px 10px;">‹</button>
+                <template x-for="n in pageRange()" :key="n">
+                    <button x-text="n === '...' ? '…' : n"
+                            @click="n !== '...' && goToPage(n)"
+                            :disabled="loading"
+                            :class="n === page ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'"
+                            style="padding:4px 10px;min-width:34px;"></button>
+                </template>
+                <button @click="goToPage(page + 1)" :disabled="page >= lastPage || loading" class="btn btn-outline btn-sm" style="padding:4px 10px;">›</button>
+            </div>
         </div>
     </div>
 </div>
@@ -344,9 +352,9 @@ function conversationsPage() {
         conversations: [],
         counts: { pool: 0, mine: 0 },
         loading: true,
-        loadingMore: false,
-        hasMore: false,
         page: 1,
+        lastPage: 1,
+        total: 0,
         hovered: null,
         claiming: null,
         canClaimPool: @json(auth()->user()->isAgent() || auth()->user()->isSupervisor() || auth()->user()->isSuperAdmin()),
@@ -390,7 +398,6 @@ function conversationsPage() {
 
         reload() {
             this.page = 1;
-            this.conversations = [];
             this.loadData();
             this.fetchCounts();
         },
@@ -399,6 +406,7 @@ function conversationsPage() {
             const params = new URLSearchParams();
             params.set('tab', tabOverride || this.tab);
             params.set('per_page', '20');
+            params.set('page', String(this.page));
             if (this.search.trim()) params.set('search', this.search.trim());
 
             Object.entries(this.filters).forEach(([key, value]) => {
@@ -410,18 +418,11 @@ function conversationsPage() {
             return params;
         },
 
-        async loadData(append = false) {
-            if (!append) {
-                this.loading = true;
-                this.page = 1;
-            } else {
-                this.loadingMore = true;
-                this.page++;
-            }
+        async loadData() {
+            this.loading = true;
 
             try {
                 const params = this.buildParams(this.tab);
-                params.set('page', String(this.page));
 
                 const res = await fetch(`${this.indexUrl}?${params.toString()}`, {
                     headers: {
@@ -434,18 +435,16 @@ function conversationsPage() {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
-                this.conversations = append
-                    ? [...this.conversations, ...(data.data || [])]
-                    : (data.data || []);
-
-                this.hasMore = (data.current_page ?? 1) < (data.last_page ?? 1);
+                this.conversations = data.data || [];
+                this.page     = data.current_page ?? 1;
+                this.lastPage = data.last_page ?? 1;
+                this.total    = data.total ?? 0;
             } catch (e) {
                 console.error('Conversations fetch failed:', e);
                 window.showToast?.('error', 'Failed to load conversations');
-                if (!append) this.conversations = [];
+                this.conversations = [];
             } finally {
                 this.loading = false;
-                this.loadingMore = false;
             }
         },
 
@@ -467,8 +466,26 @@ function conversationsPage() {
             } catch {}
         },
 
-        loadMore() {
-            this.loadData(true);
+        goToPage(n) {
+            if (n < 1 || n > this.lastPage) return;
+            this.page = n;
+            this.loadData();
+        },
+
+        pageRange() {
+            const pages = [];
+            const delta = 2;
+            const left = this.page - delta;
+            const right = this.page + delta;
+            let last = 0;
+            for (let i = 1; i <= this.lastPage; i++) {
+                if (i === 1 || i === this.lastPage || (i >= left && i <= right)) {
+                    if (last && i - last > 1) pages.push('...');
+                    pages.push(i);
+                    last = i;
+                }
+            }
+            return pages;
         },
 
         async claimConversation(conv) {

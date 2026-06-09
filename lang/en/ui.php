@@ -6,6 +6,7 @@ return [
     'logout' => 'Logout',
     'processing' => 'Processing...',
     'page' => 'Page',
+    'total_records' => 'records',
     'confirm_action' => 'Confirm Action',
     'confirm_deletion' => 'Confirm Deletion',
     'cancel' => 'Cancel',

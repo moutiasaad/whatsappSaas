@@ -23,8 +23,6 @@
         'deleted_toast'          => __('ui.controller_messages.team_deleted'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
-        'load_more'              => __('ui.conversations_page.load_more'),
-        'loading_more'           => __('ui.conversations_page.loading_more'),
     ];
 @endphp
 
@@ -197,15 +195,19 @@
                 </table>
             </div>
 
-            <div x-show="hasMore" style="padding:1rem;text-align:center;border-top:1px solid var(--card-border)">
-                <button @click="loadMore()" :disabled="loadingMore" class="btn btn-outline btn-sm">
-                    <template x-if="!loadingMore">
-                        <span><i class="ri-arrow-down-line"></i> <span x-text="i18n.load_more"></span></span>
+            <div x-show="lastPage > 1" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--card-border);flex-wrap:wrap;gap:8px;">
+                <div style="font-size:12px;color:var(--text-muted);" x-text="total + ' {{ __('ui.total_records') }}'"></div>
+                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                    <button @click="goToPage(page - 1)" :disabled="page <= 1 || loading" class="btn btn-outline btn-sm" style="padding:4px 10px;">‹</button>
+                    <template x-for="n in pageRange()" :key="n">
+                        <button x-text="n === '...' ? '…' : n"
+                                @click="n !== '...' && goToPage(n)"
+                                :disabled="loading"
+                                :class="n === page ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'"
+                                style="padding:4px 10px;min-width:34px;"></button>
                     </template>
-                    <template x-if="loadingMore">
-                        <span><span class="btn-spinner"></span> <span x-text="i18n.loading_more"></span></span>
-                    </template>
-                </button>
+                    <button @click="goToPage(page + 1)" :disabled="page >= lastPage || loading" class="btn btn-outline btn-sm" style="padding:4px 10px;">›</button>
+                </div>
             </div>
         </div>
     </div>
@@ -264,9 +266,9 @@ function teamsPage() {
         teams:       [],
         stats:       { total: null, active: null, inactive: null, pool: null },
         loading:     true,
-        loadingMore: false,
-        hasMore:     false,
         page:        1,
+        lastPage:    1,
+        total:       0,
 
         search:     '',
         filters:    { is_active: '', sort: 'name_asc' },
@@ -286,7 +288,6 @@ function teamsPage() {
 
         reload() {
             this.page     = 1;
-            this.teams    = [];
             this.selected = [];
             this.loadData();
         },
@@ -301,9 +302,8 @@ function teamsPage() {
             return p;
         },
 
-        async loadData(append = false) {
-            if (!append) { this.loading = true; this.page = 1; }
-            else         { this.loadingMore = true; this.page++; }
+        async loadData() {
+            this.loading = true;
             try {
                 const res = await fetch(`${this.indexUrl}?${this.buildParams()}`, {
                     headers: {
@@ -314,19 +314,40 @@ function teamsPage() {
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                this.teams   = append ? [...this.teams, ...(data.data || [])] : (data.data || []);
-                this.hasMore = (data.current_page ?? 1) < (data.last_page ?? 1);
+                this.teams    = data.data || [];
+                this.page     = data.current_page ?? 1;
+                this.lastPage = data.last_page ?? 1;
+                this.total    = data.total ?? 0;
                 if (data.stats) this.stats = data.stats;
             } catch (e) {
                 console.error('Teams fetch failed:', e);
-                if (!append) this.teams = [];
+                this.teams = [];
             } finally {
-                this.loading     = false;
-                this.loadingMore = false;
+                this.loading = false;
             }
         },
 
-        loadMore() { this.loadData(true); },
+        goToPage(n) {
+            if (n < 1 || n > this.lastPage) return;
+            this.page = n;
+            this.loadData();
+        },
+
+        pageRange() {
+            const pages = [];
+            const delta = 2;
+            const left = this.page - delta;
+            const right = this.page + delta;
+            let last = 0;
+            for (let i = 1; i <= this.lastPage; i++) {
+                if (i === 1 || i === this.lastPage || (i >= left && i <= right)) {
+                    if (last && i - last > 1) pages.push('...');
+                    pages.push(i);
+                    last = i;
+                }
+            }
+            return pages;
+        },
 
         clearFilters() {
             this.search  = '';
