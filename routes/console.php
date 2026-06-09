@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\ExpireSubscriptions;
 use App\Console\Commands\SendRenewalReminders;
 use App\Jobs\PollInstanceHealth;
 use Illuminate\Foundation\Inspiring;
@@ -12,6 +13,9 @@ Artisan::command('inspire', function () {
 
 // Poll all WhatsApp instance health every 2 minutes
 Schedule::job(new PollInstanceHealth)->everyTwoMinutes();
+
+// Suspend tenants whose subscription has expired (runs at midnight)
+Schedule::command(ExpireSubscriptions::class)->dailyAt('00:05');
 
 // Send renewal reminder notifications daily at 8am
 Schedule::command(SendRenewalReminders::class)->dailyAt('08:00');

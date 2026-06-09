@@ -41,12 +41,14 @@
     </div>
 
     @php
-        $suggestStart  = $suggestStart ?? null;
-        $suggestEnd    = $suggestEnd   ?? null;
-        $lastPayment   = $lastPayment  ?? null;
-        $startVal      = old('subscription_starts_at', $tenant?->subscription_starts_at?->format('Y-m-d') ?? $suggestStart);
-        $endVal        = old('subscription_ends_at',   $tenant?->subscription_ends_at?->format('Y-m-d')   ?? $suggestEnd);
+        $suggestStart    = $suggestStart ?? null;
+        $suggestEnd      = $suggestEnd   ?? null;
+        $lastPayment     = $lastPayment  ?? null;
+        $startVal        = old('subscription_starts_at', $tenant?->subscription_starts_at?->format('Y-m-d') ?? $suggestStart);
+        $endVal          = old('subscription_ends_at',   $tenant?->subscription_ends_at?->format('Y-m-d')   ?? $suggestEnd);
         $needsSuggestion = $tenant && (!$tenant->subscription_starts_at || !$tenant->subscription_ends_at);
+        $daysLeft        = $tenant?->daysUntilExpiry();
+        $isExpired       = $tenant?->isExpired();
     @endphp
 
     <div class="form-group">
@@ -58,13 +60,33 @@
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="subscription_ends_at">{{ __('ui.tenant_form_fields.subscription_ends_at') }}</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="form-label" for="subscription_ends_at" style="margin-bottom:0;">{{ __('ui.tenant_form_fields.subscription_ends_at') }}</label>
+            @if($tenant)
+                @if($isExpired)
+                    <span class="badge badge-danger" style="font-size:11px;"><i class="ri-error-warning-line"></i> {{ __('ui.tenant_form_fields.expired') }}</span>
+                @elseif($daysLeft !== null && $daysLeft <= 7)
+                    <span class="badge badge-warning" style="font-size:11px;"><i class="ri-time-line"></i> {{ $daysLeft }}d {{ __('ui.tenant_form_fields.days_left') }}</span>
+                @elseif($daysLeft !== null)
+                    <span class="badge badge-success" style="font-size:11px;"><i class="ri-checkbox-circle-line"></i> {{ $daysLeft }}d {{ __('ui.tenant_form_fields.days_left') }}</span>
+                @endif
+            @endif
+        </div>
         <input id="subscription_ends_at" type="date" name="subscription_ends_at"
                value="{{ $endVal }}"
                class="form-control @error('subscription_ends_at') error @enderror">
         @error('subscription_ends_at') <div class="form-error">{{ $message }}</div> @enderror
+
+        @if($tenant)
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <button type="button" onclick="extendSubscription(30)"  class="btn btn-outline btn-sm"><i class="ri-add-line"></i> +30 {{ __('ui.tenant_form_fields.days') }}</button>
+            <button type="button" onclick="extendSubscription(90)"  class="btn btn-outline btn-sm"><i class="ri-add-line"></i> +3 {{ __('ui.tenant_form_fields.months') }}</button>
+            <button type="button" onclick="extendSubscription(365)" class="btn btn-outline btn-sm"><i class="ri-add-line"></i> +1 {{ __('ui.tenant_form_fields.year') }}</button>
+        </div>
+        @endif
+
         @if($needsSuggestion && $suggestStart)
-            <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;">
                 <i class="ri-information-line"></i>
                 @if($lastPayment)
                     {{ __('ui.tenant_form_fields.dates_from_payment') }} {{ $lastPayment->paid_at->format('d/m/Y') }}
@@ -81,6 +103,17 @@
         @error('stripe_id') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 </div>
+
+@if($tenant)
+<script>
+function extendSubscription(days) {
+    const input = document.getElementById('subscription_ends_at');
+    const base  = input.value ? new Date(input.value) : new Date();
+    base.setDate(base.getDate() + days);
+    input.value = base.toISOString().split('T')[0];
+}
+</script>
+@endif
 
 <div class="form-group" style="margin-top:16px;">
     <label class="form-label" for="settings">{{ __('ui.tenant_form_fields.settings') }}</label>

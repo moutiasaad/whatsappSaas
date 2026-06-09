@@ -145,16 +145,30 @@ class SuperAdminPlatformController extends Controller
         DB::transaction(function () use ($data, $tenant) {
             $slug = $this->buildUniqueSlug($data['slug'] ?? $data['name'], $tenant->id);
 
+            $endsAt = !empty($data['subscription_ends_at'])
+                ? \Carbon\Carbon::parse($data['subscription_ends_at'])
+                : null;
+
+            // Auto-sync status with the end date
+            $status = $data['subscription_status'];
+            if ($endsAt && $endsAt->isPast()) {
+                // End date is in the past → force suspended regardless of what was selected
+                $status = 'suspended';
+            } elseif ($endsAt && $endsAt->isFuture() && $tenant->subscription_status === 'suspended') {
+                // Admin set a future end date on a suspended tenant → reactivate
+                $status = 'active';
+            }
+
             $tenant->update([
-                'name'                => $data['name'],
-                'slug'                => $slug,
-                'plan_id'                 => $data['plan_id'] ?? null,
-                'subscription_status'    => $data['subscription_status'],
+                'name'                   => $data['name'],
+                'slug'                   => $slug,
+                'plan_id'                => $data['plan_id'] ?? null,
+                'subscription_status'    => $status,
                 'subscription_starts_at' => $data['subscription_starts_at'] ?? null,
-                'subscription_ends_at'   => $data['subscription_ends_at'] ?? null,
+                'subscription_ends_at'   => $endsAt,
                 'stripe_id'              => $data['stripe_id'] ?? null,
                 'settings'               => $this->parseSettings($data['settings'] ?? null),
-                'is_active'              => (bool) ($data['is_active'] ?? false),
+                'is_active'              => $status === 'active',
             ]);
 
             if (!empty($data['admin_email']) || !empty($data['admin_password']) || !empty($data['admin_name'])) {

@@ -34,7 +34,22 @@ class Tenant extends Model
 
     public function isActive(): bool
     {
-        return $this->is_active && in_array($this->subscription_status, ['trial', 'active']);
+        if (!$this->is_active) return false;
+        if (!in_array($this->subscription_status, ['active'])) return false;
+        if ($this->subscription_ends_at && $this->subscription_ends_at->isPast()) return false;
+        return true;
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->subscription_ends_at !== null && $this->subscription_ends_at->isPast();
+    }
+
+    public function daysUntilExpiry(): ?int
+    {
+        if (!$this->subscription_ends_at) return null;
+        $diff = (int) now()->diffInDays($this->subscription_ends_at, false);
+        return $diff;
     }
 
     public function hasAiQuotaRemaining(): bool
