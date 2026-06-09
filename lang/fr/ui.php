@@ -556,6 +556,8 @@ Toujours :
         'no_data'         => 'Aucune donnée pour cette période',
         'teams_label'     => 'équipes',
         'agents_label'    => 'agents',
+        'breadcrumb'      => 'Rapports',
+        'min_abbr'        => ' mn',
     ],
     'audit_log_page' => [
         'title' => 'Journal d’audit',

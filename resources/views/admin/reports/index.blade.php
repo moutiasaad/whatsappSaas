@@ -2,7 +2,14 @@
 
 @section('title', __('ui.reports_page.title'))
 
-@php $panelPrefix = auth()->user()->routeNamePrefix(); @endphp
+@section('breadcrumb')
+    <span>{{ __('ui.reports_page.breadcrumb') }}</span>
+@endsection
+
+@php
+    $panelPrefix = auth()->user()->routeNamePrefix();
+    $minAbbr     = __('ui.reports_page.min_abbr');
+@endphp
 
 @section('content')
 <div x-data="reportsPage()" x-init="init()" x-cloak>
@@ -51,12 +58,12 @@
             </div>
             <div class="stat-card orange">
                 <div class="stat-card-icon"><i class="ri-timer-line"></i></div>
-                <div class="stat-card-value" x-text="kpi.avg_first_response_min != null ? kpi.avg_first_response_min + ' mn' : '—'"></div>
+                <div class="stat-card-value" x-text="kpi.avg_first_response_min != null ? kpi.avg_first_response_min + '{{ $minAbbr }}': '—'"></div>
                 <div class="stat-card-label">{{ __('ui.reports_page.kpi_avg_response') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-card-icon"><i class="ri-time-line"></i></div>
-                <div class="stat-card-value" x-text="kpi.avg_resolution_min != null ? kpi.avg_resolution_min + ' mn' : '—'"></div>
+                <div class="stat-card-value" x-text="kpi.avg_resolution_min != null ? kpi.avg_resolution_min + '{{ $minAbbr }}': '—'"></div>
                 <div class="stat-card-label">{{ __('ui.reports_page.kpi_avg_resolution') }}</div>
             </div>
             <div class="stat-card">
@@ -170,7 +177,7 @@
                                         </div>
                                     </td>
                                     <td style="text-align:center;color:var(--text-muted);font-size:.85rem;">
-                                        <span x-text="row.avg_response_min != null ? row.avg_response_min + ' mn' : '—'"></span>
+                                        <span x-text="row.avg_response_min != null ? row.avg_response_min + '{{ $minAbbr }}': '—'"></span>
                                     </td>
                                 </tr>
                             </template>
@@ -228,7 +235,7 @@
                                     </td>
                                     <td style="text-align:center;font-weight:600;" x-text="row.messages_sent"></td>
                                     <td style="text-align:center;color:var(--text-muted);font-size:.85rem;">
-                                        <span x-text="row.avg_response_min != null ? row.avg_response_min + ' mn' : '—'"></span>
+                                        <span x-text="row.avg_response_min != null ? row.avg_response_min + '{{ $minAbbr }}': '—'"></span>
                                     </td>
                                 </tr>
                             </template>

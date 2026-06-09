@@ -519,6 +519,8 @@ return [
         'no_data'            => 'لا توجد بيانات لهذه الفترة',
         'teams_label'        => 'فرق',
         'agents_label'       => 'وكلاء',
+        'breadcrumb'         => 'التقارير',
+        'min_abbr'           => ' د',
     ],
     'audit_log_page' => [
         'title' => 'سجل التدقيق',
