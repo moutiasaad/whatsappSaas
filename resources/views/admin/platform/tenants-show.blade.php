@@ -154,5 +154,53 @@
             </div>
         </div>
     </div>
+
+    {{-- Payment history --}}
+    <div class="card" style="margin-top:1.25rem;">
+        <div class="card-header">
+            <div class="card-title">{{ __('ui.platform_tenants_show_page.payment_history') }}</div>
+            <span style="font-size:12px;color:var(--text-muted);">{{ $payments->count() }} {{ __('ui.platform_tenants_show_page.payment_records') }}</span>
+        </div>
+
+        @if($payments->isEmpty())
+            <div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px;">
+                <i class="ri-bank-card-line" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                {{ __('ui.platform_tenants_show_page.no_payments') }}
+            </div>
+        @else
+            <div class="table-container" style="border-radius:0 0 12px 12px;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.platform_tenants_show_page.payment_date') }}</th>
+                            <th>{{ __('ui.platform_tenants_show_page.plan') }}</th>
+                            <th>{{ __('ui.platform_tenants_show_page.amount') }}</th>
+                            <th>{{ __('ui.platform_tenants_show_page.status') }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($payments as $payment)
+                            @php
+                                $statusClass = match($payment->status) {
+                                    'completed' => 'badge-green',
+                                    'pending'   => 'badge-orange',
+                                    'failed'    => 'badge-red',
+                                    default     => 'badge-gray',
+                                };
+                            @endphp
+                            <tr style="cursor:pointer;" onclick="window.location='{{ route('super_admin.billing.payment.show', $payment) }}'">
+                                <td>{{ $payment->paid_at?->format('d/m/Y') ?? $payment->created_at->format('d/m/Y') }}</td>
+                                <td>{{ $payment->plan?->name ?? '—' }}</td>
+                                <td style="font-weight:600;">{{ number_format($payment->amount, 2) }} {{ strtoupper($payment->currency) }}</td>
+                                <td><span class="badge {{ $statusClass }}">{{ ucfirst($payment->status) }}</span></td>
+                                <td style="text-align:right;color:var(--text-muted);"><i class="ri-arrow-right-s-line"></i></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
 </div>
 @endsection

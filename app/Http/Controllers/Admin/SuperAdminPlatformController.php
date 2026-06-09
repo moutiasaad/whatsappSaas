@@ -102,7 +102,13 @@ class SuperAdminPlatformController extends Controller
             'users' => fn ($query) => $query->latest()->limit(5),
         ]);
 
-        return view('admin.platform.tenants-show', compact('tenant'));
+        $payments = \App\Models\TenantPayment::where('tenant_id', $tenant->id)
+            ->with('plan:id,name')
+            ->latest('created_at')
+            ->limit(20)
+            ->get();
+
+        return view('admin.platform.tenants-show', compact('tenant', 'payments'));
     }
 
     public function editTenant(Tenant $tenant)
