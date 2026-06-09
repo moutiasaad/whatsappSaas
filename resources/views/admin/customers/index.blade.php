@@ -208,8 +208,7 @@
                 </table>
             </div>
 
-            <div x-show="lastPage > 1" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--card-border);flex-wrap:wrap;gap:8px;">
-                <div style="font-size:12px;color:var(--text-muted);" x-text="total + ' {{ __('ui.total_records') }}'"></div>
+            <div style="padding:12px 16px;display:flex;align-items:center;justify-content:flex-end;border-top:1px solid var(--card-border);flex-wrap:wrap;gap:8px;">
                 <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
                     <button @click="goToPage(page - 1)" :disabled="page <= 1 || loading" class="btn btn-outline btn-sm" style="padding:4px 10px;">‹</button>
                     <template x-for="n in pageRange()" :key="n">
