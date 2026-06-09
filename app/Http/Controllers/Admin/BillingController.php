@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
@@ -36,15 +37,40 @@ class BillingController extends Controller
             })
             ->orderByDesc('created_at');
 
-        $payments = $query->paginate(25)->withQueryString();
+        if ($request->expectsJson()) {
+            $payments = $query->paginate(25);
 
-        $totals = TenantPayment::selectRaw('status, count(*) as count, sum(amount) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status')
-            ->toArray();
+            $allStats = TenantPayment::selectRaw('status, count(*) as cnt')
+                ->groupBy('status')->pluck('cnt', 'status');
 
-        $totalRevenue = TenantPayment::where('status', 'completed')->sum('amount');
+            $result              = $payments->toArray();
+            $result['data']      = $payments->map(fn($p) => [
+                'id'               => $p->id,
+                'tenant_name'      => $p->tenant?->name,
+                'tenant_slug'      => $p->tenant?->slug,
+                'tenant_initial'   => strtoupper(substr($p->tenant?->name ?? '?', 0, 1)),
+                'plan_name'        => $p->plan?->name ?? '—',
+                'amount'           => number_format((float) $p->amount, 2),
+                'currency'         => $p->currency ?? 'USD',
+                'status'           => $p->status,
+                'is_completed'     => $p->isCompleted(),
+                'paid_at_date'     => $p->paid_at?->format('d M Y'),
+                'paid_at_time'     => $p->paid_at?->format('H:i'),
+                'created_at_date'  => $p->created_at?->format('d M Y'),
+                'stripe_session_id'=> $p->stripe_session_id ? Str::limit($p->stripe_session_id, 24) : null,
+            ])->toArray();
+            $result['stats'] = [
+                'total_revenue' => (float) TenantPayment::where('status', 'completed')->sum('amount'),
+                'total'         => TenantPayment::count(),
+                'completed'     => (int) ($allStats['completed'] ?? 0),
+                'pending'       => (int) ($allStats['pending']   ?? 0),
+                'failed'        => (int) ($allStats['failed']    ?? 0),
+            ];
 
-        return view('admin.billing.payments', compact('payments', 'totals', 'totalRevenue'));
+            return response()->json($result)
+                ->withHeaders(['Cache-Control' => 'no-store, no-cache, must-revalidate']);
+        }
+
+        return view('admin.billing.payments');
     }
 }
