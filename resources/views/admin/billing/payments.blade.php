@@ -58,12 +58,35 @@
                        class="search-input">
             </div>
         </div>
-        <select name="status" class="form-control" style="width:auto;" onchange="this.form.submit()">
-            <option value="">{{ __('ui.payments_page.all_statuses') }}</option>
-            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>{{ __('ui.payments_page.status_completed') }}</option>
-            <option value="pending"   {{ request('status') === 'pending'   ? 'selected' : '' }}>{{ __('ui.payments_page.status_pending') }}</option>
-            <option value="failed"    {{ request('status') === 'failed'    ? 'selected' : '' }}>{{ __('ui.payments_page.status_failed') }}</option>
-        </select>
+        <div x-data="{
+                open: false,
+                value: '{{ request('status') }}',
+                options: [
+                    {value: '', label: '{{ __('ui.payments_page.all_statuses') }}'},
+                    {value: 'completed', label: '{{ __('ui.payments_page.status_completed') }}'},
+                    {value: 'pending',   label: '{{ __('ui.payments_page.status_pending') }}'},
+                    {value: 'failed',    label: '{{ __('ui.payments_page.status_failed') }}'},
+                ],
+                get label() { return this.options.find(o => o.value === this.value)?.label ?? '{{ __('ui.payments_page.all_statuses') }}'; },
+                select(val) { this.value = val; this.open = false; this.$el.closest('form').submit(); }
+             }" style="position:relative;">
+            <input type="hidden" name="status" :value="value">
+            <button type="button" @click="open = !open" @click.outside="open = false"
+                    style="display:flex;align-items:center;gap:.5rem;padding:.45rem .875rem;background:#fff;border:1px solid var(--card-border);border-radius:.5rem;font-size:.875rem;color:var(--text-secondary);cursor:pointer;white-space:nowrap;min-width:160px;justify-content:space-between;font-family:inherit;">
+                <span x-text="label"></span>
+                <i class="ri-arrow-down-s-line" style="font-size:1rem;transition:transform .15s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+            <div x-show="open" x-cloak
+                 style="position:absolute;bottom:calc(100% + 6px);left:0;min-width:160px;background:#fff;border:1px solid var(--card-border);border-radius:.625rem;box-shadow:0 -4px 20px rgba(0,0,0,.1);z-index:9999;overflow:hidden;">
+                <template x-for="opt in options" :key="opt.value">
+                    <button type="button" @click="select(opt.value)"
+                            :style="opt.value === value ? 'background:var(--brand-xlight);color:var(--brand);font-weight:600;' : ''"
+                            style="display:block;width:100%;text-align:left;padding:.5rem .875rem;font-size:.875rem;background:none;border:none;cursor:pointer;color:var(--text-secondary);font-family:inherit;transition:background .1s;">
+                        <span x-text="opt.label"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
         @if(request('search') || request('status'))
             <a href="{{ route('super_admin.billing.payments') }}" class="btn btn-outline btn-sm">
                 <i class="ri-close-line"></i> {{ __('ui.clear') }}
