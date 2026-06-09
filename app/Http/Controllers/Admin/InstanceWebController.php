@@ -15,15 +15,21 @@ class InstanceWebController extends Controller
 {
     public function index(Request $request)
     {
+        $isSuperAdmin = auth()->user()->role === 'super_admin';
+
         if ($request->expectsJson()) {
-            $instances = WhatsAppInstance::withCount([
+            $query = WhatsAppInstance::withCount([
                     'webhookEvents',
                     'webhookEvents as webhook_pending_count' => fn($q) => $q->whereNull('processed_at'),
                 ])
                 ->withMax('webhookEvents', 'created_at')
-                ->orderBy('name')
-                ->get()
-                ->makeHidden(['gateway_api_key', 'webhook_token']);
+                ->orderBy('name');
+
+            if ($isSuperAdmin) {
+                $query->with('tenant:id,name');
+            }
+
+            $instances = $query->get()->makeHidden(['gateway_api_key', 'webhook_token']);
 
             $stats = [
                 'connected'  => $instances->where('status', 'connected')->count(),
@@ -35,10 +41,10 @@ class InstanceWebController extends Controller
                 ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
         }
 
-        $tenantId   = auth()->user()->tenant_id;
+        $tenantId    = auth()->user()->tenant_id;
         $hasInstance = $tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists();
 
-        return view('admin.instances.index', compact('hasInstance'));
+        return view('admin.instances.index', compact('hasInstance', 'isSuperAdmin'));
     }
 
     public function create()

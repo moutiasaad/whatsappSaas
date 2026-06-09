@@ -100,6 +100,9 @@
                 <thead>
                     <tr>
                         <th>{{ __('ui.instances_page.instance') }}</th>
+                        @if($isSuperAdmin ?? false)
+                        <th>{{ __('ui.platform_tenants_page.tenant') }}</th>
+                        @endif
                         <th>{{ __('ui.instances_page.gateway') }}</th>
                         <th>{{ __('ui.instances_page.phone') }}</th>
                         <th>{{ __('ui.instances_page.activity') }}</th>
@@ -122,6 +125,9 @@
                                     </div>
                                 </div>
                             </td>
+                            @if($isSuperAdmin ?? false)
+                            <td style="font-size:.8125rem;color:var(--text-muted);" x-text="inst.tenant?.name ?? '—'"></td>
+                            @endif
                             <td x-text="inst.gateway ? inst.gateway.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '—'"></td>
                             <td x-text="inst.phone_number || '—'"></td>
                             <td x-text="inst.last_message_at ? timeAgo(inst.last_message_at) : i18n.never"></td>
@@ -306,7 +312,8 @@ function instancesPage() {
 
         subscribeHealth() {
             if (!window.Echo) return;
-            const tenantId = {{ auth()->user()->tenant_id }};
+            const tenantId = @json(auth()->user()->tenant_id);
+            if (!tenantId) return;
             window.Echo.private(`tenant.${tenantId}.instances`)
                 .listen('.instance.status.changed', (e) => {
                     const inst = this.getInst(e.instance_id);
