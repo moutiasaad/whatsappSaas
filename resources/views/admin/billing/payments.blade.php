@@ -100,12 +100,12 @@ $i18n = [
                             <th style="text-align:right;">{{ __('ui.payments_page.col_amount') }}</th>
                             <th style="text-align:center;">{{ __('ui.payments_page.col_status') }}</th>
                             <th>{{ __('ui.payments_page.col_date') }}</th>
-                            <th>{{ __('ui.payments_page.col_session') }}</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="row in rows" :key="row.id">
-                            <tr>
+                            <tr @click="window.location = detailUrlTpl.replace('__ID__', row.id)" style="cursor:pointer;" class="tr-hover">
                                 <td style="color:var(--text-muted);font-size:.8125rem;" x-text="row.id"></td>
                                 <td>
                                     <div style="display:flex;align-items:center;gap:.625rem;">
@@ -145,14 +145,8 @@ $i18n = [
                                         <span>—</span>
                                     </template>
                                 </td>
-                                <td>
-                                    <template x-if="row.stripe_session_id">
-                                        <span style="font-family:monospace;font-size:.75rem;color:var(--text-muted);background:var(--page-bg);padding:.15rem .4rem;border-radius:.375rem;border:1px solid var(--card-border);"
-                                              x-text="row.stripe_session_id"></span>
-                                    </template>
-                                    <template x-if="!row.stripe_session_id">
-                                        <span style="color:var(--text-muted);">—</span>
-                                    </template>
+                                <td style="text-align:right;width:2rem;">
+                                    <i class="ri-arrow-right-s-line" style="color:var(--text-muted);font-size:1.1rem;"></i>
                                 </td>
                             </tr>
                         </template>
@@ -192,7 +186,8 @@ $i18n = [
 function paymentsPage() {
     return {
         i18n:     @json($i18n),
-        indexUrl: @json(route('super_admin.billing.payments')),
+        indexUrl:      @json(route('super_admin.billing.payments')),
+        detailUrlTpl:  @json(route('super_admin.billing.payment.show', ['payment' => '__ID__'])),
 
         search:     '',
         filters:    { status: '' },

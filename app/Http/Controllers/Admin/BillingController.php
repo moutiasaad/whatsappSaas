@@ -73,4 +73,22 @@ class BillingController extends Controller
 
         return view('admin.billing.payments');
     }
+
+    public function showPayment(TenantPayment $payment)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $payment->load(['tenant.plan', 'plan']);
+
+        $tenant    = $payment->tenant;
+        $adminUser = $tenant?->users()->where('role', 'admin')->orderBy('id')->first();
+        $totalPaid = $tenant
+            ? TenantPayment::where('tenant_id', $tenant->id)->where('status', 'completed')->sum('amount')
+            : 0;
+        $paymentsCount = $tenant
+            ? TenantPayment::where('tenant_id', $tenant->id)->count()
+            : 0;
+
+        return view('admin.billing.payment-show', compact('payment', 'tenant', 'adminUser', 'totalPaid', 'paymentsCount'));
+    }
 }
