@@ -237,8 +237,8 @@
     <div class="card" style="margin-top:1.5rem;" x-data="apiKeyCard()">
         <div class="card-header">
             <div>
-                <div class="card-title">API Key</div>
-                <div class="card-subtitle">Use this key to authenticate all API requests via the <code>X-Api-Key</code> header.</div>
+                <div class="card-title">{{ __('ui.profile_page.api_key_title') }}</div>
+                <div class="card-subtitle">{!! __('ui.profile_page.api_key_subtitle') !!}</div>
             </div>
             <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(91,106,240,.1);display:flex;align-items:center;justify-content:center;color:#5b6af0;flex-shrink:0;">
                 <i class="ri-key-2-line"></i>
@@ -261,22 +261,22 @@
 
                 <button @click="copy()" type="button" class="btn btn-secondary" style="white-space:nowrap;display:flex;align-items:center;gap:.375rem;">
                     <i :class="copied ? 'ri-check-line' : 'ri-clipboard-line'"></i>
-                    <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+                    <span x-text="copied ? i18n.copied : i18n.copy"></span>
                 </button>
             </div>
 
             <div style="padding:.875rem;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:.625rem;font-size:.8125rem;color:#92400e;margin-bottom:1.25rem;">
                 <i class="ri-shield-keyhole-line" style="margin-right:.375rem;"></i>
-                Keep this key secret. Anyone with it can access your account via the API.
+                {{ __('ui.profile_page.api_key_secret_hint') }}
             </div>
 
             <button @click="regenerate()" type="button" class="btn btn-danger-outline" :disabled="loading"
                     style="display:flex;align-items:center;gap:.5rem;">
                 <i class="ri-refresh-line" :class="{'ri-spin': loading}"></i>
-                <span x-text="loading ? 'Regenerating...' : 'Regenerate Key'"></span>
+                <span x-text="loading ? i18n.regenerating : i18n.regenerate_key"></span>
             </button>
             <p style="font-size:.75rem;color:var(--text-muted,#64748b);margin-top:.625rem;">
-                Regenerating invalidates the current key immediately. Update any integrations using it.
+                {{ __('ui.profile_page.regenerate_hint') }}
             </p>
 
         </div>
@@ -430,6 +430,12 @@ function apiKeyCard() {
         visible: false,
         copied:  false,
         loading: false,
+        i18n: {
+            copy:            @json(__('ui.profile_page.copy')),
+            copied:          @json(__('ui.profile_page.copied')),
+            regenerate_key:  @json(__('ui.profile_page.regenerate_key')),
+            regenerating:    @json(__('ui.profile_page.regenerating')),
+        },
 
         copy() {
             navigator.clipboard.writeText(this.key);
@@ -438,7 +444,7 @@ function apiKeyCard() {
         },
 
         async regenerate() {
-            if (!confirm('Regenerate your API key? The current key will stop working immediately.')) return;
+            if (!confirm(@json(__('ui.profile_page.regenerate_confirm')))) return;
             this.loading = true;
             try {
                 const res = await fetch(window.location.pathname + '/regenerate-api-key', {

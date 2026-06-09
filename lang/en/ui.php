@@ -1432,6 +1432,15 @@ Always:
         'send_otp'               => 'Send verification code',
         'email_updated'          => 'Email address updated successfully.',
         'email_taken'            => 'This email address is already in use.',
+        'api_key_title'          => 'API Key',
+        'api_key_subtitle'       => 'Use this key to authenticate all API requests via the <code>X-Api-Key</code> header.',
+        'api_key_secret_hint'    => 'Keep this key secret. Anyone with it can access your account via the API.',
+        'copy'                   => 'Copy',
+        'copied'                 => 'Copied!',
+        'regenerate_key'         => 'Regenerate Key',
+        'regenerating'           => 'Regenerating...',
+        'regenerate_hint'        => 'Regenerating invalidates the current key immediately. Update any integrations using it.',
+        'regenerate_confirm'     => 'Regenerate your API key? The current key will stop working immediately.',
     ],
 ];
 

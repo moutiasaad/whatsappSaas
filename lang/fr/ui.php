@@ -1432,6 +1432,15 @@ Toujours :
         'send_otp'               => 'Envoyer le code de vérification',
         'email_updated'          => 'Adresse e-mail mise à jour avec succès.',
         'email_taken'            => 'Cette adresse e-mail est déjà utilisée.',
+        'api_key_title'          => 'Clé API',
+        'api_key_subtitle'       => 'Utilisez cette clé pour authentifier toutes les requêtes API via l\'en-tête <code>X-Api-Key</code>.',
+        'api_key_secret_hint'    => 'Gardez cette clé secrète. Quiconque la possède peut accéder à votre compte via l\'API.',
+        'copy'                   => 'Copier',
+        'copied'                 => 'Copié !',
+        'regenerate_key'         => 'Régénérer la clé',
+        'regenerating'           => 'Régénération...',
+        'regenerate_hint'        => 'La régénération invalide la clé actuelle immédiatement. Mettez à jour toutes les intégrations qui l\'utilisent.',
+        'regenerate_confirm'     => 'Régénérer votre clé API ? La clé actuelle cessera de fonctionner immédiatement.',
     ],
 ];
 
