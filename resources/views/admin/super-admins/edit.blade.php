@@ -11,9 +11,12 @@
 @php
     $panelPrefix  = auth()->user()->routeNamePrefix();
     $allSlugs     = array_keys($permissions);
-    $groups       = collect($permissions)->groupBy('group');
     $checkedPerms = old('permissions', $superAdmin->sidebar_permissions ?? $allSlugs);
     $isMaster     = $superAdmin->isMasterSuperAdmin();
+    $groups       = [];
+    foreach ($permissions as $slug => $meta) {
+        $groups[$meta['group']][$slug] = $meta;
+    }
 @endphp
 
 @section('content')
@@ -65,41 +68,41 @@
             </div>
 
             @if(!$isMaster)
-            <div class="card">
-                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;">
                     <div>
                         <div class="card-title">{{ __('ui.super_admins_page.section_perms') }}</div>
                         <div class="card-subtitle">{{ __('ui.super_admins_page.section_perms_hint') }}</div>
                     </div>
                     <div style="display:flex;gap:.5rem;">
-                        <button type="button" class="btn btn-outline btn-sm" id="selectAll">
-                            {{ __('ui.super_admins_page.select_all') }}
-                        </button>
-                        <button type="button" class="btn btn-outline btn-sm" id="deselectAll">
-                            {{ __('ui.super_admins_page.deselect_all') }}
-                        </button>
+                        <button type="button" class="btn btn-outline btn-sm" id="selectAll">{{ __('ui.super_admins_page.select_all') }}</button>
+                        <button type="button" class="btn btn-outline btn-sm" id="deselectAll">{{ __('ui.super_admins_page.deselect_all') }}</button>
                     </div>
                 </div>
-                <div class="card-body">
-                    @foreach($groups as $group => $items)
-                    <div style="margin-bottom:1.25rem;">
-                        <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.625rem;">
-                            {{ __('ui.super_admins_page.group_' . $group) }}
-                        </div>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;">
-                            @foreach($items as $slug => $meta)
-                            <label class="perm-toggle {{ in_array($slug, (array)$checkedPerms) ? 'checked' : '' }}">
-                                <input type="checkbox" name="permissions[]" value="{{ $slug }}"
-                                       {{ in_array($slug, (array)$checkedPerms) ? 'checked' : '' }}
-                                       class="perm-checkbox">
+
+                @foreach($groups as $group => $items)
+                <div class="perm-group">
+                    <div class="perm-group-label">{{ __('ui.super_admins_page.group_' . $group) }}</div>
+                    @foreach($items as $slug => $meta)
+                    @php $isChecked = in_array($slug, (array)$checkedPerms); @endphp
+                    <label class="perm-row">
+                        <div class="perm-row-left">
+                            <span class="perm-icon-wrap">
                                 <i class="{{ $meta['icon'] }}"></i>
-                                <span>{{ __('ui.super_admins_page.perm_' . $slug) }}</span>
-                            </label>
-                            @endforeach
+                            </span>
+                            <span class="perm-label-text">{{ __('ui.super_admins_page.perm_' . $slug) }}</span>
                         </div>
-                    </div>
+                        <div class="toggle-switch">
+                            <input type="checkbox" name="permissions[]" value="{{ $slug }}"
+                                   class="perm-checkbox" {{ $isChecked ? 'checked' : '' }}>
+                            <span class="toggle-track">
+                                <span class="toggle-thumb"></span>
+                            </span>
+                        </div>
+                    </label>
                     @endforeach
                 </div>
+                @endforeach
             </div>
             @else
             <div class="card" style="border-color:rgba(16,185,129,.25);">

@@ -1,53 +1,84 @@
 @push('styles')
 <style>
-.perm-toggle {
+.perm-group {
+    border-top: 1px solid var(--card-border);
+}
+.perm-group-label {
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .875rem 1.25rem .5rem;
+}
+.perm-row {
     display: flex;
     align-items: center;
-    gap: .5rem;
-    padding: .625rem .875rem;
-    border: 1.5px solid var(--card-border);
-    border-radius: .625rem;
+    justify-content: space-between;
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--card-border);
     cursor: pointer;
-    font-size: .875rem;
-    color: var(--text-secondary);
-    transition: border-color .15s, background .15s, color .15s;
     user-select: none;
+    transition: background .12s;
 }
-.perm-toggle:hover {
-    border-color: var(--brand);
-    color: var(--brand);
-    background: rgba(16,185,129,.04);
+.perm-row:last-child { border-bottom: none; }
+.perm-row:hover { background: var(--page-bg); }
+.perm-row-left {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
 }
-.perm-toggle.checked {
-    border-color: var(--brand);
+.perm-icon-wrap {
+    width: 2rem;
+    height: 2rem;
+    border-radius: .5rem;
     background: rgba(16,185,129,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--brand);
+    flex-shrink: 0;
+    font-size: 1rem;
 }
-.perm-toggle input[type="checkbox"] { display: none; }
-.perm-toggle i { font-size: 1rem; flex-shrink: 0; }
+.perm-label-text {
+    font-size: .9375rem;
+    color: var(--text-primary);
+}
+.toggle-switch { position: relative; }
+.toggle-switch input[type="checkbox"] { display: none; }
+.toggle-track {
+    display: block;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: #e2e8f0;
+    transition: background .2s;
+    position: relative;
+}
+.toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: transform .2s;
+}
+.perm-checkbox:checked ~ .toggle-track { background: var(--brand); }
+.perm-checkbox:checked ~ .toggle-track .toggle-thumb { transform: translateX(20px); }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-document.querySelectorAll('.perm-checkbox').forEach(cb => {
-    cb.addEventListener('change', function () {
-        this.closest('.perm-toggle').classList.toggle('checked', this.checked);
-    });
-});
-
 document.getElementById('selectAll')?.addEventListener('click', function () {
-    document.querySelectorAll('.perm-checkbox').forEach(cb => {
-        cb.checked = true;
-        cb.closest('.perm-toggle').classList.add('checked');
-    });
+    document.querySelectorAll('.perm-checkbox').forEach(cb => { cb.checked = true; });
 });
 
 document.getElementById('deselectAll')?.addEventListener('click', function () {
-    document.querySelectorAll('.perm-checkbox').forEach(cb => {
-        cb.checked = false;
-        cb.closest('.perm-toggle').classList.remove('checked');
-    });
+    document.querySelectorAll('.perm-checkbox').forEach(cb => { cb.checked = false; });
 });
 </script>
 @endpush
