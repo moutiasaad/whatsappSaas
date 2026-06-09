@@ -1840,9 +1840,9 @@
                     <a href="{{ route($panelPrefix . '.profile.show') }}" class="sidebar-user-btn" title="{{ __('ui.profile_page.title') }}">
                         <i class="ri-user-settings-line"></i>
                     </a>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" data-no-loading id="logoutForm">
                         @csrf
-                        <button type="submit" class="sidebar-user-btn" title="{{ __('ui.logout') }}">
+                        <button type="submit" class="sidebar-user-btn" id="logoutBtn" title="{{ __('ui.logout') }}">
                             <i class="ri-logout-box-r-line"></i>
                         </button>
                     </form>
@@ -2055,6 +2055,11 @@
         if (!btn) return;
         btn.classList.add('loading');
         btn.innerHTML = '<span class="btn-spinner"></span> {{ __('ui.processing') }}';
+    });
+
+    document.getElementById('logoutBtn')?.addEventListener('click', function () {
+        this.innerHTML = '<span class="btn-spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></span>';
+        this.disabled = true;
     });
 
     window.resetSubmitBtn = function(btn, label = 'Save') {
