@@ -2085,16 +2085,16 @@
     ==================================================== */
     document.addEventListener('submit', function(e) {
         const form = e.target;
-        if (form.dataset.noLoading) return;
+        if ('noLoading' in form.dataset) return;
         const btn = form.querySelector('[type="submit"]');
         if (!btn) return;
         btn.classList.add('loading');
         btn.innerHTML = '<span class="btn-spinner"></span> {{ __('ui.processing') }}';
     });
 
-    document.getElementById('logoutBtn')?.addEventListener('click', function () {
-        this.innerHTML = '<span class="btn-spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></span>';
-        this.disabled = true;
+    document.getElementById('logoutForm')?.addEventListener('submit', function () {
+        const btn = document.getElementById('logoutBtn');
+        if (btn) btn.innerHTML = '<span class="btn-spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></span>';
     });
 
     window.resetSubmitBtn = function(btn, label = 'Save') {
