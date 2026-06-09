@@ -1798,7 +1798,7 @@
                     <i class="ri-bank-card-line"></i>
                     <span>{{ __('ui.sidebar.billing') }}</span>
                 </a>
-                <a href="{{ route($panelPrefix . '.billing.payments') }}" class="{{ $navActive([$panelPrefix . '.billing.payments']) }}" style="padding-left:2.75rem;font-size:.8125rem;">
+                <a href="{{ route($panelPrefix . '.billing.payments') }}" class="{{ $navActive([$panelPrefix . '.billing.payments', $panelPrefix . '.billing.payment.show']) }}">
                     <i class="ri-receipt-line"></i>
                     <span>{{ __('ui.sidebar.payments') }}</span>
                 </a>
