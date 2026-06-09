@@ -9,6 +9,8 @@
 @section('content')
 @php
     $panelPrefix = auth()->user()->routeNamePrefix();
+    $isRtl       = (bool) data_get(config('locales.supported'), app()->getLocale() . '.rtl', false);
+    $arrowIcon   = $isRtl ? 'ri-arrow-left-s-line' : 'ri-arrow-right-s-line';
     $tenantsJs = ($tenants ?? collect())->map(function ($t) {
         return ['id' => $t->id, 'name' => $t->name, 'slug' => $t->slug];
     })->values();
@@ -181,12 +183,12 @@
         <div x-show="!loading && conversations.length > 0">
             <template x-for="conv in conversations" :key="conv.id">
                 <div class="conv-row" @mouseenter="hovered = conv.id" @mouseleave="hovered = null">
-                    <div style="width:8px;padding-left:16px;flex-shrink:0;">
+                    <div style="width:8px;padding-inline-start:16px;flex-shrink:0;">
                         <div :style="conv.unread_count > 0 ? 'width:7px;height:7px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 2px rgba(16,185,129,.2)' : 'width:7px;height:7px;'"></div>
                     </div>
 
                     <a :href="conversationUrl(conv.id)"
-                       style="display:flex;align-items:center;gap:.875rem;padding:.875rem 1rem .875rem .75rem;text-decoration:none;color:inherit;flex:1;min-width:0;">
+                       style="display:flex;align-items:center;gap:.875rem;padding-block:.875rem;padding-inline-start:.75rem;padding-inline-end:1rem;text-decoration:none;color:inherit;flex:1;min-width:0;">
                         <div class="conv-avatar" x-text="initials(conv.customer?.display_name || conv.customer?.phone_e164)"></div>
 
                         <div style="flex:1;min-width:0;">
@@ -218,7 +220,7 @@
                         </div>
                     </a>
 
-                    <div x-show="canClaimPool && tab === 'pool' && hovered === conv.id" style="padding-right:1rem;flex-shrink:0;">
+                    <div x-show="canClaimPool && tab === 'pool' && hovered === conv.id" style="padding-inline-start:.75rem;padding-inline-end:1rem;flex-shrink:0;">
                         <button @click.prevent="claimConversation(conv)" :disabled="claiming === conv.id"
                                 class="btn btn-primary btn-sm" style="white-space:nowrap;min-width:72px;">
                             <template x-if="claiming !== conv.id"><span><i class="ri-hand-coin-line"></i> {{ __('ui.conversations_page.take') }}</span></template>
@@ -226,8 +228,8 @@
                         </button>
                     </div>
 
-                    <div x-show="tab !== 'pool' || hovered !== conv.id" style="padding-right:1.25rem;flex-shrink:0;color:var(--text-muted);">
-                        <i class="ri-arrow-right-s-line" style="font-size:1.125rem;"></i>
+                    <div x-show="tab !== 'pool' || hovered !== conv.id" style="padding-inline-start:.75rem;padding-inline-end:1.25rem;flex-shrink:0;color:var(--text-muted);">
+                        <i class="{{ $arrowIcon }}" style="font-size:1.125rem;"></i>
                     </div>
                 </div>
             </template>
@@ -279,7 +281,7 @@
     font-size: .75rem;
     color: var(--text-muted);
     flex-shrink: 0;
-    margin-left: .5rem;
+    margin-inline-start: .5rem;
 }
 .conv-preview {
     font-size: .8125rem;
