@@ -47,53 +47,27 @@
 </div>
 
 {{-- Filters --}}
-<div class="card" style="padding:0;margin-bottom:1rem;">
-    <form method="GET" action="{{ route('super_admin.billing.payments') }}"
-          style="display:flex;gap:.75rem;padding:.875rem 1.25rem;flex-wrap:wrap;align-items:center;">
-        <div style="flex:1;min-width:200px;">
-            <div class="search-wrap">
-                <i class="ri-search-line search-icon"></i>
-                <input type="text" name="search" value="{{ request('search') }}"
-                       placeholder="{{ __('ui.payments_page.search_placeholder') }}"
-                       class="search-input">
-            </div>
+<form method="GET" action="{{ route('super_admin.billing.payments') }}">
+    <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem">
+        <div class="filter-input-wrap">
+            <i class="ri-search-line"></i>
+            <input type="text" name="search" value="{{ request('search') }}"
+                   placeholder="{{ __('ui.payments_page.search_placeholder') }}"
+                   class="filter-input">
         </div>
-        <div x-data="{
-                open: false,
-                value: '{{ request('status') }}',
-                options: [
-                    {value: '', label: '{{ __('ui.payments_page.all_statuses') }}'},
-                    {value: 'completed', label: '{{ __('ui.payments_page.status_completed') }}'},
-                    {value: 'pending',   label: '{{ __('ui.payments_page.status_pending') }}'},
-                    {value: 'failed',    label: '{{ __('ui.payments_page.status_failed') }}'},
-                ],
-                get label() { return this.options.find(o => o.value === this.value)?.label ?? '{{ __('ui.payments_page.all_statuses') }}'; },
-                select(val) { this.value = val; this.open = false; this.$el.closest('form').submit(); }
-             }" style="position:relative;">
-            <input type="hidden" name="status" :value="value">
-            <button type="button" @click="open = !open" @click.outside="open = false"
-                    style="display:flex;align-items:center;gap:.5rem;padding:.45rem .875rem;background:#fff;border:1px solid var(--card-border);border-radius:.5rem;font-size:.875rem;color:var(--text-secondary);cursor:pointer;white-space:nowrap;min-width:160px;justify-content:space-between;font-family:inherit;">
-                <span x-text="label"></span>
-                <i class="ri-arrow-down-s-line" style="font-size:1rem;transition:transform .15s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
-            </button>
-            <div x-show="open" x-cloak
-                 style="position:absolute;bottom:calc(100% + 6px);left:0;min-width:160px;background:#fff;border:1px solid var(--card-border);border-radius:.625rem;box-shadow:0 -4px 20px rgba(0,0,0,.1);z-index:9999;overflow:hidden;">
-                <template x-for="opt in options" :key="opt.value">
-                    <button type="button" @click="select(opt.value)"
-                            :style="opt.value === value ? 'background:var(--brand-xlight);color:var(--brand);font-weight:600;' : ''"
-                            style="display:block;width:100%;text-align:left;padding:.5rem .875rem;font-size:.875rem;background:none;border:none;cursor:pointer;color:var(--text-secondary);font-family:inherit;transition:background .1s;">
-                        <span x-text="opt.label"></span>
-                    </button>
-                </template>
-            </div>
-        </div>
+        <select name="status" class="toolbar-select" onchange="this.form.submit()">
+            <option value="">{{ __('ui.payments_page.all_statuses') }}</option>
+            <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>{{ __('ui.payments_page.status_completed') }}</option>
+            <option value="pending"   {{ request('status') === 'pending'   ? 'selected' : '' }}>{{ __('ui.payments_page.status_pending') }}</option>
+            <option value="failed"    {{ request('status') === 'failed'    ? 'selected' : '' }}>{{ __('ui.payments_page.status_failed') }}</option>
+        </select>
         @if(request('search') || request('status'))
-            <a href="{{ route('super_admin.billing.payments') }}" class="btn btn-outline btn-sm">
+            <a href="{{ route('super_admin.billing.payments') }}" class="btn btn-ghost btn-sm">
                 <i class="ri-close-line"></i> {{ __('ui.clear') }}
             </a>
         @endif
-    </form>
-</div>
+    </div>
+</form>
 
 {{-- Table --}}
 <div class="card" style="padding:0;">
