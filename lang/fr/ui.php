@@ -1275,6 +1275,7 @@ Toujours :
         'billing' => 'Facturation',
         'payments' => 'Paiements',
         'settings' => 'Paramètres',
+        'api_docs' => 'Documentation API',
     ],
 
     'payments_page' => [
@@ -1411,6 +1412,8 @@ Toujours :
         'empty'              => 'Aucune nouvelle notification',
         'loading'            => 'Chargement...',
         'just_now'           => 'À l\'instant',
+        'send_error'         => 'Échec de l\'envoi de la notification.',
+        'request_failed'     => 'La requête a échoué. Veuillez réessayer.',
     ],
 
     'profile_page' => [

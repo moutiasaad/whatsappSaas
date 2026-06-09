@@ -1274,6 +1274,7 @@ Always:
         'billing' => 'Billing',
         'payments' => 'Payments',
         'settings' => 'Settings',
+        'api_docs' => 'API Docs',
     ],
 
     'payments_page' => [
@@ -1411,6 +1412,8 @@ Always:
         'empty'              => 'No new notifications',
         'loading'            => 'Loading...',
         'just_now'           => 'Just now',
+        'send_error'         => 'Failed to send notification.',
+        'request_failed'     => 'Request failed. Please try again.',
     ],
 
     'profile_page' => [

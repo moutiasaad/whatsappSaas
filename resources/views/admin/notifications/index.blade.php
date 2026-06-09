@@ -303,7 +303,7 @@ function notificationsPage() {
                     this.showAlert(false, d.message || '{{ __('ui.notifications_page.send_error') }}');
                 }
             } catch (e) {
-                this.showAlert(false, 'Request failed.');
+                this.showAlert(false, @json(__('ui.notifications_page.request_failed')));
             } finally {
                 this.sending = false;
             }
