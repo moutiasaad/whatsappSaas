@@ -115,15 +115,27 @@ class SuperAdminPlatformController extends Controller
             ->orderBy('id')
             ->first();
 
-        $lastPayment = null;
+        $lastPayment   = null;
+        $suggestStart  = null;
+        $suggestEnd    = null;
+
         if (!$tenant->subscription_starts_at || !$tenant->subscription_ends_at) {
             $lastPayment = \App\Models\TenantPayment::where('tenant_id', $tenant->id)
                 ->where('status', 'completed')
                 ->latest('paid_at')
                 ->first();
+
+            if ($lastPayment?->paid_at) {
+                $suggestStart = $lastPayment->paid_at->format('Y-m-d');
+                $suggestEnd   = $lastPayment->paid_at->copy()->addMonth()->format('Y-m-d');
+            } else {
+                // No payment records — fall back to tenant creation date
+                $suggestStart = $tenant->created_at->format('Y-m-d');
+                $suggestEnd   = $tenant->created_at->copy()->addMonth()->format('Y-m-d');
+            }
         }
 
-        return view('admin.platform.tenants-edit', compact('tenant', 'plans', 'tenantAdmin', 'lastPayment'));
+        return view('admin.platform.tenants-edit', compact('tenant', 'plans', 'tenantAdmin', 'lastPayment', 'suggestStart', 'suggestEnd'));
     }
 
     public function updateTenant(Request $request, Tenant $tenant)

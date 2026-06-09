@@ -1057,6 +1057,7 @@ Always:
         'subscription_starts_at' => 'Subscription Start Date',
         'subscription_ends_at'   => 'Subscription End Date',
         'dates_from_payment'     => 'Auto-filled from last payment on',
+        'dates_from_creation'    => 'Auto-filled from tenant creation date. Adjust if needed.',
         'plan' => 'Plan',
         'no_plan' => 'No plan',
         'trial_ends_at' => 'Trial Ends At',

@@ -985,6 +985,7 @@ return [
         'subscription_starts_at' => 'تاريخ بدء الاشتراك',
         'subscription_ends_at'   => 'تاريخ انتهاء الاشتراك',
         'dates_from_payment'     => 'تم الملء تلقائياً من آخر دفعة بتاريخ',
+        'dates_from_creation'    => 'تم الملء تلقائياً من تاريخ إنشاء المستأجر. عدّل إذا لزم الأمر.',
         'plan' => 'الخطة',
         'no_plan' => 'لا توجد خطة',
         'trial_ends_at' => 'ينتهي العرض التجريبي',

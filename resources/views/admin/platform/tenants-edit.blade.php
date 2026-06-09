@@ -27,7 +27,12 @@
             @csrf
             @method('PUT')
 
-            @include('admin.platform.partials.tenant-form-fields', ['tenant' => $tenant, 'lastPayment' => $lastPayment ?? null])
+            @include('admin.platform.partials.tenant-form-fields', [
+    'tenant'       => $tenant,
+    'lastPayment'  => $lastPayment  ?? null,
+    'suggestStart' => $suggestStart ?? null,
+    'suggestEnd'   => $suggestEnd   ?? null,
+])
 
             <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
                 <a href="{{ route('super_admin.platform.tenants.show', $tenant) }}" class="btn btn-outline">{{ __('ui.cancel') }}</a>

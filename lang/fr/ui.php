@@ -1058,6 +1058,7 @@ Toujours :
         ‘subscription_starts_at’ => ‘Date de début d\’abonnement’,
         ‘subscription_ends_at’   => ‘Date de fin d\’abonnement’,
         ‘dates_from_payment’     => ‘Pré-rempli depuis le dernier paiement du’,
+        ‘dates_from_creation’    => ‘Pré-rempli depuis la date de création du locataire. Ajustez si nécessaire.’,
         ‘plan’ => ‘Forfait’,
         ‘no_plan’ => ‘Aucun forfait’,
         ‘trial_ends_at’ => ‘Fin de l\’essai’,
