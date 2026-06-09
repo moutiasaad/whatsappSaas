@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
-use App\Models\PlatformSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -463,58 +462,6 @@ class SuperAdminPlatformController extends Controller
         return back()->with('success', $message);
     }
 
-    public function globalSettings()
-    {
-        $settings = $this->resolvedGlobalSettings();
-        $runtime = $this->runtimeGlobalSettings();
-
-        return view('admin.platform.global-settings', compact('settings', 'runtime'));
-    }
-
-    public function editGlobalSettings()
-    {
-        $settings = $this->resolvedGlobalSettings();
-        $runtime = $this->runtimeGlobalSettings();
-
-        return view('admin.platform.global-settings-edit', compact('settings', 'runtime'));
-    }
-
-    public function updateGlobalSettings(Request $request)
-    {
-        $schema = $this->globalSettingsSchema();
-        $rules = [];
-
-        foreach ($schema as $key => $meta) {
-            $rules[$key] = match ($meta['type']) {
-                'boolean' => 'nullable|boolean',
-                'url' => 'required|url|max:255',
-                'email' => 'nullable|email|max:150',
-                default => 'required|string|max:150',
-            };
-        }
-
-        $data = $request->validate($rules);
-
-        foreach ($schema as $key => $meta) {
-            $value = match ($meta['type']) {
-                'boolean' => (bool) ($data[$key] ?? false),
-                default => $data[$key] ?? $meta['default'],
-            };
-
-            PlatformSetting::updateOrCreate(
-                ['key' => $key],
-                [
-                    'value' => $this->serializePlatformSetting($value, $meta['type']),
-                    'type'  => $meta['type'],
-                ]
-            );
-        }
-
-        return redirect()
-            ->route('super_admin.platform.global-settings')
-            ->with('success', __('ui.controller_messages.global_settings_updated'));
-    }
-
     public function systemHealth()
     {
         $checks = [
@@ -715,93 +662,4 @@ class SuperAdminPlatformController extends Controller
         return json_decode($features, true);
     }
 
-    private function globalSettingsSchema(): array
-    {
-        return [
-            'app_name' => [
-                'label' => __('ui.platform_global_settings_page.application_name'),
-                'type' => 'string',
-                'default' => config('app.name'),
-            ],
-            'app_url' => [
-                'label' => __('ui.platform_global_settings_page.application_url'),
-                'type' => 'url',
-                'default' => config('app.url'),
-            ],
-            'support_email' => [
-                'label' => __('ui.platform_global_settings_page.support_email'),
-                'type' => 'email',
-                'default' => config('mail.from.address'),
-            ],
-            'platform_signups_enabled' => [
-                'label' => __('ui.platform_global_settings_page.new_tenant_signups'),
-                'type' => 'boolean',
-                'default' => true,
-            ],
-            'billing_features_enabled' => [
-                'label' => __('ui.platform_global_settings_page.billing_features'),
-                'type' => 'boolean',
-                'default' => true,
-            ],
-            'maintenance_mode_enabled' => [
-                'label' => __('ui.platform_global_settings_page.maintenance_banner'),
-                'type' => 'boolean',
-                'default' => false,
-            ],
-        ];
-    }
-
-    private function resolvedGlobalSettings(): array
-    {
-        $schema = $this->globalSettingsSchema();
-        $stored = PlatformSetting::whereIn('key', array_keys($schema))->get()->keyBy('key');
-        $resolved = [];
-
-        foreach ($schema as $key => $meta) {
-            $raw = $stored[$key]->value ?? null;
-            $resolved[$key] = [
-                'label' => $meta['label'],
-                'type' => $meta['type'],
-                'value' => $raw === null ? $meta['default'] : $this->deserializePlatformSetting($raw, $meta['type']),
-            ];
-        }
-
-        return $resolved;
-    }
-
-    private function runtimeGlobalSettings(): array
-    {
-        return [
-            'app_env'          => config('app.env'),
-            'queue_connection' => config('queue.default'),
-            'cache_store'      => config('cache.default'),
-            'session_driver'   => config('session.driver'),
-            'broadcast_driver' => config('broadcasting.default'),
-            'mail_mailer'      => config('mail.default'),
-        ];
-    }
-
-    private function serializePlatformSetting(mixed $value, string $type): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        return match ($type) {
-            'boolean' => $value ? '1' : '0',
-            default => (string) $value,
-        };
-    }
-
-    private function deserializePlatformSetting(?string $value, string $type): mixed
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        return match ($type) {
-            'boolean' => $value === '1',
-            default => $value,
-        };
-    }
 }

@@ -24,9 +24,6 @@
             <a href="{{ route('super_admin.platform.plans') }}" class="btn btn-outline">
                 <i class="ri-price-tag-3-line"></i> {{ __('ui.billing_page.manage_plans') }}
             </a>
-            <a href="{{ route('super_admin.platform.global-settings') }}" class="btn btn-primary">
-                <i class="ri-settings-3-line"></i> {{ __('ui.billing_page.global_settings') }}
-            </a>
         </div>
     </div>
 

@@ -1694,12 +1694,7 @@
                 <span>{{ __('ui.sidebar.subscription_plans') }}</span>
             </a>
 
-            <a href="{{ route($panelPrefix . '.platform.global-settings') }}" class="{{ $navActive([$panelPrefix . '.platform.global-settings*']) }}">
-                <i class="ri-global-line"></i>
-                <span>{{ __('ui.sidebar.global_settings') }}</span>
-            </a>
-
-            <a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
+<a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
                 <i class="ri-pulse-line"></i>
                 <span>{{ __('ui.sidebar.system_health') }}</span>
             </a>

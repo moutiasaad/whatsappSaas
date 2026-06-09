@@ -197,10 +197,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'updatePlan'])->name('platform.plans.update');
                 Route::patch('/platform/plans/{plan}/status', [SuperAdminPlatformController::class, 'togglePlanStatus'])->name('platform.plans.status');
                 Route::post('/platform/plans/bulk', [SuperAdminPlatformController::class, 'bulkPlans'])->name('platform.plans.bulk');
-                Route::get('/platform/global-settings', [SuperAdminPlatformController::class, 'globalSettings'])->name('platform.global-settings');
-                Route::get('/platform/global-settings/edit', [SuperAdminPlatformController::class, 'editGlobalSettings'])->name('platform.global-settings.edit');
-                Route::put('/platform/global-settings', [SuperAdminPlatformController::class, 'updateGlobalSettings'])->name('platform.global-settings.update');
-                Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
+Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
 
                 // Legal page editor
                 Route::get('/platform/legal-pages', [LegalPageController::class, 'index'])->name('platform.legal-pages.index');
