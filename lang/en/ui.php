@@ -1056,6 +1056,7 @@ Always:
         'subscription_status'    => 'Subscription Status',
         'subscription_starts_at' => 'Subscription Start Date',
         'subscription_ends_at'   => 'Subscription End Date',
+        'dates_from_payment'     => 'Auto-filled from last payment on',
         'plan' => 'Plan',
         'no_plan' => 'No plan',
         'trial_ends_at' => 'Trial Ends At',

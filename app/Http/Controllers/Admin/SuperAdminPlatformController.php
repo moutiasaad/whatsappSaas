@@ -115,7 +115,15 @@ class SuperAdminPlatformController extends Controller
             ->orderBy('id')
             ->first();
 
-        return view('admin.platform.tenants-edit', compact('tenant', 'plans', 'tenantAdmin'));
+        $lastPayment = null;
+        if (!$tenant->subscription_starts_at || !$tenant->subscription_ends_at) {
+            $lastPayment = \App\Models\TenantPayment::where('tenant_id', $tenant->id)
+                ->where('status', 'completed')
+                ->latest('paid_at')
+                ->first();
+        }
+
+        return view('admin.platform.tenants-edit', compact('tenant', 'plans', 'tenantAdmin', 'lastPayment'));
     }
 
     public function updateTenant(Request $request, Tenant $tenant)

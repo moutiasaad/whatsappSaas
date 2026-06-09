@@ -984,6 +984,7 @@ return [
         'subscription_status'    => 'حالة الاشتراك',
         'subscription_starts_at' => 'تاريخ بدء الاشتراك',
         'subscription_ends_at'   => 'تاريخ انتهاء الاشتراك',
+        'dates_from_payment'     => 'تم الملء تلقائياً من آخر دفعة بتاريخ',
         'plan' => 'الخطة',
         'no_plan' => 'لا توجد خطة',
         'trial_ends_at' => 'ينتهي العرض التجريبي',

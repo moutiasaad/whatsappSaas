@@ -220,10 +220,11 @@ class PaymentController extends Controller
 
                 // Payment completed = subscription is always active, regardless of new vs upgrade
                 $tenant->update([
-                    'plan_id'              => $payment->plan_id,
-                    'subscription_status'  => 'active',
-                    'subscription_ends_at' => now()->addMonth(),
-                    'is_active'            => true,
+                    'plan_id'                 => $payment->plan_id,
+                    'subscription_status'     => 'active',
+                    'subscription_starts_at'  => now(),
+                    'subscription_ends_at'    => now()->addMonth(),
+                    'is_active'               => true,
                 ]);
 
                 Log::info('Tenant activated via Stripe', [
