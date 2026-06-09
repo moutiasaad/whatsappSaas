@@ -22,8 +22,8 @@
     <div class="form-group">
         <label class="form-label" for="subscription_status">{{ __('ui.tenant_form_fields.subscription_status') }}</label>
         <select id="subscription_status" name="subscription_status" class="form-control @error('subscription_status') error @enderror">
-            @foreach(['trial','active','suspended','cancelled'] as $status)
-                <option value="{{ $status }}" @selected(old('subscription_status', $tenant?->subscription_status ?? 'trial') === $status)>{{ ucfirst($status) }}</option>
+            @foreach(['active','suspended','cancelled'] as $status)
+                <option value="{{ $status }}" @selected(old('subscription_status', $tenant?->subscription_status ?? 'active') === $status)>{{ ucfirst($status) }}</option>
             @endforeach
         </select>
         @error('subscription_status') <div class="form-error">{{ $message }}</div> @enderror
@@ -38,12 +38,6 @@
             @endforeach
         </select>
         @error('plan_id') <div class="form-error">{{ $message }}</div> @enderror
-    </div>
-
-    <div class="form-group">
-        <label class="form-label" for="trial_ends_at">{{ __('ui.tenant_form_fields.trial_ends_at') }}</label>
-        <input id="trial_ends_at" type="date" name="trial_ends_at" value="{{ old('trial_ends_at', $tenant?->trial_ends_at?->format('Y-m-d')) }}" class="form-control @error('trial_ends_at') error @enderror">
-        @error('trial_ends_at') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
     <div class="form-group">
