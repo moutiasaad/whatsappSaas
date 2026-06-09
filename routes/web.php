@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\KnowledgeController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SavedReplyWebController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SuperAdminManagerController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
@@ -182,6 +183,13 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // SaaS control plane (super admin only)
             Route::middleware('role:super_admin')->group(function () {
+                // Super Admin account management
+                Route::get('/super-admins', [SuperAdminManagerController::class, 'index'])->name('super-admins.index');
+                Route::get('/super-admins/create', [SuperAdminManagerController::class, 'create'])->name('super-admins.create');
+                Route::post('/super-admins', [SuperAdminManagerController::class, 'store'])->name('super-admins.store');
+                Route::get('/super-admins/{superAdmin}/edit', [SuperAdminManagerController::class, 'edit'])->name('super-admins.edit');
+                Route::put('/super-admins/{superAdmin}', [SuperAdminManagerController::class, 'update'])->name('super-admins.update');
+                Route::delete('/super-admins/{superAdmin}', [SuperAdminManagerController::class, 'destroy'])->name('super-admins.destroy');
                 Route::get('/platform/tenants', [SuperAdminPlatformController::class, 'tenants'])->name('platform.tenants');
                 Route::get('/platform/tenants/create', [SuperAdminPlatformController::class, 'createTenant'])->name('platform.tenants.create');
                 Route::post('/platform/tenants', [SuperAdminPlatformController::class, 'storeTenant'])->name('platform.tenants.store');

@@ -1660,6 +1660,9 @@
         @endauth
 
         <nav class="sidebar-nav">
+            @php
+                $sp = fn(string $p) => Auth::user()->hasSuperAdminPermission($p);
+            @endphp
             @if(Auth::user()->isSuperAdmin())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.platform_owner') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
@@ -1690,27 +1693,43 @@
             </a>
 
             @if(Auth::user()->isSuperAdmin())
+            @if($sp('platform_tenants'))
             <a href="{{ route($panelPrefix . '.platform.tenants') }}" class="{{ $navActive([$panelPrefix . '.platform.tenants*']) }}">
                 <i class="ri-building-2-line"></i>
                 <span>{{ __('ui.sidebar.tenants') }}</span>
             </a>
+            @endif
 
+            @if($sp('platform_plans'))
             <a href="{{ route($panelPrefix . '.platform.plans') }}" class="{{ $navActive([$panelPrefix . '.platform.plans*']) }}">
                 <i class="ri-price-tag-3-line"></i>
                 <span>{{ __('ui.sidebar.subscription_plans') }}</span>
             </a>
+            @endif
 
-<a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
+            @if($sp('platform_system_health'))
+            <a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
                 <i class="ri-pulse-line"></i>
                 <span>{{ __('ui.sidebar.system_health') }}</span>
             </a>
+            @endif
 
+            @if($sp('platform_legal_pages'))
             <a href="{{ route($panelPrefix . '.platform.legal-pages.index') }}" class="{{ $navActive([$panelPrefix . '.platform.legal-pages*']) }}">
                 <i class="ri-file-shield-2-line"></i>
                 <span>{{ __('ui.sidebar.legal_pages') }}</span>
             </a>
             @endif
 
+            @if(Auth::user()->isMasterSuperAdmin())
+            <a href="{{ route($panelPrefix . '.super-admins.index') }}" class="{{ $navActive([$panelPrefix . '.super-admins.*']) }}">
+                <i class="ri-shield-user-line"></i>
+                <span>{{ __('ui.sidebar.super_admins') }}</span>
+            </a>
+            @endif
+            @endif
+
+            @if(!Auth::user()->isSuperAdmin() || $sp('conversations'))
             <a href="{{ route($panelPrefix . '.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.conversations.*']) }}">
                 <i class="ri-message-3-line"></i>
                 <span>{{ __('ui.sidebar.conversations') }}</span>
@@ -1726,10 +1745,13 @@
                 @endif
             </a>
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('customers'))
             <a href="{{ route($panelPrefix . '.customers.index') }}" class="{{ $navActive([$panelPrefix . '.customers.*']) }}">
                 <i class="ri-contacts-line"></i>
                 <span>{{ __('ui.sidebar.customers') }}</span>
             </a>
+            @endif
+            @endif {{-- end conversations/customers block --}}
 
             @if(Auth::user()->isSupervisor())
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
@@ -1739,22 +1761,31 @@
             @endif
 
             @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
+                @php $showMgmt = !Auth::user()->isSuperAdmin() || $sp('instances') || $sp('teams') || $sp('users'); @endphp
+                @if($showMgmt)
                 <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
+                @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('instances'))
             <a href="{{ route($panelPrefix . '.instances.index') }}" class="{{ $navActive([$panelPrefix . '.instances.*']) }}">
                 <i class="ri-smartphone-line"></i>
                 <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
             </a>
+            @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('teams'))
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
                 <i class="ri-team-line"></i>
                 <span>{{ __('ui.sidebar.teams') }}</span>
             </a>
+            @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('users'))
             <a href="{{ route($panelPrefix . '.users.index') }}" class="{{ $navActive([$panelPrefix . '.users.*']) }}">
                 <i class="ri-user-settings-line"></i>
                 <span>{{ __('ui.sidebar.agents_users') }}</span>
             </a>
+            @endif
 
             @if(Auth::user()->isAdmin())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.ai_knowledge') }}</div>
@@ -1775,26 +1806,30 @@
                 </a>
             @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('notifications'))
             <a href="{{ route($panelPrefix . '.notifications.index') }}" class="{{ $navActive([$panelPrefix . '.notifications.*']) }}">
                 <i class="ri-notification-3-line"></i>
                 <span>{{ __('ui.sidebar.notifications') }}</span>
             </a>
+            @endif
 
             <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
 
-            @if(Auth::user()->isAdmin() || Auth::user()->isSuperAdmin())
+            @if(Auth::user()->isAdmin() || (Auth::user()->isSuperAdmin() && $sp('reports')))
             <a href="{{ route($panelPrefix . '.reports.index') }}" class="{{ $navActive([$panelPrefix . '.reports.*']) }}">
                 <i class="ri-bar-chart-2-line"></i>
                 <span>{{ __('ui.sidebar.reports') }}</span>
             </a>
             @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('audit_log'))
             <a href="{{ route($panelPrefix . '.audit-log.index') }}" class="{{ $navActive([$panelPrefix . '.audit-log.*']) }}">
                 <i class="ri-file-list-3-line"></i>
                 <span>{{ __('ui.sidebar.audit_log') }}</span>
             </a>
+            @endif
 
-            @if(Auth::user()->isSuperAdmin())
+            @if(Auth::user()->isSuperAdmin() && $sp('billing'))
                 <a href="{{ route($panelPrefix . '.billing.index') }}" class="{{ $navActive([$panelPrefix . '.billing.index']) }}">
                     <i class="ri-bank-card-line"></i>
                     <span>{{ __('ui.sidebar.billing') }}</span>

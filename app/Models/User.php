@@ -19,6 +19,7 @@ class User extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'password', 'role',
         'is_active', 'last_login_at', 'avatar_url', 'api_key',
+        'sidebar_permissions',
     ];
 
     protected $hidden = ['password', 'remember_token', 'api_key'];
@@ -26,11 +27,12 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'tenant_id'          => 'integer',
-            'email_verified_at' => 'datetime',
-            'last_login_at'     => 'datetime',
-            'password'          => 'hashed',
-            'is_active'         => 'boolean',
+            'tenant_id'           => 'integer',
+            'email_verified_at'   => 'datetime',
+            'last_login_at'       => 'datetime',
+            'password'            => 'hashed',
+            'is_active'           => 'boolean',
+            'sidebar_permissions' => 'array',
         ];
     }
 
@@ -52,6 +54,20 @@ class User extends Authenticatable
     public function isAgent(): bool { return $this->role === 'agent'; }
     public function hasRole(string $role): bool { return $this->role === $role; }
     public function hasAnyRole(array $roles): bool { return in_array($this->role, $roles); }
+
+    /** Master super admin = unrestricted (sidebar_permissions is null). */
+    public function isMasterSuperAdmin(): bool
+    {
+        return $this->isSuperAdmin() && $this->sidebar_permissions === null;
+    }
+
+    /** Check if this super admin can see a given sidebar section. Always true for non-super-admins. */
+    public function hasSuperAdminPermission(string $permission): bool
+    {
+        if (!$this->isSuperAdmin()) return true;
+        if ($this->sidebar_permissions === null) return true;
+        return in_array($permission, $this->sidebar_permissions, true);
+    }
 
     public function routeNamePrefix(): string
     {
