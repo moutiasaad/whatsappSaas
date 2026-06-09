@@ -53,7 +53,8 @@
             <i class="ri-search-line"></i>
             <input type="text" name="search" value="{{ request('search') }}"
                    placeholder="{{ __('ui.payments_page.search_placeholder') }}"
-                   class="filter-input">
+                   class="filter-input"
+                   x-data @input.debounce.400ms="$el.closest('form').submit()">
         </div>
         <select name="status" class="toolbar-select" onchange="this.form.submit()">
             <option value="">{{ __('ui.payments_page.all_statuses') }}</option>
