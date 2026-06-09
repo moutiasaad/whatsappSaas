@@ -9,7 +9,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @if($redirectToDash ?? false)
     <meta http-equiv="refresh" content="5;url={{ auth()->check() ? route(auth()->user()->homeRouteName()) : route('login') }}">
     @endif
@@ -17,6 +18,7 @@
         :root { --brand:#10b981; --brand-dark:#059669; --brand-xlight:#ecfdf5; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
         body { font-family:'Outfit',system-ui,sans-serif; background:#f8fafc; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+        html[dir="rtl"] body { font-family:'Cairo',sans-serif; line-height:1.65; }
         @keyframes scaleIn { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
         @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes checkDraw { from{stroke-dashoffset:100} to{stroke-dashoffset:0} }

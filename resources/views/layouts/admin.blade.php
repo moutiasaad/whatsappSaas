@@ -10,7 +10,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
 
     @livewireStyles
@@ -132,7 +134,11 @@
             line-height: 1.5;
         }
 
-        html[dir="rtl"] body { font-family: 'Noto Sans Arabic', 'Outfit', sans-serif; }
+        html[dir="rtl"] body {
+            font-family: 'Cairo', sans-serif;
+            line-height: 1.65;
+            letter-spacing: 0;
+        }
 
         /* ============================================================
            SIDEBAR

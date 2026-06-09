@@ -9,11 +9,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root { --brand:#10b981; --brand-dark:#059669; --brand-light:#d1fae5; --brand-xlight:#ecfdf5; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
         body { font-family:'Outfit',system-ui,sans-serif; background:#f8fafc; min-height:100vh; display:flex; flex-direction:column; }
+        html[dir="rtl"] body { font-family:'Cairo',sans-serif; line-height:1.65; }
 
         nav { background:rgba(255,255,255,.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:13px 24px; display:flex; align-items:center; gap:12px; }
         .nav-logo { display:flex; align-items:center; gap:9px; font-size:17px; font-weight:800; color:var(--text); text-decoration:none; }

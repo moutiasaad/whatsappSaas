@@ -10,7 +10,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         /* ── tokens ── */
         :root {
@@ -31,6 +32,7 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body { font-family: 'Outfit', system-ui, sans-serif; background: #fff; color: var(--text); line-height: 1.6; overflow-x: hidden; }
+        html[dir="rtl"] body { font-family: 'Cairo', sans-serif; line-height: 1.7; }
 
         /* animations */
         @keyframes fadeInDown  { from{opacity:0;transform:translateY(-24px)} to{opacity:1;transform:translateY(0)} }
