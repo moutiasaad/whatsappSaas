@@ -3,7 +3,8 @@
 @section('title', __('ui.reservations.slots_title'))
 
 @section('content')
-<div x-data="slotsPage()" x-init="init()" class="content-area">
+<div x-data="slotsPage()" x-init="init()">
+<div class="content-area">
 
     <div class="page-header">
         <div class="page-header-left">
@@ -119,7 +120,7 @@
             </tbody>
         </table>
     </div>
-</div>
+</div>{{-- end .content-area --}}
 
 {{-- Add / Edit modal --}}
 <div class="modal-overlay" x-show="addModal.show" x-cloak @click.self="closeModal()">
@@ -273,4 +274,5 @@ function slotsPage() {
     };
 }
 </script>
+</div>{{-- end x-data wrapper --}}
 @endsection

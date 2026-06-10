@@ -7,7 +7,8 @@
     $routeBase = url(auth()->user()->routeNamePrefix() . '/reservations');
     $panelPrefix = auth()->user()->routeNamePrefix();
 @endphp
-<div x-data="reservationsPage()" x-init="init()" class="content-area">
+<div x-data="reservationsPage()" x-init="init()">
+<div class="content-area">
 
     {{-- Page header --}}
     <div class="page-header">
@@ -156,7 +157,7 @@
             </div>
         </div>
     </div>
-</div>
+</div>{{-- end .content-area --}}
 
 {{-- Delete modal --}}
 <div class="modal-overlay" x-show="deleteModal.show" x-cloak @click.self="deleteModal.show=false">
@@ -246,4 +247,5 @@ function reservationsPage() {
     };
 }
 </script>
+</div>{{-- end x-data wrapper --}}
 @endsection
