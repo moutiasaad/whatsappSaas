@@ -75,11 +75,14 @@ class InstanceController extends Controller
                 ]);
             }
 
-            // Create gateway instance if it doesn't exist yet
+            // Ensure a gateway instance exists for this record. The gateway name is
+            // deterministic, so after a disconnect the instance may still exist on the
+            // gateway — createInstance then returns 400 "Instance already exists", which
+            // we treat as success and reuse the existing instance to fetch a fresh QR.
             $createResult = null;
             if (!$instance->gateway_instance_id) {
                 $gatewayName  = 'wa-' . $instance->tenant_id . '-' . $instance->id;
-                $createResult = $gateway->createInstance($gatewayName);
+                $createResult = $this->createOrReuseGatewayInstance($gateway, $gatewayName);
                 $instance->update([
                     'gateway_instance_id' => $createResult['name']
                         ?? $createResult['instance']['instanceId']
@@ -111,7 +114,7 @@ class InstanceController extends Controller
 
                 sleep(1);
 
-                $result = $gateway->createInstance($oldGatewayId);
+                $result = $this->createOrReuseGatewayInstance($gateway, $oldGatewayId);
                 $newGatewayId = $result['name']
                     ?? $result['instance']['instanceId']
                     ?? $result['instanceName']
@@ -229,6 +232,27 @@ class InstanceController extends Controller
             403,
             'This instance does not belong to your tenant.'
         );
+    }
+
+    /**
+     * Create a gateway instance, tolerating the "already exists" case.
+     *
+     * The gateway name is deterministic per local instance, so a disconnect that
+     * doesn't actually remove the instance on the gateway leaves it in place. Calling
+     * createInstance again then returns 400 "Instance already exists" — we swallow that
+     * and return an empty result so the caller keeps the deterministic name and fetches
+     * a fresh QR from the existing instance.
+     */
+    private function createOrReuseGatewayInstance(EvolutionApiClient $gateway, string $name): array
+    {
+        try {
+            return $gateway->createInstance($name);
+        } catch (\Throwable $e) {
+            if (stripos($e->getMessage(), 'already exists') !== false) {
+                return [];
+            }
+            throw $e;
+        }
     }
 
     /**
