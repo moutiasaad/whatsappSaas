@@ -90,15 +90,17 @@ class ReservationBotService
             $this->send($instance, $phone, $settings->welcome_message);
         }
 
-        $intro = $settings->select_date_message ?: 'اختر اليوم المناسب';
-        $list  = '';
+        $rows = [];
         foreach ($dates as $i => $date) {
-            $list .= "\n*" . ($i + 1) . '.* ' . $this->formatDateAr($date);
+            $rows[] = ['rowId' => (string) ($i + 1), 'title' => $this->formatDateAr($date), 'description' => ''];
         }
 
-        $this->send(
+        $this->sendList(
             $instance, $phone,
-            "🗓 *{$settings->service_name}*\n\n📅 *{$intro}*\n{$list}\n\n↩ أرسل رقم اختيارك\n🚫 أرسل *إلغاء* للخروج"
+            '🗓 ' . $settings->service_name,
+            $settings->select_date_message ?: 'اختر اليوم المناسب',
+            'عرض المواعيد',
+            [['title' => 'التواريخ المتاحة', 'rows' => $rows]]
         );
 
         $this->setState($settings->tenant_id, $phone, [
@@ -139,12 +141,15 @@ class ReservationBotService
         ]);
 
         if ($hasBoth) {
-            $this->send(
+            $this->sendList(
                 $instance, $phone,
-                '⏰ *' . $this->formatDateAr($selectedDate) . '*' . "\n\nاختر الفترة المناسبة:\n"
-                . "\n*1.* 🌅 صباحاً — " . count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))
-                . "\n*2.* 🌆 مساءً — " . count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))
-                . "\n\n↩ أرسل 1 أو 2"
+                '⏰ ' . $this->formatDateAr($selectedDate),
+                'اختر الفترة المناسبة',
+                'اختر الفترة',
+                [['title' => 'الفترات المتاحة', 'rows' => [
+                    ['rowId' => '1', 'title' => '🌅 صباحاً', 'description' => count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))],
+                    ['rowId' => '2', 'title' => '🌆 مساءً',  'description' => count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))],
+                ]]]
             );
             $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
         } else {
@@ -374,13 +379,22 @@ class ReservationBotService
         string $phone, array $slots, Carbon $date, string $period
     ): void {
         $periodLabel = $period === 'morning' ? '🌅 صباحاً' : '🌆 مساءً';
-        $header      = $periodLabel . ' — *' . $this->formatDateAr($date) . '*';
-        $list        = '';
+        $rows = [];
         foreach ($slots as $i => $slot) {
             $spotsLabel = $slot['remaining'] === 1 ? 'مقعد واحد متبقٍ' : "{$slot['remaining']} مقاعد متبقية";
-            $list .= "\n*" . ($i + 1) . '.* ' . $slot['start'] . ' - ' . $slot['end'] . "  _({$spotsLabel})_";
+            $rows[] = [
+                'rowId'       => (string) ($i + 1),
+                'title'       => $slot['start'] . ' - ' . $slot['end'],
+                'description' => $spotsLabel,
+            ];
         }
-        $this->send($instance, $phone, "⏰ *اختر الوقت المناسب*\n{$header}\n{$list}\n\n↩ أرسل رقم اختيارك");
+        $this->sendList(
+            $instance, $phone,
+            "⏰ {$periodLabel}",
+            $this->formatDateAr($date),
+            'اختر الوقت',
+            [['title' => 'الأوقات المتاحة', 'rows' => $rows]]
+        );
     }
 
     private function pluralSlots(int $count): string
@@ -390,6 +404,35 @@ class ReservationBotService
             2       => 'وقتان متاحان',
             default => 'أوقات متاحة',
         };
+    }
+
+    private function sendList(WhatsAppInstance $instance, string $phone, string $title, string $description, string $buttonText, array $sections): void
+    {
+        $client = new EvolutionApiClient(
+            $instance->effectiveGatewayUrl(),
+            $instance->effectiveGatewayApiKey()
+        );
+        try {
+            $client->sendList($instance->gateway_instance_id, $phone, $title, $description, $buttonText, $sections);
+        } catch (\Throwable $e) {
+            Log::warning('ReservationBot: sendList failed, falling back to text', ['error' => $e->getMessage()]);
+            $text = "*{$title}*\n{$description}";
+            foreach ($sections as $section) {
+                foreach ($section['rows'] as $row) {
+                    $text .= "\n*{$row['rowId']}.* {$row['title']}";
+                    if (!empty($row['description'])) $text .= " — {$row['description']}";
+                }
+            }
+            $this->send($instance, $phone, $text);
+            return;
+        }
+        $summary = "*{$title}*\n{$description}";
+        foreach ($sections as $section) {
+            foreach ($section['rows'] as $row) {
+                $summary .= "\n• {$row['title']}";
+            }
+        }
+        $this->persistMessage($summary);
     }
 
     private function send(WhatsAppInstance $instance, string $phone, string $text): void
