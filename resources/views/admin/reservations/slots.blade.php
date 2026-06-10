@@ -3,7 +3,7 @@
 @section('title', __('ui.reservations.slots_title'))
 
 @section('content')
-<div x-data="slotsPage()" x-init="init()">
+<div x-data="slotsPage()" x-init="init()" x-cloak>
 <div class="content-area">
 
     <div class="page-header">
@@ -120,88 +120,91 @@
             </tbody>
         </table>
     </div>
+
+    {{-- Add / Edit modal --}}
+    <div class="modal-overlay" :class="addModal.show ? 'show' : ''" @click.self="closeModal()">
+        <div class="modal-card" style="max-width:480px">
+            <div class="modal-header">
+                <h3 x-text="addModal.id ? '{{ __('ui.reservations.edit_slot') }}' : '{{ __('ui.reservations.add_slot') }}'"></h3>
+                <button class="modal-close" @click="closeModal()"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" x-show="!addModal.id">
+                    <label class="form-label">{{ __('ui.reservations.slot_type') }}</label>
+                    <select class="form-control" x-model="addModal.type">
+                        <option value="recurring">{{ __('ui.reservations.type_recurring') }}</option>
+                        <option value="specific">{{ __('ui.reservations.type_specific') }}</option>
+                    </select>
+                </div>
+                <div class="form-group" x-show="addModal.type === 'recurring'">
+                    <label class="form-label">{{ __('ui.reservations.day_of_week') }}</label>
+                    <select class="form-control" x-model="addModal.day_of_week">
+                        <option value="0">{{ __('ui.reservations.sunday') }}</option>
+                        <option value="1">{{ __('ui.reservations.monday') }}</option>
+                        <option value="2">{{ __('ui.reservations.tuesday') }}</option>
+                        <option value="3">{{ __('ui.reservations.wednesday') }}</option>
+                        <option value="4">{{ __('ui.reservations.thursday') }}</option>
+                        <option value="5">{{ __('ui.reservations.friday') }}</option>
+                        <option value="6">{{ __('ui.reservations.saturday') }}</option>
+                    </select>
+                </div>
+                <div class="form-group" x-show="addModal.type === 'specific'">
+                    <label class="form-label">{{ __('ui.reservations.specific_date') }}</label>
+                    <input type="date" class="form-control" x-model="addModal.specific_date">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div class="form-group">
+                        <label class="form-label">{{ __('ui.reservations.start_time') }}</label>
+                        <input type="time" class="form-control" x-model="addModal.start_time">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ __('ui.reservations.end_time') }}</label>
+                        <input type="time" class="form-control" x-model="addModal.end_time">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ __('ui.reservations.max_bookings') }}</label>
+                    <input type="number" class="form-control" min="1" max="999" x-model="addModal.max_bookings">
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" x-model="addModal.is_active">
+                        <span class="toggle-text">{{ __('ui.reservations.slot_active') }}</span>
+                    </label>
+                </div>
+                <p x-show="addModal.error" class="form-error" x-text="addModal.error"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @click="closeModal()">{{ __('ui.cancel') }}</button>
+                <button class="btn btn-primary" :disabled="addModal.saving" @click="saveSlot()">
+                    <span x-show="addModal.saving" class="spinner-sm"></span>
+                    {{ __('ui.save') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Delete modal --}}
+    <div class="modal-overlay" :class="deleteSlotModal.show ? 'show' : ''" @click.self="deleteSlotModal.show=false">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>{{ __('ui.reservations.delete_slot_confirm') }}</h3>
+                <button class="modal-close" @click="deleteSlotModal.show=false"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body">
+                <p x-text="deleteSlotModal.label"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @click="deleteSlotModal.show=false">{{ __('ui.cancel') }}</button>
+                <button class="btn btn-danger" :disabled="deleteSlotModal.saving" @click="confirmDeleteSlot()">
+                    <span x-show="deleteSlotModal.saving" class="spinner-sm"></span>{{ __('ui.delete') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>{{-- end .content-area --}}
-
-{{-- Add / Edit modal --}}
-<div class="modal-overlay" x-show="addModal.show" x-cloak @click.self="closeModal()">
-    <div class="modal-card" style="max-width:480px">
-        <div class="modal-header">
-            <h3 x-text="addModal.id ? '{{ __('ui.reservations.edit_slot') }}' : '{{ __('ui.reservations.add_slot') }}'"></h3>
-            <button class="modal-close" @click="closeModal()"><i class="ri-close-line"></i></button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group" x-show="!addModal.id">
-                <label class="form-label">{{ __('ui.reservations.slot_type') }}</label>
-                <select class="form-control" x-model="addModal.type">
-                    <option value="recurring">{{ __('ui.reservations.type_recurring') }}</option>
-                    <option value="specific">{{ __('ui.reservations.type_specific') }}</option>
-                </select>
-            </div>
-            <div class="form-group" x-show="addModal.type === 'recurring'">
-                <label class="form-label">{{ __('ui.reservations.day_of_week') }}</label>
-                <select class="form-control" x-model="addModal.day_of_week">
-                    <option value="0">{{ __('ui.reservations.sunday') }}</option>
-                    <option value="1">{{ __('ui.reservations.monday') }}</option>
-                    <option value="2">{{ __('ui.reservations.tuesday') }}</option>
-                    <option value="3">{{ __('ui.reservations.wednesday') }}</option>
-                    <option value="4">{{ __('ui.reservations.thursday') }}</option>
-                    <option value="5">{{ __('ui.reservations.friday') }}</option>
-                    <option value="6">{{ __('ui.reservations.saturday') }}</option>
-                </select>
-            </div>
-            <div class="form-group" x-show="addModal.type === 'specific'">
-                <label class="form-label">{{ __('ui.reservations.specific_date') }}</label>
-                <input type="date" class="form-control" x-model="addModal.specific_date">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.reservations.start_time') }}</label>
-                    <input type="time" class="form-control" x-model="addModal.start_time">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.reservations.end_time') }}</label>
-                    <input type="time" class="form-control" x-model="addModal.end_time">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">{{ __('ui.reservations.max_bookings') }}</label>
-                <input type="number" class="form-control" min="1" max="999" x-model="addModal.max_bookings">
-            </div>
-            <div class="form-group">
-                <input type="hidden" name="_active_hidden" value="0">
-                <label class="toggle-label">
-                    <input type="checkbox" x-model="addModal.is_active">
-                    <span class="toggle-text">{{ __('ui.reservations.slot_active') }}</span>
-                </label>
-            </div>
-            <p x-show="addModal.error" class="form-error" x-text="addModal.error"></p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeModal()">{{ __('ui.cancel') }}</button>
-            <button class="btn btn-primary" :disabled="addModal.saving" @click="saveSlot()">
-                <span x-show="addModal.saving" class="spinner-sm"></span>
-                {{ __('ui.save') }}
-            </button>
-        </div>
-    </div>
-</div>
-
-{{-- Delete modal --}}
-<div class="modal-overlay" x-show="deleteSlotModal.show" x-cloak @click.self="deleteSlotModal.show=false">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3>{{ __('ui.reservations.delete_slot_confirm') }}</h3>
-            <button class="modal-close" @click="deleteSlotModal.show=false"><i class="ri-close-line"></i></button>
-        </div>
-        <div class="modal-body"><p x-text="deleteSlotModal.label"></p></div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" @click="deleteSlotModal.show=false">{{ __('ui.cancel') }}</button>
-            <button class="btn btn-danger" :disabled="deleteSlotModal.saving" @click="confirmDeleteSlot()">
-                <span x-show="deleteSlotModal.saving" class="spinner-sm"></span>{{ __('ui.delete') }}
-            </button>
-        </div>
-    </div>
-</div>
+</div>{{-- end x-data --}}
 
 <script>
 function slotsPage() {
@@ -221,10 +224,13 @@ function slotsPage() {
 
         async loadSlots() {
             this.loading = true;
-            const r = await fetch(apiBase, { headers: { 'Accept': 'application/json' } });
-            const d = await r.json();
-            this.slots = d.data ?? [];
-            this.loading = false;
+            try {
+                const r = await fetch(apiBase, { headers: { 'Accept': 'application/json' } });
+                const d = await r.json();
+                this.slots = d.data ?? [];
+            } finally {
+                this.loading = false;
+            }
         },
 
         editSlot(slot) {
@@ -247,23 +253,29 @@ function slotsPage() {
             };
             const url = this.addModal.id ? `${apiBase}/${this.addModal.id}` : apiBase;
             const method = this.addModal.id ? 'PUT' : 'POST';
-            const r = await fetch(url, {
-                method, headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
-                body: JSON.stringify(payload),
-            });
-            const d = await r.json();
-            if (!r.ok) { this.addModal.error = d.message ?? 'Error'; this.addModal.saving = false; return; }
-            this.addModal.show = false;
-            await this.loadSlots();
-            this.addModal.saving = false;
+            try {
+                const r = await fetch(url, {
+                    method, headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify(payload),
+                });
+                const d = await r.json();
+                if (!r.ok) { this.addModal.error = d.message ?? 'Error'; return; }
+                this.addModal.show = false;
+                await this.loadSlots();
+            } finally {
+                this.addModal.saving = false;
+            }
         },
 
         async confirmDeleteSlot() {
             this.deleteSlotModal.saving = true;
-            const r = await fetch(`${apiBase}/${this.deleteSlotModal.id}`,
-                { method: 'DELETE', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() } });
-            if (r.ok) { this.deleteSlotModal.show = false; await this.loadSlots(); }
-            this.deleteSlotModal.saving = false;
+            try {
+                const r = await fetch(`${apiBase}/${this.deleteSlotModal.id}`,
+                    { method: 'DELETE', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() } });
+                if (r.ok) { this.deleteSlotModal.show = false; await this.loadSlots(); }
+            } finally {
+                this.deleteSlotModal.saving = false;
+            }
         },
 
         dayName(dow) {
@@ -274,5 +286,4 @@ function slotsPage() {
     };
 }
 </script>
-</div>{{-- end x-data wrapper --}}
 @endsection

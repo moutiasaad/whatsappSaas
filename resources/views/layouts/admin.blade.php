@@ -1227,6 +1227,58 @@
             transform: translateY(0) scale(1);
         }
 
+        /* Form-style modal (modal-card pattern) */
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 20px 60px rgba(0,0,0,.15);
+            width: 100%;
+            max-width: 520px;
+            overflow: hidden;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.125rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .modal-header h3 {
+            font-size: .9375rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            padding: .25rem;
+            display: flex;
+            align-items: center;
+            border-radius: .5rem;
+            transition: background .1s, color .1s;
+            line-height: 1;
+        }
+        .modal-close:hover { background: var(--page-bg); color: var(--text-primary); }
+        .modal-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: .5rem;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--card-border);
+        }
+
         .modal-icon {
             width: 56px; height: 56px;
             border-radius: var(--radius-lg);

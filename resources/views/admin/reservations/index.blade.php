@@ -7,7 +7,7 @@
     $routeBase = url(auth()->user()->routeNamePrefix() . '/reservations');
     $panelPrefix = auth()->user()->routeNamePrefix();
 @endphp
-<div x-data="reservationsPage()" x-init="init()">
+<div x-data="reservationsPage()" x-init="init()" x-cloak>
 <div class="content-area">
 
     {{-- Page header --}}
@@ -157,27 +157,28 @@
             </div>
         </div>
     </div>
-</div>{{-- end .content-area --}}
 
-{{-- Delete modal --}}
-<div class="modal-overlay" x-show="deleteModal.show" x-cloak @click.self="deleteModal.show=false">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3>{{ __('ui.reservations.delete_confirm_title') }}</h3>
-            <button class="modal-close" @click="deleteModal.show=false"><i class="ri-close-line"></i></button>
-        </div>
-        <div class="modal-body">
-            <p>{{ __('ui.reservations.delete_confirm_body') }} <strong x-text="deleteModal.name"></strong>?</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" @click="deleteModal.show=false">{{ __('ui.cancel') }}</button>
-            <button class="btn btn-danger" :disabled="deleteModal.saving" @click="confirmDelete()">
-                <span x-show="deleteModal.saving" class="spinner-sm"></span>
-                {{ __('ui.delete') }}
-            </button>
+    {{-- Delete modal --}}
+    <div class="modal-overlay" :class="deleteModal.show ? 'show' : ''" @click.self="deleteModal.show=false">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>{{ __('ui.reservations.delete_confirm_title') }}</h3>
+                <button class="modal-close" @click="deleteModal.show=false"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>{{ __('ui.reservations.delete_confirm_body') }} <strong x-text="deleteModal.name"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @click="deleteModal.show=false">{{ __('ui.cancel') }}</button>
+                <button class="btn btn-danger" :disabled="deleteModal.saving" @click="confirmDelete()">
+                    <span x-show="deleteModal.saving" class="spinner-sm"></span>
+                    {{ __('ui.delete') }}
+                </button>
+            </div>
         </div>
     </div>
-</div>
+</div>{{-- end .content-area --}}
+</div>{{-- end x-data --}}
 
 <script>
 function reservationsPage() {
@@ -247,5 +248,4 @@ function reservationsPage() {
     };
 }
 </script>
-</div>{{-- end x-data wrapper --}}
 @endsection
