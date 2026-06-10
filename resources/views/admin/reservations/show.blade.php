@@ -65,7 +65,7 @@
 <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat-card">
         <div class="stat-card-icon"><i class="ri-calendar-event-line"></i></div>
-        <div class="stat-card-value">{{ $reservation->reservation_date->format('M j') }}</div>
+        <div class="stat-card-value">{{ $reservation->reservation_date->locale(app()->getLocale())->isoFormat('D MMM') }}</div>
         <div class="stat-card-label">{{ __('ui.reservations.reservation_date') }}</div>
     </div>
     <div class="stat-card blue">
@@ -80,7 +80,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-card-icon"><i class="ri-calendar-check-line"></i></div>
-        <div class="stat-card-value" style="font-size:.9rem">{{ $reservation->booked_at?->format('M j, H:i') ?? '-' }}</div>
+        <div class="stat-card-value" style="font-size:.9rem">{{ $reservation->booked_at?->locale(app()->getLocale())->isoFormat('D MMM, HH:mm') ?? '-' }}</div>
         <div class="stat-card-label">{{ __('ui.reservations.booked_at') }}</div>
     </div>
 </div>
@@ -147,7 +147,7 @@
                             {{ __('ui.reservations.reservation_date') }}
                         </div>
                         <div style="font-weight:600;color:var(--text-primary)">
-                            {{ $reservation->reservation_date->format('l, F j, Y') }}
+                            {{ $reservation->reservation_date->locale(app()->getLocale())->isoFormat('dddd, LL') }}
                         </div>
                     </div>
                     <div>
@@ -171,7 +171,7 @@
                             {{ __('ui.reservations.booked_at') }}
                         </div>
                         <div style="color:var(--text-secondary);font-size:.875rem">
-                            {{ $reservation->booked_at?->format('M j, Y H:i') ?? '-' }}
+                            {{ $reservation->booked_at?->locale(app()->getLocale())->isoFormat('LL, HH:mm') ?? '-' }}
                         </div>
                     </div>
                 </div>

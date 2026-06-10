@@ -269,7 +269,9 @@ function reservationsPage() {
             if (!d) return '—';
             const date = new Date(d);
             if (isNaN(date)) return d;
-            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+            const localeMap = { en: 'en-GB', fr: 'fr-FR', ar: 'ar-SA' };
+            const locale = localeMap['{{ app()->getLocale() }}'] ?? 'en-GB';
+            return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
         },
 
         statusLabel(s) {
