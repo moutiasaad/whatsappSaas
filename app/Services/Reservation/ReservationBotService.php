@@ -416,7 +416,7 @@ class ReservationBotService
                 'conversation_id' => $this->conversationId,
                 'tenant_id'       => $this->tenantId,
                 'direction'       => 'out',
-                'author_type'     => 'bot',
+                'author_type'     => 'ai',
                 'type'            => 'text',
                 'body'            => $text,
                 'status'          => 'sent',
