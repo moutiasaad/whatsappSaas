@@ -141,15 +141,17 @@ class ReservationBotService
         ]);
 
         if ($hasBoth) {
-            $this->sendList(
+            // Exactly 2 options → native-flow tappable buttons (these render reliably, unlike
+            // the legacy interactive list). Tapping returns the button id ("1"/"2") as the reply.
+            $this->sendButtons(
                 $instance, $phone,
                 '⏰ ' . $this->formatDateAr($selectedDate),
                 'اختر الفترة المناسبة',
-                'اختر الفترة',
-                [['title' => 'الفترات المتاحة', 'rows' => [
-                    ['rowId' => '1', 'title' => '🌅 صباحاً', 'description' => count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))],
-                    ['rowId' => '2', 'title' => '🌆 مساءً',  'description' => count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))],
-                ]]]
+                [
+                    ['id' => '1', 'text' => '🌅 صباحاً (' . count($morningSlots) . ')'],
+                    ['id' => '2', 'text' => '🌆 مساءً (' . count($afternoonSlots) . ')'],
+                ],
+                'أرسل إلغاء للإلغاء'
             );
             $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
         } else {
@@ -406,33 +408,56 @@ class ReservationBotService
         };
     }
 
-    private function sendList(WhatsAppInstance $instance, string $phone, string $title, string $description, string $buttonText, array $sections): void
+    /**
+     * Send up to 3 native-flow quick-reply buttons. Falls back to a numbered text prompt if the
+     * gateway rejects the request. $buttons: list of ['id' => '1', 'text' => '...'].
+     */
+    private function sendButtons(WhatsAppInstance $instance, string $phone, string $title, string $description, array $buttons, string $footer = ''): void
     {
-        $client = new EvolutionApiClient(
-            $instance->effectiveGatewayUrl(),
-            $instance->effectiveGatewayApiKey()
-        );
         try {
-            $client->sendList($instance->gateway_instance_id, $phone, $title, $description, $buttonText, $sections);
+            $client = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $client->sendButtons($instance->gateway_instance_id, $phone, $title, $description, $buttons, $footer);
         } catch (\Throwable $e) {
-            Log::warning('ReservationBot: sendList failed, falling back to text', ['error' => $e->getMessage()]);
-            $text = "*{$title}*\n{$description}";
-            foreach ($sections as $section) {
-                foreach ($section['rows'] as $row) {
-                    $text .= "\n*{$row['rowId']}.* {$row['title']}";
-                    if (!empty($row['description'])) $text .= " — {$row['description']}";
-                }
-            }
-            $this->send($instance, $phone, $text);
+            Log::warning('ReservationBot: sendButtons failed, falling back to text', ['error' => $e->getMessage()]);
+            $rows = array_map(fn($b) => ['rowId' => $b['id'], 'title' => $b['text'], 'description' => ''], $buttons);
+            $this->send($instance, $phone, $this->renderListAsText($title, $description, [['title' => '', 'rows' => $rows]]));
             return;
         }
+
         $summary = "*{$title}*\n{$description}";
-        foreach ($sections as $section) {
-            foreach ($section['rows'] as $row) {
-                $summary .= "\n• {$row['title']}";
-            }
+        foreach ($buttons as $b) {
+            $summary .= "\n• {$b['text']}";
         }
         $this->persistMessage($summary);
+    }
+
+    private function sendList(WhatsAppInstance $instance, string $phone, string $title, string $description, string $buttonText, array $sections): void
+    {
+        // Interactive WhatsApp list/button messages are DEPRECATED by WhatsApp for unofficial
+        // (Baileys/CodeChat) gateways: the gateway returns HTTP 201 but WhatsApp downgrades them to a
+        // plain message or drops them, so the customer never sees a tappable list (confirmed
+        // empirically on both @lid and real phone recipients). Genuine interactive lists require the
+        // official WhatsApp Business Cloud API. We therefore always render the options as a clean
+        // numbered text prompt — it delivers reliably and the bot parses the numeric reply.
+        $this->send($instance, $phone, $this->renderListAsText($title, $description, $sections));
+    }
+
+    /** Render a list (title + numbered rows) as a plain-text prompt for reliable delivery. */
+    private function renderListAsText(string $title, string $description, array $sections): string
+    {
+        $text = "*{$title}*\n{$description}";
+        foreach ($sections as $section) {
+            foreach ($section['rows'] as $row) {
+                $text .= "\n\n*{$row['rowId']}.* {$row['title']}";
+                if (!empty($row['description'])) {
+                    $text .= " — {$row['description']}";
+                }
+            }
+        }
+        return $text . "\n\n_" . 'أرسل الرقم المناسب للمتابعة' . "_";
     }
 
     private function send(WhatsAppInstance $instance, string $phone, string $text): void

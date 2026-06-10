@@ -68,18 +68,14 @@ class ProcessIncomingMessage implements ShouldQueue
         $contact = $this->extractContact($payload, $msg);
         $from    = $this->extractFrom($payload, $msg);
 
-        // Resolve @lid (Meta linked device ID) to a real phone number via gateway contact lookup
-        if ($from && str_contains($from, '@lid')) {
-            $resolved = $this->resolveLidToPhone($from, $instance);
-            if ($resolved) {
-                // Patch any existing customer record keyed by the LID JID
-                Customer::withoutGlobalScope('tenant')
-                    ->where('tenant_id', $instance->tenant_id)
-                    ->where('phone_e164', $from)
-                    ->update(['phone_e164' => $resolved]);
-                $from = $resolved;
-            }
-        }
+        // NOTE: @lid (Meta linked device ID) is intentionally NOT resolved to a phone
+        // number here. The iStoreBox gateway's contact lookup returns the @lid back as
+        // the contact's remoteJid (never a real phone), so resolution always failed while
+        // adding a ~13s blocking HTTP call to every inbound message. That latency pushed the
+        // job past the database queue's retry_after, letting a second worker pick up the same
+        // job concurrently; the duplicate run hit the dedup check and returned before the
+        // reservation bot could run — so the bot never replied. The gateway accepts @lid JIDs
+        // as send recipients, so keeping the @lid as the customer key works end-to-end.
 
         if (!$from) {
             Log::channel('whatsapp')->warning('Job: could not extract sender', [
@@ -135,7 +131,17 @@ class ProcessIncomingMessage implements ShouldQueue
             'last_message_preview' => Str::limit($message->body ?: ($message->media_url ? ucfirst((string) $message->type) : ''), 200),
         ]);
 
-        broadcast(new MessageReceived($message))->toOthers();
+        // Realtime broadcast is best-effort: a slow/unreachable broadcaster (e.g. Reverb
+        // not running) must never block or abort inbound message handling or the
+        // reservation bot. Failures here are swallowed; the message is already persisted.
+        try {
+            broadcast(new MessageReceived($message))->toOthers();
+        } catch (\Throwable $e) {
+            Log::channel('whatsapp')->warning('Job: broadcast failed (non-fatal)', [
+                'driver' => config('broadcasting.default'),
+                'error'  => $e->getMessage(),
+            ]);
+        }
 
         // Reservation bot intercepts text messages when the module is active on this tenant's plan
         if ($body !== null && $body !== '') {
@@ -279,10 +285,12 @@ class ProcessIncomingMessage implements ShouldQueue
             ?? data_get($msg, 'key.remoteJid')
             ?? data_get($msg, 'remoteJid')
             ?? data_get($msg, 'keyRemoteJid')          // iStoreBox flat format
+            ?? data_get($msg, 'keyLid')                // iStoreBox flat format (newer): sender as @lid only
             ?? data_get($payload, 'from')
             ?? data_get($payload, 'data.from')
             ?? data_get($payload, 'key.remoteJid')
-            ?? data_get($payload, 'data.keyRemoteJid'); // iStoreBox flat format
+            ?? data_get($payload, 'data.keyRemoteJid') // iStoreBox flat format
+            ?? data_get($payload, 'data.keyLid');      // iStoreBox flat format (newer)
 
         if (!is_string($raw) || trim($raw) === '') {
             return null;
@@ -340,11 +348,29 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function extractText(array $msg): ?string
     {
+        // Native-flow button tap: the gateway delivers the tapped button's id inside a JSON
+        // string at content.nativeFlowResponseMessage.paramsJson, e.g. {"id":"1"}. Extract the
+        // id so step handlers (which parse a numeric choice) receive "1"/"2" as if typed.
+        foreach (['content.nativeFlowResponseMessage.paramsJson', 'message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson'] as $path) {
+            $paramsJson = data_get($msg, $path);
+            if (is_string($paramsJson) && trim($paramsJson) !== '') {
+                $params = json_decode($paramsJson, true);
+                $id = is_array($params) ? ($params['id'] ?? null) : null;
+                if (is_string($id) && trim($id) !== '') {
+                    return trim($id);
+                }
+            }
+        }
+
         $candidates = [
             data_get($msg, 'text'),
             data_get($msg, 'body'),
             data_get($msg, 'content.text'),
+            // Legacy template-button reply: the selected button id
+            data_get($msg, 'content.selectedId'),
+            data_get($msg, 'message.templateButtonReplyMessage.selectedId'),
             // Interactive list-response: extract the rowId the customer tapped
+            data_get($msg, 'content.singleSelectReply.selectedRowId'),
             data_get($msg, 'message.listResponseMessage.singleSelectReply.selectedRowId'),
             data_get($msg, 'message.conversation'),
             data_get($msg, 'message.extendedTextMessage.text'),

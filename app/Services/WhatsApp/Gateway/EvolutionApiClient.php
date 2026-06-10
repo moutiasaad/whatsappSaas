@@ -138,6 +138,31 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    /**
+     * Send native-flow interactive quick-reply buttons (max 3). Unlike sendListMessage
+     * (legacy listMessage format, deprecated by WhatsApp for Baileys gateways), the gateway
+     * renders these via the modern interactiveMessage/nativeFlowMessage path, which still
+     * delivers as tappable buttons on current WhatsApp clients.
+     *
+     * @param array<int,array{id:string,text:string}> $buttons
+     */
+    public function sendButtons(string $instanceId, string $to, string $title, string $description, array $buttons, string $footer = ''): array
+    {
+        return $this->post("/message/sendButtons/{$instanceId}", [
+            'number'         => $this->normalizeRecipient($to),
+            'options'        => ['delay' => 1200, 'presence' => 'composing'],
+            'buttonsMessage' => [
+                'title'       => $title,
+                'description' => $description,
+                'footer'      => $footer,
+                'buttons'     => array_map(
+                    fn($b) => ['type' => 'reply', 'displayText' => $b['text'], 'id' => $b['id']],
+                    $buttons
+                ),
+            ],
+        ]);
+    }
+
     public function sendMedia(string $instanceId, string $to, string $url, string $type, ?string $caption = null, ?string $fileName = null): array
     {
         $mediaMessage = ['mediatype' => $type, 'media' => $url];
