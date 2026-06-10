@@ -98,7 +98,7 @@
                         <template x-for="row in rows" :key="row.id">
                             <tr style="cursor:pointer" @click="window.location = showUrl(row.id)">
                                 <td x-text="row.id" class="text-muted small"></td>
-                                <td x-text="row.reservation_date" class="font-medium"></td>
+                                <td x-text="formatDate(row.reservation_date)" class="font-medium"></td>
                                 <td x-text="row.start_time.slice(0,5) + ' – ' + row.end_time.slice(0,5)"></td>
                                 <td x-text="row.customer_name || '—'"></td>
                                 <td x-text="row.customer_phone" class="font-mono small"></td>
@@ -263,6 +263,13 @@ function reservationsPage() {
             } finally {
                 this.deleteModal.saving = false;
             }
+        },
+
+        formatDate(d) {
+            if (!d) return '—';
+            const date = new Date(d);
+            if (isNaN(date)) return d;
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         },
 
         statusLabel(s) {
