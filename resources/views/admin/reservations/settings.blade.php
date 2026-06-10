@@ -25,7 +25,7 @@
         @csrf
         @method('PUT')
 
-        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:1.5rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
 
             {{-- General --}}
             <div class="card">
@@ -33,14 +33,14 @@
                 <div class="card-body">
                     <div class="form-group">
                         <label class="form-label">{{ __('ui.reservations.service_name') }} *</label>
-                        <input type="text" name="service_name" class="form-input @error('service_name') is-invalid @enderror"
+                        <input type="text" name="service_name" class="form-control @error('service_name') error @enderror"
                                value="{{ old('service_name', $setting->service_name ?? 'Appointment Booking') }}" required>
                         @error('service_name')<span class="form-error">{{ $message }}</span>@enderror
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">{{ __('ui.reservations.linked_instance') }}</label>
-                        <select name="instance_id" class="form-input">
+                        <select name="instance_id" class="form-control">
                             <option value="">{{ __('ui.reservations.no_instance') }}</option>
                             @foreach($instances as $inst)
                                 <option value="{{ $inst->id }}" {{ old('instance_id', $setting->instance_id ?? '') == $inst->id ? 'selected' : '' }}>
@@ -53,24 +53,24 @@
 
                     <div class="form-group">
                         <label class="form-label">{{ __('ui.reservations.trigger_keywords') }}</label>
-                        <input type="text" name="trigger_keywords" class="form-input"
+                        <input type="text" name="trigger_keywords" class="form-control"
                                value="{{ old('trigger_keywords', implode(', ', $setting->trigger_keywords ?? ['حجز', 'book', 'booking', 'réservation'])) }}">
                         <span class="form-hint">{{ __('ui.reservations.trigger_keywords_hint') }}</span>
                     </div>
 
                     <div class="form-group">
+                        <input type="hidden" name="collect_notes" value="0">
                         <label class="toggle-label">
-                            <input type="hidden" name="collect_notes" value="0">
                             <input type="checkbox" name="collect_notes" value="1"
                                    {{ old('collect_notes', $setting->collect_notes ?? false) ? 'checked' : '' }}>
                             <span class="toggle-text">{{ __('ui.reservations.collect_notes') }}</span>
                         </label>
-                        <span class="form-hint">{{ __('ui.reservations.collect_notes_hint') }}</span>
+                        <span class="form-hint" style="display:block;margin-top:.25rem">{{ __('ui.reservations.collect_notes_hint') }}</span>
                     </div>
 
                     <div class="form-group">
+                        <input type="hidden" name="is_active" value="0">
                         <label class="toggle-label">
-                            <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1"
                                    {{ old('is_active', $setting->is_active ?? true) ? 'checked' : '' }}>
                             <span class="toggle-text">{{ __('ui.reservations.module_active') }}</span>
@@ -95,7 +95,7 @@
                     ] as $field => $label)
                         <div class="form-group">
                             <label class="form-label">{{ $label }}</label>
-                            <textarea name="{{ $field }}" class="form-input" rows="2">{{ old($field, $setting->$field ?? '') }}</textarea>
+                            <textarea name="{{ $field }}" class="form-control" rows="2">{{ old($field, $setting->$field ?? '') }}</textarea>
                         </div>
                     @endforeach
                     <p class="form-hint">
@@ -106,7 +106,7 @@
             </div>
         </div>
 
-        <div class="form-actions" style="margin-top:1.5rem">
+        <div style="display:flex;gap:.75rem;margin-top:1.5rem">
             <button type="submit" class="btn btn-primary">
                 <i class="ri-save-line"></i> {{ __('ui.save') }}
             </button>

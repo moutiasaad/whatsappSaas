@@ -24,8 +24,9 @@
 
     {{-- Recurring slots --}}
     <div class="table-card" style="margin-bottom:1.5rem">
-        <div class="table-card-header">
-            <h3 class="table-card-title"><i class="ri-repeat-line"></i> {{ __('ui.reservations.recurring_slots') }}</h3>
+        <div style="padding:.875rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:.5rem">
+            <i class="ri-repeat-line" style="color:var(--brand)"></i>
+            <span style="font-weight:600;font-size:.9375rem">{{ __('ui.reservations.recurring_slots') }}</span>
         </div>
         <table class="data-table">
             <thead>
@@ -44,15 +45,15 @@
                         <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
                         <td x-text="slot.max_bookings"></td>
                         <td>
-                            <span class="badge" :class="slot.is_active ? 'badge-success' : 'badge-secondary'"
+                            <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
                                   x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
                         </td>
                         <td>
-                            <div class="action-btns">
-                                <button class="btn-icon" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
-                                    <i class="ri-edit-line"></i>
+                            <div style="display:flex;gap:4px;align-items:center">
+                                <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
+                                    <i class="ri-edit-line" style="color:var(--brand)"></i>
                                 </button>
-                                <button class="btn-icon btn-danger" title="{{ __('ui.delete') }}"
+                                <button class="action-btn danger" title="{{ __('ui.delete') }}"
                                         @click="deleteSlotModal = {show:true, id:slot.id, label: dayName(slot.day_of_week)+' '+slot.start_time.slice(0,5)}">
                                     <i class="ri-delete-bin-6-line"></i>
                                 </button>
@@ -72,8 +73,9 @@
 
     {{-- Specific date slots --}}
     <div class="table-card">
-        <div class="table-card-header">
-            <h3 class="table-card-title"><i class="ri-calendar-event-line"></i> {{ __('ui.reservations.specific_slots') }}</h3>
+        <div style="padding:.875rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:.5rem">
+            <i class="ri-calendar-event-line" style="color:var(--brand)"></i>
+            <span style="font-weight:600;font-size:.9375rem">{{ __('ui.reservations.specific_slots') }}</span>
         </div>
         <table class="data-table">
             <thead>
@@ -92,15 +94,15 @@
                         <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
                         <td x-text="slot.max_bookings"></td>
                         <td>
-                            <span class="badge" :class="slot.is_active ? 'badge-success' : 'badge-secondary'"
+                            <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
                                   x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
                         </td>
                         <td>
-                            <div class="action-btns">
-                                <button class="btn-icon" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
-                                    <i class="ri-edit-line"></i>
+                            <div style="display:flex;gap:4px;align-items:center">
+                                <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
+                                    <i class="ri-edit-line" style="color:var(--brand)"></i>
                                 </button>
-                                <button class="btn-icon btn-danger" title="{{ __('ui.delete') }}"
+                                <button class="action-btn danger" title="{{ __('ui.delete') }}"
                                         @click="deleteSlotModal = {show:true, id:slot.id, label: slot.specific_date+' '+slot.start_time.slice(0,5)}">
                                     <i class="ri-delete-bin-6-line"></i>
                                 </button>
@@ -129,14 +131,14 @@
         <div class="modal-body">
             <div class="form-group" x-show="!addModal.id">
                 <label class="form-label">{{ __('ui.reservations.slot_type') }}</label>
-                <select class="form-input" x-model="addModal.type">
+                <select class="form-control" x-model="addModal.type">
                     <option value="recurring">{{ __('ui.reservations.type_recurring') }}</option>
                     <option value="specific">{{ __('ui.reservations.type_specific') }}</option>
                 </select>
             </div>
             <div class="form-group" x-show="addModal.type === 'recurring'">
                 <label class="form-label">{{ __('ui.reservations.day_of_week') }}</label>
-                <select class="form-input" x-model="addModal.day_of_week">
+                <select class="form-control" x-model="addModal.day_of_week">
                     <option value="0">{{ __('ui.reservations.sunday') }}</option>
                     <option value="1">{{ __('ui.reservations.monday') }}</option>
                     <option value="2">{{ __('ui.reservations.tuesday') }}</option>
@@ -148,23 +150,24 @@
             </div>
             <div class="form-group" x-show="addModal.type === 'specific'">
                 <label class="form-label">{{ __('ui.reservations.specific_date') }}</label>
-                <input type="date" class="form-input" x-model="addModal.specific_date">
+                <input type="date" class="form-control" x-model="addModal.specific_date">
             </div>
-            <div class="form-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                 <div class="form-group">
                     <label class="form-label">{{ __('ui.reservations.start_time') }}</label>
-                    <input type="time" class="form-input" x-model="addModal.start_time">
+                    <input type="time" class="form-control" x-model="addModal.start_time">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('ui.reservations.end_time') }}</label>
-                    <input type="time" class="form-input" x-model="addModal.end_time">
+                    <input type="time" class="form-control" x-model="addModal.end_time">
                 </div>
             </div>
             <div class="form-group">
                 <label class="form-label">{{ __('ui.reservations.max_bookings') }}</label>
-                <input type="number" class="form-input" min="1" max="999" x-model="addModal.max_bookings">
+                <input type="number" class="form-control" min="1" max="999" x-model="addModal.max_bookings">
             </div>
             <div class="form-group">
+                <input type="hidden" name="_active_hidden" value="0">
                 <label class="toggle-label">
                     <input type="checkbox" x-model="addModal.is_active">
                     <span class="toggle-text">{{ __('ui.reservations.slot_active') }}</span>
@@ -185,7 +188,10 @@
 {{-- Delete modal --}}
 <div class="modal-overlay" x-show="deleteSlotModal.show" x-cloak @click.self="deleteSlotModal.show=false">
     <div class="modal-card">
-        <div class="modal-header"><h3>{{ __('ui.reservations.delete_slot_confirm') }}</h3></div>
+        <div class="modal-header">
+            <h3>{{ __('ui.reservations.delete_slot_confirm') }}</h3>
+            <button class="modal-close" @click="deleteSlotModal.show=false"><i class="ri-close-line"></i></button>
+        </div>
         <div class="modal-body"><p x-text="deleteSlotModal.label"></p></div>
         <div class="modal-footer">
             <button class="btn btn-secondary" @click="deleteSlotModal.show=false">{{ __('ui.cancel') }}</button>
