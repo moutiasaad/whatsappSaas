@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="page-header-actions">
-            <button class="btn btn-primary" @click="addModal.show = true">
+            <button class="btn btn-primary" @click="openAdd()">
                 <i class="ri-add-line"></i> {{ __('ui.reservations.add_slot') }}
             </button>
         </div>
@@ -264,6 +264,12 @@ function slotsPage() {
         get specificSlots()  { return this.slots.filter(s => s.type === 'specific'); },
 
         async init() { await this.loadSlots(); },
+
+        openAdd() {
+            this.addModal = { show: true, id: null, type: 'recurring', period: 'morning', day_of_week: 1,
+                specific_date: '', start_time: '09:00', end_time: '10:00', max_bookings: 1,
+                is_active: true, error: '', saving: false };
+        },
 
         async loadSlots() {
             this.loading = true;
