@@ -1366,6 +1366,28 @@ Toujours :
         'cancellation_message'  => 'Message d\'annulation',
         'no_slots_message'   => 'Message aucune disponibilité',
         'confirmation_placeholders' => 'Variables disponibles dans le message de confirmation',
+
+        // Detail page
+        'show_subtitle'     => 'Détails de la réservation',
+        'back_to_list'      => 'Retour aux réservations',
+        'booking_info'      => 'Informations de réservation',
+        'customer_info'     => 'Client',
+        'slot_info'         => 'Créneau horaire',
+        'reservation_date'  => 'Date du rendez-vous',
+        'time_slot'         => 'Heure',
+        'booked_at'         => 'Réservé le',
+        'slot_recurrence'   => 'Récurrence',
+        'slot_capacity'     => 'Capacité',
+        'no_notes'          => 'Aucune note fournie',
+        'view_conversation' => 'Voir la conversation',
+        'view_customer'     => 'Voir le profil client',
+        'confirm_booking'   => 'Confirmer',
+        'change_status'     => 'Changer le statut',
+        'status_section'    => 'Statut',
+        'breadcrumb'        => 'Réservations',
+        'unknown_customer'  => 'Client inconnu',
+        'recurring_label'   => 'Récurrent (hebdomadaire)',
+        'specific_label'    => 'Date unique',
     ],
 
     'super_admins_page' => [

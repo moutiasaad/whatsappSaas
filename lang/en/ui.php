@@ -1365,6 +1365,28 @@ Always:
         'cancellation_message'  => 'Cancellation Message',
         'no_slots_message'   => 'No Availability Message',
         'confirmation_placeholders' => 'Available placeholders in confirmation message',
+
+        // Detail page
+        'show_subtitle'     => 'Appointment booking details',
+        'back_to_list'      => 'Back to Reservations',
+        'booking_info'      => 'Booking Information',
+        'customer_info'     => 'Customer',
+        'slot_info'         => 'Time Slot',
+        'reservation_date'  => 'Appointment Date',
+        'time_slot'         => 'Time',
+        'booked_at'         => 'Booked At',
+        'slot_recurrence'   => 'Recurrence',
+        'slot_capacity'     => 'Capacity',
+        'no_notes'          => 'No notes provided',
+        'view_conversation' => 'View Conversation',
+        'view_customer'     => 'View Customer Profile',
+        'confirm_booking'   => 'Confirm',
+        'change_status'     => 'Change Status',
+        'status_section'    => 'Status',
+        'breadcrumb'        => 'Reservations',
+        'unknown_customer'  => 'Unknown Customer',
+        'recurring_label'   => 'Recurring (weekly)',
+        'specific_label'    => 'One-time date',
     ],
 
     'super_admins_page' => [

@@ -82,6 +82,16 @@ class ReservationController extends Controller
         ];
     }
 
+    public function show(Reservation $reservation)
+    {
+        $this->assertEnabled();
+        abort_unless($reservation->tenant_id === auth()->user()->tenant_id, 403);
+
+        $reservation->load(['slot', 'customer', 'conversation.instance']);
+
+        return view('admin.reservations.show', compact('reservation'));
+    }
+
     // ── Status update ─────────────────────────────────────────────────────────
 
     public function updateStatus(Request $request, Reservation $reservation)

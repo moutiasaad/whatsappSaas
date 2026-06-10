@@ -86,7 +86,7 @@
             </thead>
             <tbody>
                 <template x-for="row in rows" :key="row.id">
-                    <tr>
+                    <tr style="cursor:pointer" @click="window.location = showUrl(row.id)">
                         <td x-text="row.id" class="text-muted small"></td>
                         <td x-text="row.reservation_date" class="font-medium"></td>
                         <td x-text="row.start_time.slice(0,5) + ' – ' + row.end_time.slice(0,5)"></td>
@@ -106,8 +106,11 @@
                                   }"
                                   x-text="statusLabel(row.status)"></span>
                         </td>
-                        <td>
+                        <td @click.stop>
                             <div style="display:flex;gap:4px;align-items:center">
+                                <a class="action-btn" :href="showUrl(row.id)" title="{{ __('ui.reservations.view_conversation') }}">
+                                    <i class="ri-eye-line" style="color:var(--brand)"></i>
+                                </a>
                                 <template x-if="row.status === 'confirmed'">
                                     <button class="action-btn" title="{{ __('ui.reservations.mark_completed') }}"
                                             @click="setStatus(row, 'completed')">
@@ -192,6 +195,8 @@ function reservationsPage() {
         pagination: null,
         filters: { search: '', status: '', date_from: '', date_to: '' },
         deleteModal: { show: false, id: null, name: '', saving: false },
+
+        showUrl(id) { return `${routeBase}/${id}`; },
 
         init() { this.reload(1); },
 

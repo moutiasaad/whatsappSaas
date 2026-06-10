@@ -176,6 +176,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::delete('/reservations/slots/{slot}', [ReservationController::class, 'destroySlot'])->name('reservations.slots.destroy');
                 Route::get('/reservations/settings', [ReservationController::class, 'settings'])->name('reservations.settings');
                 Route::put('/reservations/settings', [ReservationController::class, 'saveSettings'])->name('reservations.settings.save');
+                Route::get('/reservations/{reservation}', [ReservationController::class, 'show'])->name('reservations.show');
             });
 
             // Knowledge Base, AI settings, Saved Replies (tenant admin only)
