@@ -123,7 +123,9 @@ class EvolutionApiClient implements GatewayClientInterface
 
     public function sendList(string $instanceId, string $to, string $title, string $description, string $buttonText, array $sections): array
     {
-        return $this->post("/message/sendList/{$instanceId}", [
+        // CodeChat / Evolution API v1 uses sendListMessage; v2 uses sendList.
+        // We try v1 first. If the gateway returns 4xx the caller can fall back to text.
+        return $this->post("/message/sendListMessage/{$instanceId}", [
             'number'      => $this->normalizeRecipient($to),
             'options'     => ['delay' => 1200, 'presence' => 'composing'],
             'listMessage' => [

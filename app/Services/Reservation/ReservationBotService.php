@@ -457,7 +457,7 @@ class ReservationBotService
         string $fallbackText
     ): void {
         $sections = [[
-            'title' => '',
+            'title' => 'الخيارات',
             'rows'  => array_map(fn($r) => [
                 'rowId'       => $r['id'],
                 'title'       => $r['title'],
@@ -473,7 +473,10 @@ class ReservationBotService
             $client->sendList($instance->gateway_instance_id, $phone, $title, $description, $buttonText, $sections);
             $this->persistMessage($fallbackText);
         } catch (\Throwable $e) {
-            Log::warning('ReservationBot: sendList failed, using text fallback', ['error' => $e->getMessage()]);
+            Log::error('ReservationBot: sendList failed — ' . $e->getMessage(), [
+                'gateway' => $instance->effectiveGatewayUrl(),
+                'phone'   => $phone,
+            ]);
             $this->send($instance, $phone, $fallbackText);
         }
     }
