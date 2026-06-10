@@ -10,7 +10,8 @@ class Plan extends Model
     protected $fillable = [
         'name', 'stripe_price_id_monthly', 'stripe_price_id_annual',
         'price_monthly', 'price_annual', 'max_users', 'max_instances',
-        'max_conversations_per_month', 'ai_included', 'ai_token_quota', 'features', 'is_active',
+        'max_conversations_per_month', 'ai_included', 'ai_token_quota',
+        'reservations_enabled', 'features', 'is_active',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class Plan extends Model
         'max_conversations_per_month' => 'integer',
         'ai_included'                 => 'boolean',
         'ai_token_quota'              => 'integer',
+        'reservations_enabled'        => 'boolean',
         'features'                    => 'array',
         'is_active'                   => 'boolean',
     ];

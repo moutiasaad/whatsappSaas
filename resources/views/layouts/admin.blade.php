@@ -1804,6 +1804,13 @@
                     <i class="ri-chat-3-line"></i>
                     <span>{{ __('ui.sidebar.saved_replies') }}</span>
                 </a>
+
+                @if(Auth::user()->tenant?->plan?->reservations_enabled)
+                <a href="{{ route($panelPrefix . '.reservations.index') }}" class="{{ $navActive([$panelPrefix . '.reservations.*']) }}">
+                    <i class="ri-calendar-check-line"></i>
+                    <span>{{ __('ui.sidebar.reservations') }}</span>
+                </a>
+                @endif
             @endif
 
             @if(!Auth::user()->isSuperAdmin() || $sp('notifications'))

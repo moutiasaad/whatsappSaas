@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\LegalPageController;
+use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\BillingController;
@@ -162,6 +163,19 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Notifications
                 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
                 Route::post('/notifications', [NotificationController::class, 'send'])->name('notifications.send');
+            });
+
+            // Reservations module (admin only, plan-gated inside controller)
+            Route::middleware('role:admin')->group(function () {
+                Route::get('/reservations', [ReservationController::class, 'index'])->name('reservations.index');
+                Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.status');
+                Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->name('reservations.destroy');
+                Route::get('/reservations/slots', [ReservationController::class, 'slots'])->name('reservations.slots');
+                Route::post('/reservations/slots', [ReservationController::class, 'storeSlot'])->name('reservations.slots.store');
+                Route::put('/reservations/slots/{slot}', [ReservationController::class, 'updateSlot'])->name('reservations.slots.update');
+                Route::delete('/reservations/slots/{slot}', [ReservationController::class, 'destroySlot'])->name('reservations.slots.destroy');
+                Route::get('/reservations/settings', [ReservationController::class, 'settings'])->name('reservations.settings');
+                Route::put('/reservations/settings', [ReservationController::class, 'saveSettings'])->name('reservations.settings.save');
             });
 
             // Knowledge Base, AI settings, Saved Replies (tenant admin only)

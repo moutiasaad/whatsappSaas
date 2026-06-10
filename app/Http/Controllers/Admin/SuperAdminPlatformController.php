@@ -346,6 +346,7 @@ class SuperAdminPlatformController extends Controller
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
             'ai_token_quota'              => (int) ($data['ai_token_quota'] ?? 0),
+            'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
             'features'                    => $this->parseFeatures($data['features'] ?? null),
             'is_active'                   => (bool) ($data['is_active'] ?? true),
         ]);
@@ -384,6 +385,7 @@ class SuperAdminPlatformController extends Controller
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
             'ai_token_quota'              => (int) ($data['ai_token_quota'] ?? 0),
+            'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
             'features'                    => $this->parseFeatures($data['features'] ?? null),
             'is_active'                   => $nextStatus,
         ]);
@@ -654,6 +656,7 @@ class SuperAdminPlatformController extends Controller
             'max_conversations_per_month' => 'required|integer|min:0',
             'ai_included'                 => 'nullable|boolean',
             'ai_token_quota'              => 'nullable|integer|min:0',
+            'reservations_enabled'        => 'nullable|boolean',
             'features'                    => 'nullable|json',
             'is_active'                   => 'nullable|boolean',
         ]);

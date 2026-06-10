@@ -2,6 +2,7 @@
     $plan = $plan ?? null;
     $activeValue = old('is_active', $plan?->is_active ?? true);
     $aiIncludedValue = old('ai_included', $plan?->ai_included ?? false);
+    $reservationsEnabledValue = old('reservations_enabled', $plan?->reservations_enabled ?? false);
 @endphp
 
 <div class="form-grid">
@@ -73,6 +74,16 @@
         <input id="ai_token_quota" type="number" min="0" step="1" name="ai_token_quota" value="{{ old('ai_token_quota', $plan?->ai_token_quota ?? 0) }}" class="form-control @error('ai_token_quota') error @enderror">
         @error('ai_token_quota') <div class="form-error">{{ $message }}</div> @enderror
     </div>
+</div>
+
+<div class="form-group" style="margin-top:16px;">
+    <input type="hidden" name="reservations_enabled" value="0">
+    <label class="toggle-label">
+        <input type="checkbox" name="reservations_enabled" value="1"
+               @checked((string) $reservationsEnabledValue === '1' || $reservationsEnabledValue === 1 || $reservationsEnabledValue === true)>
+        <span class="toggle-text">{{ __('ui.plan_form_fields.reservations_enabled') }}</span>
+    </label>
+    <span class="form-hint" style="display:block;margin-top:.25rem;">{{ __('ui.plan_form_fields.reservations_enabled_hint') }}</span>
 </div>
 
 <div class="form-group" style="margin-top:16px;">

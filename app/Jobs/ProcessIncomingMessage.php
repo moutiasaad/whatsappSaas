@@ -9,6 +9,8 @@ use App\Models\WebhookEvent;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use App\Services\AI\AutoReplyService;
 use App\Services\Conversations\ConversationService;
+use App\Models\ReservationSetting;
+use App\Services\Reservation\ReservationBotService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -134,6 +136,24 @@ class ProcessIncomingMessage implements ShouldQueue
         ]);
 
         broadcast(new MessageReceived($message))->toOthers();
+
+        // Reservation bot intercepts text messages when the module is active on this tenant's plan
+        if ($body !== null && $body !== '') {
+            $resvSettings = ReservationSetting::where('tenant_id', $instance->tenant_id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($resvSettings && $this->tenantHasReservations($instance->tenant_id)) {
+                // Only intercept if the bot has an active session or the message matches a trigger keyword
+                $botHandled = (new ReservationBotService())->handle(
+                    $resvSettings, $instance, $from, $body, $conversation->id
+                );
+
+                if ($botHandled) {
+                    return;
+                }
+            }
+        }
 
         $aiService->maybeReply($conversation->fresh(), $message);
     }
@@ -435,6 +455,16 @@ class ProcessIncomingMessage implements ShouldQueue
             ?? data_get($payload, 'data.status')  // CodeChat status.instance event
             ?? ''
         ));
+    }
+
+    private function tenantHasReservations(int $tenantId): bool
+    {
+        static $cache = [];
+        if (!isset($cache[$tenantId])) {
+            $tenant = \App\Models\Tenant::with('plan')->find($tenantId);
+            $cache[$tenantId] = $tenant && $tenant->plan && $tenant->plan->reservations_enabled;
+        }
+        return $cache[$tenantId];
     }
 
     public function failed(\Throwable $e): void
