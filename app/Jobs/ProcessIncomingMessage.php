@@ -372,6 +372,13 @@ class ProcessIncomingMessage implements ShouldQueue
             // Interactive list-response: extract the rowId the customer tapped
             data_get($msg, 'content.singleSelectReply.selectedRowId'),
             data_get($msg, 'message.listResponseMessage.singleSelectReply.selectedRowId'),
+            // iStoreBox/CodeChat button + list reply formats (id/rowId first so numeric
+            // step handlers keep matching; display-text variants below as a fallback).
+            data_get($msg, 'content.buttonReply.id'),
+            data_get($msg, 'content.listReply.rowId'),
+            data_get($msg, 'content.selectedDisplayText'),       // button tap (new format)
+            data_get($msg, 'content.buttonReply.displayText'),   // button tap (old format)
+            data_get($msg, 'content.listReply.title'),           // list selection tap
             data_get($msg, 'message.conversation'),
             data_get($msg, 'message.extendedTextMessage.text'),
             data_get($msg, 'message.imageMessage.caption'),
