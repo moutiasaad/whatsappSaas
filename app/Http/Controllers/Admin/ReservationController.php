@@ -141,6 +141,7 @@ class ReservationController extends Controller
 
         $data = $request->validate([
             'type'          => 'required|in:recurring,specific',
+            'period'        => 'required|in:morning,afternoon',
             'day_of_week'   => 'nullable|integer|between:0,6',
             'specific_date' => 'nullable|date|after_or_equal:today',
             'start_time'    => 'required|date_format:H:i',
@@ -166,6 +167,7 @@ class ReservationController extends Controller
         abort_unless($slot->tenant_id === auth()->user()->tenant_id, 403);
 
         $data = $request->validate([
+            'period'       => 'sometimes|in:morning,afternoon',
             'start_time'   => 'required|date_format:H:i',
             'end_time'     => 'required|date_format:H:i|after:start_time',
             'max_bookings' => 'required|integer|min:1|max:999',

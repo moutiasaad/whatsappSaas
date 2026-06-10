@@ -58,11 +58,12 @@ class ReservationBotService
 
         // Active session — route to current step
         return match ($state['step']) {
-            'select_date' => $this->handleSelectDate($settings, $instance, $phone, $text, $state, $conversationId),
-            'select_slot' => $this->handleSelectSlot($settings, $instance, $phone, $text, $state, $conversationId),
-            'enter_name'  => $this->handleEnterName($settings, $instance, $phone, $text, $state, $conversationId),
-            'enter_notes' => $this->handleEnterNotes($settings, $instance, $phone, $text, $state, $conversationId),
-            default       => false,
+            'select_date'   => $this->handleSelectDate($settings, $instance, $phone, $text, $state, $conversationId),
+            'select_period' => $this->handleSelectPeriod($settings, $instance, $phone, $text, $state, $conversationId),
+            'select_slot'   => $this->handleSelectSlot($settings, $instance, $phone, $text, $state, $conversationId),
+            'enter_name'    => $this->handleEnterName($settings, $instance, $phone, $text, $state, $conversationId),
+            'enter_notes'   => $this->handleEnterNotes($settings, $instance, $phone, $text, $state, $conversationId),
+            default         => false,
         };
     }
 
@@ -109,25 +110,74 @@ class ReservationBotService
             return true;
         }
 
-        $selectedDate = Carbon::parse($dates[$choice - 1]);
-        $slots        = $this->slotsForDate($settings->tenant_id, $selectedDate);
+        $selectedDate  = Carbon::parse($dates[$choice - 1]);
+        $allSlots      = $this->slotsForDate($settings->tenant_id, $selectedDate);
 
-        if (empty($slots)) {
+        if (empty($allSlots)) {
             $this->send($instance, $phone, 'لا توجد أوقات متاحة لهذا اليوم. اختر يوماً آخر.');
             $this->startFlow($settings, $instance, $phone, $conversationId);
             return true;
         }
 
-        $intro = $settings->select_slot_message ?: '⏰ الأوقات المتاحة ليوم ' . $this->formatDateAr($selectedDate) . ':';
-        $list  = '';
-        foreach ($slots as $i => $slot) {
-            $list .= "\n" . ($i + 1) . '. ' . $slot['start'] . ' - ' . $slot['end'];
-        }
-        $this->send($instance, $phone, $intro . $list . "\n\nأرسل الرقم المناسب.");
+        $morningSlots   = array_values(array_filter($allSlots, fn($s) => $s['period'] === 'morning'));
+        $afternoonSlots = array_values(array_filter($allSlots, fn($s) => $s['period'] === 'afternoon'));
+        $hasBoth        = !empty($morningSlots) && !empty($afternoonSlots);
 
+        $newState = array_merge($state, [
+            'selected_date' => $selectedDate->toDateString(),
+            'all_slots'     => $allSlots,
+        ]);
+
+        if ($hasBoth) {
+            $msg = ($settings->select_slot_message ?: '⏰ الأوقات المتاحة ليوم ' . $this->formatDateAr($selectedDate))
+                . "\n\nاختر الفترة المناسبة:"
+                . "\n1. 🌅 صباحاً (" . count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots)) . ')'
+                . "\n2. 🌆 مساءً (" . count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots)) . ')'
+                . "\n\nأرسل 1 أو 2";
+
+            $this->send($instance, $phone, $msg);
+            $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
+        } else {
+            $period = !empty($morningSlots) ? 'morning' : 'afternoon';
+            $slots  = !empty($morningSlots) ? $morningSlots : $afternoonSlots;
+            $this->sendSlotList($settings, $instance, $phone, $slots, $selectedDate, $period);
+            $this->setState($settings->tenant_id, $phone, array_merge($newState, [
+                'step'            => 'select_slot',
+                'selected_period' => $period,
+                'available_slots' => $slots,
+            ]));
+        }
+
+        return true;
+    }
+
+    private function handleSelectPeriod(
+        ReservationSetting $settings, WhatsAppInstance $instance,
+        string $phone, string $text, array $state, int $conversationId
+    ): bool {
+        $choice = (int) $text;
+
+        if (!in_array($choice, [1, 2], true)) {
+            $this->send($instance, $phone, 'يرجى إرسال 1 للصباح أو 2 للمساء.');
+            return true;
+        }
+
+        $period     = $choice === 1 ? 'morning' : 'afternoon';
+        $allSlots   = $state['all_slots'] ?? [];
+        $slots      = array_values(array_filter($allSlots, fn($s) => $s['period'] === $period));
+        $date       = Carbon::parse($state['selected_date']);
+
+        if (empty($slots)) {
+            $other       = $period === 'morning' ? 'afternoon' : 'morning';
+            $otherLabel  = $other === 'morning' ? 'صباحاً' : 'مساءً';
+            $this->send($instance, $phone, "عذراً، لا توجد أوقات متاحة في هذه الفترة.\nهل تريد الاطلاع على الأوقات المتاحة $otherLabel؟ (أرسل 1 للصباح / 2 للمساء)");
+            return true;
+        }
+
+        $this->sendSlotList($settings, $instance, $phone, $slots, $date, $period);
         $this->setState($settings->tenant_id, $phone, array_merge($state, [
             'step'            => 'select_slot',
-            'selected_date'   => $selectedDate->toDateString(),
+            'selected_period' => $period,
             'available_slots' => $slots,
         ]));
 
@@ -147,6 +197,32 @@ class ReservationBotService
         }
 
         $selectedSlot = $slots[$choice - 1];
+        $date         = Carbon::parse($state['selected_date']);
+
+        // Re-check capacity (race condition: another user may have booked this slot)
+        $slotModel = AvailabilitySlot::find($selectedSlot['id']);
+        if (!$slotModel || !$slotModel->hasCapacityOn($date)) {
+            // Refresh the list for this period
+            $period          = $state['selected_period'] ?? null;
+            $freshAllSlots   = $this->slotsForDate($settings->tenant_id, $date);
+            $freshSlots      = $period
+                ? array_values(array_filter($freshAllSlots, fn($s) => $s['period'] === $period))
+                : $freshAllSlots;
+
+            if (empty($freshSlots)) {
+                $this->clearState($settings->tenant_id, $phone);
+                $this->send($instance, $phone, "عذراً، لقد امتلأت جميع المواعيد المتاحة لهذا اليوم 😔\nيمكنك المحاولة في يوم آخر.");
+                return true;
+            }
+
+            $this->send($instance, $phone, "⚠️ عذراً، هذا الموعد لم يعد متاحاً — تم حجزه للتو.\n\nإليك الأوقات المتاحة الآن:");
+            $this->sendSlotList($settings, $instance, $phone, $freshSlots, $date, $period ?? '');
+            $this->setState($settings->tenant_id, $phone, array_merge($state, [
+                'available_slots' => $freshSlots,
+            ]));
+            return true;
+        }
+
         $this->send($instance, $phone, $settings->ask_name_message ?: '✏️ ما اسمك الكامل؟');
 
         $this->setState($settings->tenant_id, $phone, array_merge($state, [
@@ -258,7 +334,7 @@ class ReservationBotService
         return $dates;
     }
 
-    /** Return available slots for a specific date. */
+    /** Return available slots for a specific date with period and remaining count. */
     private function slotsForDate(int $tenantId, Carbon $date): array
     {
         $slots = AvailabilitySlot::where('tenant_id', $tenantId)
@@ -269,15 +345,42 @@ class ReservationBotService
         foreach ($slots as $slot) {
             if ($slot->appliesToDate($date) && $slot->hasCapacityOn($date)) {
                 $result[] = [
-                    'id'    => $slot->id,
-                    'start' => substr($slot->start_time, 0, 5),
-                    'end'   => substr($slot->end_time, 0, 5),
+                    'id'        => $slot->id,
+                    'start'     => substr($slot->start_time, 0, 5),
+                    'end'       => substr($slot->end_time, 0, 5),
+                    'period'    => $slot->period ?? 'morning',
+                    'remaining' => $slot->remainingOn($date),
+                    'max'       => $slot->max_bookings,
                 ];
             }
         }
 
         usort($result, fn($a, $b) => $a['start'] <=> $b['start']);
         return $result;
+    }
+
+    private function sendSlotList(
+        ReservationSetting $settings, WhatsAppInstance $instance,
+        string $phone, array $slots, Carbon $date, string $period
+    ): void {
+        $periodLabel = $period === 'morning' ? '🌅 صباحاً' : '🌆 مساءً';
+        $intro       = "$periodLabel — " . ($settings->select_slot_message
+            ?: 'الأوقات المتاحة ليوم ' . $this->formatDateAr($date)) . ':';
+        $list = '';
+        foreach ($slots as $i => $slot) {
+            $spotsLabel = $slot['remaining'] === 1 ? 'مقعد واحد متبقٍ' : "{$slot['remaining']} مقاعد متبقية";
+            $list .= "\n" . ($i + 1) . '. ' . $slot['start'] . ' - ' . $slot['end'] . "  ({$spotsLabel})";
+        }
+        $this->send($instance, $phone, $intro . $list . "\n\nأرسل الرقم المناسب.");
+    }
+
+    private function pluralSlots(int $count): string
+    {
+        return match ($count) {
+            1       => 'وقت متاح',
+            2       => 'وقتان متاحان',
+            default => 'أوقات متاحة',
+        };
     }
 
     private function send(WhatsAppInstance $instance, string $phone, string $text): void

@@ -43,6 +43,7 @@
                     <thead>
                         <tr>
                             <th>{{ __('ui.reservations.col_day') }}</th>
+                            <th>{{ __('ui.reservations.col_period') }}</th>
                             <th>{{ __('ui.reservations.col_time') }}</th>
                             <th>{{ __('ui.reservations.col_max') }}</th>
                             <th>{{ __('ui.reservations.col_active') }}</th>
@@ -53,6 +54,12 @@
                         <template x-for="slot in recurringSlots" :key="slot.id">
                             <tr>
                                 <td x-text="dayName(slot.day_of_week)" class="font-medium"></td>
+                                <td>
+                                    <span class="badge" :class="slot.period === 'morning' ? 'badge-orange' : 'badge-blue'">
+                                        <i :class="slot.period === 'morning' ? 'ri-sun-line' : 'ri-moon-line'"></i>
+                                        <span x-text="slot.period === 'morning' ? '{{ __('ui.reservations.period_morning') }}' : '{{ __('ui.reservations.period_afternoon') }}'"></span>
+                                    </span>
+                                </td>
                                 <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
                                 <td x-text="slot.max_bookings"></td>
                                 <td>
@@ -99,6 +106,7 @@
                     <thead>
                         <tr>
                             <th>{{ __('ui.reservations.col_date') }}</th>
+                            <th>{{ __('ui.reservations.col_period') }}</th>
                             <th>{{ __('ui.reservations.col_time') }}</th>
                             <th>{{ __('ui.reservations.col_max') }}</th>
                             <th>{{ __('ui.reservations.col_active') }}</th>
@@ -109,6 +117,12 @@
                         <template x-for="slot in specificSlots" :key="slot.id">
                             <tr>
                                 <td x-text="slot.specific_date" class="font-medium"></td>
+                                <td>
+                                    <span class="badge" :class="slot.period === 'morning' ? 'badge-orange' : 'badge-blue'">
+                                        <i :class="slot.period === 'morning' ? 'ri-sun-line' : 'ri-moon-line'"></i>
+                                        <span x-text="slot.period === 'morning' ? '{{ __('ui.reservations.period_morning') }}' : '{{ __('ui.reservations.period_afternoon') }}'"></span>
+                                    </span>
+                                </td>
                                 <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
                                 <td x-text="slot.max_bookings"></td>
                                 <td>
@@ -148,6 +162,23 @@
                         <option value="recurring">{{ __('ui.reservations.type_recurring') }}</option>
                         <option value="specific">{{ __('ui.reservations.type_specific') }}</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ __('ui.reservations.period') }}</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:border-color .15s"
+                               :style="addModal.period === 'morning' ? 'border-color:var(--orange);background:rgba(249,115,22,.06)' : ''">
+                            <input type="radio" x-model="addModal.period" value="morning" style="display:none">
+                            <i class="ri-sun-line" style="font-size:1.1rem;color:var(--orange)"></i>
+                            <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_morning') }}</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:border-color .15s"
+                               :style="addModal.period === 'afternoon' ? 'border-color:var(--brand);background:rgba(16,185,129,.06)' : ''">
+                            <input type="radio" x-model="addModal.period" value="afternoon" style="display:none">
+                            <i class="ri-moon-line" style="font-size:1.1rem;color:var(--brand)"></i>
+                            <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_afternoon') }}</span>
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group" x-show="addModal.type === 'recurring'">
                     <label class="form-label">{{ __('ui.reservations.day_of_week') }}</label>
@@ -226,7 +257,7 @@ function slotsPage() {
     return {
         loading: false,
         slots: [],
-        addModal: { show: false, id: null, type: 'recurring', day_of_week: 1, specific_date: '', start_time: '09:00', end_time: '10:00', max_bookings: 1, is_active: true, error: '', saving: false },
+        addModal: { show: false, id: null, type: 'recurring', period: 'morning', day_of_week: 1, specific_date: '', start_time: '09:00', end_time: '10:00', max_bookings: 1, is_active: true, error: '', saving: false },
         deleteSlotModal: { show: false, id: null, label: '', saving: false },
 
         get recurringSlots() { return this.slots.filter(s => s.type === 'recurring'); },
@@ -246,10 +277,10 @@ function slotsPage() {
         },
 
         editSlot(slot) {
-            this.addModal = { show: true, id: slot.id, type: slot.type, day_of_week: slot.day_of_week ?? 1,
-                specific_date: slot.specific_date ?? '', start_time: slot.start_time?.slice(0,5) ?? '09:00',
-                end_time: slot.end_time?.slice(0,5) ?? '10:00', max_bookings: slot.max_bookings, is_active: slot.is_active,
-                error: '', saving: false };
+            this.addModal = { show: true, id: slot.id, type: slot.type, period: slot.period ?? 'morning',
+                day_of_week: slot.day_of_week ?? 1, specific_date: slot.specific_date ?? '',
+                start_time: slot.start_time?.slice(0,5) ?? '09:00', end_time: slot.end_time?.slice(0,5) ?? '10:00',
+                max_bookings: slot.max_bookings, is_active: slot.is_active, error: '', saving: false };
         },
 
         closeModal() { this.addModal.show = false; },
@@ -258,10 +289,10 @@ function slotsPage() {
             this.addModal.saving = true;
             this.addModal.error = '';
             const payload = {
-                type: this.addModal.type, day_of_week: this.addModal.day_of_week,
-                specific_date: this.addModal.specific_date, start_time: this.addModal.start_time,
-                end_time: this.addModal.end_time, max_bookings: parseInt(this.addModal.max_bookings),
-                is_active: this.addModal.is_active,
+                type: this.addModal.type, period: this.addModal.period,
+                day_of_week: this.addModal.day_of_week, specific_date: this.addModal.specific_date,
+                start_time: this.addModal.start_time, end_time: this.addModal.end_time,
+                max_bookings: parseInt(this.addModal.max_bookings), is_active: this.addModal.is_active,
             };
             const url = this.addModal.id ? `${apiBase}/${this.addModal.id}` : apiBase;
             const method = this.addModal.id ? 'PUT' : 'POST';

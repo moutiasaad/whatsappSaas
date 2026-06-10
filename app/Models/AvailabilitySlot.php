@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AvailabilitySlot extends Model
 {
     protected $fillable = [
-        'tenant_id', 'type', 'day_of_week', 'specific_date',
+        'tenant_id', 'type', 'period', 'day_of_week', 'specific_date',
         'start_time', 'end_time', 'max_bookings', 'is_active',
     ];
 
@@ -36,6 +36,11 @@ class AvailabilitySlot extends Model
     public function hasCapacityOn(Carbon $date): bool
     {
         return $this->bookingsOnDate($date) < $this->max_bookings;
+    }
+
+    public function remainingOn(Carbon $date): int
+    {
+        return max(0, $this->max_bookings - $this->bookingsOnDate($date));
     }
 
     /** Check whether this slot applies on the given Carbon date. */
