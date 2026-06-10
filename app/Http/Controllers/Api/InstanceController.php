@@ -76,13 +76,14 @@ class InstanceController extends Controller
             }
 
             // Create gateway instance if it doesn't exist yet
+            $createResult = null;
             if (!$instance->gateway_instance_id) {
-                $gatewayName = 'wa-' . $instance->tenant_id . '-' . $instance->id;
-                $result      = $gateway->createInstance($gatewayName);
+                $gatewayName  = 'wa-' . $instance->tenant_id . '-' . $instance->id;
+                $createResult = $gateway->createInstance($gatewayName);
                 $instance->update([
-                    'gateway_instance_id' => $result['name']
-                        ?? $result['instance']['instanceId']
-                        ?? $result['instanceName']
+                    'gateway_instance_id' => $createResult['name']
+                        ?? $createResult['instance']['instanceId']
+                        ?? $createResult['instanceName']
                         ?? $gatewayName,
                 ]);
                 $instance->refresh();
@@ -90,7 +91,8 @@ class InstanceController extends Controller
 
             $this->ensureWebhookRegistered($gateway, $instance);
 
-            $qr = $gateway->getQrCode($instance->gateway_instance_id);
+            $qr = $gateway->getQrCode($instance->gateway_instance_id)
+                ?? $this->qrFromCreateResult($createResult);
 
             if ($qr === null) {
                 // Maybe it's already connected — check before assuming it's stuck
@@ -124,7 +126,8 @@ class InstanceController extends Controller
 
                 $this->ensureWebhookRegistered($gateway, $instance);
 
-                $qr = $gateway->getQrCode($newGatewayId);
+                $qr = $gateway->getQrCode($newGatewayId)
+                    ?? $this->qrFromCreateResult($result);
             }
 
             $instance->update(['qr_code' => $qr, 'status' => 'connecting', 'last_status_at' => now()]);
@@ -179,9 +182,14 @@ class InstanceController extends Controller
             // Gateway may already be unreachable — continue with local update
         }
 
+        // The gateway's "logout" actually deletes the instance (DELETE /instance/delete),
+        // so the stored gateway_instance_id now points at a non-existent instance.
+        // Clear it so the next connect() takes the clean "create a fresh instance" path
+        // and returns a new QR, instead of trying to fetch a QR for a dead instance.
         $instance->update([
-            'status'  => 'disconnected',
-            'qr_code' => null,
+            'status'              => 'disconnected',
+            'qr_code'             => null,
+            'gateway_instance_id' => null,
         ]);
 
         broadcast(new InstanceStatusChanged($instance->fresh()));
@@ -221,6 +229,32 @@ class InstanceController extends Controller
             403,
             'This instance does not belong to your tenant.'
         );
+    }
+
+    /**
+     * Extract a normalized QR data-URI from a createInstance response, if the
+     * gateway returned one inline (iStoreBox/Evolution include qrcode.base64 on create).
+     */
+    private function qrFromCreateResult(?array $result): ?string
+    {
+        if (!is_array($result)) {
+            return null;
+        }
+
+        $code = data_get($result, 'qrcode.base64')
+            ?? data_get($result, 'qrcode.code')
+            ?? data_get($result, 'qr.base64')
+            ?? data_get($result, 'base64');
+
+        if (!is_string($code) || trim($code) === '') {
+            return null;
+        }
+
+        if (str_starts_with($code, 'data:image/')) {
+            return $code;
+        }
+
+        return 'data:image/png;base64,' . preg_replace('/\s+/', '', $code);
     }
 
     private function gateway(WhatsAppInstance $instance): EvolutionApiClient
