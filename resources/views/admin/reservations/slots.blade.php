@@ -4,7 +4,6 @@
 
 @section('content')
 <div x-data="slotsPage()" x-init="init()" x-cloak>
-<div class="content-area">
 
     <div class="page-header">
         <div class="page-header-left">
@@ -24,101 +23,115 @@
     </div>
 
     {{-- Recurring slots --}}
-    <div class="table-card" style="margin-bottom:1.5rem">
+    <div class="card" style="padding:0;margin-bottom:1.5rem">
         <div style="padding:.875rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:.5rem">
             <i class="ri-repeat-line" style="color:var(--brand)"></i>
             <span style="font-weight:600;font-size:.9375rem">{{ __('ui.reservations.recurring_slots') }}</span>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{{ __('ui.reservations.col_day') }}</th>
-                    <th>{{ __('ui.reservations.col_time') }}</th>
-                    <th>{{ __('ui.reservations.col_max') }}</th>
-                    <th>{{ __('ui.reservations.col_active') }}</th>
-                    <th>{{ __('ui.reservations.col_actions') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template x-for="slot in recurringSlots" :key="slot.id">
-                    <tr>
-                        <td x-text="dayName(slot.day_of_week)" class="font-medium"></td>
-                        <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
-                        <td x-text="slot.max_bookings"></td>
-                        <td>
-                            <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
-                                  x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
-                        </td>
-                        <td>
-                            <div style="display:flex;gap:4px;align-items:center">
-                                <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
-                                    <i class="ri-edit-line" style="color:var(--brand)"></i>
-                                </button>
-                                <button class="action-btn danger" title="{{ __('ui.delete') }}"
-                                        @click="deleteSlotModal = {show:true, id:slot.id, label: dayName(slot.day_of_week)+' '+slot.start_time.slice(0,5)}">
-                                    <i class="ri-delete-bin-6-line"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-                <tr x-show="!loading && recurringSlots.length === 0">
-                    <td colspan="5" class="empty-state">
-                        <i class="ri-repeat-line"></i>
-                        <p>{{ __('ui.reservations.no_recurring') }}</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+
+        <div x-show="loading" class="spinner-wrap" style="min-height:120px">
+            <div class="spinner" style="margin:0 auto"></div>
+        </div>
+
+        <div x-show="!loading">
+            <div x-show="recurringSlots.length === 0" class="empty-state" style="padding:2rem">
+                <div class="empty-state-icon"><i class="ri-repeat-line"></i></div>
+                <h4>{{ __('ui.reservations.no_recurring') }}</h4>
+            </div>
+            <div x-show="recurringSlots.length > 0" class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.reservations.col_day') }}</th>
+                            <th>{{ __('ui.reservations.col_time') }}</th>
+                            <th>{{ __('ui.reservations.col_max') }}</th>
+                            <th>{{ __('ui.reservations.col_active') }}</th>
+                            <th style="width:96px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="slot in recurringSlots" :key="slot.id">
+                            <tr>
+                                <td x-text="dayName(slot.day_of_week)" class="font-medium"></td>
+                                <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
+                                <td x-text="slot.max_bookings"></td>
+                                <td>
+                                    <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
+                                          x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:.25rem;justify-content:flex-end">
+                                        <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
+                                            <i class="ri-edit-line" style="color:var(--brand)"></i>
+                                        </button>
+                                        <button class="action-btn danger" title="{{ __('ui.delete') }}"
+                                                @click="deleteSlotModal = {show:true, id:slot.id, label: dayName(slot.day_of_week)+' '+slot.start_time.slice(0,5), saving:false}">
+                                            <i class="ri-delete-bin-6-line"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     {{-- Specific date slots --}}
-    <div class="table-card">
+    <div class="card" style="padding:0">
         <div style="padding:.875rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:.5rem">
             <i class="ri-calendar-event-line" style="color:var(--brand)"></i>
             <span style="font-weight:600;font-size:.9375rem">{{ __('ui.reservations.specific_slots') }}</span>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{{ __('ui.reservations.col_date') }}</th>
-                    <th>{{ __('ui.reservations.col_time') }}</th>
-                    <th>{{ __('ui.reservations.col_max') }}</th>
-                    <th>{{ __('ui.reservations.col_active') }}</th>
-                    <th>{{ __('ui.reservations.col_actions') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template x-for="slot in specificSlots" :key="slot.id">
-                    <tr>
-                        <td x-text="slot.specific_date" class="font-medium"></td>
-                        <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
-                        <td x-text="slot.max_bookings"></td>
-                        <td>
-                            <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
-                                  x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
-                        </td>
-                        <td>
-                            <div style="display:flex;gap:4px;align-items:center">
-                                <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
-                                    <i class="ri-edit-line" style="color:var(--brand)"></i>
-                                </button>
-                                <button class="action-btn danger" title="{{ __('ui.delete') }}"
-                                        @click="deleteSlotModal = {show:true, id:slot.id, label: slot.specific_date+' '+slot.start_time.slice(0,5)}">
-                                    <i class="ri-delete-bin-6-line"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-                <tr x-show="!loading && specificSlots.length === 0">
-                    <td colspan="5" class="empty-state">
-                        <i class="ri-calendar-line"></i>
-                        <p>{{ __('ui.reservations.no_specific') }}</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+
+        <div x-show="loading" class="spinner-wrap" style="min-height:120px">
+            <div class="spinner" style="margin:0 auto"></div>
+        </div>
+
+        <div x-show="!loading">
+            <div x-show="specificSlots.length === 0" class="empty-state" style="padding:2rem">
+                <div class="empty-state-icon"><i class="ri-calendar-line"></i></div>
+                <h4>{{ __('ui.reservations.no_specific') }}</h4>
+            </div>
+            <div x-show="specificSlots.length > 0" class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.reservations.col_date') }}</th>
+                            <th>{{ __('ui.reservations.col_time') }}</th>
+                            <th>{{ __('ui.reservations.col_max') }}</th>
+                            <th>{{ __('ui.reservations.col_active') }}</th>
+                            <th style="width:96px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="slot in specificSlots" :key="slot.id">
+                            <tr>
+                                <td x-text="slot.specific_date" class="font-medium"></td>
+                                <td x-text="slot.start_time.slice(0,5) + ' — ' + slot.end_time.slice(0,5)"></td>
+                                <td x-text="slot.max_bookings"></td>
+                                <td>
+                                    <span class="badge" :class="slot.is_active ? 'badge-green' : 'badge-gray'"
+                                          x-text="slot.is_active ? '{{ __('ui.active') }}' : '{{ __('ui.inactive') }}'"></span>
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:.25rem;justify-content:flex-end">
+                                        <button class="action-btn" title="{{ __('ui.edit') }}" @click="editSlot(slot)">
+                                            <i class="ri-edit-line" style="color:var(--brand)"></i>
+                                        </button>
+                                        <button class="action-btn danger" title="{{ __('ui.delete') }}"
+                                                @click="deleteSlotModal = {show:true, id:slot.id, label: slot.specific_date+' '+slot.start_time.slice(0,5), saving:false}">
+                                            <i class="ri-delete-bin-6-line"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     {{-- Add / Edit modal --}}
@@ -203,7 +216,6 @@
         </div>
     </div>
 
-</div>{{-- end .content-area --}}
 </div>{{-- end x-data --}}
 
 <script>
