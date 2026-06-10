@@ -63,15 +63,26 @@ class ReservationBotService
             return true;
         }
 
-        // Active session — route to current step
-        return match ($state['step']) {
-            'select_date'   => $this->handleSelectDate($settings, $instance, $phone, $text, $state, $conversationId),
-            'select_period' => $this->handleSelectPeriod($settings, $instance, $phone, $text, $state, $conversationId),
-            'select_slot'   => $this->handleSelectSlot($settings, $instance, $phone, $text, $state, $conversationId),
-            'enter_name'    => $this->handleEnterName($settings, $instance, $phone, $text, $state, $conversationId),
-            'enter_notes'   => $this->handleEnterNotes($settings, $instance, $phone, $text, $state, $conversationId),
-            default         => false,
-        };
+        // Active session — route to current step. Wrapped so any unexpected error clears the
+        // session and replies instead of crashing (a crash leaves the cached state wedged, so
+        // every later message re-crashes and the customer never gets a reply).
+        try {
+            return match ($state['step']) {
+                'select_date'   => $this->handleSelectDate($settings, $instance, $phone, $text, $state, $conversationId),
+                'select_period' => $this->handleSelectPeriod($settings, $instance, $phone, $text, $state, $conversationId),
+                'select_slot'   => $this->handleSelectSlot($settings, $instance, $phone, $text, $state, $conversationId),
+                'enter_name'    => $this->handleEnterName($settings, $instance, $phone, $text, $state, $conversationId),
+                'enter_notes'   => $this->handleEnterNotes($settings, $instance, $phone, $text, $state, $conversationId),
+                default         => false,
+            };
+        } catch (\Throwable $e) {
+            Log::error('ReservationBot: step handler failed, clearing session', [
+                'phone' => $phone, 'step' => $state['step'] ?? null, 'error' => $e->getMessage(),
+            ]);
+            $this->clearState($settings->tenant_id, $phone);
+            $this->send($instance, $phone, 'حدث خطأ مؤقت. تم إعادة ضبط الحجز — أرسل كلمة الحجز للبدء من جديد.');
+            return true;
+        }
     }
 
     // ── Flow steps ────────────────────────────────────────────────────────────
@@ -141,22 +152,18 @@ class ReservationBotService
         ]);
 
         if ($hasBoth) {
-            // Numbered text, NOT interactive buttons/list. Tested empirically (2026-06-10) against
-            // both the native-flow interactiveMessage (sendButtons) and legacy listMessage formats,
-            // on both an @lid and a real @s.whatsapp.net recipient: WhatsApp NEVER renders them as
-            // tappable on this Baileys/CodeChat gateway. Worse, interactive messages are DROPPED
-            // ENTIRELY for @lid recipients (gateway returns 201 but the customer receives nothing) —
-            // so a button step would silently break the flow for real customers, who arrive as @lid.
-            // Genuine tappable controls require the official WhatsApp Business Cloud API.
-            $this->sendList(
+            // 2 options → tappable native-flow buttons (the gateway is patched with the native_flow
+            // additionalNodes hint, so these render as tappable on both real numbers and @lid).
+            // A tap returns the button id ("1"/"2"), which handleSelectPeriod parses.
+            $this->sendButtons(
                 $instance, $phone,
                 '⏰ ' . $this->formatDateAr($selectedDate),
                 'اختر الفترة المناسبة',
-                'اختر الفترة',
-                [['title' => 'الفترات المتاحة', 'rows' => [
-                    ['rowId' => '1', 'title' => '🌅 صباحاً', 'description' => count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))],
-                    ['rowId' => '2', 'title' => '🌆 مساءً',  'description' => count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))],
-                ]]]
+                [
+                    ['id' => '1', 'text' => '🌅 صباحاً (' . count($morningSlots) . ')'],
+                    ['id' => '2', 'text' => '🌆 مساءً (' . count($afternoonSlots) . ')'],
+                ],
+                'أرسل إلغاء للإلغاء'
             );
             $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
         } else {
@@ -302,10 +309,19 @@ class ReservationBotService
             return;
         }
 
+        // The cached state can carry a conversation_id that no longer exists (e.g. the WhatsApp
+        // instance was re-created, which rotated conversation rows). Null it out if missing,
+        // otherwise the FK constraint throws, the bot crashes, and the state stays wedged so every
+        // later message re-crashes and the customer never gets a reply.
+        $conversationId = $state['conversation_id'] ?? null;
+        if ($conversationId && !\App\Models\Conversation::withoutGlobalScopes()->whereKey($conversationId)->exists()) {
+            $conversationId = null;
+        }
+
         $reservation = Reservation::create([
             'tenant_id'        => $settings->tenant_id,
             'slot_id'          => $slot['id'],
-            'conversation_id'  => $state['conversation_id'] ?? null,
+            'conversation_id'  => $conversationId,
             'customer_phone'   => $phone,
             'customer_name'    => $name,
             'customer_notes'   => $notes,
@@ -413,15 +429,54 @@ class ReservationBotService
         };
     }
 
+    /**
+     * Send a tappable native-flow single_select list. The gateway (patched with the native_flow
+     * additionalNodes hint) renders this as a real list the customer taps; a tap returns the row id
+     * (e.g. "1") which the numeric step handlers parse. Falls back to a numbered text prompt if the
+     * gateway call fails.
+     */
     private function sendList(WhatsAppInstance $instance, string $phone, string $title, string $description, string $buttonText, array $sections): void
     {
-        // Interactive WhatsApp list/button messages are DEPRECATED by WhatsApp for unofficial
-        // (Baileys/CodeChat) gateways: the gateway returns HTTP 201 but WhatsApp downgrades them to a
-        // plain message or drops them, so the customer never sees a tappable list (confirmed
-        // empirically on both @lid and real phone recipients). Genuine interactive lists require the
-        // official WhatsApp Business Cloud API. We therefore always render the options as a clean
-        // numbered text prompt — it delivers reliably and the bot parses the numeric reply.
-        $this->send($instance, $phone, $this->renderListAsText($title, $description, $sections));
+        try {
+            $client = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $client->sendList($instance->gateway_instance_id, $phone, $title, $description, $buttonText, $sections);
+        } catch (\Throwable $e) {
+            Log::warning('ReservationBot: sendList failed, falling back to text', ['error' => $e->getMessage()]);
+            $this->send($instance, $phone, $this->renderListAsText($title, $description, $sections));
+            return;
+        }
+
+        // Persist a readable copy for the agent inbox (the interactive payload isn't human-readable).
+        $this->persistMessage($this->renderListAsText($title, $description, $sections));
+    }
+
+    /**
+     * Send up to 3 tappable native-flow quick-reply buttons. $buttons: list of
+     * ['id' => '1', 'text' => '...']. Falls back to a numbered text prompt on failure.
+     */
+    private function sendButtons(WhatsAppInstance $instance, string $phone, string $title, string $description, array $buttons, string $footer = ''): void
+    {
+        try {
+            $client = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $client->sendButtons($instance->gateway_instance_id, $phone, $title, $description, $buttons, $footer);
+        } catch (\Throwable $e) {
+            Log::warning('ReservationBot: sendButtons failed, falling back to text', ['error' => $e->getMessage()]);
+            $rows = array_map(fn($b) => ['rowId' => $b['id'], 'title' => $b['text'], 'description' => ''], $buttons);
+            $this->send($instance, $phone, $this->renderListAsText($title, $description, [['title' => '', 'rows' => $rows]]));
+            return;
+        }
+
+        $summary = "*{$title}*\n{$description}";
+        foreach ($buttons as $b) {
+            $summary .= "\n• {$b['text']}";
+        }
+        $this->persistMessage($summary);
     }
 
     /** Render a list (title + numbered rows) as a plain-text prompt for reliable delivery. */
