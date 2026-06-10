@@ -300,10 +300,13 @@ class ProcessIncomingMessage implements ShouldQueue
             return $raw;
         }
 
-        // Strip @s.whatsapp.net suffix, then keep digits only.
+        // Strip @s.whatsapp.net suffix, then the :device multi-device suffix (e.g. :5),
+        // then keep digits only.  Without the :device strip, "21265182831:5@s.whatsapp.net"
+        // yields "212651828315" instead of "21265182831", breaking cache key consistency.
         // Do NOT fall back to $raw after digit stripping — if nothing remains the source
         // was not a phone number (e.g. the literal string "status").
-        $raw    = preg_replace('/@.*/', '', $raw) ?? $raw;
+        $raw    = preg_replace('/@.*/', '', $raw) ?? $raw;   // strip @s.whatsapp.net
+        $raw    = preg_replace('/:\d+$/', '', $raw) ?? $raw;  // strip :device (multi-device)
         $digits = preg_replace('/\D+/', '', $raw) ?? '';
 
         return $digits !== '' ? $digits : null;

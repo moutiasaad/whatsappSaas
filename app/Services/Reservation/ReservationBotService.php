@@ -47,6 +47,13 @@ class ReservationBotService
 
         $state = $this->getState($settings->tenant_id, $phone);
 
+        Log::info('ReservationBot: handle', [
+            'phone'   => $phone,
+            'text'    => $text,
+            'hasState'=> $state !== null,
+            'step'    => $state['step'] ?? null,
+        ]);
+
         // No active session — check trigger keyword
         if (!$state) {
             if (!$settings->matchesTrigger($text)) {
@@ -432,7 +439,9 @@ class ReservationBotService
 
     private function setState(int $tenantId, string $phone, array $state): void
     {
-        Cache::put($this->stateKey($tenantId, $phone), $state, self::STATE_TTL);
+        $key = $this->stateKey($tenantId, $phone);
+        Cache::put($key, $state, self::STATE_TTL);
+        Log::info('ReservationBot: state saved', ['key' => $key, 'step' => $state['step'] ?? null]);
     }
 
     private function clearState(int $tenantId, string $phone): void
