@@ -143,13 +143,8 @@
     </div>
 
     {{-- ── Add / Edit Modal ──────────────────────────────────────────────────── --}}
-    <div x-show="showModal" x-transition.opacity
-         style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;">
-        <div @click.stop
-             x-transition:enter="transition ease-out duration-150"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             style="background:var(--card-bg);border-radius:1rem;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;">
+    <div class="modal-overlay" :class="showModal ? 'show' : ''" @click.self="closeModal()">
+        <div class="modal-card" @click.stop style="max-width:560px">
 
             {{-- Modal header --}}
             <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;">
@@ -246,9 +241,8 @@
     </div>
 
     {{-- ── Delete Confirm Modal ──────────────────────────────────────────────── --}}
-    <div x-show="deleteTarget" x-transition.opacity
-         style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;">
-        <div @click.stop style="background:var(--card-bg);border-radius:1rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;">
+    <div class="modal-overlay" :class="deleteTarget ? 'show' : ''" @click.self="deleteTarget = null">
+        <div class="modal-card" @click.stop style="max-width:420px">
             <div style="padding:1.5rem;text-align:center;">
                 <div style="width:3rem;height:3rem;border-radius:50%;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center;margin:0 auto .875rem;font-size:1.375rem;color:#ef4444;">
                     <i class="ri-delete-bin-line"></i>
