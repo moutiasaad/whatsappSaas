@@ -7,8 +7,8 @@
 
     <div class="page-header">
         <div class="page-header-left">
-            <a href="{{ route(auth()->user()->routeNamePrefix().'.reservations.index') }}" class="page-back">
-                <i class="ri-arrow-left-line"></i>
+            <a href="{{ route(auth()->user()->routeNamePrefix().'.reservations.index') }}" class="btn btn-outline btn-sm">
+                <i class="ri-arrow-left-line"></i> {{ __('ui.back') }}
             </a>
             <div>
                 <h1 class="page-title">{{ __('ui.reservations.settings_title') }}</h1>

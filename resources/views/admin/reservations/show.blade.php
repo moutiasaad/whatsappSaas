@@ -27,8 +27,8 @@
 
 <div class="page-header">
     <div class="page-header-left">
-        <a href="{{ route($panelPrefix . '.reservations.index') }}" class="page-back">
-            <i class="ri-arrow-left-line"></i>
+        <a href="{{ route($panelPrefix . '.reservations.index') }}" class="btn btn-outline btn-sm">
+            <i class="ri-arrow-left-line"></i> {{ __('ui.back') }}
         </a>
         <div>
             <div style="display:flex;align-items:center;gap:.75rem">
