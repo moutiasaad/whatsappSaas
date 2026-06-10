@@ -141,17 +141,22 @@ class ReservationBotService
         ]);
 
         if ($hasBoth) {
-            // Exactly 2 options → native-flow tappable buttons (these render reliably, unlike
-            // the legacy interactive list). Tapping returns the button id ("1"/"2") as the reply.
-            $this->sendButtons(
+            // Numbered text, NOT interactive buttons/list. Tested empirically (2026-06-10) against
+            // both the native-flow interactiveMessage (sendButtons) and legacy listMessage formats,
+            // on both an @lid and a real @s.whatsapp.net recipient: WhatsApp NEVER renders them as
+            // tappable on this Baileys/CodeChat gateway. Worse, interactive messages are DROPPED
+            // ENTIRELY for @lid recipients (gateway returns 201 but the customer receives nothing) —
+            // so a button step would silently break the flow for real customers, who arrive as @lid.
+            // Genuine tappable controls require the official WhatsApp Business Cloud API.
+            $this->sendList(
                 $instance, $phone,
                 '⏰ ' . $this->formatDateAr($selectedDate),
                 'اختر الفترة المناسبة',
-                [
-                    ['id' => '1', 'text' => '🌅 صباحاً (' . count($morningSlots) . ')'],
-                    ['id' => '2', 'text' => '🌆 مساءً (' . count($afternoonSlots) . ')'],
-                ],
-                'أرسل إلغاء للإلغاء'
+                'اختر الفترة',
+                [['title' => 'الفترات المتاحة', 'rows' => [
+                    ['rowId' => '1', 'title' => '🌅 صباحاً', 'description' => count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))],
+                    ['rowId' => '2', 'title' => '🌆 مساءً',  'description' => count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))],
+                ]]]
             );
             $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
         } else {
@@ -406,32 +411,6 @@ class ReservationBotService
             2       => 'وقتان متاحان',
             default => 'أوقات متاحة',
         };
-    }
-
-    /**
-     * Send up to 3 native-flow quick-reply buttons. Falls back to a numbered text prompt if the
-     * gateway rejects the request. $buttons: list of ['id' => '1', 'text' => '...'].
-     */
-    private function sendButtons(WhatsAppInstance $instance, string $phone, string $title, string $description, array $buttons, string $footer = ''): void
-    {
-        try {
-            $client = new EvolutionApiClient(
-                $instance->effectiveGatewayUrl(),
-                $instance->effectiveGatewayApiKey()
-            );
-            $client->sendButtons($instance->gateway_instance_id, $phone, $title, $description, $buttons, $footer);
-        } catch (\Throwable $e) {
-            Log::warning('ReservationBot: sendButtons failed, falling back to text', ['error' => $e->getMessage()]);
-            $rows = array_map(fn($b) => ['rowId' => $b['id'], 'title' => $b['text'], 'description' => ''], $buttons);
-            $this->send($instance, $phone, $this->renderListAsText($title, $description, [['title' => '', 'rows' => $rows]]));
-            return;
-        }
-
-        $summary = "*{$title}*\n{$description}";
-        foreach ($buttons as $b) {
-            $summary .= "\n• {$b['text']}";
-        }
-        $this->persistMessage($summary);
     }
 
     private function sendList(WhatsAppInstance $instance, string $phone, string $title, string $description, string $buttonText, array $sections): void
