@@ -4,11 +4,10 @@
 
 @section('content')
 @php
-    $routeBase = url(auth()->user()->routeNamePrefix() . '/reservations');
     $panelPrefix = auth()->user()->routeNamePrefix();
+    $routeBase   = rtrim(route($panelPrefix . '.reservations.index'), '/');
 @endphp
 <div x-data="reservationsPage()" x-init="init()" x-cloak>
-<div class="content-area">
 
     {{-- Page header --}}
     <div class="page-header">
@@ -69,7 +68,9 @@
 
     {{-- Table --}}
     <div class="table-card">
-        <div x-show="loading" class="table-loading"><div class="spinner"></div></div>
+        <div x-show="loading" class="spinner-wrap" style="min-height:200px">
+            <div class="spinner" style="margin:0 auto"></div>
+        </div>
 
         <table class="data-table" x-show="!loading">
             <thead>
@@ -180,7 +181,6 @@
             </div>
         </div>
     </div>
-</div>{{-- end .content-area --}}
 </div>{{-- end x-data --}}
 
 <script>

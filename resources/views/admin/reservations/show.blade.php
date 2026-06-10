@@ -275,7 +275,7 @@
 <script>
 function reservationShow() {
     const csrf      = () => document.querySelector('meta[name=csrf-token]').content;
-    const routeBase = '{{ url(auth()->user()->routeNamePrefix() . "/reservations") }}';
+    const routeBase = '{{ rtrim(route(auth()->user()->routeNamePrefix() . ".reservations.index"), "/") }}';
     const id        = {{ $reservation->id }};
     const indexUrl  = '{{ route(auth()->user()->routeNamePrefix() . ".reservations.index") }}';
 
