@@ -344,6 +344,8 @@ class ProcessIncomingMessage implements ShouldQueue
             data_get($msg, 'text'),
             data_get($msg, 'body'),
             data_get($msg, 'content.text'),
+            // Interactive list-response: extract the rowId the customer tapped
+            data_get($msg, 'message.listResponseMessage.singleSelectReply.selectedRowId'),
             data_get($msg, 'message.conversation'),
             data_get($msg, 'message.extendedTextMessage.text'),
             data_get($msg, 'message.imageMessage.caption'),

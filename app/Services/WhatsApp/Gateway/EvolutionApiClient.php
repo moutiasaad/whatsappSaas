@@ -121,6 +121,21 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    public function sendList(string $instanceId, string $to, string $title, string $description, string $buttonText, array $sections): array
+    {
+        return $this->post("/message/sendList/{$instanceId}", [
+            'number'      => $this->normalizeRecipient($to),
+            'options'     => ['delay' => 1200, 'presence' => 'composing'],
+            'listMessage' => [
+                'title'       => $title,
+                'description' => $description,
+                'buttonText'  => $buttonText,
+                'footerText'  => 'أرسل إلغاء للإلغاء',
+                'sections'    => $sections,
+            ],
+        ]);
+    }
+
     public function sendMedia(string $instanceId, string $to, string $url, string $type, ?string $caption = null, ?string $fileName = null): array
     {
         $mediaMessage = ['mediatype' => $type, 'media' => $url];

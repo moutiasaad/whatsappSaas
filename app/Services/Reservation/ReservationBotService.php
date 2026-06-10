@@ -90,13 +90,23 @@ class ReservationBotService
             $this->send($instance, $phone, $settings->welcome_message);
         }
 
-        $intro = $settings->select_date_message ?: "🗓 *{$settings->service_name}*\n\nاختر اليوم المناسب:";
-        $list  = '';
+        $intro = $settings->select_date_message ?: 'اختر اليوم المناسب';
+        $rows  = [];
+        $fallbackList = '';
         foreach ($dates as $i => $date) {
-            $list .= "\n" . ($i + 1) . '. ' . $this->formatDateAr($date);
+            $rows[] = ['id' => (string) ($i + 1), 'title' => $this->formatDateAr($date), 'desc' => ''];
+            $fallbackList .= "\n" . ($i + 1) . '. ' . $this->formatDateAr($date);
         }
+        $fallback = "🗓 *{$settings->service_name}*\n\n{$intro}{$fallbackList}\n\nأرسل الرقم المناسب. (أرسل *إلغاء* في أي وقت للإلغاء)";
 
-        $this->send($instance, $phone, $intro . $list . "\n\nأرسل الرقم المناسب. (أرسل *إلغاء* في أي وقت للإلغاء)");
+        $this->sendListMessage(
+            $instance, $phone,
+            "🗓 {$settings->service_name}",
+            $intro,
+            'اختر يوماً',
+            $rows,
+            $fallback
+        );
 
         $this->setState($settings->tenant_id, $phone, [
             'step'           => 'select_date',
@@ -136,13 +146,23 @@ class ReservationBotService
         ]);
 
         if ($hasBoth) {
-            $msg = ($settings->select_slot_message ?: '⏰ الأوقات المتاحة ليوم ' . $this->formatDateAr($selectedDate))
+            $periodRows = [
+                ['id' => '1', 'title' => '🌅 صباحاً', 'desc' => count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots))],
+                ['id' => '2', 'title' => '🌆 مساءً',  'desc' => count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots))],
+            ];
+            $fallback = '⏰ الأوقات المتاحة ليوم ' . $this->formatDateAr($selectedDate)
                 . "\n\nاختر الفترة المناسبة:"
                 . "\n1. 🌅 صباحاً (" . count($morningSlots) . ' ' . $this->pluralSlots(count($morningSlots)) . ')'
-                . "\n2. 🌆 مساءً (" . count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots)) . ')'
-                . "\n\nأرسل 1 أو 2";
+                . "\n2. 🌆 مساءً (" . count($afternoonSlots) . ' ' . $this->pluralSlots(count($afternoonSlots)) . ')';
 
-            $this->send($instance, $phone, $msg);
+            $this->sendListMessage(
+                $instance, $phone,
+                '⏰ اختر الفترة',
+                'الأوقات المتاحة ليوم ' . $this->formatDateAr($selectedDate),
+                'اختر الفترة',
+                $periodRows,
+                $fallback
+            );
             $this->setState($settings->tenant_id, $phone, array_merge($newState, ['step' => 'select_period']));
         } else {
             $period = !empty($morningSlots) ? 'morning' : 'afternoon';
@@ -371,14 +391,29 @@ class ReservationBotService
         string $phone, array $slots, Carbon $date, string $period
     ): void {
         $periodLabel = $period === 'morning' ? '🌅 صباحاً' : '🌆 مساءً';
-        $intro       = "$periodLabel — " . ($settings->select_slot_message
-            ?: 'الأوقات المتاحة ليوم ' . $this->formatDateAr($date)) . ':';
-        $list = '';
+        $description = $periodLabel . ' — ' . ($settings->select_slot_message
+            ?: 'الأوقات المتاحة ليوم ' . $this->formatDateAr($date));
+
+        $rows = [];
+        $fallbackList = '';
         foreach ($slots as $i => $slot) {
             $spotsLabel = $slot['remaining'] === 1 ? 'مقعد واحد متبقٍ' : "{$slot['remaining']} مقاعد متبقية";
-            $list .= "\n" . ($i + 1) . '. ' . $slot['start'] . ' - ' . $slot['end'] . "  ({$spotsLabel})";
+            $rows[] = [
+                'id'    => (string) ($i + 1),
+                'title' => $slot['start'] . ' - ' . $slot['end'],
+                'desc'  => $spotsLabel,
+            ];
+            $fallbackList .= "\n" . ($i + 1) . '. ' . $slot['start'] . ' - ' . $slot['end'] . "  ({$spotsLabel})";
         }
-        $this->send($instance, $phone, $intro . $list . "\n\nأرسل الرقم المناسب.");
+
+        $this->sendListMessage(
+            $instance, $phone,
+            '⏰ اختر الوقت',
+            $description,
+            'اختر وقتاً',
+            $rows,
+            $description . $fallbackList . "\n\nأرسل الرقم المناسب."
+        );
     }
 
     private function pluralSlots(int $count): string
@@ -403,7 +438,50 @@ class ReservationBotService
             return;
         }
 
-        if ($this->conversationId) {
+        $this->persistMessage($text);
+    }
+
+    /**
+     * Send a WhatsApp interactive list message. Falls back to plain text if the
+     * gateway rejects the list (e.g., old API version or non-business number).
+     *
+     * @param array<int, array{id: string, title: string, desc?: string}> $rows
+     */
+    private function sendListMessage(
+        WhatsAppInstance $instance,
+        string $phone,
+        string $title,
+        string $description,
+        string $buttonText,
+        array $rows,
+        string $fallbackText
+    ): void {
+        $sections = [[
+            'title' => '',
+            'rows'  => array_map(fn($r) => [
+                'rowId'       => $r['id'],
+                'title'       => $r['title'],
+                'description' => $r['desc'] ?? '',
+            ], $rows),
+        ]];
+
+        try {
+            $client = new EvolutionApiClient(
+                $instance->effectiveGatewayUrl(),
+                $instance->effectiveGatewayApiKey()
+            );
+            $client->sendList($instance->gateway_instance_id, $phone, $title, $description, $buttonText, $sections);
+            $this->persistMessage($fallbackText);
+        } catch (\Throwable $e) {
+            Log::warning('ReservationBot: sendList failed, using text fallback', ['error' => $e->getMessage()]);
+            $this->send($instance, $phone, $fallbackText);
+        }
+    }
+
+    private function persistMessage(string $text): void
+    {
+        if (!$this->conversationId) return;
+        try {
             Message::create([
                 'conversation_id' => $this->conversationId,
                 'tenant_id'       => $this->tenantId,
@@ -414,6 +492,8 @@ class ReservationBotService
                 'status'          => 'sent',
                 'sent_at'         => now(),
             ]);
+        } catch (\Throwable $e) {
+            Log::warning('ReservationBot: message persist failed', ['error' => $e->getMessage()]);
         }
     }
 
