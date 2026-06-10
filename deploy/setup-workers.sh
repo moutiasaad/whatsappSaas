@@ -10,8 +10,11 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
+# Must match the PHP-FPM / web-server user that owns storage/ and writes the logs.
+# On this server that user is `www`; a mismatch makes queue jobs fail with
+# "Permission denied" when opening storage/logs/*.log. Override via APP_USER=... if needed.
 APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
-APP_USER="${APP_USER:-www-data}"
+APP_USER="${APP_USER:-www}"
 PHP_BIN="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
 LOG_DIR="/var/log/supervisor"
 
