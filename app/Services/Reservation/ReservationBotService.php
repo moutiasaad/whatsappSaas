@@ -3,6 +3,7 @@
 namespace App\Services\Reservation;
 
 use App\Models\AvailabilitySlot;
+use App\Models\Message;
 use App\Models\Reservation;
 use App\Models\ReservationSetting;
 use App\Models\WhatsAppInstance;
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 class ReservationBotService
 {
     private const STATE_TTL = 1800; // 30 minutes
+
+    private int $conversationId = 0;
+    private int $tenantId       = 0;
 
     // ── Public entry point ────────────────────────────────────────────────────
 
@@ -28,6 +32,9 @@ class ReservationBotService
         string             $messageText,
         int                $conversationId
     ): bool {
+        $this->conversationId = $conversationId;
+        $this->tenantId       = $settings->tenant_id;
+
         $text  = trim($messageText);
         $lower = mb_strtolower($text);
 
@@ -283,6 +290,20 @@ class ReservationBotService
             $client->sendText($instance->gateway_instance_id, $phone, $text);
         } catch (\Throwable $e) {
             Log::warning('ReservationBot: send failed', ['phone' => $phone, 'error' => $e->getMessage()]);
+            return;
+        }
+
+        if ($this->conversationId) {
+            Message::create([
+                'conversation_id' => $this->conversationId,
+                'tenant_id'       => $this->tenantId,
+                'direction'       => 'out',
+                'author_type'     => 'bot',
+                'type'            => 'text',
+                'body'            => $text,
+                'status'          => 'sent',
+                'sent_at'         => now(),
+            ]);
         }
     }
 
