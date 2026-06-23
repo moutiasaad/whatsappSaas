@@ -16,13 +16,7 @@
         'generating_qr'       => __('ui.instances_page.generating_qr'),
         'non_image_payload'   => __('ui.instances_page.non_image_payload'),
         'status_refreshed'    => __('ui.instances_page.status_refreshed'),
-        'instance_logged_out' => __('ui.instances_page.instance_logged_out'),
-        'logout_confirm_pre'  => __('ui.instances_page.logout_confirm_prefix'),
-        'logout_confirm_suf'  => __('ui.instances_page.logout_confirm_suffix'),
         'open_whatsapp'       => __('ui.instances_page.open_whatsapp'),
-        'delete_title'        => __('ui.instance_edit_page.delete_instance'),
-        'delete_warning'      => __('ui.instance_edit_page.delete_warning'),
-        'deleted_toast'       => __('ui.controller_messages.instance_deleted', ['name' => ':name']),
         'just_now'            => __('ui.conversations_page.just_now'),
         'minutes_ago'         => __('ui.conversations_page.minutes_ago'),
         'hours_ago'           => __('ui.conversations_page.hours_ago'),
@@ -183,14 +177,6 @@
                                     <a :href="editUrl(inst.id)" class="btn btn-ghost btn-icon" title="Edit">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </a>
-
-                                    <button @click="logoutInstance(inst.id, inst.name)" class="btn btn-ghost btn-icon" title="{{ __('ui.instances_page.logout') }}" style="color:#ef4444">
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                                    </button>
-
-                                    <button @click="openDeleteModal(inst.id, inst.name)" class="btn btn-ghost btn-icon" title="{{ __('ui.instance_edit_page.delete_instance') }}" style="color:#ef4444">
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -229,28 +215,6 @@
         </div>
     </div>
 
-    {{-- Delete Confirmation Modal --}}
-    <div class="modal-overlay" :class="deleteModal.show ? 'show' : ''" role="dialog" aria-modal="true"
-         @click.self="deleteModal.show=false" @keydown.escape.window="deleteModal.show=false">
-        <div class="modal-box" style="max-width:420px">
-            <div class="modal-icon danger"><i class="ri-delete-bin-line"></i></div>
-            <h3 x-text="i18n.delete_title"></h3>
-            <p>
-                <strong x-text="'« ' + deleteModal.name + ' »'"></strong>
-                — <span x-text="i18n.delete_warning"></span>
-            </p>
-            <div class="modal-actions">
-                <button type="button" @click="deleteModal.show=false" class="btn btn-outline">
-                    {{ __('ui.cancel') }}
-                </button>
-                <button type="button" @click="confirmDeleteInstance()" :disabled="deleteModal.saving" class="btn btn-danger">
-                    <span x-show="!deleteModal.saving"><i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}</span>
-                    <span x-show="deleteModal.saving"><span class="btn-spinner"></span> {{ __('ui.deleting') }}</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
@@ -261,15 +225,13 @@ function instancesPage() {
         indexUrl:    @json(route($panelPrefix . '.instances.index')),
         showUrlTpl:  @json(route($panelPrefix . '.instances.show',           ['instance' => '__ID__'])),
         editUrlTpl:  @json(route($panelPrefix . '.instances.edit',           ['instance' => '__ID__'])),
-        destroyUrlTpl: @json(route($panelPrefix . '.instances.destroy',      ['instance' => '__ID__'])),
         webhookEventsUrlTpl: @json(route($panelPrefix . '.instances.webhook-events', ['instance' => '__ID__'])),
 
         instances: [],
         stats:     { connected: 0, connecting: 0, offline: 0 },
         loading:   true,
 
-        qr:          { show: false, data: null, instanceId: null, instanceName: '', loading: false },
-        deleteModal: { show: false, id: null, name: '', saving: false },
+        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false },
 
         init() {
             this.loadData();
@@ -390,44 +352,6 @@ function instancesPage() {
             }
             this.recalcStats();
             window.showToast?.('success', this.i18n.status_refreshed);
-        },
-
-        async logoutInstance(id, name) {
-            if (!confirm(`${this.i18n.logout_confirm_pre} "${name}"? ${this.i18n.logout_confirm_suf}`)) return;
-            await fetch(`/api/instances/${id}/logout`, {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            });
-            window.showToast?.('success', this.i18n.instance_logged_out);
-            const inst = this.getInst(id);
-            if (inst) inst.status = 'disconnected';
-            this.recalcStats();
-        },
-
-        openDeleteModal(id, name) {
-            this.deleteModal = { show: true, id, name, saving: false };
-        },
-
-        async confirmDeleteInstance() {
-            this.deleteModal.saving = true;
-            try {
-                const res = await fetch(this.destroyUrlTpl.replace('__ID__', String(this.deleteModal.id)), {
-                    method: 'DELETE', credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                });
-                if (!res.ok) throw new Error();
-                const name = this.deleteModal.name;
-                this.instances = this.instances.filter(i => i.id !== this.deleteModal.id);
-                this.recalcStats();
-                this.deleteModal.show = false;
-                window.showToast?.('success', this.i18n.deleted_toast.replace(':name', name));
-            } catch {
-                window.showToast?.('error', 'Erreur lors de la suppression.');
-                this.deleteModal.saving = false;
-            }
         },
 
         isQrImage(data) {

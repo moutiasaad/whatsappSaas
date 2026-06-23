@@ -61,6 +61,18 @@
             </div>
             @endif
 
+            @if(in_array($instance->status, ['connected', 'qr_pending', 'connecting']))
+            <div class="card">
+                <div style="padding:1rem 1.25rem;border-left:3px solid #f59e0b;border-radius:0 var(--radius-lg) var(--radius-lg) 0">
+                    <div style="font-size:.875rem;font-weight:600;color:#f59e0b;margin-bottom:.375rem">{{ __('ui.instance_edit_page.disconnect_zone') }}</div>
+                    <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:.875rem">{{ __('ui.instance_edit_page.disconnect_message') }}</div>
+                    <button type="button" id="disconnectInstanceBtn" class="btn btn-outline btn-sm" style="border-color:#f59e0b;color:#f59e0b">
+                        <i class="ri-logout-box-r-line"></i> {{ __('ui.instance_edit_page.disconnect_button') }}
+                    </button>
+                </div>
+            </div>
+            @endif
+
             <div class="card">
                 <div style="padding:1rem 1.25rem;border-left:3px solid #ef4444;border-radius:0 var(--radius-lg) var(--radius-lg) 0">
                     <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">{{ __('ui.instance_edit_page.danger_zone') }}</div>
@@ -76,4 +88,39 @@
         <button type="submit" class="btn btn-primary">{{ __('ui.instance_edit_page.save_changes') }}</button>
     </div>
 </form>
+
+@if(in_array($instance->status, ['connected', 'qr_pending', 'connecting']))
+<script>
+(function () {
+    const btn = document.getElementById('disconnectInstanceBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        window.confirmDelete(null, {
+            title: @json(__('ui.instance_edit_page.disconnect_prompt', ['name' => $instance->name])),
+            message: @json(__('ui.instance_edit_page.disconnect_warning')),
+            callback: async () => {
+                btn.disabled = true;
+                try {
+                    const res = await fetch(@json("/api/instances/{$instance->id}/logout"), {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        },
+                    });
+                    if (!res.ok) throw new Error();
+                    window.showToast?.('success', @json(__('ui.instance_edit_page.disconnect_success')));
+                    setTimeout(() => window.location.reload(), 700);
+                } catch {
+                    window.showToast?.('error', @json(__('ui.instance_edit_page.disconnect_error')));
+                    btn.disabled = false;
+                }
+            },
+        });
+    });
+})();
+</script>
+@endif
 @endsection
