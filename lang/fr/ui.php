@@ -250,6 +250,7 @@ return [
         'close' => 'Fermer',
         'connection_failed' => 'Échec de la connexion',
         'status_refreshed' => 'Statut actualisé',
+        'qr_connected' => ':name est maintenant connectée',
         'instance_logged_out' => 'Instance déconnectée',
         'logout_confirm_prefix' => 'Déconnecter',
         'logout_confirm_suffix' => 'Cela déconnectera WhatsApp.',

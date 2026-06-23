@@ -249,6 +249,7 @@ return [
         'close' => 'Close',
         'connection_failed' => 'Connection failed',
         'status_refreshed' => 'Status refreshed',
+        'qr_connected' => ':name is now connected',
         'instance_logged_out' => 'Instance logged out',
         'logout_confirm_prefix' => 'Logout',
         'logout_confirm_suffix' => 'This will disconnect WhatsApp.',

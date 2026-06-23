@@ -16,6 +16,7 @@
         'generating_qr'       => __('ui.instances_page.generating_qr'),
         'non_image_payload'   => __('ui.instances_page.non_image_payload'),
         'status_refreshed'    => __('ui.instances_page.status_refreshed'),
+        'qr_connected'        => __('ui.instances_page.qr_connected'),
         'open_whatsapp'       => __('ui.instances_page.open_whatsapp'),
         'just_now'            => __('ui.conversations_page.just_now'),
         'minutes_ago'         => __('ui.conversations_page.minutes_ago'),
@@ -279,8 +280,18 @@ function instancesPage() {
             if (!tenantId) return;
             window.Echo.private(`tenant.${tenantId}.instances`)
                 .listen('.instance.status.changed', (e) => {
-                    const inst = this.getInst(e.instance_id);
-                    if (inst) { inst.status = e.status; this.recalcStats(); }
+                    const inst = this.getInst(e.id);
+                    if (inst) {
+                        inst.status = e.status;
+                        if (e.phone_number) inst.phone_number = e.phone_number;
+                        this.recalcStats();
+                    }
+                    // QR scanned successfully: auto-hide the QR modal and report the new status.
+                    if (this.qr.show && this.qr.instanceId === e.id && e.status === 'connected') {
+                        const name = this.qr.instanceName || (inst ? inst.name : '');
+                        this.closeQr();
+                        window.showToast?.('success', this.i18n.qr_connected.replace(':name', name).trim());
+                    }
                 });
         },
 
