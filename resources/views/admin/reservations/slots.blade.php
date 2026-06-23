@@ -166,15 +166,23 @@
                 <div class="form-group">
                     <label class="form-label">{{ __('ui.reservations.period') }}</label>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:border-color .15s"
-                               :style="addModal.period === 'morning' ? 'border-color:var(--orange);background:rgba(249,115,22,.06)' : ''">
-                            <input type="radio" x-model="addModal.period" value="morning" style="display:none">
-                            <i class="ri-sun-line" style="font-size:1.1rem;color:var(--orange)"></i>
+                        <label style="display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:all .15s"
+                               :style="addModal.period === 'morning' ? 'border-color:#f97316;background:rgba(249,115,22,.06)' : ''">
+                            <input type="radio" x-model="addModal.period" value="morning" style="position:absolute;opacity:0;pointer-events:none">
+                            <span style="display:inline-flex;align-items:center;justify-content:center;width:1.1rem;height:1.1rem;border:2px solid var(--card-border);border-radius:.3rem;background:#fff;flex-shrink:0;transition:all .15s"
+                                  :style="addModal.period === 'morning' ? 'border-color:#f97316;background:#f97316' : ''">
+                                <i class="ri-check-line" style="color:#fff;font-size:.85rem;line-height:1" x-show="addModal.period === 'morning'"></i>
+                            </span>
+                            <i class="ri-sun-line" style="font-size:1.1rem;color:#f97316"></i>
                             <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_morning') }}</span>
                         </label>
-                        <label style="display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:border-color .15s"
+                        <label style="display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:all .15s"
                                :style="addModal.period === 'afternoon' ? 'border-color:var(--brand);background:rgba(16,185,129,.06)' : ''">
-                            <input type="radio" x-model="addModal.period" value="afternoon" style="display:none">
+                            <input type="radio" x-model="addModal.period" value="afternoon" style="position:absolute;opacity:0;pointer-events:none">
+                            <span style="display:inline-flex;align-items:center;justify-content:center;width:1.1rem;height:1.1rem;border:2px solid var(--card-border);border-radius:.3rem;background:#fff;flex-shrink:0;transition:all .15s"
+                                  :style="addModal.period === 'afternoon' ? 'border-color:var(--brand);background:var(--brand)' : ''">
+                                <i class="ri-check-line" style="color:#fff;font-size:.85rem;line-height:1" x-show="addModal.period === 'afternoon'"></i>
+                            </span>
                             <i class="ri-moon-line" style="font-size:1.1rem;color:var(--brand)"></i>
                             <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_afternoon') }}</span>
                         </label>
