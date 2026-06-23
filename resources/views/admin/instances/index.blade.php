@@ -18,6 +18,11 @@
         'status_refreshed'    => __('ui.instances_page.status_refreshed'),
         'qr_connected'        => __('ui.instances_page.qr_connected'),
         'open_whatsapp'       => __('ui.instances_page.open_whatsapp'),
+        'validate'            => __('ui.instances_page.validate'),
+        'validating'          => __('ui.instances_page.validating'),
+        'validate_not_connected' => __('ui.instances_page.validate_not_connected'),
+        'validate_error'      => __('ui.instances_page.validate_error'),
+        'qr_connected'        => __('ui.instances_page.qr_connected'),
         'just_now'            => __('ui.conversations_page.just_now'),
         'minutes_ago'         => __('ui.conversations_page.minutes_ago'),
         'hours_ago'           => __('ui.conversations_page.hours_ago'),
@@ -209,8 +214,12 @@
                 <button class="btn btn-outline" @click="closeQr()">
                     <i class="ri-close-line"></i> {{ __('ui.instances_page.close') }}
                 </button>
-                <button type="button" class="btn btn-primary" @click="refreshQr(false)" :disabled="!qr.instanceId || qr.loading">
+                <button type="button" class="btn btn-outline" @click="refreshQr(false)" :disabled="!qr.instanceId || qr.loading">
                     <i class="ri-refresh-line" :class="{ 'ri-loader-4-line ri-spin': qr.loading }"></i> {{ __('ui.instances_page.refresh') }}
+                </button>
+                <button type="button" class="btn btn-primary" @click="validateConnection()" :disabled="!qr.instanceId || qr.validating">
+                    <i class="ri-check-line" :class="{ 'ri-loader-4-line ri-spin': qr.validating }"></i>
+                    <span x-text="qr.validating ? i18n.validating : i18n.validate"></span>
                 </button>
             </div>
         </div>
@@ -232,7 +241,7 @@ function instancesPage() {
         stats:     { connected: 0, connecting: 0, offline: 0 },
         loading:   true,
 
-        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false },
+        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false, validating: false },
 
         init() {
             this.loadData();
@@ -348,6 +357,38 @@ function instancesPage() {
             this.qr.show = false;
             this.qr.data = null;
             this.qr.loading = false;
+            this.qr.validating = false;
+        },
+
+        async validateConnection() {
+            if (!this.qr.instanceId || this.qr.validating) return;
+            this.qr.validating = true;
+            try {
+                const res = await fetch(`/api/instances/${this.qr.instanceId}/status`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const inst = this.getInst(this.qr.instanceId);
+                if (inst) {
+                    inst.status = data.status;
+                    if (data.phone_number) inst.phone_number = data.phone_number;
+                }
+                this.recalcStats();
+
+                if (data.status === 'connected') {
+                    const name = this.qr.instanceName || (inst ? inst.name : '');
+                    this.closeQr();
+                    window.showToast?.('success', this.i18n.qr_connected.replace(':name', name).trim());
+                } else {
+                    window.showToast?.('info', this.i18n.validate_not_connected);
+                }
+            } catch {
+                window.showToast?.('error', this.i18n.validate_error);
+            } finally {
+                this.qr.validating = false;
+            }
         },
 
         async checkStatus(id) {
