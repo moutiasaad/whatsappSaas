@@ -887,7 +887,7 @@ Toujours :
         'breadcrumb_root' => 'Plateforme',
         'breadcrumb' => 'Locataires',
         'page_title' => 'Créer un locataire',
-        'subtitle' => 'Ajouter un nouveau compte locataire SaaS',
+        'subtitle' => 'Ajouter un nouveau compte locataire',
         'back_to_tenants' => 'Retour aux locataires',
         'tenant_details' => 'Détails du locataire',
         'tenant_details_subtitle' => 'Nom, slug, abonnement, forfait et indicateurs de plateforme',

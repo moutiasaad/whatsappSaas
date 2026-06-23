@@ -1694,7 +1694,7 @@
                 </div>
                 <div class="sidebar-logo-text">
                     <span class="sidebar-logo-name">wavadesk</span>
-                    <span class="sidebar-logo-sub">SaaS Platform</span>
+                    <span class="sidebar-logo-sub">Platform</span>
                 </div>
             </a>
         </div>

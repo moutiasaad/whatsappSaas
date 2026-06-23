@@ -847,7 +847,7 @@ return [
         'breadcrumb_root' => 'المنصة',
         'breadcrumb' => 'المستأجرون',
         'page_title' => 'إنشاء مستأجر',
-        'subtitle' => 'إضافة حساب مستأجر SaaS جديد',
+        'subtitle' => 'إضافة حساب مستأجر جديد',
         'back_to_tenants' => 'العودة إلى المستأجرين',
         'tenant_details' => 'تفاصيل المستأجر',
         'tenant_details_subtitle' => 'الاسم والـ slug والاشتراك والخطة ومفاتيح المنصة',

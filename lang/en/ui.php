@@ -886,7 +886,7 @@ Always:
         'breadcrumb_root' => 'Platform',
         'breadcrumb' => 'Tenants',
         'page_title' => 'Create Tenant',
-        'subtitle' => 'Add a new SaaS tenant account',
+        'subtitle' => 'Add a new tenant account',
         'back_to_tenants' => 'Back to Tenants',
         'tenant_details' => 'Tenant Details',
         'tenant_details_subtitle' => 'Name, slug, subscription, plan, and platform flags',
