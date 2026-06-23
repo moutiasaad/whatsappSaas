@@ -2,6 +2,105 @@
 
 @section('title', __('ui.reservations.slots_title'))
 
+@push('styles')
+<style>
+    .period-picker {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .85rem;
+    }
+    .period-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: 1rem;
+        border: 2px solid var(--card-border);
+        border-radius: var(--radius-lg, .85rem);
+        background: var(--card-bg);
+        cursor: pointer;
+        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .period-card:hover {
+        border-color: var(--text-muted);
+        background: var(--page-bg);
+    }
+    .period-input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .period-chip {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: .75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        background: var(--page-bg);
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        transition: background .18s ease, color .18s ease;
+    }
+    .period-meta {
+        display: flex;
+        flex-direction: column;
+        gap: .1rem;
+        min-width: 0;
+    }
+    .period-title {
+        font-weight: 600;
+        font-size: .9375rem;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    .period-hint {
+        font-size: .75rem;
+        color: var(--text-muted);
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+    }
+    .period-check {
+        position: absolute;
+        top: .55rem;
+        right: .55rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        color: #fff;
+        font-size: .8rem;
+        line-height: 1;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    }
+    /* Morning accent (orange) */
+    .period-card[data-accent="morning"] .period-chip { color: #f97316; }
+    .period-card[data-accent="morning"]:hover { border-color: #fdba74; background: rgba(249,115,22,.04); }
+    .period-card[data-accent="morning"].is-active {
+        border-color: #f97316;
+        background: rgba(249,115,22,.07);
+        box-shadow: 0 0 0 3px rgba(249,115,22,.12);
+    }
+    .period-card[data-accent="morning"].is-active .period-chip { background: rgba(249,115,22,.14); color: #ea580c; }
+    .period-card[data-accent="morning"].is-active .period-check { background: #f97316; display: inline-flex; }
+    /* Afternoon accent (brand) */
+    .period-card[data-accent="afternoon"] .period-chip { color: var(--brand); }
+    .period-card[data-accent="afternoon"]:hover { border-color: var(--brand-light, #6ee7b7); background: rgba(16,185,129,.04); }
+    .period-card[data-accent="afternoon"].is-active {
+        border-color: var(--brand);
+        background: rgba(16,185,129,.07);
+        box-shadow: 0 0 0 3px rgba(16,185,129,.14);
+    }
+    .period-card[data-accent="afternoon"].is-active .period-chip { background: rgba(16,185,129,.14); color: var(--brand-dark, #059669); }
+    .period-card[data-accent="afternoon"].is-active .period-check { background: var(--brand); display: inline-flex; }
+
+    [dir="rtl"] .period-check { left: .55rem; right: auto; }
+</style>
+@endpush
+
 @section('content')
 <div x-data="slotsPage()" x-init="init()" x-cloak>
 
@@ -165,26 +264,24 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('ui.reservations.period') }}</label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-                        <label style="display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:all .15s"
-                               :style="addModal.period === 'morning' ? 'border-color:#f97316;background:rgba(249,115,22,.06)' : ''">
-                            <input type="radio" x-model="addModal.period" value="morning" style="position:absolute;opacity:0;pointer-events:none">
-                            <span style="display:inline-flex;align-items:center;justify-content:center;width:1.1rem;height:1.1rem;border:2px solid var(--card-border);border-radius:.3rem;background:#fff;flex-shrink:0;transition:all .15s"
-                                  :style="addModal.period === 'morning' ? 'border-color:#f97316;background:#f97316' : ''">
-                                <i class="ri-check-line" style="color:#fff;font-size:.85rem;line-height:1" x-show="addModal.period === 'morning'"></i>
+                    <div class="period-picker">
+                        <label class="period-card" :class="{ 'is-active': addModal.period === 'morning' }" data-accent="morning">
+                            <input type="radio" x-model="addModal.period" value="morning" class="period-input">
+                            <span class="period-check"><i class="ri-check-line"></i></span>
+                            <span class="period-chip"><i class="ri-sun-line"></i></span>
+                            <span class="period-meta">
+                                <span class="period-title">{{ __('ui.reservations.period_morning') }}</span>
+                                <span class="period-hint">06:00 – 12:00</span>
                             </span>
-                            <i class="ri-sun-line" style="font-size:1.1rem;color:#f97316"></i>
-                            <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_morning') }}</span>
                         </label>
-                        <label style="display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;border:2px solid var(--card-border);border-radius:var(--radius-md);cursor:pointer;transition:all .15s"
-                               :style="addModal.period === 'afternoon' ? 'border-color:var(--brand);background:rgba(16,185,129,.06)' : ''">
-                            <input type="radio" x-model="addModal.period" value="afternoon" style="position:absolute;opacity:0;pointer-events:none">
-                            <span style="display:inline-flex;align-items:center;justify-content:center;width:1.1rem;height:1.1rem;border:2px solid var(--card-border);border-radius:.3rem;background:#fff;flex-shrink:0;transition:all .15s"
-                                  :style="addModal.period === 'afternoon' ? 'border-color:var(--brand);background:var(--brand)' : ''">
-                                <i class="ri-check-line" style="color:#fff;font-size:.85rem;line-height:1" x-show="addModal.period === 'afternoon'"></i>
+                        <label class="period-card" :class="{ 'is-active': addModal.period === 'afternoon' }" data-accent="afternoon">
+                            <input type="radio" x-model="addModal.period" value="afternoon" class="period-input">
+                            <span class="period-check"><i class="ri-check-line"></i></span>
+                            <span class="period-chip"><i class="ri-moon-line"></i></span>
+                            <span class="period-meta">
+                                <span class="period-title">{{ __('ui.reservations.period_afternoon') }}</span>
+                                <span class="period-hint">12:00 – 18:00</span>
                             </span>
-                            <i class="ri-moon-line" style="font-size:1.1rem;color:var(--brand)"></i>
-                            <span style="font-weight:500;font-size:.875rem">{{ __('ui.reservations.period_afternoon') }}</span>
                         </label>
                     </div>
                 </div>
