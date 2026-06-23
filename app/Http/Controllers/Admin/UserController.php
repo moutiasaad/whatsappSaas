@@ -104,7 +104,12 @@ class UserController extends Controller
             ? \App\Models\Tenant::orderBy('name')->get()
             : collect();
         $teams = $this->tenantScopedTeams()->where('is_active', true)->orderBy('name')->get();
-        return view('admin.users.create', compact('teams', 'tenants'));
+        $agents = $this->tenantScopedUsers()
+            ->whereIn('role', ['agent', 'supervisor'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+        return view('admin.users.create', compact('teams', 'tenants', 'agents'));
     }
 
     public function store(Request $request)

@@ -9,6 +9,7 @@
 @endsection
 
 @section('content')
+<div x-data="userCreateModals()" @keydown.escape.window="escHandler($event)">
 <form action="{{ route('admin.users.store') }}" method="POST" data-loading>
     @csrf
 
@@ -78,25 +79,33 @@
 
                 <div class="form-group" style="overflow:visible">
                     <label class="form-label" for="teams">{{ __('ui.user_form_page.assign_to_teams') }}</label>
-                    @if($teams->isEmpty())
-                        <div style="font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">{{ __('ui.user_form_page.no_teams_created') }}</div>
-                        <a href="{{ route('admin.teams.create') }}" style="font-size:.8125rem;color:var(--brand)">{{ __('ui.user_form_page.create_team_first') }}</a>
-                    @else
-                        <select id="teams" name="teams[]" multiple
-                                data-no-ss
-                                data-user-teams-ss
-                                class="form-control @error('teams') error @enderror @error('teams.*') error @enderror"
-                                style="display:none;">
-                            @foreach($teams as $team)
-                                <option value="{{ $team->id }}" @selected(in_array($team->id, old('teams', [])))>
-                                    {{ $team->name }} @if($team->description) - {{ $team->description }} @endif
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('teams') <div class="form-error">{{ $message }}</div> @enderror
-                        @error('teams.*') <div class="form-error">{{ $message }}</div> @enderror
-                        <div class="form-hint">{{ __('ui.user_form_page.assign_to_teams_hint') }}</div>
-                    @endif
+                    <div style="display:flex;gap:.5rem;align-items:flex-start">
+                        <div style="flex:1;min-width:0">
+                            <select id="teams" name="teams[]" multiple
+                                    data-no-ss
+                                    data-user-teams-ss
+                                    class="form-control @error('teams') error @enderror @error('teams.*') error @enderror"
+                                    style="display:none;">
+                                @foreach($teams as $team)
+                                    <option value="{{ $team->id }}" @selected(in_array($team->id, old('teams', [])))>
+                                        {{ $team->name }} @if($team->description) - {{ $team->description }} @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="button" @click="openTeamModal()"
+                                class="btn btn-outline btn-sm"
+                                style="flex-shrink:0;height:38px;padding:0 .65rem;font-size:1.1rem;line-height:1"
+                                title="{{ __('ui.user_form_page.create_team_button_title') }}">
+                            <i class="ri-add-line"></i>
+                        </button>
+                    </div>
+                    @error('teams') <div class="form-error">{{ $message }}</div> @enderror
+                    @error('teams.*') <div class="form-error">{{ $message }}</div> @enderror
+                    <div class="form-hint" x-show="!hasTeams">
+                        {{ __('ui.user_form_page.no_teams_created') }} — <a href="#" @click.prevent="openTeamModal()" style="color:var(--brand);font-weight:600">{{ __('ui.user_form_page.create_team_first') }}</a>
+                    </div>
+                    <div class="form-hint" x-show="hasTeams">{{ __('ui.user_form_page.assign_to_teams_hint') }}</div>
                 </div>
 
                 <div class="form-group">
@@ -116,13 +125,191 @@
         <button type="submit" class="btn btn-primary">{{ __('ui.user_form_page.send_invitation') }}</button>
     </div>
 </form>
+
+{{-- ══════════════════════════════════════════
+     Modal 1: Create Team
+══════════════════════════════════════════ --}}
+<div x-show="teamModal && !userModal" x-cloak
+     class="modal-overlay show" style="z-index:1000"
+     @click.self="teamModal=false">
+    <div class="modal-box" style="max-width:500px;text-align:left;padding:1.5rem;overflow:visible" @click.stop>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+            <h3 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin:0">
+                <i class="ri-team-line" style="color:var(--brand);margin-right:.375rem"></i>
+                {{ __('ui.user_form_page.team_modal_title') }}
+            </h3>
+            <button type="button" @click="teamModal=false" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:1rem">
+
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">{{ __('ui.user_form_page.team_name') }} <span style="color:var(--brand)">*</span></label>
+                <input type="text" x-model="teamForm.name"
+                       :class="{'error': teamErrors.name}"
+                       class="form-control"
+                       placeholder="{{ __('ui.user_form_page.team_name_placeholder') }}"
+                       @keydown.enter.prevent>
+                <div x-show="teamErrors.name" x-text="teamErrors.name?.[0]" class="form-error"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">{{ __('ui.user_form_page.team_description') }}</label>
+                <input type="text" x-model="teamForm.description"
+                       :class="{'error': teamErrors.description}"
+                       class="form-control"
+                       placeholder="{{ __('ui.user_form_page.team_description_placeholder') }}">
+                <div x-show="teamErrors.description" x-text="teamErrors.description?.[0]" class="form-error"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+                    <label class="form-label" style="margin-bottom:0">{{ __('ui.user_form_page.team_members') }}</label>
+                    <button type="button" @click="openUserModal()"
+                            class="btn btn-outline btn-sm"
+                            style="height:26px;padding:0 .625rem;font-size:.75rem">
+                        <i class="ri-add-line"></i> {{ __('ui.user_form_page.create_agent') }}
+                    </button>
+                </div>
+
+                <div class="ss-wrap" :class="{'open': membersOpen, 'open-up': true}"
+                     @click.outside="membersOpen=false">
+                    <input type="text" class="ss-input" readonly
+                           :value="membersDisplayText"
+                           :placeholder="agents.length ? @js(__('ui.user_form_page.team_members_placeholder')) : @js(__('ui.user_form_page.no_agents_placeholder'))"
+                           @click.stop="membersOpen = !membersOpen; membersSearch = ''">
+                    <i class="ri-arrow-down-s-line ss-chevron"></i>
+                    <div class="ss-dropdown" @click.stop>
+                        <div class="ss-search-row">
+                            <div class="ss-search-inner">
+                                <i class="ri-search-line"></i>
+                                <input type="text" x-model="membersSearch" placeholder="{{ __('ui.team_form_page.filter') }}" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="ss-list">
+                            <template x-for="agent in filteredAgents" :key="agent.id">
+                                <div class="ss-item"
+                                     :class="{'ss-selected': teamForm.members.includes(agent.id)}"
+                                     @mousedown.prevent="toggleMember(agent.id)"
+                                     :data-value="agent.id">
+                                    <span x-text="agent.name + ' (' + agent.role + ')'"></span>
+                                </div>
+                            </template>
+                            <div class="ss-empty"
+                                 x-show="filteredAgents.length === 0"
+                                 x-text="membersSearch ? @js(__('ui.select_no_results')) : @js(__('ui.user_form_page.no_agents_available'))">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="teamForm.members.length"
+                     x-text="teamForm.members.length + ' ' + @js(__('ui.selected_items'))"
+                     style="font-size:.75rem;color:var(--text-muted);margin-top:.375rem"></div>
+            </div>
+
+            <div x-show="teamError" x-text="teamError"
+                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
+            <button type="button" @click="teamModal=false" class="btn btn-outline">{{ __('ui.cancel') }}</button>
+            <button type="button" @click="createTeam()"
+                    :disabled="teamSaving || !teamForm.name.trim()"
+                    class="btn btn-primary">
+                <span x-show="!teamSaving"><i class="ri-check-line"></i> {{ __('ui.user_form_page.create_team_submit') }}</span>
+                <span x-show="teamSaving"><span class="btn-spinner"></span> {{ __('ui.user_form_page.creating') }}</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════
+     Modal 2: Create Agent
+══════════════════════════════════════════ --}}
+<div x-show="userModal" x-cloak
+     class="modal-overlay show" style="z-index:1100"
+     @click.self="userModal=false">
+    <div class="modal-box" style="max-width:440px;text-align:left;padding:1.5rem" @click.stop>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+            <h3 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin:0">
+                <i class="ri-user-add-line" style="color:var(--brand);margin-right:.375rem"></i>
+                {{ __('ui.user_form_page.user_modal_title') }}
+            </h3>
+            <button type="button" @click="userModal=false" class="btn btn-ghost btn-sm" style="padding:.25rem .5rem">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:1rem">
+
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">{{ __('ui.user_form_page.full_name') }} <span style="color:var(--brand)">*</span></label>
+                <input type="text" x-model="userForm.name"
+                       :class="{'error': userErrors.name}"
+                       class="form-control"
+                       placeholder="{{ __('ui.user_form_page.full_name_placeholder') }}"
+                       @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.name" x-text="userErrors.name?.[0]" class="form-error"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">{{ __('ui.user_form_page.email_address') }} <span style="color:var(--brand)">*</span></label>
+                <input type="email" x-model="userForm.email"
+                       :class="{'error': userErrors.email}"
+                       class="form-control"
+                       placeholder="email@example.com"
+                       @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.email" x-text="userErrors.email?.[0]" class="form-error"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">
+                    {{ __('ui.user_form_page.temporary_password') }}
+                    <span style="font-weight:400;color:var(--text-muted)">{{ __('ui.user_form_page.temporary_password_hint') }}</span>
+                </label>
+                <input type="password" x-model="userForm.password"
+                       :class="{'error': userErrors.password}"
+                       class="form-control"
+                       placeholder="{{ __('ui.user_form_page.password_placeholder') }}"
+                       @keydown.enter.prevent="createUser()">
+                <div x-show="userErrors.password" x-text="userErrors.password?.[0]" class="form-error"></div>
+            </div>
+
+            <div x-show="userError" x-text="userError"
+                 style="font-size:.8125rem;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:.5rem;padding:.625rem .875rem"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
+            <button type="button" @click="userModal=false" class="btn btn-outline">{{ __('ui.cancel') }}</button>
+            <button type="button" @click="createUser()"
+                    :disabled="userSaving || !userForm.name.trim() || !userForm.email.trim()"
+                    class="btn btn-primary">
+                <span x-show="!userSaving"><i class="ri-check-line"></i> {{ __('ui.user_form_page.create_agent_submit') }}</span>
+                <span x-show="userSaving"><span class="btn-spinner"></span> {{ __('ui.user_form_page.creating') }}</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+</div>{{-- end x-data --}}
+
 <script>
 function initMultiSelect(widgetSelector, placeholder, filterPlaceholder) {
     const select = document.querySelector(widgetSelector);
     if (!select) return;
 
+    // Make the call idempotent: drop a previously-built widget before rebuilding.
+    const existingWrap = select.parentNode.querySelector(':scope > .ss-wrap[data-for="' + widgetSelector + '"]');
+    if (existingWrap) existingWrap.remove();
+
     const wrap = document.createElement('div');
     wrap.className = 'ss-wrap';
+    wrap.dataset.for = widgetSelector;
     if (select.classList.contains('error')) wrap.classList.add('error');
 
     const displayInput = document.createElement('input');
@@ -272,6 +459,15 @@ function initMultiSelect(widgetSelector, placeholder, filterPlaceholder) {
     renderItems('');
 }
 
+function rebuildTeamsMultiSelect() {
+    initMultiSelect(
+        'select[data-user-teams-ss]',
+        @json(__('ui.team_form_page.select')),
+        @json(__('ui.team_form_page.filter'))
+    );
+}
+window.rebuildTeamsMultiSelect = rebuildTeamsMultiSelect;
+
 document.addEventListener('DOMContentLoaded', function () {
     const roleSelect = document.getElementById('role');
     const tenantField = document.getElementById('tenantField');
@@ -284,11 +480,162 @@ document.addEventListener('DOMContentLoaded', function () {
     roleSelect?.addEventListener('change', syncTenantField);
     syncTenantField();
 
-    initMultiSelect(
-        'select[data-user-teams-ss]',
-        @json(__('ui.team_form_page.select')),
-        @json(__('ui.team_form_page.filter'))
-    );
+    rebuildTeamsMultiSelect();
 });
+
+function userCreateModals() {
+    return {
+        teamModal:     false,
+        userModal:     false,
+        teamSaving:    false,
+        userSaving:    false,
+        teamError:     '',
+        userError:     '',
+        teamErrors:    {},
+        userErrors:    {},
+        agents:        @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'role' => $a->role])),
+        teamForm:      { name: '', description: '', members: [] },
+        userForm:      { name: '', email: '', password: '' },
+        membersOpen:   false,
+        membersSearch: '',
+        hasTeams:      {{ $teams->isEmpty() ? 'false' : 'true' }},
+
+        get membersDisplayText() {
+            if (!this.teamForm.members.length) return '';
+            const sel = this.agents.filter(a => this.teamForm.members.includes(a.id));
+            if (sel.length === 1) return sel[0].name + ' (' + sel[0].role + ')';
+            return sel.length + ' ' + @json(__('ui.selected_items'));
+        },
+
+        get filteredAgents() {
+            const q = this.membersSearch.trim().toLowerCase();
+            if (!q) return this.agents;
+            return this.agents.filter(a => (a.name + ' ' + a.role).toLowerCase().includes(q));
+        },
+
+        toggleMember(id) {
+            const idx = this.teamForm.members.indexOf(id);
+            if (idx >= 0) this.teamForm.members.splice(idx, 1);
+            else          this.teamForm.members.push(id);
+        },
+
+        openTeamModal() {
+            this.teamError     = '';
+            this.teamErrors    = {};
+            this.membersOpen   = false;
+            this.membersSearch = '';
+            this.teamForm      = { name: '', description: '', members: [] };
+            this.teamModal     = true;
+        },
+
+        openUserModal() {
+            this.userError  = '';
+            this.userErrors = {};
+            this.userForm   = { name: '', email: '', password: '' };
+            this.userModal  = true;
+        },
+
+        escHandler(e) {
+            if (this.membersOpen) { this.membersOpen = false; e.stopPropagation(); return; }
+            if (this.userModal)   { this.userModal   = false; e.stopPropagation(); return; }
+            if (this.teamModal)   { this.teamModal   = false; e.stopPropagation(); }
+        },
+
+        async createTeam() {
+            if (!this.teamForm.name.trim()) return;
+            this.teamError  = '';
+            this.teamErrors = {};
+            this.teamSaving = true;
+            try {
+                const res = await fetch(@json(route('admin.teams.store')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({
+                        name:        this.teamForm.name.trim(),
+                        description: this.teamForm.description.trim() || null,
+                        is_active:   1,
+                        members:     this.teamForm.members,
+                    }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    if (res.status === 422) this.teamErrors = err.errors || {};
+                    else                    this.teamError  = err.message || @json(__('ui.user_form_page.team_create_error'));
+                    return;
+                }
+
+                const team = await res.json();
+
+                // Inject into the user form's team select & auto-select, then rebuild the widget.
+                const sel = document.getElementById('teams');
+                const opt = document.createElement('option');
+                opt.value    = team.id;
+                opt.text     = team.name + (team.description ? ' - ' + team.description : '');
+                opt.selected = true;
+                sel.appendChild(opt);
+                this.hasTeams = true;
+                window.rebuildTeamsMultiSelect();
+
+                this.teamModal = false;
+                window.showToast?.('success', @json(__('ui.user_form_page.team_created_toast')).replace(':name', team.name));
+            } catch (e) {
+                this.teamError = @json(__('ui.user_form_page.team_create_network_error'));
+            } finally {
+                this.teamSaving = false;
+            }
+        },
+
+        async createUser() {
+            if (!this.userForm.name.trim() || !this.userForm.email.trim()) return;
+            this.userError  = '';
+            this.userErrors = {};
+            this.userSaving = true;
+            try {
+                const res = await fetch(@json(route('admin.users.store')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({
+                        name:     this.userForm.name.trim(),
+                        email:    this.userForm.email.trim(),
+                        password: this.userForm.password || null,
+                        role:     'agent',
+                    }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    if (res.status === 422) this.userErrors = err.errors || {};
+                    else                    this.userError  = err.message || @json(__('ui.user_form_page.agent_create_error'));
+                    return;
+                }
+
+                const user = await res.json();
+
+                this.agents.push({ id: user.id, name: user.name, role: user.role });
+                this.$nextTick(() => {
+                    if (!this.teamForm.members.includes(user.id)) {
+                        this.teamForm.members.push(user.id);
+                    }
+                });
+
+                this.userModal = false;
+                window.showToast?.('success', @json(__('ui.user_form_page.agent_created_toast')).replace(':name', user.name));
+            } catch (e) {
+                this.userError = @json(__('ui.user_form_page.agent_create_network_error'));
+            } finally {
+                this.userSaving = false;
+            }
+        },
+    };
+}
 </script>
 @endsection
