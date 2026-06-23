@@ -34,19 +34,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">{{ __('ui.instance_edit_page.gateway_provider') }}</label>
-                    <div style="padding:.625rem .875rem;background:var(--page-bg);border:1px solid var(--card-border);border-radius:.625rem;font-size:.875rem;color:var(--text-secondary);display:flex;align-items:center;gap:.5rem">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
-                        {{ __('ui.instance_edit_page.gateways.' . $instance->gateway) }}
-                        <span style="font-size:.75rem;color:var(--text-muted);margin-left:auto">{{ __('ui.instance_edit_page.gateway_locked') }}</span>
-                    </div>
-                </div>
-
-                <input type="hidden" name="gateway_url" value="{{ $instance->gateway_url ?: config('services.whatsapp.default_url') }}">
-                <input type="hidden" name="gateway_api_key" value="{{ $instance->gateway_api_key ?: config('services.whatsapp.default_api_key') }}">
-                <div class="form-hint" style="margin-top:-.75rem">{{ __('ui.instance_edit_page.gateway_auto_hint') }}</div>
-
-                <div class="form-group">
                     <label class="form-label" for="team_id">{{ __('ui.instance_edit_page.assigned_team') }}</label>
                     <select id="team_id" name="team_id" class="form-control @error('team_id') error @enderror">
                         <option value="">{{ __('ui.instance_edit_page.no_team') }}</option>
@@ -60,21 +47,6 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1.5rem">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">{{ __('ui.instance_edit_page.webhook_url') }}</div>
-                </div>
-                <div style="padding:0 1.25rem 1.25rem">
-                    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem">
-                        <code id="webhook-url" style="flex:1;font-family:monospace;font-size:.8125rem;background:var(--page-bg);border:1px solid var(--card-border);padding:.5rem .75rem;border-radius:.5rem;word-break:break-all;color:var(--text-secondary)">{{ url('/api/webhooks/whatsapp/' . $instance->webhook_token) }}</code>
-                        <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('webhook-url').textContent.trim()).then(() => window.showToast?.('success', '{{ __('ui.instance_edit_page.copied') }}', '{{ __('ui.instance_edit_page.webhook_copied') }}'))" class="btn btn-ghost btn-icon" title="{{ __('ui.instance_edit_page.copy') }}">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                        </button>
-                    </div>
-                    <div style="font-size:.75rem;color:var(--text-muted)">{{ __('ui.instance_edit_page.webhook_url_hint', ['gateway' => __('ui.instance_edit_page.gateways.' . $instance->gateway)]) }}</div>
-                </div>
-            </div>
-
             @if($instance->phone_number)
             <div class="card">
                 <div style="padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem">
