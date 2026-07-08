@@ -11,11 +11,44 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\OutboundConversationController;
 use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
+use App\Http\Controllers\WebChat\Public\ConversationController as WebChatPublicConversationController;
+use App\Http\Controllers\WebChat\Public\MessageController as WebChatPublicMessageController;
+use App\Http\Controllers\WebChat\Public\SessionController as WebChatPublicSessionController;
 use Illuminate\Support\Facades\Route;
 
 // Webhook — public, no auth
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
+
+// ─── Web Live-Chat public widget API ─────────────────────────────────────────
+// Cross-origin. Auth via widget public_key + visitor bearer token — NOT web
+// session. CORS scoped in config/cors.php to `api/webchat/*` only.
+Route::prefix('webchat/{key}')
+    ->middleware(['webchat.widget', 'webchat.domain'])
+    ->group(function () {
+        // Session: start or resume. Visitor token issued in response body.
+        Route::post('/session', [WebChatPublicSessionController::class, 'store'])
+            ->middleware('throttle:webchat-session')
+            ->name('webchat.public.session');
+
+        // Everything below requires a valid visitor bearer token.
+        Route::middleware('webchat.visitor')->group(function () {
+            Route::post('/conversations', [WebChatPublicConversationController::class, 'store'])
+                ->middleware('throttle:webchat-session')
+                ->name('webchat.public.conversations.store');
+
+            Route::post('/conversations/{uuid}/request-agent', [WebChatPublicConversationController::class, 'requestAgent'])
+                ->middleware('throttle:webchat-session')
+                ->name('webchat.public.conversations.request-agent');
+
+            Route::post('/conversations/{uuid}/messages', [WebChatPublicMessageController::class, 'store'])
+                ->middleware('throttle:webchat-message')
+                ->name('webchat.public.messages.store');
+
+            Route::get('/conversations/{uuid}/messages', [WebChatPublicMessageController::class, 'index'])
+                ->name('webchat.public.messages.index');
+        });
+    });
 
 // All API routes authenticated via X-Api-Key header
 Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {

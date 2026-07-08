@@ -29,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_path'    => \App\Http\Middleware\EnsureCanonicalRolePath::class,
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'api.key'      => \App\Http\Middleware\AuthenticateWithApiKey::class,
+            'webchat.widget'  => \App\Http\Middleware\WebChat\ResolveWebChatWidget::class,
+            'webchat.domain'  => \App\Http\Middleware\WebChat\WebChatDomainGuard::class,
+            'webchat.visitor' => \App\Http\Middleware\WebChat\WebChatVisitorAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

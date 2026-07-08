@@ -7,7 +7,10 @@ use App\Models\WhatsAppInstance;
 use App\Policies\ConversationPolicy;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use App\Services\WhatsApp\Gateway\GatewayClientInterface;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +35,16 @@ class AppServiceProvider extends ServiceProvider
             if ($user->isSuperAdmin()) return true;
             if ($user->isAdmin()) return !$target->isAdmin() && !$target->isSuperAdmin();
             return false;
+        });
+
+        // Web Live-Chat public API rate limiters (keyed per-IP / per-visitor)
+        RateLimiter::for('webchat-session', function (Request $request) {
+            return Limit::perMinute(20)->by('wc-sess:' . $request->ip());
+        });
+
+        RateLimiter::for('webchat-message', function (Request $request) {
+            $key = $request->bearerToken() ?: $request->ip();
+            return Limit::perMinute(60)->by('wc-msg:' . $key);
         });
     }
 }
