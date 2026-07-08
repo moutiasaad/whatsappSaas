@@ -112,7 +112,20 @@
       "Bash(curl -sS -o /dev/null -w 'HTTP %{http_code}\\\\n' -X POST http://127.0.0.1:8000/api/webchat/wck_jTT8z8Ttbb0bhilnTHmNvAzljCGVhW6VoY0hf0x2f0TT10l8/session -H 'Content-Type: application/json' -H 'Origin: http://localhost:9000' -d '{\"visitor_token\":\"Pn2Ya53z1EPZXHl1z8IxcKa1KszCaaRrJ6sbPmL47VgJtDc2\"}')",
       "Bash(curl -sS -o /dev/null -D - -X OPTIONS http://127.0.0.1:8000/api/webchat/wck_jTT8z8Ttbb0bhilnTHmNvAzljCGVhW6VoY0hf0x2f0TT10l8/session -H 'Origin: http://127.0.0.1:9000' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: Content-Type,Authorization')",
       "Bash(curl -sS -o /dev/null -D - -X OPTIONS \"http://127.0.0.1:8000/api/instance\" -H \"Origin: http://127.0.0.1:9000\" -H \"Access-Control-Request-Method: GET\")",
-      "Bash(taskkill //F //FI \"IMAGENAME eq php.exe\")"
+      "Bash(taskkill //F //FI \"IMAGENAME eq php.exe\")",
+      "Bash(git log *)",
+      "Bash(sudo -u www php artisan tinker --execute='echo json_encode\\([\"conn\"=>config\\(\"broadcasting.default\"\\),\"key\"=>\\(bool\\)config\\(\"broadcasting.connections.reverb.key\"\\),\"host\"=>config\\(\"broadcasting.connections.reverb.options.host\"\\),\"port\"=>config\\(\"broadcasting.connections.reverb.options.port\"\\),\"scheme\"=>config\\(\"broadcasting.connections.reverb.options.scheme\"\\)]\\);')",
+      "Bash(sudo -u www php artisan migrate:status)",
+      "Bash(sudo -u www php artisan tinker '--execute=foreach \\([\"webchat_widgets\",\"webchat_visitors\",\"webchat_conversations\",\"webchat_messages\"] as $t\\) echo $t.\": \".\\(Schema::hasTable\\($t\\)?\"true\":\"false\"\\).\"\\\\n\";')",
+      "Bash(supervisorctl status *)",
+      "Bash(sudo -u www php artisan tinker '--execute= *)",
+      "Bash(sudo -u www php artisan route:list)",
+      "Bash(sudo -u www php artisan route:clear)",
+      "Bash(sudo -u www php artisan tinker --execute=\"echo route\\('tenant_admin.webchat.conversations.index'\\);\")",
+      "Bash(sudo -u www php artisan config:clear)",
+      "Bash(sudo -u www php artisan view:clear)",
+      "Bash(sudo -u www php artisan migrate --force)",
+      "Bash(sudo -u www php artisan tinker '--execute=foreach \\(['\\\\''webchat_widgets'\\\\'','\\\\''webchat_visitors'\\\\'','\\\\''webchat_conversations'\\\\'','\\\\''webchat_messages'\\\\''] as $t\\) echo $t.'\\\\'': '\\\\''.\\(Schema::hasTable\\($t\\)?'\\\\''true'\\\\'':'\\\\''false'\\\\''\\).\"\\\\n\";')"
     ]
   },
   "enableAllProjectMcpServers": true,
