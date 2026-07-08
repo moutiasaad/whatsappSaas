@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\OutboundConversationController;
 use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
+use App\Http\Controllers\WebChat\BroadcastAuthController as WebChatBroadcastAuthController;
 use App\Http\Controllers\WebChat\Public\ConversationController as WebChatPublicConversationController;
 use App\Http\Controllers\WebChat\Public\MessageController as WebChatPublicMessageController;
 use App\Http\Controllers\WebChat\Public\SessionController as WebChatPublicSessionController;
@@ -49,6 +50,13 @@ Route::prefix('webchat/{key}')
                 ->name('webchat.public.messages.index');
         });
     });
+
+// Visitor broadcast auth — signs Pusher/Reverb private-channel subscriptions
+// for `private-webchat.conversation.{uuid}`. Reuses WebChatVisitorAuth which
+// resolves the visitor's widget when no {key} is present in the path.
+Route::post('/webchat/broadcasting/auth', [WebChatBroadcastAuthController::class, 'authenticate'])
+    ->middleware(['webchat.visitor'])
+    ->name('webchat.public.broadcasting.auth');
 
 // All API routes authenticated via X-Api-Key header
 Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {

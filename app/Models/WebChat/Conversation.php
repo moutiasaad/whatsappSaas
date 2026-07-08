@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Conversation extends Model
@@ -67,6 +68,7 @@ class Conversation extends Model
     public function claimer(): BelongsTo  { return $this->belongsTo(User::class, 'claimed_by'); }
     public function closer(): BelongsTo   { return $this->belongsTo(User::class, 'closed_by'); }
     public function messages(): HasMany   { return $this->hasMany(Message::class, 'conversation_id'); }
+    public function latestMessage(): HasOne { return $this->hasOne(Message::class, 'conversation_id')->latestOfMany(); }
 
     public function isBot(): bool      { return $this->status === self::STATUS_BOT; }
     public function isPending(): bool  { return $this->status === self::STATUS_PENDING; }

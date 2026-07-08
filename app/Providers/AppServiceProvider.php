@@ -37,6 +37,12 @@ class AppServiceProvider extends ServiceProvider
             return false;
         });
 
+        // Web Live-Chat agent ability — governs both dashboard routes and
+        // presence-webchat.tenant.{tenantId} channel authorization.
+        Gate::define('webchat-agent', function ($user) {
+            return in_array($user->role, ['admin', 'supervisor', 'agent'], true);
+        });
+
         // Web Live-Chat public API rate limiters (keyed per-IP / per-visitor)
         RateLimiter::for('webchat-session', function (Request $request) {
             return Limit::perMinute(20)->by('wc-sess:' . $request->ip());

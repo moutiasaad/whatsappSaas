@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Conversation;
+use App\Models\WebChat\Conversation as WebChatConversation;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Gate;
 
 // Pool stream - agents/supervisors per team, admins can observe all team pools.
 Broadcast::channel('tenant.{tenant}.team.{team}.pool', function ($user, $tenant, $team) {
@@ -43,4 +45,23 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 // Instance health updates (admins only).
 Broadcast::channel('tenant.{tenant}.instances', function ($user, $tenant) {
     return (string) $user->tenant_id === (string) $tenant && ($user->isAdmin() || $user->isSuperAdmin());
+});
+
+// ─── Web Live-Chat channels ──────────────────────────────────────────────
+// Tenant presence stream for agents (new pending chats, list updates).
+// Payload = {id,name} so the inbox can show who is online.
+Broadcast::channel('webchat.tenant.{tenantId}', function ($user, $tenantId) {
+    if ((string) $user->tenant_id !== (string) $tenantId) return null;
+    if (!Gate::forUser($user)->allows('webchat-agent')) return null;
+    return ['id' => $user->id, 'name' => $user->name];
+});
+
+// Private conversation stream — AGENT-side authorization.
+// Visitor authorization for the same channel is handled separately by
+// /api/webchat/broadcasting/auth (see BroadcastAuthController).
+Broadcast::channel('webchat.conversation.{uuid}', function ($user, $uuid) {
+    if (!Gate::forUser($user)->allows('webchat-agent')) return false;
+    $conv = WebChatConversation::withoutGlobalScope('tenant')->where('uuid', $uuid)->first();
+    if (!$conv) return false;
+    return (string) $conv->tenant_id === (string) $user->tenant_id;
 });

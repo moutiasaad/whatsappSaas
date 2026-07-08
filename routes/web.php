@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\SuperAdminManagerController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\WebChat\ConversationController as WebChatConversationController;
+use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\LandingController;
@@ -89,6 +91,28 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             // Customers - all system users
             Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
             Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+
+            // Web Live-Chat — human-answered chat widget (separate from WhatsApp).
+            // Not available to super_admin — they don't act as frontline agents.
+            Route::middleware('role:admin,supervisor,agent')
+                ->prefix('webchat')
+                ->name('webchat.')
+                ->group(function () {
+                    Route::get('/conversations', [WebChatConversationController::class, 'index'])
+                        ->name('conversations.index');
+                    Route::get('/conversations/{uuid}', [WebChatConversationController::class, 'show'])
+                        ->name('conversations.show');
+                    Route::post('/conversations/{uuid}/claim', [WebChatConversationController::class, 'claim'])
+                        ->name('conversations.claim');
+                    Route::post('/conversations/{uuid}/release', [WebChatConversationController::class, 'release'])
+                        ->name('conversations.release');
+                    Route::post('/conversations/{uuid}/close', [WebChatConversationController::class, 'close'])
+                        ->name('conversations.close');
+                    Route::post('/conversations/{uuid}/read', [WebChatConversationController::class, 'markRead'])
+                        ->name('conversations.read');
+                    Route::post('/conversations/{uuid}/messages', [WebChatMessageController::class, 'store'])
+                        ->name('messages.store');
+                });
 
             // Impersonation leave route (when admin is currently impersonating)
             Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
