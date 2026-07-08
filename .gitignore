@@ -24,3 +24,6 @@ Homestead.yaml
 Thumbs.db
 # Added by code-review-graph
 .code-review-graph/
+
+# Environment backups
+.env.bak.*
