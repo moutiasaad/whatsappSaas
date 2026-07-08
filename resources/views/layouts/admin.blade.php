@@ -73,6 +73,7 @@
             window.Echo = {
                 private: function(channel) { return makeChannelShim(_pusher.subscribe('private-' + channel)); },
                 channel: function(channel) { return makeChannelShim(_pusher.subscribe(channel)); },
+                join:    function(channel) { return makeChannelShim(_pusher.subscribe('presence-' + channel)); },
             };
         } catch(e) {
             console.warn('Echo init failed:', e);
@@ -1816,6 +1817,23 @@
             @endif
             @endif {{-- end conversations/customers block --}}
 
+            @if(Auth::user()->hasAnyRole(['admin', 'supervisor', 'agent']))
+            <a href="{{ route($panelPrefix . '.webchat.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.webchat.*']) }}">
+                <i class="ri-chat-smile-2-line"></i>
+                <span>{{ __('ui.sidebar.live_chat') }}</span>
+                @php
+                    try {
+                        $webchatPending = \App\Models\WebChat\Conversation::pending()->count();
+                    } catch (\Throwable $e) {
+                        $webchatPending = 0;
+                    }
+                @endphp
+                @if($webchatPending > 0)
+                    <span class="nav-badge">{{ $webchatPending }}</span>
+                @endif
+            </a>
+            @endif
+
             @if(Auth::user()->isSupervisor())
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
                 <i class="ri-team-line"></i>
@@ -1866,6 +1884,11 @@
                 <a href="{{ route($panelPrefix . '.saved-replies.index') }}" class="{{ $navActive([$panelPrefix . '.saved-replies.*']) }}">
                     <i class="ri-chat-3-line"></i>
                     <span>{{ __('ui.sidebar.saved_replies') }}</span>
+                </a>
+
+                <a href="{{ route($panelPrefix . '.webchat.settings.show') }}" class="{{ $navActive([$panelPrefix . '.webchat.settings.*']) }}">
+                    <i class="ri-settings-4-line"></i>
+                    <span>{{ __('ui.sidebar.live_chat_settings') }}</span>
                 </a>
 
                 @if(Auth::user()->tenant?->plan?->reservations_enabled)

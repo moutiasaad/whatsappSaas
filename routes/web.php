@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\WebChat\ConversationController as WebChatConversationController;
 use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
+use App\Http\Controllers\WebChat\WidgetSettingsController as WebChatWidgetSettingsController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\LandingController;
@@ -218,6 +219,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
                 // Saved Replies
                 Route::get('/saved-replies', [SavedReplyWebController::class, 'index'])->name('saved-replies.index');
+
+                // Web Live-Chat — widget settings (per-tenant customization)
+                Route::get('/webchat/settings', [WebChatWidgetSettingsController::class, 'show'])->name('webchat.settings.show');
+                Route::put('/webchat/settings', [WebChatWidgetSettingsController::class, 'update'])->name('webchat.settings.update');
             });
 
             // SaaS control plane (super admin only)

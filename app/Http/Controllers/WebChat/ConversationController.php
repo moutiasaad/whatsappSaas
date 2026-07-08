@@ -16,8 +16,15 @@ use Illuminate\Support\Str;
 
 class ConversationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
+        // Browser navigation → render the inbox Blade view. AJAX/JSON callers
+        // get the paginated list. Same route serves both, matching the app's
+        // convention on /users, /teams, /conversations, etc.
+        if (!$request->expectsJson()) {
+            return view('admin.webchat.index');
+        }
+
         $user     = $request->user();
         $tenantId = $user->tenant_id;
 

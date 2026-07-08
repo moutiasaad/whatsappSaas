@@ -1,0 +1,466 @@
+{
+    "info": {
+        "_postman_id": "6b9d8a52-1c4e-4b3a-9d8f-webchat00001",
+        "name": "WavaDesk WebChat API",
+        "description": "Two collections in one — the Public Widget API (visitor-side, cross-origin, bearer-token) and the Dashboard API (agent-side, session-cookie auth). Run them in order; scripts auto-save visitor_token, conv_uuid, and csrf into collection variables so subsequent requests just work.\n\n**Setup once**:\n1. Start the server: `php artisan serve --port=8000`.\n2. Set the admin password: `php artisan tinker --execute='App\\Models\\User::where(\"email\",\"admin@demo.com\")->update([\"password\"=>bcrypt(\"password\")]);'`.\n3. In Postman, click the collection → Variables tab → confirm the `key` variable matches your widget's public_key (`php artisan tinker --execute='echo App\\Models\\WebChat\\Widget::first()->public_key;'`).\n4. Run the requests top-to-bottom in each folder.\n\n**Cookie jar**: Postman v10+ manages cookies automatically per request. The Dashboard folder relies on that — no manual cookie setup needed.\n\n**Reverb**: not required for these tests. If it isn't running, broadcasts still fire (logged to `storage/logs/laravel.log`) but no browser subscribes. Endpoints work identically.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Public Widget API (visitor side)",
+            "description": "The endpoints a customer's embedded widget calls. Auth = widget public_key in the path + visitor bearer token. Cross-origin. No session cookie.\n\nRun in order — each test script feeds the next request.",
+            "item": [
+                {
+                    "name": "1.1 POST /session — start or resume",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('returns visitor_token', () => pm.expect(j.visitor_token).to.be.a('string'));",
+                                    "pm.test('returns widget config', () => pm.expect(j.widget).to.be.an('object'));",
+                                    "pm.collectionVariables.set('visitor_token', j.visitor_token);",
+                                    "console.log('visitor_token saved:', j.visitor_token);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Origin", "value": "{{origin}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Postman Visitor\",\n  \"email\": \"postman@example.com\",\n  \"page_url\": \"http://example.com/pricing\",\n  \"referrer\": \"http://example.com/\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base}}/api/webchat/{{key}}/session",
+                            "host": ["{{base}}"],
+                            "path": ["api", "webchat", "{{key}}", "session"]
+                        },
+                        "description": "Body may include visitor_token to resume a previous session, or name/email/page_url/referrer/attributes. Returns { visitor_token, widget, active_conversation? }."
+                    }
+                },
+                {
+                    "name": "1.2 POST /conversations — open (status: bot)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('returns uuid', () => pm.expect(j.uuid).to.be.a('string'));",
+                                    "pm.collectionVariables.set('conv_uuid', j.uuid);",
+                                    "console.log('conv_uuid saved:', j.uuid);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Origin", "value": "{{origin}}" },
+                            { "key": "Authorization", "value": "Bearer {{visitor_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"page_url\": \"http://example.com/pricing\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base}}/api/webchat/{{key}}/conversations",
+                            "host": ["{{base}}"],
+                            "path": ["api", "webchat", "{{key}}", "conversations"]
+                        },
+                        "description": "Opens a new conversation in status='bot'. The visitor will move it to 'pending' by requesting an agent or sending a message."
+                    }
+                },
+                {
+                    "name": "1.3 POST /request-agent (bot → pending)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('status = pending', () => pm.expect(j.status).to.equal('pending'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Origin", "value": "{{origin}}" },
+                            { "key": "Authorization", "value": "Bearer {{visitor_token}}" }
+                        ],
+                        "body": { "mode": "raw", "raw": "{}" },
+                        "url": {
+                            "raw": "{{base}}/api/webchat/{{key}}/conversations/{{conv_uuid}}/request-agent",
+                            "host": ["{{base}}"],
+                            "path": ["api", "webchat", "{{key}}", "conversations", "{{conv_uuid}}", "request-agent"]
+                        },
+                        "description": "Fires the WebChatConversationRequested broadcast on presence-webchat.tenant.{tenantId}. If you have the agent inbox open in a browser, the row appears live in the Pending tab."
+                    }
+                },
+                {
+                    "name": "1.4 POST /messages — visitor sends",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('message body echoed', () => pm.expect(j.message.body).to.include('Hello'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Origin", "value": "{{origin}}" },
+                            { "key": "Authorization", "value": "Bearer {{visitor_token}}" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"body\": \"Hello, is anyone there? I have a question about pricing.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base}}/api/webchat/{{key}}/conversations/{{conv_uuid}}/messages",
+                            "host": ["{{base}}"],
+                            "path": ["api", "webchat", "{{key}}", "conversations", "{{conv_uuid}}", "messages"]
+                        },
+                        "description": "Also auto-promotes bot → pending if the conversation hadn't been requested yet. Fires WebChatMessageSent broadcast."
+                    }
+                },
+                {
+                    "name": "1.5 GET /messages?after=0 — poll (fallback for no WS)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "Origin", "value": "{{origin}}" },
+                            { "key": "Authorization", "value": "Bearer {{visitor_token}}" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/api/webchat/{{key}}/conversations/{{conv_uuid}}/messages?after=0",
+                            "host": ["{{base}}"],
+                            "path": ["api", "webchat", "{{key}}", "conversations", "{{conv_uuid}}", "messages"],
+                            "query": [{ "key": "after", "value": "0" }]
+                        },
+                        "description": "Widget polls this when WebSocket is unavailable. Change after=<id> to get only newer messages. Returns visitor + agent + system messages in id order."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Dashboard API (agent side)",
+            "description": "Auth = Laravel web session (cookie + CSRF). Postman v10+'s cookie jar handles the session cookie automatically after the login POST. CSRF token is scraped from the login page then from every dashboard GET's meta tag.\n\n**Run 2.1 then 2.2 first — everything else needs the session.**",
+            "item": [
+                {
+                    "name": "2.1 GET /login — grab CSRF",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('login page loaded', () => pm.response.to.have.status(200));",
+                                    "const html = pm.response.text();",
+                                    "const m = html.match(/name=\"_token\"\\s+value=\"([^\"]+)\"/);",
+                                    "if (m) {",
+                                    "    pm.collectionVariables.set('csrf', m[1]);",
+                                    "    console.log('csrf (form) saved:', m[1].slice(0,16) + '...');",
+                                    "} else {",
+                                    "    console.error('Could not find _token in login page');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base}}/login",
+                            "host": ["{{base}}"],
+                            "path": ["login"]
+                        }
+                    }
+                },
+                {
+                    "name": "2.2 POST /login — establish session",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('login succeeded', () => pm.expect([200, 302]).to.include(pm.response.code));",
+                                    "// After 302 follow, the response is the dashboard HTML. Pull the meta-tag CSRF for later POSTs.",
+                                    "const html = pm.response.text();",
+                                    "const m = html.match(/<meta\\s+name=\"csrf-token\"\\s+content=\"([^\"]+)\"/);",
+                                    "if (m) {",
+                                    "    pm.collectionVariables.set('csrf', m[1]);",
+                                    "    console.log('csrf (meta) saved:', m[1].slice(0,16) + '...');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Referer", "value": "{{base}}/login" }
+                        ],
+                        "body": {
+                            "mode": "urlencoded",
+                            "urlencoded": [
+                                { "key": "_token", "value": "{{csrf}}", "type": "text" },
+                                { "key": "email", "value": "admin@demo.com", "type": "text" },
+                                { "key": "password", "value": "password", "type": "text" }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base}}/login",
+                            "host": ["{{base}}"],
+                            "path": ["login"]
+                        },
+                        "description": "Uses form-urlencoded (matches how the login <form> submits). Postman auto-follows the 302 to the role dashboard and stores the wavadesk-session cookie."
+                    }
+                },
+                {
+                    "name": "2.3 GET /webchat/conversations?filter=pending — list",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('has data array', () => pm.expect(j.data).to.be.an('array'));",
+                                    "pm.test('meta.filter matches', () => pm.expect(j.meta.filter).to.equal('pending'));",
+                                    "console.log(j.data.length + ' pending conversations');"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations?filter=pending",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations"],
+                            "query": [{ "key": "filter", "value": "pending" }]
+                        },
+                        "description": "filter accepts: pending | mine | all | closed. Same URL renders the inbox HTML when Accept is text/html."
+                    }
+                },
+                {
+                    "name": "2.4 GET /webchat/conversations/{uuid} — workspace",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}"]
+                        },
+                        "description": "Full bundle: conversation + visitor + widget + meta + messages. This is what the inbox openRow() calls when you click a row."
+                    }
+                },
+                {
+                    "name": "2.5 POST /claim — atomic (200 OK or 409 already_claimed)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('claim result is 200 or 409', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                    "if (pm.response.code === 200) {",
+                                    "    const j = pm.response.json();",
+                                    "    pm.test('status = assigned', () => pm.expect(j.conversation.status).to.equal('assigned'));",
+                                    "    console.log('claimed by user', j.conversation.claimed_by);",
+                                    "} else {",
+                                    "    console.log('lost the race:', pm.response.json().error);",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "X-CSRF-TOKEN", "value": "{{csrf}}" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}/claim",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}", "claim"]
+                        },
+                        "description": "One atomic UPDATE. 200 = you claimed it. 409 = another agent won the race. To reproduce the race: log a second Postman workspace in as a different agent and click Send in both windows rapidly."
+                    }
+                },
+                {
+                    "name": "2.6 POST /messages — agent reply",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('reply status', () => pm.expect([201, 403, 409]).to.include(pm.response.code));",
+                                    "if (pm.response.code === 403) console.log('403: not the claimer');",
+                                    "if (pm.response.code === 409) console.log('409: conversation closed');"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "X-CSRF-TOKEN", "value": "{{csrf}}" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"body\": \"Hi from Postman — this is the agent replying.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}/messages",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}", "messages"]
+                        },
+                        "description": "201 on success. 403 = you're not the claimer. 409 = conversation is closed. Fires WebChatMessageSent — visitor's poll (1.5) picks it up on the next call."
+                    }
+                },
+                {
+                    "name": "2.7 POST /read — mark visitor messages read",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "X-CSRF-TOKEN", "value": "{{csrf}}" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}/read",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}", "read"]
+                        }
+                    }
+                },
+                {
+                    "name": "2.8 POST /release — return to Pending",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "X-CSRF-TOKEN", "value": "{{csrf}}" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}/release",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}", "release"]
+                        },
+                        "description": "Only the claimer or an admin can release. Others get 403."
+                    }
+                },
+                {
+                    "name": "2.9 POST /close — end chat",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('closed', () => pm.response.to.have.status(200));",
+                                    "const j = pm.response.json();",
+                                    "pm.test('status = closed', () => pm.expect(j.conversation.status).to.equal('closed'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "X-CSRF-TOKEN", "value": "{{csrf}}" },
+                            { "key": "X-Requested-With", "value": "XMLHttpRequest" }
+                        ],
+                        "url": {
+                            "raw": "{{base}}/tenant-admin/webchat/conversations/{{conv_uuid}}/close",
+                            "host": ["{{base}}"],
+                            "path": ["tenant-admin", "webchat", "conversations", "{{conv_uuid}}", "close"]
+                        },
+                        "description": "Sets status=closed, releases the lock, and appends a system 'Chat ended' message. Broadcasts WebChatConversationClosed + WebChatMessageSent."
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base",
+            "value": "http://127.0.0.1:8000",
+            "type": "string"
+        },
+        {
+            "key": "key",
+            "value": "wck_jTT8z8Ttbb0bhilnTHmNvAzljCGVhW6VoY0hf0x2f0TT10l8",
+            "type": "string",
+            "description": "Widget public_key from `webchat:provision-widget`. Update if you re-provisioned or you're on a different tenant."
+        },
+        {
+            "key": "origin",
+            "value": "http://127.0.0.1:9000",
+            "type": "string",
+            "description": "Simulated tenant website origin. Any value works while allowed_domains is empty."
+        },
+        {
+            "key": "visitor_token",
+            "value": "",
+            "type": "string",
+            "description": "Auto-populated by 1.1 Session."
+        },
+        {
+            "key": "conv_uuid",
+            "value": "",
+            "type": "string",
+            "description": "Auto-populated by 1.2 Open conversation."
+        },
+        {
+            "key": "csrf",
+            "value": "",
+            "type": "string",
+            "description": "Auto-populated by 2.1 (form _token) and refreshed by 2.2 (meta tag)."
+        }
+    ]
+}
