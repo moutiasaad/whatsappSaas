@@ -81,6 +81,10 @@ class SessionController extends Controller
                 'uuid'   => $activeConversation->uuid,
                 'status' => $activeConversation->status,
             ] : null,
+            'runtime' => [
+                'poll_interval_ms'   => (int) config('webchat.widget_poll_interval_ms', 4000),
+                'message_max_length' => (int) config('webchat.message_max_length', 4000),
+            ],
         ]);
     }
 }

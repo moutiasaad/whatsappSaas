@@ -57,3 +57,70 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+---
+
+## Web Live-Chat module
+
+Embeddable chat widget that tenants install on their marketing sites. Operates alongside the WhatsApp module — same dashboard, separate database tables, separate broadcast channels.
+
+### Embed snippet
+
+Each tenant gets a public widget key (`wck_…`) from **Live Chat Settings** in the dashboard. The settings page shows a copy-paste snippet like:
+
+```html
+<script>window.WavadeskChat = { key: "wck_YOUR_TENANT_KEY_HERE" };</script>
+<script src="https://your-app.example/webchat/widget.js" async></script>
+```
+
+The widget is a plain committed asset — no build step. It talks to `/api/webchat/*` (CORS-scoped separately in `config/cors.php`) and opens a Pusher-protocol WebSocket to Reverb.
+
+### Environment variables
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `WEBCHAT_MESSAGE_MAX_LENGTH` | `4000` | Max length for both visitor and agent messages |
+| `WEBCHAT_RELEASE_STALE_MINUTES` | `15` | Idle-claim threshold before `webchat:release-stale` reclaims |
+| `WEBCHAT_WIDGET_POLL_MS` | `4000` | Widget's HTTP poll fallback interval |
+| `WEBCHAT_RL_SESSION` | `60` | Session-endpoint rate limit per minute |
+| `WEBCHAT_RL_MESSAGES` | `40` | Message-endpoint rate limit per minute |
+
+Reverb settings (`REVERB_APP_KEY`, `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`) are picked up from `config/broadcasting.php` and echoed to the widget in the `/session` response, so the same asset runs against local `http://` and prod `https://` without a rebuild.
+
+### Artisan commands
+
+- `php artisan webchat:release-stale` — releases conversations left claimed but idle beyond the threshold. Wired to run every minute in `routes/console.php`. Requires `php artisan schedule:work` (dev) or a system cron entry running `schedule:run` every minute (prod).
+- `php artisan webchat:provision-widget {tenant}` — creates or reveals the widget key for a tenant from CLI.
+
+### Allowed domains
+
+Each widget has an `allowed_domains` list (JSON) enforced by `WebChatDomainGuard` on every request. An empty list means "any origin" (useful during development). Populate it via the Settings page before going public.
+
+### Real-time
+
+Live updates use Laravel Reverb. Run `php artisan reverb:start` alongside `queue:work`. Broadcast channels:
+
+- `webchat.tenant.{tenantId}` — presence, one per tenant, for the agent inbox
+- `webchat.conversation.{uuid}` — private, one per conversation, for the visitor widget and any observing agent
+
+If Reverb is not running the widget silently falls back to HTTP polling at the interval above.
+
+### Local cross-origin test
+
+The widget is intended to embed on a domain other than the app's. To exercise CORS locally:
+
+```bash
+mkdir -p storage/logs/embed-test
+cat > storage/logs/embed-test/index.html <<'HTML'
+<script>window.WavadeskChat = { key: "wck_..." };</script>
+<script src="http://127.0.0.1:8000/webchat/widget.js" async></script>
+HTML
+cd storage/logs/embed-test && php -S 127.0.0.1:9000
+```
+
+Open `http://127.0.0.1:9000/` while the Laravel app is running on `:8000`.
+
+### Tests
+
+`vendor/bin/phpunit tests/Feature/WebChatLifecycleTest.php` covers the visitor→agent lifecycle: session bootstrap, bot→pending promotion, atomic claim (double-claim returns 409), reply guard, close, cross-tenant isolation, and the release-stale command. The test builds its own schema in setup because the wider migration set is MySQL-specific.
+

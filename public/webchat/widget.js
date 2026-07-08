@@ -95,8 +95,9 @@
         S.bootingPromise = api('/session', { method: 'POST', body: body, auth: false })
             .then(function (data) {
                 S.visitorToken = data.visitor_token;
-                S.widget = data.widget || {};
-                S.reverb = data.reverb || null;
+                S.widget  = data.widget  || {};
+                S.reverb  = data.reverb  || null;
+                S.runtime = data.runtime || null;
                 lsSet(LS_TOKEN, S.visitorToken);
                 if (data.active_conversation) {
                     S.convUuid = data.active_conversation.uuid;
@@ -233,7 +234,8 @@
     }
     function startPolling() {
         stopPolling();
-        S.pollTimer = setInterval(loadMessages, 4000);
+        var interval = (S.runtime && S.runtime.poll_interval_ms) || 4000;
+        S.pollTimer = setInterval(loadMessages, interval);
     }
     function stopPolling() {
         if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }

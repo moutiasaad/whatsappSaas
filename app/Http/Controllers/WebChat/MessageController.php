@@ -15,7 +15,7 @@ class MessageController extends Controller
     public function store(Request $request, string $uuid): JsonResponse
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:4000'],
+            'body' => ['required', 'string', 'max:' . (int) config('webchat.message_max_length', 4000)],
         ]);
 
         $user     = $request->user();

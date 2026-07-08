@@ -15,7 +15,7 @@ class WebChatConversationReleased implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Conversation $conversation, public User $actor) {}
+    public function __construct(public Conversation $conversation, public ?User $actor = null) {}
 
     public function broadcastOn(): array
     {
@@ -41,9 +41,12 @@ class WebChatConversationReleased implements ShouldBroadcastNow
                 'status'    => $c->status,
                 'claimed_by' => $c->claimed_by,
             ],
-            'actor' => [
+            'actor' => $this->actor ? [
                 'id'   => $this->actor->id,
                 'name' => $this->actor->name,
+            ] : [
+                'id'   => null,
+                'name' => 'system',
             ],
         ];
     }
