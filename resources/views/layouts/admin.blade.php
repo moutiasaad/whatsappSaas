@@ -21,6 +21,17 @@
 
     {{-- Laravel Echo + Pusher (for Reverb real-time) --}}
     <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
+    @php
+        // Precompute Reverb config so an empty/null env value cannot render an
+        // invalid JS literal (bare comma) in the Pusher constructor. Blade's
+        // config("…", default) fallback only kicks in when the key is missing
+        // entirely, NOT when the value is present but empty — hence casts + `?:`.
+        $reverbKey      = (string) (config('broadcasting.connections.reverb.key') ?: 'local');
+        $reverbHost     = (string) (config('broadcasting.connections.reverb.options.host') ?: 'localhost');
+        $reverbPort     = (int)    (config('broadcasting.connections.reverb.options.port') ?: 8080);
+        $reverbScheme   = (string) (config('broadcasting.connections.reverb.options.scheme') ?: 'http');
+        $reverbForceTLS = $reverbScheme === 'https' ? 'true' : 'false';
+    @endphp
     <script>
     window._echoConnected = false;
     window._echoStateListeners = [];
@@ -32,11 +43,11 @@
     window.addEventListener('DOMContentLoaded', function () {
         if (typeof Pusher === 'undefined') { _notifyEchoState(false); return; }
         try {
-            var _pusher = new Pusher('{{ config("broadcasting.connections.reverb.key", "local") }}', {
-                wsHost:            '{{ config("broadcasting.connections.reverb.options.host", "localhost") }}',
-                wsPort:            {{ config("broadcasting.connections.reverb.options.port", 8080) }},
-                wssPort:           {{ config("broadcasting.connections.reverb.options.port", 8080) }},
-                forceTLS:          {{ config("broadcasting.connections.reverb.options.scheme", "http") === "https" ? "true" : "false" }},
+            var _pusher = new Pusher(@json($reverbKey), {
+                wsHost:            @json($reverbHost),
+                wsPort:            {{ $reverbPort }},
+                wssPort:           {{ $reverbPort }},
+                forceTLS:          {{ $reverbForceTLS }},
                 enabledTransports: ['ws', 'wss'],
                 cluster:           'mt1',
                 authEndpoint:      '/broadcasting/auth',
@@ -2148,7 +2159,7 @@
         const btn = form.querySelector('[type="submit"]');
         if (!btn) return;
         btn.classList.add('loading');
-        btn.innerHTML = '<span class="btn-spinner"></span> {{ __('ui.processing') }}';
+        btn.innerHTML = '<span class="btn-spinner"></span> ' + @json(__('ui.processing'));
     });
 
     document.getElementById('logoutForm')?.addEventListener('submit', function () {
@@ -2211,7 +2222,7 @@
             if (useSearch) {
                 searchRow = document.createElement('div');
                 searchRow.className = 'ss-search-row';
-                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="{{ __('ui.select_filter_hint') }}" autocomplete="off"></div>';
+                searchRow.innerHTML = '<div class="ss-search-inner"><i class="ri-search-line"></i><input type="text" placeholder="' + @json(__('ui.select_filter_hint')) + '" autocomplete="off"></div>';
             }
 
             var list = document.createElement('div');
@@ -2404,12 +2415,13 @@
         @endif
     });
 
-    // Flash messages from server
+    // Flash messages from server — JSON-encode so newlines/backslashes/quotes
+    // in the flash payload always produce a valid JS string literal.
     @if(session('success'))
-        window.addEventListener('DOMContentLoaded', () => showToast('success', '{{ session('success') }}'));
+        window.addEventListener('DOMContentLoaded', () => showToast('success', @json(session('success'))));
     @endif
     @if(session('error'))
-        window.addEventListener('DOMContentLoaded', () => showToast('error', '{{ session('error') }}'));
+        window.addEventListener('DOMContentLoaded', () => showToast('error', @json(session('error'))));
     @endif
 
     /* ====================================================
@@ -2597,7 +2609,7 @@
                 '<i class="' + arrowCls + '" style="font-size:14px;color:' + (active ? 'var(--brand)' : 'var(--text-muted)') + '"></i>' +
             '</div>' +
             '<input type="text" class="col-filter" data-col="' + col + '" value="' + (filterVal.replace ? filterVal.replace(/"/g, '&quot;') : '') + '" ' +
-                'placeholder="{{ __('ui.select_filter_hint') }}" onclick="event.stopPropagation()" ' +
+                'placeholder="' + @json(__('ui.select_filter_hint')) + '" onclick="event.stopPropagation()" ' +
                 'style="margin-top:4px;width:100%;height:26px;padding:0 6px;font-size:11px;border:1px solid var(--card-border);border-radius:var(--radius-sm);background:var(--page-bg);color:var(--text-primary);outline:none;font-family:inherit;" ' +
                 'onfocus="this.style.borderColor=\'var(--brand)\'" onblur="this.style.borderColor=\'var(--card-border)\'">' +
         '</th>';
@@ -2679,7 +2691,7 @@
 
         function timeAgo(iso) {
             const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
-            if (diff < 60)    return '{{ __('ui.notifications_page.just_now') }}';
+            if (diff < 60)    return @json(__('ui.notifications_page.just_now'));
             if (diff < 3600)  return Math.floor(diff / 60) + 'm';
             if (diff < 86400) return Math.floor(diff / 3600) + 'h';
             return Math.floor(diff / 86400) + 'd';
@@ -2713,7 +2725,7 @@
 
         function renderList(items) {
             if (!items.length) {
-                list.innerHTML = '<div class="notif-empty"><i class="ri-notification-off-line"></i>{{ __('ui.notifications_page.empty') }}</div>';
+                list.innerHTML = '<div class="notif-empty"><i class="ri-notification-off-line"></i>' + @json(__('ui.notifications_page.empty')) + '</div>';
                 return;
             }
             list.innerHTML = items.map(buildItem).join('');
@@ -2731,7 +2743,7 @@
         }
 
         async function fetchNotifications() {
-            list.innerHTML = '<div class="notif-empty"><i class="ri-loader-4-line"></i>{{ __('ui.notifications_page.loading') }}</div>';
+            list.innerHTML = '<div class="notif-empty"><i class="ri-loader-4-line"></i>' + @json(__('ui.notifications_page.loading')) + '</div>';
             try {
                 const r = await fetch('/api/notifications', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -2801,7 +2813,7 @@
         function subscribeEcho() {
             if (!window.Echo) return;
             window.Echo
-                .private('user.{{ Auth::id() }}')
+                .private('user.' + @json((string) Auth::id()))
                 .listen('.notification.created', function(data) {
                     onNotificationCreated(data);
                 });
