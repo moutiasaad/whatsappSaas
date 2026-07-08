@@ -67,6 +67,16 @@ class SessionController extends Controller
                 'launcher_text'      => $widget->launcher_text,
                 'pre_chat_ask_email' => (bool) $widget->pre_chat_ask_email,
             ],
+            // Reverb credentials the widget needs to open a WebSocket. Values
+            // fall back to safe defaults so the widget still boots even when
+            // BROADCAST_CONNECTION is not `reverb` — it just runs on HTTP
+            // polling only (see widget.js).
+            'reverb' => [
+                'key'    => (string) (config('broadcasting.connections.reverb.key') ?: ''),
+                'host'   => (string) (config('broadcasting.connections.reverb.options.host') ?: $request->getHost()),
+                'port'   => (int)    (config('broadcasting.connections.reverb.options.port') ?: 443),
+                'scheme' => (string) (config('broadcasting.connections.reverb.options.scheme') ?: 'https'),
+            ],
             'active_conversation' => $activeConversation ? [
                 'uuid'   => $activeConversation->uuid,
                 'status' => $activeConversation->status,
