@@ -350,7 +350,10 @@
     }
     function ensureRoot() {
         if (el.root) return;
-        el.root = _('div', { id: 'wvch-root' });
+        // dir="ltr" pins the widget's own directionality regardless of the
+        // host page (e.g. <html dir="rtl">). Without this, RTL host pages
+        // mirror the header controls, composer, and message rows.
+        el.root = _('div', { id: 'wvch-root', dir: 'ltr' });
         document.body.appendChild(el.root);
         injectStyles();
     }
@@ -604,8 +607,8 @@
     function injectStyles() {
         if (document.getElementById('wvch-styles')) return;
         var css = [
-            "#wvch-root { --wvch-color: #2563eb; --wvch-radius: 12px; --wvch-bubble-radius: 14px; --wvch-chip-radius: 999px; --wvch-shadow: 0 12px 30px rgba(0,0,0,.15); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }",
-            "#wvch-root, #wvch-root *, #wvch-root *::before, #wvch-root *::after { box-sizing: border-box; }",
+            "#wvch-root { --wvch-color: #2563eb; --wvch-radius: 12px; --wvch-bubble-radius: 14px; --wvch-chip-radius: 999px; --wvch-shadow: 0 12px 30px rgba(0,0,0,.15); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; direction: ltr; text-align: left; unicode-bidi: isolate; }",
+            "#wvch-root, #wvch-root *, #wvch-root *::before, #wvch-root *::after { box-sizing: border-box; direction: ltr; }",
             /* Bubble-style variants — driven by data-bubble on the root */
             "#wvch-root[data-bubble='soft']    { --wvch-radius: 12px; --wvch-bubble-radius: 14px; --wvch-chip-radius: 999px; }",
             "#wvch-root[data-bubble='rounded'] { --wvch-radius: 20px; --wvch-bubble-radius: 20px; --wvch-chip-radius: 999px; }",
