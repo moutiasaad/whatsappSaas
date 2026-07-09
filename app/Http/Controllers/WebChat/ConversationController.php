@@ -81,7 +81,13 @@ class ConversationController extends Controller
             'closer:id,name',
         ]);
 
+        // `after` lets the agent inbox poll for message deltas without
+        // re-downloading the whole thread. When absent, we return the full
+        // history so the initial openRow render still works.
+        $after = (int) $request->query('after', 0);
+
         $messages = Message::where('conversation_id', $conversation->id)
+            ->when($after > 0, fn ($q) => $q->where('id', '>', $after))
             ->with('sender:id,name')
             ->orderBy('id')
             ->get()

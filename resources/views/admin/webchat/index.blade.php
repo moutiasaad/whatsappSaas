@@ -303,6 +303,7 @@ function webchatInbox() {
 
         wsConnected:    false,
         _pollTimer:     null,
+        _threadPoll:    null,
 
         get pendingCount() {
             return this.conversations.filter(c => c.status === 'pending').length;
@@ -312,8 +313,12 @@ function webchatInbox() {
             this.loadList();
             this.subscribePresence();
 
-            // Poll list every 30s as fallback for missed broadcasts / offline delta
-            this._pollTimer = setInterval(() => this.loadList(true), 30000);
+            // Poll list every 8s when WebSocket is down, 30s when it's up.
+            // The tick body reads the current wsConnected each firing so a
+            // reconnect naturally throttles this back down.
+            this._pollTimer = setInterval(() => {
+                this.loadList(true);
+            }, 8000);
 
             // Track echo connection state
             if (window._echoStateListeners) {
@@ -325,7 +330,43 @@ function webchatInbox() {
         },
 
         cleanup() {
-            if (this._pollTimer) clearInterval(this._pollTimer);
+            if (this._pollTimer)  clearInterval(this._pollTimer);
+            if (this._threadPoll) clearInterval(this._threadPoll);
+        },
+
+        // Start a 5s poll of the currently-open thread when the WebSocket
+        // is not connected. Stops itself as soon as Echo comes back online.
+        _startThreadPoll() {
+            if (this._threadPoll) return;
+            this._threadPoll = setInterval(() => {
+                if (this.wsConnected || !this.activeUuid) return;
+                this._pollThreadDelta();
+            }, 5000);
+        },
+
+        _stopThreadPoll() {
+            if (this._threadPoll) { clearInterval(this._threadPoll); this._threadPoll = null; }
+        },
+
+        async _pollThreadDelta() {
+            if (!this.activeUuid) return;
+            const lastId = this.messages.length ? this.messages[this.messages.length - 1].id : 0;
+            const url = this.showUrlTpl.replace('__UUID__', this.activeUuid) + '?after=' + lastId;
+            try {
+                const r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!r.ok) return;
+                const data = await r.json();
+                const added = (data.messages || []).filter(m => !this.messages.some(x => x.id === m.id));
+                if (added.length) {
+                    this.messages.push(...added);
+                    if (this.isMyClaim()) this.markRead(this.activeUuid);
+                    this.$nextTick(() => this.scrollThreadBottom());
+                }
+                // Sync status changes too (e.g. someone else closed it)
+                if (data.conversation && this.active.conversation && data.conversation.status !== this.active.conversation.status) {
+                    this.active.conversation = data.conversation;
+                }
+            } catch (e) { /* silent — next tick will retry */ }
         },
 
         // ─── list ──────────────────────────────────────────────────────
@@ -379,6 +420,11 @@ function webchatInbox() {
                 // widget side happens through /api/webchat/broadcasting/auth;
                 // agents authorize via the framework's /broadcasting/auth.
                 this.subscribeThread(conv.uuid);
+
+                // HTTP-poll fallback for missed messages when Reverb is down.
+                // The loop itself checks wsConnected on every tick, so it goes
+                // idle automatically once WebSocket subscribes.
+                this._startThreadPoll();
 
                 // Mark visitor messages as read (only for the claimer)
                 if (this.isMyClaim()) this.markRead(conv.uuid);
