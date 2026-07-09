@@ -313,12 +313,14 @@ function webchatInbox() {
             this.loadList();
             this.subscribePresence();
 
-            // Poll list every 8s when WebSocket is down, 30s when it's up.
-            // The tick body reads the current wsConnected each firing so a
-            // reconnect naturally throttles this back down.
+            // Poll list as a fallback for missed broadcasts:
+            //   - 15s when WebSocket is up (list is mostly kept fresh via Echo)
+            //   - 15s when it's down too, but paired with the 6s thread poll
+            //     started per-conversation in openRow(). That keeps the open
+            //     thread lively without hammering the list endpoint.
             this._pollTimer = setInterval(() => {
                 this.loadList(true);
-            }, 8000);
+            }, 15000);
 
             // Track echo connection state
             if (window._echoStateListeners) {
@@ -334,14 +336,15 @@ function webchatInbox() {
             if (this._threadPoll) clearInterval(this._threadPoll);
         },
 
-        // Start a 5s poll of the currently-open thread when the WebSocket
-        // is not connected. Stops itself as soon as Echo comes back online.
+        // Poll the currently-open thread every 6s when the WebSocket is not
+        // connected. Tick body checks wsConnected so it idles automatically
+        // as soon as Echo reconnects — no need to tear down / recreate.
         _startThreadPoll() {
             if (this._threadPoll) return;
             this._threadPoll = setInterval(() => {
                 if (this.wsConnected || !this.activeUuid) return;
                 this._pollThreadDelta();
-            }, 5000);
+            }, 6000);
         },
 
         _stopThreadPoll() {
