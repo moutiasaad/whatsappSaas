@@ -6,6 +6,13 @@
     <span>{{ __('ui.webchat_page.title') }}</span>
 @endsection
 
+@push('styles')
+<style>
+    /* Full-bleed chat workspace — mirrors the WhatsApp conversations show page */
+    main.page-content { padding: 0 !important; }
+</style>
+@endpush
+
 @section('content')
 @php
     $panelPrefix = auth()->user()->routeNamePrefix();
@@ -59,219 +66,238 @@
     ];
 @endphp
 
-<div x-data="webchatInbox()" x-init="init()" x-cloak class="wci">
+<div x-data="webchatInbox()" x-init="init()" x-cloak class="cw-root">
 
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-title">{{ __('ui.webchat_page.title') }}</div>
-            <div class="page-subtitle">{{ __('ui.webchat_page.subtitle') }}</div>
-        </div>
-        <div class="page-header-actions">
-            <span class="wci-conn" :class="wsConnected ? 'wci-conn-on' : 'wci-conn-off'">
-                <span class="wci-conn-dot"></span>
-                <span x-text="wsConnected ? i18n.online : i18n.offline"></span>
-            </span>
-        </div>
-    </div>
+    {{-- =========================================================
+         LEFT RAIL — Conversation list
+    ========================================================== --}}
+    <aside class="cw-rail">
+        <div class="cw-rail-head">
+            <div class="cw-rail-title">
+                <span>{{ __('ui.webchat_page.title') }}</span>
+                <span class="cw-rail-count" x-text="conversations.length"></span>
+            </div>
 
-    <div class="wci-grid">
-
-        {{-- ── LEFT: filter tabs + list ──────────────────────────────── --}}
-        <div class="wci-col wci-col-list">
-            <div class="wci-tabs">
+            <div class="cw-tabs">
                 <template x-for="tab in tabs" :key="tab">
-                    <button
-                        type="button"
-                        @click="setFilter(tab)"
-                        :class="filter === tab ? 'active' : ''"
-                        class="wci-tab">
+                    <button type="button" @click="setFilter(tab)" :class="filter === tab ? 'active' : ''">
                         <span x-text="i18n['tab_' + tab]"></span>
                         <template x-if="tab === 'pending' && pendingCount > 0">
-                            <span class="wci-tab-badge" x-text="pendingCount"></span>
+                            <span class="cw-tab-dot" x-text="pendingCount"></span>
                         </template>
                     </button>
                 </template>
             </div>
+        </div>
 
-            <div class="wci-list" x-ref="list">
-                <template x-if="loading && conversations.length === 0">
-                    <div class="wci-empty">
-                        <div class="spinner"></div>
-                    </div>
-                </template>
+        <div class="cw-rail-body">
+            <template x-if="loading && conversations.length === 0">
+                <div class="cw-empty">
+                    <div class="spinner"></div>
+                </div>
+            </template>
 
-                <template x-if="!loading && conversations.length === 0">
-                    <div class="wci-empty">
-                        <i class="ri-chat-off-line wci-empty-icon"></i>
-                        <div x-text="i18n.no_conversations"></div>
-                    </div>
-                </template>
+            <template x-if="!loading && conversations.length === 0">
+                <div class="cw-empty">
+                    <i class="ri-chat-off-line"></i>
+                    <div x-text="i18n.no_conversations"></div>
+                </div>
+            </template>
 
-                <template x-for="conv in conversations" :key="conv.uuid">
-                    <div
-                        class="wci-row"
-                        :class="{
-                            'wci-row-active': activeUuid === conv.uuid,
-                            'wci-row-locked': isRowLocked(conv),
-                        }"
-                        @click="openRow(conv)">
-                        <div class="wci-row-head">
-                            <div class="wci-row-name" x-text="displayName(conv)"></div>
-                            <div class="wci-row-time" x-text="timeAgo(conv.last_activity_at || conv.created_at)"></div>
+            <template x-for="conv in conversations" :key="conv.uuid">
+                <div
+                    class="cw-row"
+                    :class="{
+                        'active': activeUuid === conv.uuid,
+                    }"
+                    @click="openRow(conv)">
+                    <div class="cw-row-avatar" x-text="visitorInitials(conv)"></div>
+                    <div class="cw-row-body">
+                        <div class="cw-row-top">
+                            <div class="cw-row-name" x-text="displayName(conv)"></div>
+                            <div class="cw-row-time" x-text="timeAgo(conv.last_activity_at || conv.created_at)"></div>
                         </div>
-                        <div class="wci-row-preview" x-text="conv.last_message_preview || i18n.no_messages_yet"></div>
-                        <div class="wci-row-foot">
-                            <span class="wci-badge" :class="statusBadgeClass(conv.status)" x-text="i18n['status_' + conv.status]"></span>
-                            <template x-if="conv.status === 'pending'">
-                                <button type="button" @click.stop="claim(conv.uuid)" class="wci-btn wci-btn-primary wci-btn-xs" x-text="i18n.claim_btn"></button>
-                            </template>
+                        <div class="cw-row-bottom">
+                            <div class="cw-row-preview" x-text="conv.last_message_preview || i18n.no_messages_yet"></div>
+                        </div>
+                        <div class="cw-row-meta">
+                            <span class="cw-pill" :class="statePillClass(conv.status)" x-text="i18n['status_' + conv.status]"></span>
                             <template x-if="conv.status === 'assigned' && conv.claimer">
-                                <span class="wci-row-claimer" x-text="conv.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + conv.claimer.name)"></span>
+                                <span class="cw-row-instance" x-text="conv.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + conv.claimer.name)"></span>
                             </template>
                         </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-
-        {{-- ── CENTER: thread + composer ─────────────────────────────── --}}
-        <div class="wci-col wci-col-thread">
-            <template x-if="!activeUuid">
-                <div class="wci-empty-thread">
-                    <i class="ri-chat-3-line wci-empty-icon"></i>
-                    <div x-text="i18n.select_conversation"></div>
-                </div>
-            </template>
-
-            <template x-if="activeUuid">
-                <div class="wci-thread-wrap">
-                    <div class="wci-thread-head">
-                        <div>
-                            <div class="wci-thread-name" x-text="active.visitor?.name || i18n.anonymous"></div>
-                            <div class="wci-thread-meta">
-                                <span class="wci-badge" :class="statusBadgeClass(active.conversation?.status)" x-text="i18n['status_' + (active.conversation?.status || 'bot')]"></span>
-                                <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
-                                    <span class="wci-thread-claimer" x-text="active.conversation.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + active.conversation.claimer.name)"></span>
-                                </template>
-                            </div>
-                        </div>
-                        <div class="wci-thread-actions">
-                            <template x-if="canManageLock()">
-                                <button type="button" @click="close()" class="wci-btn wci-btn-outline wci-btn-sm">
-                                    <i class="ri-close-circle-line"></i>
-                                    <span x-text="i18n.close_chat"></span>
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="wci-thread" x-ref="thread">
-                        <template x-for="msg in messages" :key="msg.id">
-                            <div class="wci-msg" :class="'wci-msg-' + msg.sender_type">
-                                <template x-if="msg.sender_type === 'system'">
-                                    <div class="wci-msg-system" x-text="msg.body"></div>
-                                </template>
-                                <template x-if="msg.sender_type !== 'system'">
-                                    <div class="wci-msg-bubble">
-                                        <div class="wci-msg-body" x-text="msg.body"></div>
-                                        <div class="wci-msg-time" x-text="formatTime(msg.created_at)"></div>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-                    </div>
-
-                    <div class="wci-composer">
-                        <template x-if="!isMyClaim()">
-                            <div class="wci-composer-locked">
-                                <template x-if="active.conversation?.status === 'pending' || active.conversation?.status === 'bot'">
-                                    <button type="button" @click="claim(active.conversation.uuid)" class="wci-btn wci-btn-primary">
-                                        <i class="ri-hand-heart-line"></i>
-                                        <span x-text="i18n.claim_to_reply"></span>
-                                    </button>
-                                </template>
-                                <template x-if="active.conversation?.status === 'assigned'">
-                                    <div class="wci-composer-locked-msg">
-                                        <i class="ri-lock-line"></i>
-                                        <span x-text="i18n.locked_by_agent"></span>
-                                    </div>
-                                </template>
-                                <template x-if="active.conversation?.status === 'closed'">
-                                    <div class="wci-composer-locked-msg">
-                                        <i class="ri-close-circle-line"></i>
-                                        <span x-text="i18n.chat_closed"></span>
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-                        <template x-if="isMyClaim()">
-                            <div class="wci-composer-wrap">
-                                <textarea
-                                    x-model="composer"
-                                    @keydown.enter.prevent="sendMessage()"
-                                    :placeholder="i18n.composer_placeholder"
-                                    rows="1"
-                                    class="wci-composer-input"></textarea>
-                                <button type="button" @click="sendMessage()" :disabled="!composer.trim() || sending" class="wci-btn wci-btn-primary wci-composer-send">
-                                    <i class="ri-send-plane-2-line"></i>
-                                </button>
-                            </div>
-                        </template>
                     </div>
                 </div>
             </template>
         </div>
+    </aside>
 
-        {{-- ── RIGHT: visitor info panel ─────────────────────────────── --}}
-        <template x-if="activeUuid">
-            <div class="wci-col wci-col-info">
-                <div class="wci-info-title" x-text="i18n.visitor_info"></div>
-                <template x-if="active.visitor?.name">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.name"></div>
-                        <div class="wci-info-value" x-text="active.visitor.name"></div>
-                    </div>
-                </template>
-                <template x-if="active.visitor?.email">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.email"></div>
-                        <div class="wci-info-value" x-text="active.visitor.email"></div>
-                    </div>
-                </template>
-                <template x-if="active.meta?.page_url">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.page"></div>
-                        <div class="wci-info-value wci-info-truncate" x-text="active.meta.page_url" :title="active.meta.page_url"></div>
-                    </div>
-                </template>
-                <template x-if="active.meta?.referrer">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.referrer"></div>
-                        <div class="wci-info-value wci-info-truncate" x-text="active.meta.referrer" :title="active.meta.referrer"></div>
-                    </div>
-                </template>
-                <template x-if="active.meta?.user_agent">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.browser"></div>
-                        <div class="wci-info-value wci-info-truncate" x-text="active.meta.user_agent" :title="active.meta.user_agent"></div>
-                    </div>
-                </template>
-                <template x-if="active.meta?.ip">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.ip"></div>
-                        <div class="wci-info-value" x-text="active.meta.ip"></div>
-                    </div>
-                </template>
-                <template x-if="active.conversation?.created_at">
-                    <div class="wci-info-row">
-                        <div class="wci-info-label" x-text="i18n.started_at"></div>
-                        <div class="wci-info-value" x-text="formatDateTime(active.conversation.created_at)"></div>
-                    </div>
-                </template>
+    {{-- =========================================================
+         MIDDLE THREAD
+    ========================================================== --}}
+    <section class="cw-thread">
+
+        <template x-if="!activeUuid">
+            <div class="cw-empty" style="flex:1;">
+                <i class="ri-chat-3-line"></i>
+                <div x-text="i18n.select_conversation"></div>
             </div>
         </template>
 
-    </div>
+        <template x-if="activeUuid">
+            <div style="display:flex; flex-direction:column; min-height:0; flex:1;">
+
+                <header class="cw-thread-head">
+                    <div class="cw-thread-contact">
+                        <div class="cw-avatar cw-avatar-lg" x-text="visitorInitials(active.conversation || active.visitor)"></div>
+                        <div class="cw-thread-copy">
+                            <div class="cw-thread-name" x-text="active.visitor?.name || i18n.anonymous"></div>
+                            <div class="cw-thread-meta">
+                                <span class="cw-state-badge" :class="stateBadgeClass(active.conversation?.status)" x-text="i18n['status_' + (active.conversation?.status || 'bot')]"></span>
+                                <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
+                                    <span class="cw-dot-sep"></span>
+                                </template>
+                                <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
+                                    <span x-text="active.conversation.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + active.conversation.claimer.name)"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cw-thread-actions">
+                        <span class="cw-conn-badge" :class="wsConnected ? 'is-on' : 'is-off'">
+                            <span class="cw-conn-dot"></span>
+                            <span x-text="wsConnected ? i18n.online : i18n.offline"></span>
+                        </span>
+                        <template x-if="canManageLock()">
+                            <button type="button" @click="close()" class="cw-close-btn">
+                                <i class="ri-close-circle-line"></i>
+                                <span x-text="i18n.close_chat"></span>
+                            </button>
+                        </template>
+                    </div>
+                </header>
+
+                <div class="cw-stage" x-ref="thread">
+                    <template x-for="msg in messages" :key="msg.id">
+                        <div>
+                            <template x-if="msg.sender_type === 'system'">
+                                <div class="cw-date-sep"><span x-text="msg.body"></span></div>
+                            </template>
+                            <template x-if="msg.sender_type !== 'system'">
+                                <div class="cw-msg" :class="msg.sender_type === 'visitor' ? 'cw-msg-in' : 'cw-msg-out'">
+                                    <template x-if="msg.sender_type === 'visitor'">
+                                        <div class="cw-msg-avatar" x-text="visitorInitials(active.conversation || active.visitor)"></div>
+                                    </template>
+                                    <div class="cw-msg-stack">
+                                        <div class="cw-bubble" :class="msg.sender_type === 'visitor' ? 'cw-bubble-in' : 'cw-bubble-out'">
+                                            <div class="cw-msg-body" x-text="msg.body"></div>
+                                            <div class="cw-msg-foot">
+                                                <span x-text="formatTime(msg.created_at)"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Composer / claim CTA / closed banner --}}
+                <div class="cw-composer-wrap">
+                    <template x-if="active.conversation?.status === 'closed'">
+                        <div class="cw-closed-banner">
+                            <i class="ri-lock-line"></i>
+                            <span x-text="i18n.chat_closed"></span>
+                        </div>
+                    </template>
+
+                    <template x-if="active.conversation?.status !== 'closed' && !isMyClaim()">
+                        <div>
+                            <template x-if="active.conversation?.status === 'pending' || active.conversation?.status === 'bot'">
+                                <button type="button" @click="claim(active.conversation.uuid)" class="cw-claim-btn">
+                                    <i class="ri-hand-heart-line"></i>
+                                    <span x-text="i18n.claim_to_reply"></span>
+                                </button>
+                            </template>
+                            <template x-if="active.conversation?.status === 'assigned'">
+                                <div class="cw-closed-banner">
+                                    <i class="ri-lock-line"></i>
+                                    <span x-text="i18n.locked_by_agent"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="active.conversation?.status !== 'closed' && isMyClaim()">
+                        <div class="cw-composer">
+                            <textarea
+                                x-model="composer"
+                                @keydown.enter.prevent="sendMessage()"
+                                :placeholder="i18n.composer_placeholder"
+                                rows="1"
+                                class="cw-textarea"></textarea>
+                            <button type="button" @click="sendMessage()" :disabled="!composer.trim() || sending" class="cw-send">
+                                <i class="ri-send-plane-2-line"></i>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+    </section>
+
+    {{-- =========================================================
+         RIGHT RAIL — Visitor info
+    ========================================================== --}}
+    <aside class="cw-side" x-show="activeUuid" x-cloak>
+        <div class="cw-profile">
+            <div class="cw-profile-avatar" x-text="visitorInitials(active.conversation || active.visitor)"></div>
+            <div class="cw-profile-name" x-text="active.visitor?.name || i18n.anonymous"></div>
+            <template x-if="active.visitor?.email">
+                <div class="cw-profile-company" x-text="active.visitor.email"></div>
+            </template>
+        </div>
+
+        <div class="cw-side-card">
+            <div class="cw-side-panel">
+                <div style="font-size:.75rem; font-weight:800; color:#0f172a; margin-bottom:8px; letter-spacing:.03em; text-transform:uppercase;" x-text="i18n.visitor_info"></div>
+
+                <template x-if="active.meta?.page_url">
+                    <div class="cw-meta-row">
+                        <span x-text="i18n.page"></span>
+                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.page_url" :title="active.meta.page_url"></strong>
+                    </div>
+                </template>
+                <template x-if="active.meta?.referrer">
+                    <div class="cw-meta-row">
+                        <span x-text="i18n.referrer"></span>
+                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.referrer" :title="active.meta.referrer"></strong>
+                    </div>
+                </template>
+                <template x-if="active.meta?.user_agent">
+                    <div class="cw-meta-row">
+                        <span x-text="i18n.browser"></span>
+                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.user_agent" :title="active.meta.user_agent"></strong>
+                    </div>
+                </template>
+                <template x-if="active.meta?.ip">
+                    <div class="cw-meta-row">
+                        <span x-text="i18n.ip"></span>
+                        <strong x-text="active.meta.ip"></strong>
+                    </div>
+                </template>
+                <template x-if="active.conversation?.created_at">
+                    <div class="cw-meta-row">
+                        <span x-text="i18n.started_at"></span>
+                        <strong x-text="formatDateTime(active.conversation.created_at)"></strong>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </aside>
+
 </div>
 
 <script>
@@ -313,16 +339,13 @@ function webchatInbox() {
             this.loadList();
             this.subscribePresence();
 
-            // Poll list as a fallback for missed broadcasts:
-            //   - 15s when WebSocket is up (list is mostly kept fresh via Echo)
-            //   - 15s when it's down too, but paired with the 6s thread poll
-            //     started per-conversation in openRow(). That keeps the open
-            //     thread lively without hammering the list endpoint.
+            // Poll list every 15s as a broadcast fallback. When a thread is
+            // open, the 6s thread poll from _startThreadPoll takes over the
+            // per-conversation freshness so the list poll can stay slow.
             this._pollTimer = setInterval(() => {
                 this.loadList(true);
             }, 15000);
 
-            // Track echo connection state
             if (window._echoStateListeners) {
                 window._echoStateListeners.push((c) => { this.wsConnected = c; });
             }
@@ -336,9 +359,6 @@ function webchatInbox() {
             if (this._threadPoll) clearInterval(this._threadPoll);
         },
 
-        // Poll the currently-open thread every 6s when the WebSocket is not
-        // connected. Tick body checks wsConnected so it idles automatically
-        // as soon as Echo reconnects — no need to tear down / recreate.
         _startThreadPoll() {
             if (this._threadPoll) return;
             this._threadPoll = setInterval(() => {
@@ -365,14 +385,12 @@ function webchatInbox() {
                     if (this.isMyClaim()) this.markRead(this.activeUuid);
                     this.$nextTick(() => this.scrollThreadBottom());
                 }
-                // Sync status changes too (e.g. someone else closed it)
                 if (data.conversation && this.active.conversation && data.conversation.status !== this.active.conversation.status) {
                     this.active.conversation = data.conversation;
                 }
             } catch (e) { /* silent — next tick will retry */ }
         },
 
-        // ─── list ──────────────────────────────────────────────────────
         setFilter(f) {
             if (this.filter === f) return;
             this.filter = f;
@@ -398,7 +416,6 @@ function webchatInbox() {
             }
         },
 
-        // ─── open + fetch full conversation ────────────────────────────
         async openRow(conv) {
             if (this.activeUuid === conv.uuid) return;
             this.activeUuid = conv.uuid;
@@ -419,17 +436,9 @@ function webchatInbox() {
                 };
                 this.messages = data.messages || [];
 
-                // Subscribe to the private thread channel — visitor auth for
-                // widget side happens through /api/webchat/broadcasting/auth;
-                // agents authorize via the framework's /broadcasting/auth.
                 this.subscribeThread(conv.uuid);
-
-                // HTTP-poll fallback for missed messages when Reverb is down.
-                // The loop itself checks wsConnected on every tick, so it goes
-                // idle automatically once WebSocket subscribes.
                 this._startThreadPoll();
 
-                // Mark visitor messages as read (only for the claimer)
                 if (this.isMyClaim()) this.markRead(conv.uuid);
 
                 await this.$nextTick();
@@ -441,7 +450,6 @@ function webchatInbox() {
             }
         },
 
-        // ─── mutations ─────────────────────────────────────────────────
         async claim(uuid) {
             try {
                 const r = await this.post(this.claimUrlTpl.replace('__UUID__', uuid));
@@ -454,7 +462,6 @@ function webchatInbox() {
                 const data = await r.json();
                 window.showToast?.('success', this.i18n.claim_success);
 
-                // Patch list row locally
                 const idx = this.conversations.findIndex(c => c.uuid === uuid);
                 if (idx !== -1) {
                     this.conversations[idx] = {
@@ -493,7 +500,6 @@ function webchatInbox() {
                 const r = await this.post(this.closeUrlTpl.replace('__UUID__', this.activeUuid));
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 window.showToast?.('success', this.i18n.close_success);
-                // The Closed broadcast + MessageSent will patch the UI. Refresh list too.
                 this.loadList(true);
             } catch (e) {
                 console.error('[webchat] close failed', e);
@@ -525,9 +531,6 @@ function webchatInbox() {
 
                 this.composer = '';
 
-                // Append locally with sender name so it renders instantly.
-                // The MessageSent broadcast that follows will be de-duplicated
-                // in handleThreadMessage by id.
                 if (!this.messages.some(m => m.id === data.message.id)) {
                     this.messages.push({
                         id:          data.message.id,
@@ -552,7 +555,6 @@ function webchatInbox() {
             try { await this.post(this.readUrlTpl.replace('__UUID__', uuid)); } catch (e) {}
         },
 
-        // ─── real-time subscriptions ───────────────────────────────────
         subscribePresence() {
             if (!window.Echo || typeof window.Echo.join !== 'function') return;
             try {
@@ -578,7 +580,6 @@ function webchatInbox() {
             }
         },
 
-        // ─── broadcast handlers ────────────────────────────────────────
         onRequested(payload) {
             const conv = payload.conversation;
             const idx = this.conversations.findIndex(c => c.uuid === conv.uuid);
@@ -688,7 +689,6 @@ function webchatInbox() {
             }
         },
 
-        // ─── helpers ───────────────────────────────────────────────────
         post(url, body = {}) {
             return fetch(url, {
                 method: 'POST',
@@ -733,13 +733,39 @@ function webchatInbox() {
             return this.i18n.visitor_prefix + (conv.uuid ? conv.uuid.slice(0, 6) : '');
         },
 
-        statusBadgeClass(status) {
+        // Two-letter initials for the round avatar. Falls back to a globe glyph
+        // when no name and no uuid are available.
+        visitorInitials(src) {
+            if (!src) return '·';
+            const name = src.visitor_name || src.name || '';
+            if (name) {
+                const parts = name.trim().split(/\s+/);
+                const a = parts[0]?.[0] || '';
+                const b = parts.length > 1 ? parts[parts.length - 1][0] : '';
+                return (a + b).toUpperCase() || '·';
+            }
+            const uuid = src.uuid || '';
+            return uuid ? uuid.slice(0, 2).toUpperCase() : '·';
+        },
+
+        // Rail-row pill (small)
+        statePillClass(status) {
             return ({
-                bot:      'wci-badge-gray',
-                pending:  'wci-badge-orange',
-                assigned: 'wci-badge-blue',
-                closed:   'wci-badge-gray',
-            })[status] || 'wci-badge-gray';
+                bot:      'cw-pill-closed',
+                pending:  'cw-pill-pool',
+                assigned: 'cw-pill-claimed',
+                closed:   'cw-pill-closed',
+            })[status] || 'cw-pill-closed';
+        },
+
+        // Thread-header state badge (larger)
+        stateBadgeClass(status) {
+            return ({
+                bot:      'cw-state-neutral',
+                pending:  'cw-state-pool',
+                assigned: 'cw-state-claimed',
+                closed:   'cw-state-closed',
+            })[status] || 'cw-state-neutral';
         },
 
         timeAgo(iso) {
@@ -776,208 +802,543 @@ function webchatInbox() {
 
 @push('styles')
 <style>
-    /* ── WebChat inbox (wci-) scoped styles ─────────────────────────── */
-    .wci { display: flex; flex-direction: column; height: 100%; }
+/* ============================================================
+   CHAT WORKSPACE — mirrors admin/conversations/show.blade.php
+   (kept inline here so the WhatsApp show page stays untouched)
+============================================================ */
+.cw-root {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr) 340px;
+    height: calc(100vh - var(--topbar-height, 64px));
+    background: #f6f7fb;
+    overflow: hidden;
+}
 
-    .wci-conn {
-        display: inline-flex; align-items: center; gap: .5rem;
-        padding: .25rem .625rem; border-radius: 999px;
-        font-size: .75rem; font-weight: 600;
-    }
-    .wci-conn-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .wci-conn-on  { background: rgba(16,185,129,.1); color: var(--green); }
-    .wci-conn-on .wci-conn-dot  { background: var(--green); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
-    .wci-conn-off { background: rgba(107,114,128,.1); color: var(--text-muted); }
-    .wci-conn-off .wci-conn-dot { background: var(--text-muted); }
+/* ---- LEFT RAIL ---- */
+.cw-rail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #ffffff;
+    border-right: 1px solid #e6e8ee;
+}
+.cw-rail-head {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid #eef0f4;
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.cw-rail-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.cw-rail-title span:first-child {
+    font-weight: 700;
+    font-size: .95rem;
+    color: #0f172a;
+}
+.cw-rail-count {
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+.cw-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+}
+.cw-tabs button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.cw-tabs button:hover { color: #0f172a; }
+.cw-tabs button.active {
+    background: #fff;
+    color: #4338ca;
+    box-shadow: 0 1px 3px rgba(15,23,42,.06);
+}
+.cw-tab-dot {
+    background: #ef4444; color: #fff;
+    font-size: .6rem; font-weight: 800;
+    padding: 1px 6px; border-radius: 999px;
+    line-height: 1;
+}
+.cw-rail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+.cw-row {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f4f5f8;
+    cursor: pointer;
+    transition: background .12s;
+    position: relative;
+}
+.cw-row:hover { background: #f8fafc; }
+.cw-row.active {
+    background: linear-gradient(90deg, #eef2ff, #f5f7ff);
+}
+.cw-row.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: #6366f1;
+}
+.cw-row-avatar {
+    width: 40px; height: 40px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+    color: #fff;
+    font-weight: 700;
+    font-size: .8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.cw-row-body { flex: 1; min-width: 0; }
+.cw-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+.cw-row-name {
+    font-size: .88rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cw-row-time {
+    font-size: .7rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+    font-weight: 500;
+}
+.cw-row-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+.cw-row-preview {
+    font-size: .78rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+.cw-row-meta {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.cw-pill {
+    font-size: .62rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.cw-pill-pool    { background: rgba(245,158,11,.12); color: #b45309; }
+.cw-pill-claimed { background: rgba(59,130,246,.12); color: #1d4ed8; }
+.cw-pill-closed  { background: rgba(100,116,139,.12); color: #475569; }
+.cw-row-instance {
+    font-size: .68rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cw-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 12px;
+    color: #94a3b8;
+    text-align: center;
+    font-size: .82rem;
+}
+.cw-empty i { font-size: 2.2rem; opacity: .5; }
 
-    .wci-grid {
-        display: grid;
-        grid-template-columns: 340px 1fr 300px;
-        gap: 1rem;
-        margin-top: 1rem;
-        min-height: calc(100vh - 220px);
-    }
-    @media (max-width: 1280px) { .wci-grid { grid-template-columns: 320px 1fr; } .wci-col-info { display: none; } }
-    @media (max-width: 900px)  { .wci-grid { grid-template-columns: 1fr; } }
+/* ---- MIDDLE THREAD ---- */
+.cw-thread {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #ffffff;
+    border-right: 1px solid #e6e8ee;
+}
+.cw-thread-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eef0f4;
+    background: #fff;
+    flex-wrap: wrap;
+}
+.cw-thread-contact {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+.cw-avatar {
+    width: 44px; height: 44px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #14b8a6, #059669);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .85rem;
+    flex-shrink: 0;
+}
+.cw-avatar-lg { width: 46px; height: 46px; }
+.cw-thread-copy { min-width: 0; }
+.cw-thread-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cw-thread-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .76rem;
+    color: #64748b;
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+.cw-dot-sep {
+    width: 3px; height: 3px; border-radius: 999px; background: #cbd5e1; flex-shrink: 0;
+}
+.cw-thread-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.cw-state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.cw-state-pool    { background: rgba(245,158,11,.14); color: #b45309; }
+.cw-state-claimed { background: rgba(59,130,246,.14); color: #1d4ed8; }
+.cw-state-closed  { background: rgba(100,116,139,.14); color: #475569; }
+.cw-state-neutral { background: rgba(100,116,139,.10); color: #64748b; }
 
-    .wci-col {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius-lg);
-        display: flex; flex-direction: column;
-        overflow: hidden;
-    }
+.cw-conn-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+}
+.cw-conn-badge .cw-conn-dot {
+    width: 7px; height: 7px; border-radius: 999px;
+}
+.cw-conn-badge.is-on  { background: rgba(34,197,94,.14);  color: #15803d; }
+.cw-conn-badge.is-on  .cw-conn-dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
+.cw-conn-badge.is-off { background: rgba(148,163,184,.16); color: #475569; }
+.cw-conn-badge.is-off .cw-conn-dot { background: #94a3b8; }
 
-    /* Tabs */
-    .wci-tabs {
-        display: flex; gap: .25rem;
-        padding: .625rem; border-bottom: 1px solid var(--card-border);
-        background: var(--page-bg);
-    }
-    .wci-tab {
-        flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .375rem;
-        padding: .5rem .75rem; border-radius: var(--radius);
-        font-size: .8125rem; font-weight: 500; color: var(--text-secondary);
-        background: transparent; border: none; cursor: pointer;
-        transition: var(--transition);
-    }
-    .wci-tab:hover  { background: var(--card-bg); color: var(--text-primary); }
-    .wci-tab.active { background: var(--brand); color: #fff; }
-    .wci-tab-badge {
-        background: rgba(255,255,255,.25); color: inherit;
-        padding: 1px 6px; border-radius: 999px; font-size: .6875rem; font-weight: 700;
-        min-width: 1.25rem; text-align: center;
-    }
-    .wci-tab:not(.active) .wci-tab-badge { background: var(--orange-bg); color: var(--orange); }
+.cw-close-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;
+    padding: 6px 12px; border-radius: 8px;
+    font-size: .78rem; font-weight: 600;
+    cursor: pointer; transition: all .12s;
+}
+.cw-close-btn:hover { background: #fee2e2; }
+.cw-close-btn i { font-size: 1rem; }
 
-    /* List */
-    .wci-list {
-        flex: 1; overflow-y: auto; padding: .25rem;
-    }
-    .wci-row {
-        padding: .75rem .875rem; border-radius: var(--radius);
-        cursor: pointer; transition: var(--transition);
-        border: 1px solid transparent;
-    }
-    .wci-row:hover        { background: var(--page-bg); }
-    .wci-row-active       { background: var(--brand-xlight); border-color: rgba(16,185,129,.25); }
-    .wci-row-active:hover { background: var(--brand-xlight); }
-    .wci-row-locked       { opacity: .65; cursor: not-allowed; }
+/* ---- MESSAGES ---- */
+.cw-stage {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 24px 14px;
+    background:
+        radial-gradient(circle at 30% 10%, rgba(99,102,241,.05), transparent 30%),
+        radial-gradient(circle at 80% 90%, rgba(16,185,129,.05), transparent 30%),
+        #fafbfc;
+}
+.cw-date-sep {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+}
+.cw-date-sep span {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.92);
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: .7rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(15,23,42,.04);
+}
+.cw-msg {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.cw-msg-out { justify-content: flex-end; }
+.cw-msg-out .cw-msg-stack { align-items: flex-end; }
+.cw-msg-avatar {
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #14b8a6, #059669);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .62rem; font-weight: 700;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+.cw-msg-stack {
+    max-width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.cw-bubble {
+    padding: 9px 13px;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04);
+    font-size: .88rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+.cw-bubble-in {
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid #e6e8ee;
+    border-bottom-left-radius: 4px;
+}
+.cw-bubble-out {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+.cw-msg-body { white-space: pre-wrap; }
+.cw-msg-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 4px;
+    font-size: .65rem;
+    opacity: .75;
+}
 
-    .wci-row-head    { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
-    .wci-row-name    { font-weight: 600; font-size: .875rem; color: var(--text-primary); flex: 1; min-width: 0;
-                       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .wci-row-time    { font-size: .6875rem; color: var(--text-muted); flex-shrink: 0; }
-    .wci-row-preview { font-size: .8125rem; color: var(--text-secondary); margin: .25rem 0;
-                       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .wci-row-foot    { display: flex; align-items: center; gap: .5rem; }
-    .wci-row-claimer { font-size: .75rem; color: var(--text-muted); }
+/* ---- COMPOSER ---- */
+.cw-composer-wrap {
+    border-top: 1px solid #eef0f4;
+    background: #fff;
+    padding: 12px 18px 16px;
+}
+.cw-composer {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 6px 6px 6px 8px;
+    transition: all .15s;
+}
+.cw-composer:focus-within {
+    border-color: #6366f1;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+.cw-textarea {
+    flex: 1;
+    border: none;
+    background: transparent;
+    resize: none;
+    padding: 10px 6px;
+    font-size: .88rem;
+    line-height: 1.5;
+    max-height: 160px;
+    outline: none;
+    color: #0f172a;
+    font-family: inherit;
+}
+.cw-textarea::placeholder { color: #94a3b8; }
+.cw-send {
+    width: 40px; height: 40px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem;
+    box-shadow: 0 4px 10px rgba(99,102,241,.3);
+    transition: all .15s;
+}
+.cw-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(99,102,241,.4); }
+.cw-send:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
 
-    /* Badges */
-    .wci-badge {
-        display: inline-flex; align-items: center;
-        padding: 2px 8px; border-radius: 999px;
-        font-size: .6875rem; font-weight: 600;
-    }
-    .wci-badge-gray   { background: var(--gray-bg);   color: var(--gray); }
-    .wci-badge-orange { background: var(--orange-bg); color: var(--orange); }
-    .wci-badge-blue   { background: var(--blue-bg);   color: var(--blue); }
-    .wci-badge-green  { background: var(--green-bg);  color: var(--green); }
+.cw-closed-banner {
+    padding: 14px;
+    text-align: center;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: .82rem;
+    font-weight: 600;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.cw-claim-btn {
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 6px 16px rgba(99,102,241,.28);
+    transition: all .15s;
+}
+.cw-claim-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,.35); }
 
-    /* Empty states */
-    .wci-empty, .wci-empty-thread {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .75rem; padding: 2rem 1rem; color: var(--text-muted);
-        flex: 1; text-align: center;
-    }
-    .wci-empty-icon { font-size: 2.5rem; opacity: .35; }
+/* ---- RIGHT RAIL ---- */
+.cw-side {
+    background: #fff;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+.cw-profile {
+    background: linear-gradient(160deg, #4338ca 0%, #6366f1 50%, #0ea5e9 100%);
+    color: #fff;
+    padding: 22px 18px 18px;
+    border-radius: 18px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(67,56,202,.22);
+}
+.cw-profile-avatar {
+    width: 72px; height: 72px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 700;
+    margin: 0 auto 10px;
+    border: 2px solid rgba(255,255,255,.3);
+}
+.cw-profile-name {
+    font-size: 1.15rem; font-weight: 800;
+    margin-bottom: 2px;
+}
+.cw-profile-company {
+    font-size: .82rem; font-weight: 600;
+    opacity: .9;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
 
-    /* Thread */
-    .wci-thread-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-    .wci-thread-head {
-        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-        padding: .875rem 1.125rem; border-bottom: 1px solid var(--card-border);
-        background: var(--card-bg);
-    }
-    .wci-thread-name    { font-size: .9375rem; font-weight: 600; color: var(--text-primary); }
-    .wci-thread-meta    { display: flex; align-items: center; gap: .5rem; margin-top: .25rem; }
-    .wci-thread-claimer { font-size: .75rem; color: var(--text-muted); }
-    .wci-thread-actions { display: flex; gap: .5rem; }
+.cw-side-card {
+    background: #fff;
+    border: 1px solid #e6e8ee;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.cw-side-panel { padding: 14px 16px; }
+.cw-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: .8rem;
+}
+.cw-meta-row:last-child { border-bottom: 0; }
+.cw-meta-row span { color: #64748b; }
+.cw-meta-row strong { color: #0f172a; text-align: right; font-weight: 600; }
 
-    .wci-thread {
-        flex: 1; overflow-y: auto;
-        padding: 1rem 1.25rem;
-        display: flex; flex-direction: column; gap: .5rem;
-        background: var(--page-bg);
-    }
-    .wci-msg              { display: flex; }
-    .wci-msg-visitor      { justify-content: flex-start; }
-    .wci-msg-agent        { justify-content: flex-end; }
-    .wci-msg-system       { justify-content: center; }
-    .wci-msg-system > *   { }
-    .wci-msg-system-single-msg { }
+/* Spinner (matches the app's utility) */
+.spinner {
+    width: 22px; height: 22px;
+    border: 2.5px solid #e2e8f0;
+    border-top-color: #6366f1;
+    border-radius: 999px;
+    animation: cw-spin .8s linear infinite;
+}
+@keyframes cw-spin { to { transform: rotate(360deg); } }
 
-    .wci-msg-bubble {
-        max-width: 70%;
-        padding: .5rem .75rem;
-        border-radius: 12px;
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        box-shadow: var(--card-shadow);
-    }
-    .wci-msg-agent .wci-msg-bubble {
-        background: var(--brand);
-        color: #fff;
-        border-color: var(--brand);
-    }
-    .wci-msg-body    { font-size: .875rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
-    .wci-msg-time    { font-size: .6875rem; opacity: .7; margin-top: .25rem; text-align: right; }
-    .wci-msg-system > div, .wci-msg-system-single-msg {
-        font-size: .75rem; color: var(--text-muted);
-        background: var(--card-bg); padding: .25rem .625rem; border-radius: 999px;
-        border: 1px dashed var(--card-border);
-    }
-    .wci-msg-system { align-items: center; }
-
-    /* Composer */
-    .wci-composer {
-        border-top: 1px solid var(--card-border);
-        padding: .75rem 1rem;
-        background: var(--card-bg);
-    }
-    .wci-composer-wrap {
-        display: flex; gap: .5rem; align-items: flex-end;
-    }
-    .wci-composer-input {
-        flex: 1;
-        min-height: 40px; max-height: 120px;
-        padding: .5rem .75rem;
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius);
-        font-family: inherit; font-size: .875rem;
-        resize: none; outline: none;
-    }
-    .wci-composer-input:focus { border-color: var(--brand); }
-    .wci-composer-send { padding: .5rem .875rem; }
-    .wci-composer-locked {
-        display: flex; align-items: center; justify-content: center; gap: .5rem;
-        padding: .375rem;
-    }
-    .wci-composer-locked-msg {
-        display: inline-flex; align-items: center; gap: .5rem;
-        color: var(--text-muted); font-size: .8125rem;
-        padding: .5rem;
-    }
-
-    /* Info panel */
-    .wci-col-info { padding: 1rem 1.125rem; }
-    .wci-info-title {
-        font-size: .75rem; font-weight: 700; text-transform: uppercase;
-        color: var(--text-muted); letter-spacing: .5px; margin-bottom: .75rem;
-    }
-    .wci-info-row { padding: .5rem 0; border-bottom: 1px solid var(--card-border); }
-    .wci-info-row:last-child { border-bottom: none; }
-    .wci-info-label {
-        font-size: .6875rem; font-weight: 600; color: var(--text-muted);
-        text-transform: uppercase; letter-spacing: .3px; margin-bottom: .125rem;
-    }
-    .wci-info-value    { font-size: .8125rem; color: var(--text-primary); }
-    .wci-info-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    /* Buttons — self-contained; the app's .btn selectors aren't guaranteed to load here */
-    .wci-btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: .375rem;
-        padding: .5rem .875rem; border-radius: var(--radius);
-        font-size: .8125rem; font-weight: 500;
-        border: 1px solid transparent; cursor: pointer; transition: var(--transition);
-    }
-    .wci-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .wci-btn-primary { background: var(--brand); color: #fff; }
-    .wci-btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
-    .wci-btn-outline { background: transparent; color: var(--text-primary); border-color: var(--card-border); }
-    .wci-btn-outline:hover:not(:disabled) { background: var(--page-bg); }
-    .wci-btn-xs { padding: .25rem .625rem; font-size: .6875rem; }
-    .wci-btn-sm { padding: .375rem .75rem; font-size: .75rem; }
+/* ---- RESPONSIVE ---- */
+@media (max-width: 1280px) {
+    .cw-root { grid-template-columns: 280px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 1100px) {
+    .cw-root { grid-template-columns: 260px minmax(0, 1fr); }
+    .cw-side { display: none; }
+}
+@media (max-width: 820px) {
+    .cw-root { grid-template-columns: 1fr; }
+    .cw-rail { display: none; }
+}
 </style>
 @endpush
 @endsection
