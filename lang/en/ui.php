@@ -1720,6 +1720,9 @@ Always:
 
         'label_name'             => 'Internal name',
         'help_name'              => 'Only visible to your team.',
+        'label_header_subtitle'  => 'Header tagline',
+        'help_header_subtitle'   => 'Short line shown under the widget name (e.g. "We reply in a few minutes").',
+        'placeholder_header_subtitle' => 'e.g. We reply in a few minutes',
         'label_enabled'          => 'Widget enabled',
         'help_enabled'           => 'Turn off to hide the launcher from every page.',
 
@@ -1742,6 +1745,22 @@ Always:
         'help_launcher_text'     => 'A short call-to-action next to the launcher bubble.',
         'placeholder_launcher'   => 'e.g. Chat with us',
 
+        'label_launcher_icon'    => 'Launcher icon',
+        'help_launcher_icon'     => 'The icon shown inside the launcher bubble.',
+        'launcher_icon_chat'     => 'Chat',
+        'launcher_icon_message'  => 'Message',
+        'launcher_icon_help'     => 'Help',
+        'launcher_icon_sparkle'  => 'Sparkle',
+
+        'label_bubble_style'     => 'Bubble corners',
+        'help_bubble_style'      => 'Roundness of chat bubbles and the widget panel.',
+        'bubble_style_soft'      => 'Soft',
+        'bubble_style_rounded'   => 'Rounded',
+        'bubble_style_square'    => 'Square',
+
+        'label_show_branding'    => 'Show "Powered by wavadesk"',
+        'help_show_branding'     => 'Small credit line at the bottom of the widget. Uncheck to hide it on paid plans.',
+
         'label_allowed_domains'  => 'Allowed origins',
         'help_allowed_domains'   => 'Full origins where the widget may load. Leave empty to allow any origin (useful during development). Format: https://example.com',
         'placeholder_domain'     => 'https://your-site.com',
@@ -1755,6 +1774,7 @@ Always:
         'copied'                 => 'Copied to clipboard',
 
         'default_welcome'        => 'Hi there! How can we help you today?',
+        'default_subtitle'       => 'We reply in a few minutes',
         'default_offline'        => "We're offline right now. Leave a message and we'll get back to you soon.",
         'default_chip_pricing'   => 'Pricing',
         'default_chip_support'   => 'Support',

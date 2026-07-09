@@ -1720,6 +1720,9 @@ Toujours :
 
         'label_name'             => 'Nom interne',
         'help_name'              => 'Visible uniquement par votre équipe.',
+        'label_header_subtitle'  => 'Sous-titre d\'en-tête',
+        'help_header_subtitle'   => 'Ligne courte affichée sous le nom du widget (ex. « Nous répondons en quelques minutes »).',
+        'placeholder_header_subtitle' => 'ex. Nous répondons en quelques minutes',
         'label_enabled'          => 'Widget activé',
         'help_enabled'           => 'Désactivez pour masquer le lanceur sur toutes les pages.',
 
@@ -1742,6 +1745,22 @@ Toujours :
         'help_launcher_text'     => 'Court appel à l\'action affiché à côté du lanceur.',
         'placeholder_launcher'   => 'ex. Discutons',
 
+        'label_launcher_icon'    => 'Icône du lanceur',
+        'help_launcher_icon'     => 'L\'icône affichée à l\'intérieur du lanceur.',
+        'launcher_icon_chat'     => 'Bulle',
+        'launcher_icon_message'  => 'Message',
+        'launcher_icon_help'     => 'Aide',
+        'launcher_icon_sparkle'  => 'Étincelle',
+
+        'label_bubble_style'     => 'Coins des bulles',
+        'help_bubble_style'      => 'Arrondi des bulles de messages et du panneau.',
+        'bubble_style_soft'      => 'Doux',
+        'bubble_style_rounded'   => 'Arrondi',
+        'bubble_style_square'    => 'Carré',
+
+        'label_show_branding'    => 'Afficher « Propulsé par wavadesk »',
+        'help_show_branding'     => 'Petite mention en bas du widget. Décochez pour la masquer sur les offres payantes.',
+
         'label_allowed_domains'  => 'Origines autorisées',
         'help_allowed_domains'   => 'Origines complètes où le widget peut se charger. Laissez vide pour autoriser toute origine (utile en développement). Format : https://exemple.com',
         'placeholder_domain'     => 'https://votre-site.com',
@@ -1755,6 +1774,7 @@ Toujours :
         'copied'                 => 'Copié',
 
         'default_welcome'        => 'Bonjour ! Comment pouvons-nous vous aider aujourd\'hui ?',
+        'default_subtitle'       => 'Nous répondons en quelques minutes',
         'default_offline'        => 'Nous sommes hors ligne pour le moment. Laissez-nous un message et nous vous répondrons rapidement.',
         'default_chip_pricing'   => 'Tarifs',
         'default_chip_support'   => 'Support',

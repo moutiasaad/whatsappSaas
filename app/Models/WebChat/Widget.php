@@ -19,6 +19,7 @@ class Widget extends Model
         'tenant_id', 'public_key', 'name', 'enabled',
         'welcome_message', 'suggestions', 'pre_chat_ask_email',
         'offline_message', 'theme_color', 'position', 'launcher_text',
+        'header_subtitle', 'launcher_icon', 'bubble_style', 'show_branding',
         'allowed_domains',
     ];
 
@@ -26,6 +27,7 @@ class Widget extends Model
         'tenant_id'          => 'integer',
         'enabled'            => 'boolean',
         'pre_chat_ask_email' => 'boolean',
+        'show_branding'      => 'boolean',
         'suggestions'        => 'array',
         'allowed_domains'    => 'array',
     ];

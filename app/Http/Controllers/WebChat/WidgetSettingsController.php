@@ -35,6 +35,10 @@ class WidgetSettingsController extends Controller
             'theme_color'        => $data['theme_color'],
             'position'           => $data['position'],
             'launcher_text'      => $data['launcher_text'] ?: null,
+            'header_subtitle'    => $data['header_subtitle'] ?: null,
+            'launcher_icon'      => $data['launcher_icon'],
+            'bubble_style'       => $data['bubble_style'],
+            'show_branding'      => (bool) ($data['show_branding'] ?? false),
             'allowed_domains'    => $data['allowed_domains'] ?? [],
         ])->save();
 
@@ -68,6 +72,10 @@ class WidgetSettingsController extends Controller
                     'theme_color'        => '#2563eb',
                     'position'           => 'right',
                     'launcher_text'      => null,
+                    'header_subtitle'    => __('ui.webchat_settings.default_subtitle'),
+                    'launcher_icon'      => 'chat',
+                    'bubble_style'       => 'soft',
+                    'show_branding'      => true,
                     'allowed_domains'    => [],
                 ]
             );
@@ -103,6 +111,10 @@ class WidgetSettingsController extends Controller
             'theme_color'        => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'position'           => ['required', 'in:left,right'],
             'launcher_text'      => ['nullable', 'string', 'max:120'],
+            'header_subtitle'    => ['nullable', 'string', 'max:160'],
+            'launcher_icon'      => ['required', 'in:chat,message,help,sparkle'],
+            'bubble_style'       => ['required', 'in:soft,rounded,square'],
+            'show_branding'      => ['sometimes', 'boolean'],
             'allowed_domains'    => ['array', 'max:32'],
             'allowed_domains.*'  => ['string', 'regex:/^https?:\/\/[a-zA-Z0-9.\-]+(:[0-9]{1,5})?$/', 'max:255'],
         ], [

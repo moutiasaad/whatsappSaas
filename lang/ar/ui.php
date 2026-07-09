@@ -1676,6 +1676,9 @@ return [
 
         'label_name'             => 'اسم داخلي',
         'help_name'              => 'مرئي لفريقك فقط.',
+        'label_header_subtitle'  => 'العنوان الفرعي',
+        'help_header_subtitle'   => 'سطر قصير يظهر أسفل اسم الأداة (مثال: «نرد خلال دقائق»).',
+        'placeholder_header_subtitle' => 'مثال: نرد خلال دقائق',
         'label_enabled'          => 'الأداة مفعّلة',
         'help_enabled'           => 'أطفئ الأداة لإخفاء الزر من جميع الصفحات.',
 
@@ -1698,6 +1701,22 @@ return [
         'help_launcher_text'     => 'دعوة قصيرة تظهر بجانب الزر.',
         'placeholder_launcher'   => 'مثال: تحدث معنا',
 
+        'label_launcher_icon'    => 'أيقونة الزر',
+        'help_launcher_icon'     => 'الأيقونة التي تظهر داخل زر الأداة.',
+        'launcher_icon_chat'     => 'دردشة',
+        'launcher_icon_message'  => 'رسالة',
+        'launcher_icon_help'     => 'مساعدة',
+        'launcher_icon_sparkle'  => 'بريق',
+
+        'label_bubble_style'     => 'زوايا الفقاعات',
+        'help_bubble_style'      => 'استدارة فقاعات المحادثة ولوحة الأداة.',
+        'bubble_style_soft'      => 'ناعم',
+        'bubble_style_rounded'   => 'مستدير',
+        'bubble_style_square'    => 'مربع',
+
+        'label_show_branding'    => 'إظهار «مشغّل بواسطة wavadesk»',
+        'help_show_branding'     => 'سطر صغير أسفل الأداة. أزل التحديد لإخفائه في الخطط المدفوعة.',
+
         'label_allowed_domains'  => 'النطاقات المسموح بها',
         'help_allowed_domains'   => 'النطاقات الكاملة التي يمكن للأداة أن تعمل عليها. اتركها فارغة للسماح بأي نطاق (مفيد أثناء التطوير). الصيغة: https://example.com',
         'placeholder_domain'     => 'https://your-site.com',
@@ -1711,6 +1730,7 @@ return [
         'copied'                 => 'تم النسخ',
 
         'default_welcome'        => 'مرحبًا! كيف يمكننا مساعدتك اليوم؟',
+        'default_subtitle'       => 'نرد خلال دقائق',
         'default_offline'        => 'نحن خارج الدوام حاليًا. اترك لنا رسالة وسنعود إليك قريبًا.',
         'default_chip_pricing'   => 'الأسعار',
         'default_chip_support'   => 'الدعم',

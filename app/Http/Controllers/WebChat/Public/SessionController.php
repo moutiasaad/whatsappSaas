@@ -59,12 +59,16 @@ class SessionController extends Controller
             'visitor_token' => $visitor->token,
             'widget' => [
                 'name'               => $widget->name,
+                'header_subtitle'    => $widget->header_subtitle,
                 'welcome_message'    => $widget->welcome_message,
                 'suggestions'        => $widget->suggestions ?? [],
                 'offline_message'    => $widget->offline_message,
                 'theme_color'        => $widget->theme_color,
                 'position'           => $widget->position,
                 'launcher_text'      => $widget->launcher_text,
+                'launcher_icon'      => $widget->launcher_icon ?: 'chat',
+                'bubble_style'       => $widget->bubble_style ?: 'soft',
+                'show_branding'      => (bool) $widget->show_branding,
                 'pre_chat_ask_email' => (bool) $widget->pre_chat_ask_email,
             ],
             // Reverb credentials the widget needs to open a WebSocket. Values

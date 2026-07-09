@@ -21,6 +21,7 @@
 
     $initial = [
         'name'               => (string) old('name', $widget->name),
+        'header_subtitle'    => (string) old('header_subtitle', $widget->header_subtitle ?? ''),
         'enabled'            => (bool)   old('enabled', $widget->enabled),
         'welcome_message'    => (string) old('welcome_message', $widget->welcome_message),
         'suggestions'        => (array)  old('suggestions', $widget->suggestions ?? []),
@@ -29,6 +30,9 @@
         'theme_color'        => (string) old('theme_color', $widget->theme_color),
         'position'           => (string) old('position', $widget->position),
         'launcher_text'      => (string) old('launcher_text', $widget->launcher_text ?? ''),
+        'launcher_icon'      => (string) old('launcher_icon', $widget->launcher_icon ?: 'chat'),
+        'bubble_style'       => (string) old('bubble_style', $widget->bubble_style ?: 'soft'),
+        'show_branding'      => (bool)   old('show_branding', $widget->show_branding),
         'allowed_domains'    => (array)  old('allowed_domains', $widget->allowed_domains ?? []),
     ];
 
@@ -65,6 +69,16 @@
                             <input type="text" name="name" x-model="form.name" class="form-control @error('name') error @enderror" required maxlength="120">
                             @error('name') <div class="form-error">{{ $message }}</div> @enderror
                             <div class="form-help">{{ __('ui.webchat_settings.help_name') }}</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">{{ __('ui.webchat_settings.label_header_subtitle') }}</label>
+                            <input type="text" name="header_subtitle" x-model="form.header_subtitle"
+                                   class="form-control @error('header_subtitle') error @enderror"
+                                   maxlength="160"
+                                   :placeholder="'{{ __('ui.webchat_settings.placeholder_header_subtitle') }}'">
+                            @error('header_subtitle') <div class="form-error">{{ $message }}</div> @enderror
+                            <div class="form-help">{{ __('ui.webchat_settings.help_header_subtitle') }}</div>
                         </div>
 
                         <div class="form-group wcs-toggle-row">
@@ -183,6 +197,55 @@
                             @error('launcher_text') <div class="form-error">{{ $message }}</div> @enderror
                             <div class="form-help">{{ __('ui.webchat_settings.help_launcher_text') }}</div>
                         </div>
+
+                        <div class="form-group">
+                            <label class="form-label">{{ __('ui.webchat_settings.label_launcher_icon') }}</label>
+                            <div class="wcs-icon-row">
+                                @php
+                                    $iconOptions = [
+                                        'chat'    => 'ri-chat-3-line',
+                                        'message' => 'ri-message-2-line',
+                                        'help'    => 'ri-question-line',
+                                        'sparkle' => 'ri-sparkling-2-line',
+                                    ];
+                                @endphp
+                                @foreach ($iconOptions as $key => $rmi)
+                                    <label class="wcs-icon-tile" :class="form.launcher_icon === '{{ $key }}' ? 'wcs-icon-tile-active' : ''">
+                                        <input type="radio" name="launcher_icon" value="{{ $key }}" x-model="form.launcher_icon">
+                                        <i class="{{ $rmi }}"></i>
+                                        <span>{{ __('ui.webchat_settings.launcher_icon_' . $key) }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('launcher_icon') <div class="form-error">{{ $message }}</div> @enderror
+                            <div class="form-help">{{ __('ui.webchat_settings.help_launcher_icon') }}</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">{{ __('ui.webchat_settings.label_bubble_style') }}</label>
+                            <div class="wcs-radio-row wcs-radio-row-3">
+                                @foreach (['soft', 'rounded', 'square'] as $style)
+                                    <label class="wcs-radio" :class="form.bubble_style === '{{ $style }}' ? 'wcs-radio-active' : ''">
+                                        <input type="radio" name="bubble_style" value="{{ $style }}" x-model="form.bubble_style">
+                                        <span class="wcs-bubble-preview wcs-bubble-preview-{{ $style }}"></span>
+                                        <span>{{ __('ui.webchat_settings.bubble_style_' . $style) }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('bubble_style') <div class="form-error">{{ $message }}</div> @enderror
+                            <div class="form-help">{{ __('ui.webchat_settings.help_bubble_style') }}</div>
+                        </div>
+
+                        <div class="form-group wcs-toggle-row">
+                            <label class="wcs-toggle">
+                                <input type="checkbox" name="show_branding" value="1" x-model="form.show_branding">
+                                <span class="wcs-toggle-track"><span class="wcs-toggle-thumb"></span></span>
+                                <span class="wcs-toggle-labels">
+                                    <span class="wcs-toggle-label">{{ __('ui.webchat_settings.label_show_branding') }}</span>
+                                    <span class="wcs-toggle-help">{{ __('ui.webchat_settings.help_show_branding') }}</span>
+                                </span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -270,11 +333,15 @@
                 <div class="card wcs-card">
                     <div class="card-header"><div class="card-title"><i class="ri-eye-line"></i> {{ __('ui.webchat_settings.card_preview') }}</div></div>
                     <div class="card-body">
-                        <div class="wcs-preview-stage" :class="'wcs-preview-' + form.position">
+                        <div class="wcs-preview-stage"
+                             :class="['wcs-preview-' + form.position, 'wcs-preview-bubble-' + form.bubble_style]">
                             <div class="wcs-preview-card" x-show="form.enabled">
                                 <div class="wcs-preview-header" :style="'background:' + form.theme_color">
                                     <div class="wcs-preview-header-inner">
-                                        <div class="wcs-preview-title">Live Chat</div>
+                                        <div>
+                                            <div class="wcs-preview-title" x-text="form.name || 'Live Chat'"></div>
+                                            <div class="wcs-preview-subtitle" x-show="form.header_subtitle" x-text="form.header_subtitle"></div>
+                                        </div>
                                         <div class="wcs-preview-close"><i class="ri-close-line"></i></div>
                                     </div>
                                 </div>
@@ -286,13 +353,23 @@
                                         </template>
                                     </div>
                                 </div>
+                                <div class="wcs-preview-branding" x-show="form.show_branding">
+                                    <i class="ri-flashlight-line"></i>
+                                    <span>Powered by <b>wavadesk</b></span>
+                                </div>
                             </div>
 
                             <div class="wcs-preview-launcher" :style="'background:' + form.theme_color" x-show="form.enabled">
                                 <template x-if="form.launcher_text">
                                     <span class="wcs-preview-launcher-text" x-text="form.launcher_text"></span>
                                 </template>
-                                <i class="ri-chat-3-line wcs-preview-launcher-icon"></i>
+                                <i class="wcs-preview-launcher-icon"
+                                   :class="{
+                                       'ri-chat-3-line':      form.launcher_icon === 'chat',
+                                       'ri-message-2-line':   form.launcher_icon === 'message',
+                                       'ri-question-line':    form.launcher_icon === 'help',
+                                       'ri-sparkling-2-line': form.launcher_icon === 'sparkle'
+                                   }"></i>
                             </div>
 
                             <div class="wcs-preview-disabled" x-show="!form.enabled">
@@ -453,6 +530,7 @@ function webchatSettings() {
 
     /* Position radio */
     .wcs-radio-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .wcs-radio-row-3 { grid-template-columns: repeat(3, 1fr); }
     .wcs-radio {
         display: flex; align-items: center; gap: .5rem;
         border: 1px solid var(--card-border); border-radius: var(--radius);
@@ -464,6 +542,32 @@ function webchatSettings() {
     .wcs-radio:hover        { background: var(--page-bg); }
     .wcs-radio-active       { border-color: var(--brand); background: var(--brand-xlight); color: var(--brand-dark); }
     .wcs-radio-active i     { color: var(--brand); }
+
+    /* Bubble-shape swatch inside the bubble_style radio */
+    .wcs-bubble-preview {
+        display: inline-block; width: 26px; height: 16px;
+        background: var(--brand-xlight); border: 1px solid var(--brand);
+        flex-shrink: 0;
+    }
+    .wcs-bubble-preview-soft    { border-radius: 6px; }
+    .wcs-bubble-preview-rounded { border-radius: 14px; }
+    .wcs-bubble-preview-square  { border-radius: 2px; }
+
+    /* Icon-picker tiles */
+    .wcs-icon-row  { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+    .wcs-icon-tile {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: .25rem; padding: .625rem .375rem;
+        border: 1px solid var(--card-border); border-radius: var(--radius);
+        cursor: pointer; font-size: .75rem; color: var(--text-primary);
+        transition: var(--transition);
+    }
+    .wcs-icon-tile input   { position: absolute; opacity: 0; pointer-events: none; }
+    .wcs-icon-tile i       { font-size: 1.25rem; color: var(--text-muted); }
+    .wcs-icon-tile:hover                { background: var(--page-bg); }
+    .wcs-icon-tile-active               { border-color: var(--brand); background: var(--brand-xlight); color: var(--brand-dark); }
+    .wcs-icon-tile-active i             { color: var(--brand); }
+    @media (max-width: 480px) { .wcs-icon-row { grid-template-columns: repeat(2, 1fr); } }
 
     /* Copy row + snippet */
     .wcs-copy-row { display: flex; gap: .5rem; align-items: center; margin-top: .375rem; }
@@ -488,6 +592,8 @@ function webchatSettings() {
     .wcs-preview-header       { color: #fff; padding: .625rem .875rem; }
     .wcs-preview-header-inner { display: flex; justify-content: space-between; align-items: center; }
     .wcs-preview-title        { font-size: .875rem; font-weight: 600; }
+    .wcs-preview-subtitle     { font-size: .6875rem; opacity: .85; margin-top: 2px; line-height: 1.2;
+                                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
     .wcs-preview-close        { opacity: .8; font-size: 1rem; }
     .wcs-preview-body         { padding: .75rem .875rem; background: var(--card-bg); }
     .wcs-preview-welcome      { font-size: .8125rem; color: var(--text-primary); margin-bottom: .5rem; line-height: 1.4;
@@ -499,6 +605,20 @@ function webchatSettings() {
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         max-width: 130px;
     }
+    .wcs-preview-branding     {
+        display: flex; align-items: center; justify-content: center; gap: .25rem;
+        padding: .375rem; font-size: .625rem; color: var(--text-muted);
+        background: var(--card-bg); border-top: 1px solid var(--card-border);
+    }
+    .wcs-preview-branding i   { font-size: .75rem; }
+
+    /* Bubble-style variants applied to the preview card */
+    .wcs-preview-bubble-soft    .wcs-preview-card { border-radius: 12px; }
+    .wcs-preview-bubble-rounded .wcs-preview-card { border-radius: 20px; }
+    .wcs-preview-bubble-square  .wcs-preview-card { border-radius: 4px; }
+    .wcs-preview-bubble-soft    .wcs-preview-chip { border-radius: 999px; }
+    .wcs-preview-bubble-rounded .wcs-preview-chip { border-radius: 999px; }
+    .wcs-preview-bubble-square  .wcs-preview-chip { border-radius: 4px; }
 
     .wcs-preview-launcher {
         position: absolute; bottom: 20px; height: 48px;

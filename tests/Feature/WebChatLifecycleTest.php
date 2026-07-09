@@ -156,6 +156,40 @@ class WebChatLifecycleTest extends TestCase
             ->assertStatus(404);
     }
 
+    public function test_session_response_emits_appearance_fields(): void
+    {
+        $this->widget->update([
+            'header_subtitle' => 'We reply in a few minutes',
+            'launcher_icon'   => 'sparkle',
+            'bubble_style'    => 'rounded',
+            'show_branding'   => false,
+        ]);
+
+        $session = $this->postJson("/api/webchat/{$this->key}/session");
+        $session->assertOk()
+            ->assertJsonPath('widget.header_subtitle', 'We reply in a few minutes')
+            ->assertJsonPath('widget.launcher_icon',   'sparkle')
+            ->assertJsonPath('widget.bubble_style',    'rounded')
+            ->assertJsonPath('widget.show_branding',   false);
+
+        // A freshly-created widget with no explicit choices still emits
+        // safe fallbacks so the widget.js never receives null appearance keys.
+        $other = Widget::withoutGlobalScope('tenant')->create([
+            'tenant_id'       => $this->tenant->id + 100, // any distinct tenant id
+            'name'            => 'Bare',
+            'enabled'         => true,
+            'welcome_message' => 'Hi',
+            'suggestions'     => [],
+            'theme_color'     => '#000000',
+            'position'        => 'right',
+            'allowed_domains' => [],
+        ]);
+        $bare = $this->postJson("/api/webchat/{$other->public_key}/session");
+        $bare->assertOk()
+            ->assertJsonPath('widget.launcher_icon', 'chat')
+            ->assertJsonPath('widget.bubble_style',  'soft');
+    }
+
     public function test_release_stale_command_releases_idle_claims(): void
     {
         [$uuid, $conv] = $this->seedPendingConversation();
@@ -263,6 +297,10 @@ class WebChatLifecycleTest extends TestCase
             $t->string('theme_color', 16)->default('#2563eb');
             $t->string('position', 8)->default('right');
             $t->string('launcher_text', 120)->nullable();
+            $t->string('header_subtitle', 160)->nullable();
+            $t->string('launcher_icon', 16)->default('chat');
+            $t->string('bubble_style', 16)->default('soft');
+            $t->boolean('show_branding')->default(true);
             $t->json('allowed_domains')->nullable();
             $t->timestamps();
         });
