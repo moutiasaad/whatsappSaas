@@ -56,7 +56,7 @@ class MessageController extends Controller
             return $m;
         });
 
-        event(new WebChatMessageSent($message->fresh(['conversation'])));
+        rescue(fn () => event(new WebChatMessageSent($message->fresh(['conversation']))));
 
         return response()->json([
             'message' => [

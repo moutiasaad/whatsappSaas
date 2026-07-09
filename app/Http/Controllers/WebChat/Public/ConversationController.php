@@ -62,7 +62,7 @@ class ConversationController extends Controller
             $conversation->last_activity_at = now();
             $conversation->save();
 
-            event(new WebChatConversationRequested($conversation));
+            rescue(fn () => event(new WebChatConversationRequested($conversation)));
         }
 
         return response()->json([

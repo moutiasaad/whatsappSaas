@@ -52,10 +52,10 @@ class MessageController extends Controller
         });
 
         if ($justPromoted) {
-            event(new WebChatConversationRequested($conversation->fresh()));
+            rescue(fn () => event(new WebChatConversationRequested($conversation->fresh())));
         }
 
-        event(new WebChatMessageSent($message->fresh(['conversation'])));
+        rescue(fn () => event(new WebChatMessageSent($message->fresh(['conversation']))));
 
         return response()->json([
             'message' => [

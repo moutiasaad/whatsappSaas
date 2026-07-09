@@ -172,7 +172,7 @@ class ConversationController extends Controller
             ->where('uuid', $uuid)
             ->firstOrFail();
 
-        event(new WebChatConversationClaimed($conversation, $user));
+        rescue(fn () => event(new WebChatConversationClaimed($conversation, $user)));
 
         return response()->json([
             'conversation' => [
@@ -204,7 +204,7 @@ class ConversationController extends Controller
         $conversation->last_activity_at = now();
         $conversation->save();
 
-        event(new WebChatConversationReleased($conversation, $user));
+        rescue(fn () => event(new WebChatConversationReleased($conversation, $user)));
 
         return response()->json([
             'conversation' => [
@@ -250,8 +250,8 @@ class ConversationController extends Controller
         });
 
         $fresh = $conversation->fresh();
-        event(new WebChatMessageSent($systemMessage->fresh(['conversation'])));
-        event(new WebChatConversationClosed($fresh, $user));
+        rescue(fn () => event(new WebChatMessageSent($systemMessage->fresh(['conversation']))));
+        rescue(fn () => event(new WebChatConversationClosed($fresh, $user)));
 
         return response()->json([
             'conversation' => [
