@@ -1,19 +1,19 @@
 /*!
- * WavaDesk Web Live-Chat widget.
+ * TshlBot Web Live-Chat widget.
  * Vanilla JS, IIFE, no framework, no build step.
  * Ships as a committed static asset; git pull deploys it as-is.
  *
  * Embed:
- *   <script>window.WavadeskChat = { key: "wck_..." };</script>
+ *   <script>window.TshlBotChat = { key: "wck_..." };</script>
  *   <script src="https://your-app-domain/webchat/widget.js" async></script>
  */
 (function () {
     'use strict';
 
     // ── Config guard ──────────────────────────────────────────────────
-    var CONFIG = window.WavadeskChat || {};
+    var CONFIG = window.TshlBotChat || {};
     if (!CONFIG.key || typeof CONFIG.key !== 'string' || CONFIG.key.indexOf('wck_') !== 0) {
-        console.warn('WavadeskChat: missing or invalid window.WavadeskChat.key');
+        console.warn('TshlBotChat: missing or invalid window.TshlBotChat.key');
         return;
     }
     if (window.__wvchLoaded) return;      // prevent double-boot if snippet is pasted twice
@@ -123,7 +123,7 @@
             })
             .catch(function (e) {
                 S.booting = false;
-                console.error('WavadeskChat: session failed', e);
+                console.error('TshlBotChat: session failed', e);
                 throw e;
             });
         return S.bootingPromise;
@@ -286,7 +286,7 @@
                     S.status = 'closed'; S.view = 'closed'; render();
                 });
             } catch (e) {
-                console.warn('WavadeskChat: realtime subscribe failed', e);
+                console.warn('TshlBotChat: realtime subscribe failed', e);
             }
         });
     }
@@ -305,7 +305,7 @@
             pusherCbs = [];
         };
         s.onerror = function () {
-            console.warn('WavadeskChat: Pusher CDN failed, polling only');
+            console.warn('TshlBotChat: Pusher CDN failed, polling only');
             pusherCbs = [];
         };
         document.head.appendChild(s);
@@ -424,7 +424,7 @@
         if (S.widget && S.widget.show_branding) {
             panelKids.push(_('div', { class: 'wvch-branding' }, [
                 _('span', { class: 'wvch-branding-bolt', html: svg('bolt') }),
-                _('span', { html: 'Powered by <b>wavadesk</b>' })
+                _('span', { html: 'Powered by <b>TshlBot</b>' })
             ]));
         }
 
@@ -719,7 +719,7 @@
     }
 
     // Expose a tiny public API for debugging / programmatic control
-    window.WavadeskChat.open  = function () { if (!S.open) togglePanel(); };
-    window.WavadeskChat.close = function () { if (S.open)  togglePanel(); };
-    window.WavadeskChat.reset = function () { lsSet(LS_TOKEN, null); lsSet(LS_CONV, null); lsSet(LS_OPEN, null); location.reload(); };
+    window.TshlBotChat.open  = function () { if (!S.open) togglePanel(); };
+    window.TshlBotChat.close = function () { if (S.open)  togglePanel(); };
+    window.TshlBotChat.reset = function () { lsSet(LS_TOKEN, null); lsSet(LS_CONV, null); lsSet(LS_OPEN, null); location.reload(); };
 })();

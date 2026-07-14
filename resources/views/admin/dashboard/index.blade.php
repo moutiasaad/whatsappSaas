@@ -142,10 +142,12 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1.5rem">
+            {{-- TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances dashboard card disabled. Restore by uncommenting. --}}
+            {{--
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">{{ __('ui.dashboard_page.whatsapp_instances') }}</div>
-                    <a href="{{ route('admin.instances.index') }}" class="btn btn-ghost btn-sm">{{ __('ui.dashboard_page.manage') }}</a>
+                    <a href="{{ route($panelPrefix . '.instances.index') }}" class="btn btn-ghost btn-sm">{{ __('ui.dashboard_page.manage') }}</a>
                 </div>
                 <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.75rem">
                     @forelse($instances as $instance)
@@ -166,6 +168,8 @@
                     @endforelse
                 </div>
             </div>
+            --}}
+            {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
 
             <div class="card">
                 <div class="card-header">

@@ -1,0 +1,10 @@
+Seeded successfully!
++-------------+---------------------+----------+
+| Role        | Email               | Password |
++-------------+---------------------+----------+
+| Super Admin | super@platform.com  | password |
+| Admin       | admin@demo.com      | password |
+| Supervisor  | supervisor@demo.com | password |
+| Agent       | agent1@demo.com     | password |
+| Agent       | agent2@demo.com     | password |
++-------------+---------------------+----------+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $pageTitle ?? __('auth.login.sign_in') }} — {{ config('app.name', 'wavadesk') }}</title>
+    <title>{{ $pageTitle ?? __('auth.login.sign_in') }} — {{ config('app.name', 'TshlBot') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
@@ -15,8 +15,9 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --brand: #10b981;
-            --brand-dark: #059669;
+            --brand: #6366f1;
+            --brand-dark: #4f46e5;
+            --accent: #8b5cf6;
         }
 
         body {
@@ -43,8 +44,8 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse at 30% 50%, rgba(16,185,129,.15) 0%, transparent 60%),
-                        radial-gradient(ellipse at 80% 20%, rgba(5,150,105,.08) 0%, transparent 50%);
+            background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,.18) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(139,92,246,.12) 0%, transparent 50%);
             pointer-events: none;
         }
 
@@ -52,8 +53,8 @@
             display: inline-flex;
             align-items: center;
             gap: .375rem;
-            background: rgba(16,185,129,.1);
-            border: 1px solid rgba(16,185,129,.2);
+            background: rgba(99,102,241,.12);
+            border: 1px solid rgba(99,102,241,.22);
             color: var(--brand);
             font-size: .8125rem;
             font-weight: 500;
@@ -100,8 +101,8 @@
             width: 2rem;
             height: 2rem;
             border-radius: .5rem;
-            background: rgba(16,185,129,.12);
-            border: 1px solid rgba(16,185,129,.15);
+            background: rgba(99,102,241,.14);
+            border: 1px solid rgba(99,102,241,.18);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -206,7 +207,7 @@
 
         input:focus {
             border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(16,185,129,.12);
+            box-shadow: 0 0 0 3px rgba(99,102,241,.14);
         }
 
         .error-msg {
@@ -253,12 +254,12 @@
             font-family: inherit;
             cursor: pointer;
             transition: all .2s;
-            box-shadow: 0 4px 14px rgba(16,185,129,.3);
+            box-shadow: 0 4px 14px rgba(99,102,241,.35);
         }
 
         .btn-login:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(16,185,129,.4);
+            box-shadow: 0 6px 20px rgba(99,102,241,.45);
         }
 
         .btn-login:active { transform: none; }
@@ -341,11 +342,14 @@
     <div class="right-panel">
         <div class="login-box">
             <div class="login-header">
-                <a href="{{ route('landing') }}" class="login-logo" style="text-decoration:none">
+                <a href="{{ route('login') }}" class="login-logo" style="text-decoration:none">
                     <div class="logo-icon">
-                        <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="44" height="44">
+                        {{-- Drop your logo at public/images/logo.svg (44×44 recommended). --}}
+                        <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="44" height="44"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <span style="display:none;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--accent));align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;letter-spacing:-.5px">T</span>
                     </div>
-                    <span>wavadesk</span>
+                    <span>{{ config('app.name', 'TshlBot') }}</span>
                 </a>
                 <form method="POST" action="{{ route('locale.update') }}">
                     @csrf
@@ -406,10 +410,7 @@
                 {{ __('auth.login.secure_access') }}
             </div>
 
-            <div style="margin-top:1.25rem;text-align:center;font-size:.875rem;color:#64748b">
-                {{ __('auth.login.no_account') }}
-                <a href="{{ route('register') }}" style="color:var(--brand);font-weight:600;text-decoration:none;margin-left:.25rem">{{ __('auth.login.sign_up_here') }}</a>
-            </div>
+            {{-- TSHLBOT-INVITE-ONLY: sign-up CTA removed (invite-only app) --}}
         </div>
     </div>
 

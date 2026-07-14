@@ -23,7 +23,7 @@
 {!! $dbPage->content !!}
 @else
 <h2 id="controller">1. Data Controller</h2>
-<p>wavadesk operates the platform available at <strong>wavadesk.com</strong>. For the purposes of applicable data protection law (including the GDPR), wavadesk acts as the data controller for account and usage data, and as a data processor for the customer conversation data that Tenants process through the platform.</p>
+<p>TshlBot operates the platform available at <strong>tshlbot.online</strong>. For the purposes of applicable data protection law (including the GDPR), TshlBot acts as the data controller for account and usage data, and as a data processor for the customer conversation data that Tenants process through the platform.</p>
 
 <h2 id="data-collected">2. Data We Collect</h2>
 
@@ -65,7 +65,7 @@
     <li><strong>Anthropic</strong> — AI processing for auto-reply features. <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">Anthropic Privacy Policy</a></li>
     <li><strong>WhatsApp / Meta</strong> — message delivery via the WhatsApp Business API</li>
     <li><strong>Infrastructure providers</strong> — hosting, database, and CDN services operating under data processing agreements</li>
-    <li><strong>Legal authorities</strong> — when required by law or to protect the rights of wavadesk or others</li>
+    <li><strong>Legal authorities</strong> — when required by law or to protect the rights of TshlBot or others</li>
 </ul>
 
 <h2 id="retention">6. Data Retention</h2>
@@ -90,7 +90,7 @@
     <li><strong>Restriction</strong> — request that we limit processing of your data</li>
     <li><strong>Objection</strong> — object to processing based on legitimate interests</li>
 </ul>
-<p>To exercise any of these rights, contact us at <a href="mailto:privacy@wavadesk.com">privacy@wavadesk.com</a>. We will respond within 30 days.</p>
+<p>To exercise any of these rights, contact us at <a href="mailto:privacy@tshlbot.online">privacy@tshlbot.online</a>. We will respond within 30 days.</p>
 
 <h2 id="cookies-ref">9. Cookies</h2>
 <p>We use cookies and similar technologies to operate the platform. For full details, please read our <a href="{{ route('legal.cookies') }}">Cookie Policy</a>.</p>
@@ -102,6 +102,6 @@
 <p>We may update this Privacy Policy periodically. We will notify you of significant changes by email or by a notice on the platform. The "last updated" date at the top of this page indicates when the policy was last revised.</p>
 
 <h2 id="contact-pp">12. Contact</h2>
-<p>For privacy-related questions or to exercise your rights, contact our Data Protection team at <a href="mailto:privacy@wavadesk.com">privacy@wavadesk.com</a>.</p>
+<p>For privacy-related questions or to exercise your rights, contact our Data Protection team at <a href="mailto:privacy@tshlbot.online">privacy@tshlbot.online</a>.</p>
 @endif
 @endsection

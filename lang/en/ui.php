@@ -1758,7 +1758,7 @@ Always:
         'bubble_style_rounded'   => 'Rounded',
         'bubble_style_square'    => 'Square',
 
-        'label_show_branding'    => 'Show "Powered by wavadesk"',
+        'label_show_branding'    => 'Show "Powered by TshlBot"',
         'help_show_branding'     => 'Small credit line at the bottom of the widget. Uncheck to hide it on paid plans.',
 
         'label_allowed_domains'  => 'Allowed origins',

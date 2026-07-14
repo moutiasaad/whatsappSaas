@@ -46,7 +46,7 @@
             {{ __('auth.register.retry_payment') }}
         </a>
         @endif
-        <a href="{{ route('register') }}" class="btn-ghost">{{ __('auth.register.back_to_register') }}</a>
+        <a href="{{ route('login') }}" class="btn-ghost">{{ __('auth.login.sign_in') }}</a>
     </div>
 </div>
 </body>

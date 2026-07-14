@@ -14,13 +14,13 @@ return [
         'sign_up_here'  => 'Sign up here',
         'placeholder_email' => 'you@company.com',
         'marketing' => [
-            'badge' => 'WhatsApp Customer Support Platform',
+            'badge' => 'Customer Support Platform',
             'title_before' => 'Handle every conversation',
             'title_accent' => 'faster, smarter',
-            'subtitle' => 'Unify your WhatsApp support across multiple numbers and teams. AI-powered triage, real-time collaboration, and full conversation history.',
+            'subtitle' => 'Unify support across all your channels and teams. AI-powered triage, real-time collaboration, and full conversation history.',
             'feature_1' => 'AI auto-reply — reduces response time by 60%',
             'feature_2' => 'Multi-team routing with real-time pool management',
-            'feature_3' => 'Connect unlimited WhatsApp numbers with QR scan',
+            'feature_3' => 'Embeddable live-chat widget with visitor bearer auth',
         ],
         'portals' => [
             'super_admin_title' => 'Super Admin Sign In',

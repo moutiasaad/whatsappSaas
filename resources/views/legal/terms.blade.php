@@ -22,10 +22,10 @@
 {!! $dbPage->content !!}
 @else
 <h2 id="acceptance">1. Acceptance of Terms</h2>
-<p>By accessing or using wavadesk ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the Service. These terms apply to all users, including tenants, administrators, supervisors, and agents.</p>
+<p>By accessing or using TshlBot ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the Service. These terms apply to all users, including tenants, administrators, supervisors, and agents.</p>
 
 <h2 id="service">2. Service Description</h2>
-<p>wavadesk is a multi-tenant SaaS platform that enables businesses ("Tenants") to manage WhatsApp customer support conversations. The Service includes:</p>
+<p>TshlBot is a multi-tenant SaaS platform that enables businesses ("Tenants") to manage WhatsApp customer support conversations. The Service includes:</p>
 <ul>
     <li>WhatsApp Business API integration and conversation management</li>
     <li>AI-powered auto-reply using Anthropic Claude</li>
@@ -43,7 +43,7 @@
     <li>All activity that occurs under your account</li>
     <li>Immediately notifying us of any unauthorized access</li>
 </ul>
-<p>Each Tenant is responsible for managing the roles (Admin, Supervisor, Agent) assigned within their workspace. wavadesk is not liable for actions performed by users you invite.</p>
+<p>Each Tenant is responsible for managing the roles (Admin, Supervisor, Agent) assigned within their workspace. TshlBot is not liable for actions performed by users you invite.</p>
 
 <h2 id="payment">4. Payment & Billing</h2>
 <p>Access to paid plans requires a valid payment method. By subscribing you authorize us to charge your payment method for the selected plan on a recurring basis.</p>
@@ -75,16 +75,16 @@
     <li><a href="https://www.whatsapp.com/legal/terms-of-service" target="_blank" rel="noopener">WhatsApp Terms of Service</a></li>
     <li>All applicable Meta Platforms policies</li>
 </ul>
-<p>You are solely responsible for the content of messages sent through your instances. wavadesk does not review message content and accepts no liability for policy violations arising from your use.</p>
+<p>You are solely responsible for the content of messages sent through your instances. TshlBot does not review message content and accepts no liability for policy violations arising from your use.</p>
 
 <h2 id="ip">7. Intellectual Property</h2>
-<p>All rights in the Service — including software, design, trademarks, and content — remain the exclusive property of wavadesk or its licensors. You receive a limited, non-exclusive, non-transferable license to use the Service solely as permitted by these Terms.</p>
-<p>You retain ownership of the data and content you upload. You grant wavadesk a limited license to process that data solely to provide the Service.</p>
+<p>All rights in the Service — including software, design, trademarks, and content — remain the exclusive property of TshlBot or its licensors. You receive a limited, non-exclusive, non-transferable license to use the Service solely as permitted by these Terms.</p>
+<p>You retain ownership of the data and content you upload. You grant TshlBot a limited license to process that data solely to provide the Service.</p>
 
 <h2 id="liability">8. Disclaimers & Limitation of Liability</h2>
 <p>The Service is provided "as is" without warranties of any kind. We do not warrant that the Service will be uninterrupted, error-free, or meet your specific requirements.</p>
-<p>To the fullest extent permitted by law, wavadesk's total liability for any claim arising out of or relating to these Terms or the Service shall not exceed the amount you paid in the three months preceding the claim.</p>
-<p>In no event will wavadesk be liable for indirect, incidental, special, consequential, or punitive damages, including loss of revenue, profits, or data.</p>
+<p>To the fullest extent permitted by law, TshlBot's total liability for any claim arising out of or relating to these Terms or the Service shall not exceed the amount you paid in the three months preceding the claim.</p>
+<p>In no event will TshlBot be liable for indirect, incidental, special, consequential, or punitive damages, including loss of revenue, profits, or data.</p>
 
 <h2 id="termination">9. Termination</h2>
 <p>You may cancel your subscription at any time from your billing settings. Access continues until the end of the current billing period.</p>
@@ -94,6 +94,6 @@
 <p>We may update these Terms from time to time. We will notify you of material changes by email or by a prominent notice in the platform. Continued use of the Service after changes take effect constitutes your acceptance of the revised Terms.</p>
 
 <h2 id="contact-terms">11. Contact</h2>
-<p>For questions about these Terms, please contact us at <a href="mailto:legal@wavadesk.com">legal@wavadesk.com</a>.</p>
+<p>For questions about these Terms, please contact us at <a href="mailto:legal@tshlbot.online">legal@tshlbot.online</a>.</p>
 @endif
 @endsection

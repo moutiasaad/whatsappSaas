@@ -84,21 +84,23 @@
 
     <style>
         /* ============================================================
-           DESIGN TOKENS — WhatsApp SaaS (distinct from ERP purple theme)
-           Concept: Dark slate sidebar + Emerald green accents + Clean white content
+           DESIGN TOKENS — TshlBot (indigo/violet)
+           Concept: Dark slate sidebar + Indigo brand + Violet accent + Clean white content
         ============================================================ */
         :root {
-            --brand:          #10b981;
-            --brand-dark:     #059669;
-            --brand-light:    #d1fae5;
-            --brand-xlight:   #ecfdf5;
+            --brand:          #6366f1;
+            --brand-dark:     #4f46e5;
+            --brand-light:    #e0e7ff;
+            --brand-xlight:   #eef2ff;
+            --accent:         #8b5cf6;
+            --accent-dark:    #7c3aed;
 
             --sidebar-bg:     #0d1117;
             --sidebar-border: rgba(255,255,255,0.06);
             --sidebar-text:   #8b949e;
-            --sidebar-hover:  rgba(16,185,129,0.12);
-            --sidebar-active: rgba(16,185,129,0.18);
-            --sidebar-active-text: #10b981;
+            --sidebar-hover:  rgba(99,102,241,0.12);
+            --sidebar-active: rgba(99,102,241,0.20);
+            --sidebar-active-text: #a5b4fc;
             --sidebar-width:  268px;
 
             --topbar-height:  60px;
@@ -202,8 +204,8 @@
         /* Tenant badge */
         .sidebar-tenant {
             margin: 14px 12px 0;
-            background: rgba(16,185,129,.08);
-            border: 1px solid rgba(16,185,129,.2);
+            background: rgba(99,102,241,.08);
+            border: 1px solid rgba(99,102,241,.2);
             border-radius: var(--radius);
             padding: 10px 12px;
             display: flex;
@@ -254,7 +256,7 @@
         }
 
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(16,185,129,.35);
+            background: rgba(99,102,241,.35);
             background-clip: content-box;
         }
 
@@ -314,7 +316,7 @@
         }
 
         .sidebar-nav a:focus-visible {
-            outline: 2px solid rgba(16,185,129,.55);
+            outline: 2px solid rgba(99,102,241,.55);
             outline-offset: 2px;
         }
 
@@ -568,7 +570,7 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 15px; flex-shrink: 0;
         }
-        .notif-item-icon.manual  { background: #ecfdf5; color: #059669; }
+        .notif-item-icon.manual  { background: var(--brand-xlight); color: var(--brand); }
         .notif-item-icon.renewal { background: #fffbeb; color: #d97706; }
         .notif-item-icon.system  { background: #eff6ff; color: #3b82f6; }
 
@@ -700,7 +702,7 @@
             color: #fff;
             border-color: var(--brand);
         }
-        .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.35); }
+        .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,.35); }
         .btn-primary:active { transform: translateY(0); box-shadow: none; }
 
         .btn-outline {
@@ -902,7 +904,7 @@
             transition: var(--transition);
             min-width: 220px;
         }
-        .filter-input:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .filter-input:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
 
         .filter-input-wrap {
             position: relative;
@@ -927,7 +929,7 @@
             outline: none; cursor: pointer;
             min-width: 120px;
         }
-        .toolbar-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .toolbar-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
 
         /* Toolbar date inputs */
         .table-toolbar input[type="date"] {
@@ -938,7 +940,7 @@
             background: var(--page-bg); color: var(--text-primary);
             outline: none; transition: var(--transition);
         }
-        .table-toolbar input[type="date"]:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .table-toolbar input[type="date"]:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
 
         /* ss-wrap inside .table-toolbar — height/border match the 36px toolbar row */
         .table-toolbar .ss-wrap { min-width: 130px; }
@@ -1114,7 +1116,7 @@
             transition: var(--transition);
             width: 100%;
         }
-        .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
         .form-control.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
 
         textarea.form-control { height: auto; padding: 10px 12px; resize: vertical; min-height: 90px; }
@@ -1355,7 +1357,7 @@
             flex-shrink: 0;
         }
 
-        .toast .toast-icon { background: rgba(16,185,129,.2); color: var(--brand); }
+        .toast .toast-icon { background: rgba(99,102,241,.2); color: var(--brand); }
         .toast.error .toast-icon { background: rgba(220,38,38,.2); color: var(--red); }
         .toast.warning .toast-icon { background: rgba(217,119,6,.2); color: var(--orange); }
 
@@ -1702,10 +1704,13 @@
         <div class="sidebar-logo-zone">
             <a href="{{ route($panelPrefix . '.dashboard') }}" class="sidebar-logo">
                 <div class="sidebar-logo-icon">
-                    <img src="{{ asset('images/wavadesk-icon-teal.svg') }}" alt="wavadesk" width="36" height="36">
+                    {{-- Drop your logo at public/images/logo.svg (36×36 or square, will scale). --}}
+                    <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="36" height="36"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                    <span class="sidebar-logo-fallback" style="display:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--accent));align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;letter-spacing:-.5px">T</span>
                 </div>
                 <div class="sidebar-logo-text">
-                    <span class="sidebar-logo-name">wavadesk</span>
+                    <span class="sidebar-logo-name">{{ config('app.name', 'TshlBot') }}</span>
                     <span class="sidebar-logo-sub">Platform</span>
                 </div>
             </a>
@@ -1847,12 +1852,16 @@
                 <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
                 @endif
 
+            {{-- TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances sidebar item disabled. Restore by uncommenting. --}}
+            {{--
             @if(!Auth::user()->isSuperAdmin() || $sp('instances'))
             <a href="{{ route($panelPrefix . '.instances.index') }}" class="{{ $navActive([$panelPrefix . '.instances.*']) }}">
                 <i class="ri-smartphone-line"></i>
                 <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
             </a>
             @endif
+            --}}
+            {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
 
             @if(!Auth::user()->isSuperAdmin() || $sp('teams'))
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">

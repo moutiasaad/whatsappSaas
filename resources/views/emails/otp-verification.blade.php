@@ -16,10 +16,10 @@
                     <table cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="padding-right:10px">
-                                <img src="{{ asset('images/wavadesk-icon.svg') }}" width="32" height="32" alt="{{ config('app.name') }}" style="border-radius:8px;display:block">
+                                <img src="{{ asset('images/logo.svg') }}" width="32" height="32" alt="{{ config('app.name') }}" style="border-radius:8px;display:block">
                             </td>
                             <td style="font-size:18px;font-weight:700;color:#f1f5f9;letter-spacing:-.3px">
-                                {{ config('app.name', 'wavadesk') }}
+                                {{ config('app.name', 'TshlBot') }}
                             </td>
                         </tr>
                     </table>
@@ -37,7 +37,7 @@
                     {{-- OTP code --}}
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px">
                         <tr>
-                            <td align="center" style="background:#ecfdf5;border:1px solid #d1fae5;border-radius:14px;padding:28px 20px">
+                            <td align="center" style="background:#eef2ff;border:1px solid #e0e7ff;border-radius:14px;padding:28px 20px">
                                 <div style="font-size:42px;font-weight:800;letter-spacing:14px;color:#0f172a;font-variant-numeric:tabular-nums">{{ $otp }}</div>
                                 <div style="font-size:13px;color:#64748b;margin-top:10px">One-time verification code</div>
                             </td>
@@ -54,7 +54,7 @@
             <tr>
                 <td style="padding:20px 40px 28px;border-top:1px solid #e2e8f0">
                     <p style="font-size:12px;color:#94a3b8;margin:0">
-                        © {{ date('Y') }} {{ config('app.name', 'wavadesk') }} &mdash; All rights reserved
+                        © {{ date('Y') }} {{ config('app.name', 'TshlBot') }} &mdash; All rights reserved
                     </p>
                 </td>
             </tr>

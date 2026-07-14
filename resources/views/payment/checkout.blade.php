@@ -53,11 +53,11 @@
 </head>
 <body>
 <nav>
-    <a href="{{ route('landing') }}" class="nav-logo">
+    <a href="{{ route('login') }}" class="nav-logo">
         <div class="nav-logo-icon">
-            <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="30" height="30">
+            <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="30" height="30" onerror="this.style.display='none'">
         </div>
-        wavadesk
+        {{ config('app.name', 'TshlBot') }}
     </a>
 </nav>
 
@@ -123,7 +123,7 @@
                     ← {{ __('auth.register.back_to_billing', ['default' => 'Back to Billing']) }}
                 </a>
             @else
-                <a href="{{ route('register') }}" class="btn-back">← {{ __('auth.register.back_to_register') }}</a>
+                <a href="{{ route('login') }}" class="btn-back">← {{ __('auth.login.sign_in') }}</a>
             @endauth
 
             <div class="security-note">

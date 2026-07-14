@@ -1758,7 +1758,7 @@ Toujours :
         'bubble_style_rounded'   => 'Arrondi',
         'bubble_style_square'    => 'Carré',
 
-        'label_show_branding'    => 'Afficher « Propulsé par wavadesk »',
+        'label_show_branding'    => 'Afficher « Propulsé par TshlBot »',
         'help_show_branding'     => 'Petite mention en bas du widget. Décochez pour la masquer sur les offres payantes.',
 
         'label_allowed_domains'  => 'Origines autorisées',

@@ -16,7 +16,7 @@
 
     // Precompute the ready-to-paste embed snippet with the tenant's public_key
     // and the app's own base URL. The paste target is the tenant's website.
-    $embedSnippet = "<script>window.WavadeskChat = { key: \"" . $widget->public_key . "\" };</script>\n"
+    $embedSnippet = "<script>window.TshlBotChat = { key: \"" . $widget->public_key . "\" };</script>\n"
                   . "<script src=\"" . $embedUrl . "\" async></script>";
 
     $initial = [
@@ -355,7 +355,7 @@
                                 </div>
                                 <div class="wcs-preview-branding" x-show="form.show_branding">
                                     <i class="ri-flashlight-line"></i>
-                                    <span>Powered by <b>wavadesk</b></span>
+                                    <span>Powered by <b>TshlBot</b></span>
                                 </div>
                             </div>
 

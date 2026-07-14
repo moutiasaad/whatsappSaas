@@ -1714,7 +1714,7 @@ return [
         'bubble_style_rounded'   => 'مستدير',
         'bubble_style_square'    => 'مربع',
 
-        'label_show_branding'    => 'إظهار «مشغّل بواسطة wavadesk»',
+        'label_show_branding'    => 'إظهار «مشغّل بواسطة TshlBot»',
         'help_show_branding'     => 'سطر صغير أسفل الأداة. أزل التحديد لإخفائه في الخطط المدفوعة.',
 
         'label_allowed_domains'  => 'النطاقات المسموح بها',

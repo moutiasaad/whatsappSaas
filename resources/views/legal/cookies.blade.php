@@ -35,7 +35,7 @@
         </thead>
         <tbody>
             <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:10px 14px;color:var(--text);font-family:monospace;font-size:13px">{{ config('session.cookie', 'wavadesk_session') }}</td>
+                <td style="padding:10px 14px;color:var(--text);font-family:monospace;font-size:13px">{{ config('session.cookie', 'tshlbot_session') }}</td>
                 <td style="padding:10px 14px;color:var(--muted)">Maintains your authenticated session across page requests</td>
                 <td style="padding:10px 14px;color:var(--muted)">Session / {{ config('session.lifetime', 120) }} min</td>
             </tr>
@@ -98,6 +98,6 @@
 </ul>
 
 <h2 id="contact-cookies">7. Contact</h2>
-<p>If you have questions about our use of cookies, please contact us at <a href="mailto:privacy@wavadesk.com">privacy@wavadesk.com</a>.</p>
+<p>If you have questions about our use of cookies, please contact us at <a href="mailto:privacy@tshlbot.online">privacy@tshlbot.online</a>.</p>
 @endif
 @endsection

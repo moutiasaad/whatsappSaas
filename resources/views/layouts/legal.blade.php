@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title') — {{ config('app.name', 'wavadesk') }}</title>
+    <title>@yield('title') — {{ config('app.name', 'TshlBot') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
@@ -12,11 +12,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand:        #10b981;
-            --brand-dark:   #059669;
+            --brand:        #6366f1;
+            --brand-dark:   #4f46e5;
             --brand-xdark:  #047857;
-            --brand-light:  #d1fae5;
-            --brand-xlight: #ecfdf5;
+            --brand-light:  #e0e7ff;
+            --brand-xlight: #eef2ff;
             --bg:           #f8fafc;
             --card:         #ffffff;
             --border:       #e2e8f0;
@@ -45,8 +45,8 @@
         .nav-cta { display:flex; gap:10px; align-items:center; }
         .btn-ghost { font-size:14px; font-weight:500; color:var(--brand); text-decoration:none; padding:8px 18px; border-radius:8px; transition:background .2s; }
         .btn-ghost:hover { background:var(--brand-xlight); }
-        .btn-primary { background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; font-size:14px; font-weight:600; padding:9px 22px; border-radius:9px; text-decoration:none; border:none; cursor:pointer; font-family:inherit; transition:all .2s; box-shadow:0 4px 14px rgba(16,185,129,.3); }
-        .btn-primary:hover { box-shadow:0 6px 20px rgba(16,185,129,.45); transform:translateY(-1px); }
+        .btn-primary { background:linear-gradient(135deg,var(--brand),var(--brand-dark)); color:#fff; font-size:14px; font-weight:600; padding:9px 22px; border-radius:9px; text-decoration:none; border:none; cursor:pointer; font-family:inherit; transition:all .2s; box-shadow:0 4px 14px rgba(99,102,241,.35); }
+        .btn-primary:hover { box-shadow:0 6px 20px rgba(99,102,241,.45); transform:translateY(-1px); }
 
         /* lang switcher */
         .pub-lang { position:relative; }
@@ -61,7 +61,7 @@
 
         /* legal hero */
         .legal-hero { background:var(--dark); padding:64px 0 56px; position:relative; overflow:hidden; }
-        .legal-hero::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 50%, rgba(16,185,129,.1) 0%, transparent 60%); pointer-events:none; }
+        .legal-hero::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 50%, rgba(99,102,241,.12) 0%, transparent 60%); pointer-events:none; }
         .legal-breadcrumb { display:flex; align-items:center; gap:8px; font-size:13px; color:#64748b; margin-bottom:20px; animation:fadeInUp .5s ease both; }
         .legal-breadcrumb a { color:#64748b; text-decoration:none; transition:color .2s; }
         .legal-breadcrumb a:hover { color:var(--brand); }
@@ -117,9 +117,9 @@
         <div class="nav-inner">
             <a href="{{ route('landing') }}" class="nav-logo">
                 <div class="nav-logo-icon">
-                    <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="36" height="36">
+                    <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="36" height="36" onerror="this.style.display='none'">
                 </div>
-                wavadesk
+                {{ config('app.name', 'TshlBot') }}
             </a>
             <div class="nav-cta">
                 <div class="pub-lang">
@@ -140,8 +140,7 @@
                         @endforeach
                     </div>
                 </div>
-                <a href="{{ route('login') }}" class="btn-ghost">{{ __('landing.nav_login') }}</a>
-                <a href="{{ route('register') }}" class="btn-primary">{{ __('landing.nav_start') }}</a>
+                <a href="{{ route('login') }}" class="btn-primary">{{ __('landing.nav_login') }}</a>
             </div>
         </div>
     </div>
@@ -151,7 +150,7 @@
 <div class="legal-hero">
     <div class="container">
         <div class="legal-breadcrumb">
-            <a href="{{ route('landing') }}">{{ config('app.name', 'wavadesk') }}</a>
+            <a href="{{ route('landing') }}">{{ config('app.name', 'TshlBot') }}</a>
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
             <span>@yield('title')</span>
         </div>
@@ -189,8 +188,9 @@
         <div class="footer-inner">
             <div class="footer-brand">
                 <a href="{{ route('landing') }}" class="logo" style="display:flex;align-items:center;gap:8px;text-decoration:none;font-size:16px;font-weight:800;color:#f8fafc">
-                    <img src="{{ asset('images/wavadesk-icon.svg') }}" alt="wavadesk" width="30" height="30" style="border-radius:7px">
-                    wavadesk
+                    <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="30" height="30" style="border-radius:7px"
+                         onerror="this.style.display='none'">
+                    {{ config('app.name', 'TshlBot') }}
                 </a>
                 <p>{{ __('landing.footer_tagline') }}</p>
             </div>
@@ -203,7 +203,6 @@
             <div class="footer-col">
                 <h4>{{ __('landing.footer_company') }}</h4>
                 <a href="{{ route('login') }}">{{ __('landing.nav_login') }}</a>
-                <a href="{{ route('register') }}">{{ __('landing.nav_start') }}</a>
             </div>
             <div class="footer-col">
                 <h4>{{ __('landing.footer_legal') }}</h4>
@@ -213,7 +212,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            {{ __('landing.footer_copyright', ['year' => date('Y'), 'app' => config('app.name', 'wavadesk')]) }}
+            {{ __('landing.footer_copyright', ['year' => date('Y'), 'app' => config('app.name', 'TshlBot')]) }}
         </div>
     </div>
 </footer>

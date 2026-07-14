@@ -32,16 +32,17 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
-// Landing page
-Route::get('/', [LandingController::class, 'index'])->name('landing');
+// Root redirects to login — landing page removed.
+Route::get('/', fn () => redirect()->route('login'))->name('landing');
 Route::get('/docs/api', fn () => response()->file(public_path('docs/api.html')))->name('docs.api');
 
-// Legal pages
+// Legal pages (still reachable — required for Stripe/regulators)
 Route::get('/legal/terms',   [LandingController::class, 'terms'])->name('legal.terms');
 Route::get('/legal/privacy', [LandingController::class, 'privacy'])->name('legal.privacy');
 Route::get('/legal/cookies', [LandingController::class, 'cookies'])->name('legal.cookies');
 
-// Registration
+// TSHLBOT-INVITE-ONLY:begin — public registration disabled. Restore by uncommenting.
+/*
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
@@ -49,6 +50,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.otp.verify');
     Route::post('/register/resend-otp', [RegisterController::class, 'resendOtp'])->name('register.otp.resend');
 });
+*/
+// TSHLBOT-INVITE-ONLY:end
 
 // Payment (Stripe)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
@@ -139,7 +142,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Management routes - admin and super admin only
             Route::middleware('role:admin,super_admin')->group(function () {
-                // Instances
+                // TSHLBOT-HIDE-WHATSAPP:begin — Instances routes disabled. Restore by uncommenting.
+                /*
                 Route::get('/instances', [InstanceWebController::class, 'index'])->name('instances.index');
                 Route::get('/instances/create', [InstanceWebController::class, 'create'])->name('instances.create');
                 Route::post('/instances', [InstanceWebController::class, 'store'])->name('instances.store');
@@ -149,6 +153,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/instances/{instance}/edit', [InstanceWebController::class, 'edit'])->name('instances.edit');
                 Route::put('/instances/{instance}', [InstanceWebController::class, 'update'])->name('instances.update');
                 Route::delete('/instances/{instance}', [InstanceWebController::class, 'destroy'])->name('instances.destroy');
+                */
+                // TSHLBOT-HIDE-WHATSAPP:end
 
                 // Users
                 Route::get('/users', [UserController::class, 'index'])->name('users.index');

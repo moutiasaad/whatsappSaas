@@ -14,13 +14,13 @@ return [
         'sign_up_here'  => "S'inscrire ici",
         'placeholder_email' => 'vous@entreprise.com',
         'marketing' => [
-            'badge' => 'Plateforme support client WhatsApp',
+            'badge' => 'Plateforme support client',
             'title_before' => 'Gérez chaque conversation',
             'title_accent' => 'plus vite, plus intelligemment',
-            'subtitle' => 'Unifiez votre support WhatsApp sur plusieurs numéros et équipes. Tri IA, collaboration en temps réel et historique complet des conversations.',
+            'subtitle' => 'Unifiez le support de tous vos canaux et équipes. Tri IA, collaboration en temps réel et historique complet des conversations.',
             'feature_1' => 'Réponse automatique IA — réduit le temps de réponse de 60 %',
             'feature_2' => 'Routage multi-équipes avec gestion du pool en temps réel',
-            'feature_3' => 'Connectez des numéros WhatsApp illimités via QR code',
+            'feature_3' => 'Widget de chat embarquable avec auth visiteur',
         ],
         'portals' => [
             'super_admin_title' => 'Connexion Super Admin',

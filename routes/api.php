@@ -17,9 +17,12 @@ use App\Http\Controllers\WebChat\Public\MessageController as WebChatPublicMessag
 use App\Http\Controllers\WebChat\Public\SessionController as WebChatPublicSessionController;
 use Illuminate\Support\Facades\Route;
 
-// Webhook — public, no auth
+// TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp gateway webhook disabled. Restore by uncommenting.
+/*
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
+*/
+// TSHLBOT-HIDE-WHATSAPP:end
 
 // ─── Web Live-Chat public widget API ─────────────────────────────────────────
 // Cross-origin. Auth via widget public_key + visitor bearer token — NOT web
@@ -61,16 +64,18 @@ Route::post('/webchat/broadcasting/auth', [WebChatBroadcastAuthController::class
 // All API routes authenticated via X-Api-Key header
 Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 
-    // ── Direct message send (no conversation, auto-selects connected instance) ─
+    // TSHLBOT-HIDE-WHATSAPP:begin — DirectSend + SingleInstance API disabled. Restore by uncommenting.
+    /*
     Route::post('/send', [DirectSendController::class, 'send']);
 
-    // ── Single-instance management (auto-selects the tenant's first instance) ──
     Route::prefix('instance')->group(function () {
         Route::get('/',            [SingleInstanceController::class, 'show']);
         Route::get('/status',      [SingleInstanceController::class, 'status']);
         Route::post('/connect',    [SingleInstanceController::class, 'connect']);
         Route::post('/disconnect', [SingleInstanceController::class, 'disconnect']);
     });
+    */
+    // TSHLBOT-HIDE-WHATSAPP:end
 
     // ── Notifications (all roles, no subscription gate) ───────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
@@ -119,9 +124,9 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::get('/agents/online', [AgentPresenceController::class, 'online']);
     });
 
+    // TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances API CRUD disabled. Restore by uncommenting.
+    /*
     Route::middleware(['role:admin,super_admin', 'subscription'])->group(function () {
-
-        // WhatsApp Instances — full CRUD
         Route::get('/instances', [InstanceController::class, 'index']);
         Route::post('/instances', [InstanceController::class, 'store']);
         Route::get('/instances/{instance}', [InstanceController::class, 'show']);
@@ -131,6 +136,8 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::post('/instances/{instance}/logout', [InstanceController::class, 'disconnect']);
         Route::delete('/instances/{instance}', [InstanceController::class, 'destroy']);
     });
+    */
+    // TSHLBOT-HIDE-WHATSAPP:end
 
     Route::middleware(['role:admin', 'subscription'])->group(function () {
         Route::get('/ai/settings', [AiController::class, 'show']);
