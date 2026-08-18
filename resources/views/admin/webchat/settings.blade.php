@@ -12,11 +12,15 @@
 @php
     $panelPrefix = auth()->user()->routeNamePrefix();
 
-    $embedUrl = $embedBase . '/webchat/widget.js';
+    // Auto-version the embed src from widget.js's mtime so a fresh paste is
+    // never cached to an old build. Existing embeds without ?v= still work.
+    $widgetFile = public_path('webchat/widget.js');
+    $widgetVer  = file_exists($widgetFile) ? substr((string) filemtime($widgetFile), -6) : '1';
+    $embedUrl   = $embedBase . '/webchat/widget.js?v=' . $widgetVer;
 
     // Precompute the ready-to-paste embed snippet with the tenant's public_key
     // and the app's own base URL. The paste target is the tenant's website.
-    $embedSnippet = "<script>window.TshlBotChat = { key: \"" . $widget->public_key . "\" };</script>\n"
+    $embedSnippet = "<script>window.WavadeskChat = { key: \"" . $widget->public_key . "\" };</script>\n"
                   . "<script src=\"" . $embedUrl . "\" async></script>";
 
     $initial = [

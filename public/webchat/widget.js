@@ -1,23 +1,29 @@
 /*!
- * TshlBot Web Live-Chat widget.
+ * Wavadesk / TshlBot Web Live-Chat widget — Support Widget Spec revision.
  * Vanilla JS, IIFE, no framework, no build step.
  * Ships as a committed static asset; git pull deploys it as-is.
  *
  * Embed:
- *   <script>window.TshlBotChat = { key: "wck_..." };</script>
+ *   <script>window.WavadeskChat = { key: "wck_..." };</script>
  *   <script src="https://your-app-domain/webchat/widget.js" async></script>
+ *
+ * Backwards-compatible: `window.TshlBotChat` is also accepted.
  */
 (function () {
     'use strict';
 
     // ── Config guard ──────────────────────────────────────────────────
-    var CONFIG = window.TshlBotChat || {};
+    var CONFIG = window.WavadeskChat || window.TshlBotChat || {};
     if (!CONFIG.key || typeof CONFIG.key !== 'string' || CONFIG.key.indexOf('wck_') !== 0) {
-        console.warn('TshlBotChat: missing or invalid window.TshlBotChat.key');
+        console.warn('WavadeskChat: missing or invalid window.WavadeskChat.key');
         return;
     }
     if (window.__wvchLoaded) return;      // prevent double-boot if snippet is pasted twice
     window.__wvchLoaded = true;
+
+    // Mirror to both globals so debug hooks work under either name
+    window.WavadeskChat = window.WavadeskChat || CONFIG;
+    window.TshlBotChat  = window.TshlBotChat  || CONFIG;
 
     // ── Derive API base from own script src (works cross-origin) ──────
     var API_BASE = (function () {
@@ -28,13 +34,110 @@
 
     // ── localStorage helpers (keyed per widget key so multiple sites work) ─
     var LS_TOKEN = 'wvch:v1:token:' + CONFIG.key;
-    var LS_CONV  = 'wvch:v1:conv:' + CONFIG.key;
-    var LS_OPEN  = 'wvch:v1:open:' + CONFIG.key;
+    var LS_CONV  = 'wvch:v1:conv:'  + CONFIG.key;
+    var LS_OPEN  = 'wvch:v1:open:'  + CONFIG.key;
+    var LS_LANG  = 'wvch:v1:lang:'  + CONFIG.key;
+    var LS_TIP   = 'wvch:v1:tip:'   + CONFIG.key;
+    var LS_HUMAN = 'wvch:v1:human:' + CONFIG.key;
     function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 
+    // ── Language auto-detect (AR default, EN toggle) ──────────────────
+    function detectLang() {
+        var stored = lsGet(LS_LANG);
+        if (stored === 'ar' || stored === 'en') return stored;
+        if (CONFIG.defaultLang === 'ar' || CONFIG.defaultLang === 'en') return CONFIG.defaultLang;
+        var htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
+        var htmlDir  = (document.documentElement.getAttribute('dir')  || '').toLowerCase();
+        if (htmlLang.indexOf('ar') === 0 || htmlDir === 'rtl') return 'ar';
+        if (htmlLang.indexOf('en') === 0) return 'en';
+        return 'ar'; // spec default
+    }
+
+    // ── Text bundles ──────────────────────────────────────────────────
+    var I18N = {
+        ar: {
+            dir: 'rtl',
+            floatingHint:   'تحتاج مساعدة؟',
+            openAria:       'افتح محادثة الدعم',
+            closeAria:      'إغلاق المحادثة',
+            langToggle:     'EN',
+            langToggleAria: 'التبديل إلى الإنجليزية',
+            headerTitle:    null, // fallback to widget.name, else "الدعم الفني"
+            headerFallback: 'الدعم الفني',
+            headerPromise:  'نرد خلال دقيقة',
+            statusOnline:   'متصل الآن',
+            welcomeTitle:   'أهلاً بك 👋',
+            welcomeSub:     'اختر ما تحتاجه لنبدأ فورًا',
+            topics: [
+                { id: 't-order',   label: 'أين طلبي؟',        tint: 'blue'   },
+                { id: 't-return',  label: 'استرجاع أو استبدال', tint: 'orange' },
+                { id: 't-payment', label: 'مشكلة في الدفع',   tint: 'green'  },
+                { id: 't-agent',   label: 'التحدث مع موظف',   tint: 'purple' }
+            ],
+            composerPlaceholder: 'اكتب رسالتك…',
+            sendAria:       'إرسال',
+            connecting:     'جارٍ توصيلك بموظف الدعم…',
+            handoffRoleFallback: 'أخصائي دعم العملاء',
+            handoffPrefix:  'أنت الآن مع',
+            closedTitle:    'انتهت المحادثة',
+            closedSub:      'شكرًا للتواصل معنا. يمكنك بدء محادثة جديدة في أي وقت.',
+            startNew:       'بدء محادثة جديدة',
+            offlineTitle:   'نحن خارج الخدمة حاليًا',
+            prechatTitle:   'قبل أن نبدأ',
+            prechatSub:     'اترك بياناتك لنرد عليك.',
+            prechatName:    'اسمك (اختياري)',
+            prechatEmail:   'بريدك (اختياري)',
+            prechatStart:   'بدء المحادثة',
+            prechatStarting:'جارٍ البدء…',
+            couldNotConnect:'تعذّر الاتصال. حاول مرة أخرى.',
+            failedSend:     'تعذّر الإرسال',
+            branding:       'مدعوم من'
+        },
+        en: {
+            dir: 'ltr',
+            floatingHint:   'Need help?',
+            openAria:       'Open support chat',
+            closeAria:      'Close chat',
+            langToggle:     'ع',
+            langToggleAria: 'Switch to Arabic',
+            headerTitle:    null,
+            headerFallback: 'Customer Support',
+            headerPromise:  'We reply within a minute',
+            statusOnline:   'Online now',
+            welcomeTitle:   'Hi there 👋',
+            welcomeSub:     'Pick a topic to get started.',
+            topics: [
+                { id: 't-order',   label: 'Where’s my order?',    tint: 'blue'   },
+                { id: 't-return',  label: 'Return or exchange',        tint: 'orange' },
+                { id: 't-payment', label: 'Payment issue',             tint: 'green'  },
+                { id: 't-agent',   label: 'Talk to an agent',          tint: 'purple' }
+            ],
+            composerPlaceholder: 'Type your message…',
+            sendAria:       'Send',
+            connecting:     'Connecting you to a support specialist…',
+            handoffRoleFallback: 'Customer support specialist',
+            handoffPrefix:  'You’re now with',
+            closedTitle:    'Chat ended',
+            closedSub:      'Thanks for reaching out. Feel free to start a new chat any time.',
+            startNew:       'Start a new chat',
+            offlineTitle:   'We’re offline right now',
+            prechatTitle:   'Before we start',
+            prechatSub:     'Leave your details so we can get back to you.',
+            prechatName:    'Your name (optional)',
+            prechatEmail:   'Your email (optional)',
+            prechatStart:   'Start chat',
+            prechatStarting:'Starting…',
+            couldNotConnect:'Could not connect. Please try again.',
+            failedSend:     'Failed to send',
+            branding:       'Powered by'
+        }
+    };
+    function t() { return I18N[S.lang] || I18N.ar; }
+
     // ── State ─────────────────────────────────────────────────────────
     var S = {
+        lang:          detectLang(),
         open:          lsGet(LS_OPEN) === '1',
         booted:        false,
         booting:       false,
@@ -43,14 +146,20 @@
         convUuid:      lsGet(LS_CONV),
         widget:        null,
         reverb:        null,
+        runtime:       null,
         status:        null,                // bot | pending | assigned | closed
         agent:         null,
         messages:      [],
+        seenIds:       {},                  // dedup for typewriter effect
         lastMessageId: 0,
         sending:       false,
+        typing:        false,               // "bot is typing…" bubble visible
+        typingSince:   0,
         wsConnected:   false,
         pusher:        null,
         pollTimer:     null,
+        hintShown:     lsGet(LS_TIP) === '1',
+        humanOnce:     lsGet(LS_HUMAN) === '1' // avatar stays green after first handoff
     };
 
     // ── HTTP helper ───────────────────────────────────────────────────
@@ -101,14 +210,14 @@
                 lsSet(LS_TOKEN, S.visitorToken);
                 if (data.active_conversation) {
                     S.convUuid = data.active_conversation.uuid;
-                    S.status = data.active_conversation.status;
+                    S.status   = data.active_conversation.status;
                     lsSet(LS_CONV, S.convUuid);
                 }
-                S.booted = true;
+                S.booted  = true;
                 S.booting = false;
                 applyThemeFromWidget();
                 if (S.convUuid && S.status !== 'closed' && S.status !== 'bot') {
-                    return loadMessages().then(function () {
+                    return loadMessages({ initial: true }).then(function () {
                         S.view = 'chat';
                         subscribeRealtime();
                         startPolling();
@@ -123,7 +232,7 @@
             })
             .catch(function (e) {
                 S.booting = false;
-                console.error('TshlBotChat: session failed', e);
+                console.error('WavadeskChat: session failed', e);
                 throw e;
             });
         return S.bootingPromise;
@@ -152,7 +261,7 @@
             body: { page_url: location.href, referrer: document.referrer || null }
         }).then(function (data) {
             S.convUuid = data.uuid;
-            S.status = data.status || 'bot';
+            S.status   = data.status || 'bot';
             lsSet(LS_CONV, S.convUuid);
             return S.convUuid;
         });
@@ -165,7 +274,7 @@
             })
             .then(function (data) {
                 S.status = data.status || 'pending';
-                if (S.view !== 'chat') { S.view = 'chat'; render(); } else { renderStatus(); }
+                if (S.view !== 'chat') { switchToChat(); } else { renderStatus(); renderComposer(); }
                 subscribeRealtime();
                 startPolling();
             });
@@ -175,9 +284,20 @@
         var text = (body || '').trim();
         if (!text || S.sending) return Promise.resolve();
         S.sending = true;
+
+        // Local echo — the spec's bubble rise + colored shadow applies here.
         var localId = 'local-' + Date.now();
-        S.messages.push({ id: localId, sender_type: 'visitor', body: text, created_at: new Date().toISOString(), pending: true });
-        renderMessages(); scrollToBottom();
+        var echo = {
+            id: localId, sender_type: 'visitor', body: text,
+            created_at: new Date().toISOString(), pending: true, _rendered: false
+        };
+        S.messages.push(echo);
+        S.seenIds[localId] = true;
+
+        if (S.view !== 'chat') switchToChat();
+        else appendMessage(echo);
+
+        showTyping();
 
         return openConversation()
             .then(function (uuid) {
@@ -186,49 +306,61 @@
             .then(function (data) {
                 for (var i = 0; i < S.messages.length; i++) {
                     if (S.messages[i].id === localId) {
-                        S.messages[i] = {
+                        var replaced = {
                             id: data.message.id,
                             sender_type: 'visitor',
                             body: data.message.body,
-                            created_at: data.message.created_at
+                            created_at: data.message.created_at,
+                            _rendered: true
                         };
+                        S.messages[i] = replaced;
+                        delete S.seenIds[localId];
+                        S.seenIds[replaced.id] = true;
                         break;
                     }
                 }
                 if (data.message.id > S.lastMessageId) S.lastMessageId = data.message.id;
                 if (S.status === 'bot') { S.status = 'pending'; renderStatus(); }
-                if (S.view !== 'chat') { S.view = 'chat'; render(); }
                 if (!S.pusher) { subscribeRealtime(); startPolling(); }
-                renderMessages();
             })
             .catch(function () {
                 for (var j = 0; j < S.messages.length; j++) {
-                    if (S.messages[j].id === localId) { S.messages[j].failed = true; break; }
+                    if (S.messages[j].id === localId) {
+                        S.messages[j].failed = true;
+                        var node = el.thread && el.thread.querySelector('[data-mid="' + localId + '"]');
+                        if (node) node.classList.add('wvch-bubble-failed');
+                        break;
+                    }
                 }
-                renderMessages();
             })
-            .then(function () { S.sending = false; renderComposer(); });
+            .then(function () {
+                S.sending = false;
+                renderComposer();
+            });
     }
 
     // ── Message polling (fallback for no-WS) ──────────────────────────
-    function loadMessages() {
+    function loadMessages(opts) {
+        opts = opts || {};
         if (!S.convUuid) return Promise.resolve();
         return api('/conversations/' + S.convUuid + '/messages?after=' + S.lastMessageId)
             .then(function (data) {
-                var added = false;
                 (data.messages || []).forEach(function (m) {
-                    if (m.id <= S.lastMessageId) return;
-                    if (S.messages.some(function (x) { return x.id === m.id; })) return;
+                    if (S.seenIds[m.id]) return;
+                    if (m.id <= S.lastMessageId && !opts.initial) return;
                     S.messages.push(m);
+                    S.seenIds[m.id] = true;
                     if (m.id > S.lastMessageId) S.lastMessageId = m.id;
-                    added = true;
+                    if (S.view === 'chat' && !opts.initial) {
+                        hideTyping();
+                        appendMessage(m);
+                    }
                 });
                 if (data.conversation && data.conversation.status !== S.status) {
                     S.status = data.conversation.status;
-                    if (S.status === 'closed') { S.view = 'closed'; render(); }
-                    else renderStatus();
+                    if (S.status === 'closed') { S.view = 'closed'; render(); return; }
+                    renderStatus(); renderComposer();
                 }
-                if (added) { renderMessages(); scrollToBottom(); }
             })
             .catch(function () { /* silent */ });
     }
@@ -269,24 +401,29 @@
                 ch.bind('webchat.message.sent', function (payload) {
                     var m = payload.message;
                     if (!m || m.conversation_uuid !== S.convUuid) return;
-                    if (S.messages.some(function (x) { return x.id === m.id; })) return;
+                    if (S.seenIds[m.id]) return;
                     S.messages.push({
                         id: m.id, sender_type: m.sender_type, sender_id: m.sender_id,
-                        body: m.body, created_at: m.created_at
+                        body: m.body, created_at: m.created_at, sender: m.sender || null
                     });
+                    S.seenIds[m.id] = true;
                     if (m.id > S.lastMessageId) S.lastMessageId = m.id;
-                    renderMessages(); scrollToBottom();
+                    if (S.view === 'chat') {
+                        hideTyping();
+                        appendMessage(S.messages[S.messages.length - 1]);
+                    }
                 });
                 ch.bind('webchat.conversation.claimed', function (payload) {
                     S.status = 'assigned';
-                    S.agent = payload.agent || null;
+                    S.agent  = payload.agent || null;
+                    if (!S.humanOnce) { S.humanOnce = true; lsSet(LS_HUMAN, '1'); }
                     renderStatus();
                 });
                 ch.bind('webchat.conversation.closed', function () {
                     S.status = 'closed'; S.view = 'closed'; render();
                 });
             } catch (e) {
-                console.warn('TshlBotChat: realtime subscribe failed', e);
+                console.warn('WavadeskChat: realtime subscribe failed', e);
             }
         });
     }
@@ -305,7 +442,7 @@
             pusherCbs = [];
         };
         s.onerror = function () {
-            console.warn('TshlBotChat: Pusher CDN failed, polling only');
+            console.warn('WavadeskChat: Pusher CDN failed, polling only');
             pusherCbs = [];
         };
         document.head.appendChild(s);
@@ -315,15 +452,19 @@
     function startNewChat() {
         if (S.pusher) { try { S.pusher.disconnect(); } catch (e) {} S.pusher = null; }
         stopPolling();
-        S.convUuid = null; S.messages = []; S.lastMessageId = 0;
-        S.status = null; S.agent = null;
-        lsSet(LS_CONV, null);
+        S.convUuid = null; S.messages = []; S.seenIds = {}; S.lastMessageId = 0;
+        S.status = null; S.agent = null; S.humanOnce = false;
+        lsSet(LS_CONV, null); lsSet(LS_HUMAN, null);
         S.view = S.widget && S.widget.pre_chat_ask_email ? 'prechat' : 'welcome';
         render();
     }
 
-    // ── DOM rendering (imperative, no framework) ──────────────────────
-    var el = { root: null, launcher: null, panel: null, body: null, composer: null, statusBar: null };
+    // ── DOM rendering ─────────────────────────────────────────────────
+    var el = {
+        root: null, launcher: null, hintPill: null,
+        panel: null, header: null, body: null, thread: null,
+        composer: null, statusBar: null, typingBubble: null
+    };
     function _(tag, attrs, kids) {
         var e = document.createElement(tag);
         if (attrs) for (var k in attrs) {
@@ -331,371 +472,816 @@
             else if (k === 'html') e.innerHTML = attrs[k];
             else if (k === 'text') e.textContent = attrs[k];
             else if (k.indexOf('on') === 0) e.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
-            else e.setAttribute(k, attrs[k]);
+            else if (attrs[k] != null) e.setAttribute(k, attrs[k]);
         }
         if (kids) kids.forEach(function (c) { c && e.appendChild(c); });
         return e;
     }
     function svg(icon) {
         var SVGS = {
-            chat:    '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 3c5.5 0 10 3.6 10 8s-4.5 8-10 8c-1.3 0-2.5-.2-3.6-.5L3 20l1.4-4.5C3 14 2 12.6 2 11c0-4.4 4.5-8 10-8z"/></svg>',
-            message: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H7l-5 4V6c0-1.1.9-2 2-2z"/></svg>',
-            help:    '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.9 15.6h-1.8v-1.8h1.8v1.8zm1.9-6.6l-.8.8c-.6.6-1 1.1-1 2.2h-1.8v-.4c0-.9.4-1.6 1-2.2l1.1-1.1c.3-.3.5-.7.5-1.2 0-1-.8-1.8-1.8-1.8s-1.8.8-1.8 1.8H8.4c0-2 1.6-3.6 3.6-3.6s3.6 1.6 3.6 3.6c0 .8-.3 1.5-.8 2z"/></svg>',
-            sparkle: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2zm7 12l.9 2.6L22.5 17l-2.6.9L19 20.5l-.9-2.6L15.5 17l2.6-.9L19 14z"/></svg>',
-            close:   '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>',
-            send:    '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 20l19-8L3 4v6l14 2-14 2z"/></svg>',
-            bolt:    '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 3v7h5l-8 11v-7H5l8-11z"/></svg>'
+            close:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+            send:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 18-3-8z"/></svg>',
+            chat:    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.13L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+            arrow:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+            spark:   '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6z"/></svg>',
+            check:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>'
         };
         return SVGS[icon] || '';
     }
     function ensureRoot() {
         if (el.root) return;
-        // dir="ltr" pins the widget's own directionality regardless of the
-        // host page (e.g. <html dir="rtl">). Without this, RTL host pages
-        // mirror the header controls, composer, and message rows.
-        el.root = _('div', { id: 'wvch-root', dir: 'ltr' });
+        // Give the widget its own directionality so RTL host pages don't warp us
+        // and vice-versa. `data-lang` flips the panel from AR-RTL to EN-LTR.
+        el.root = _('div', {
+            id: 'wvch-root',
+            'data-lang': S.lang,
+            dir: t().dir
+        });
         document.body.appendChild(el.root);
         injectStyles();
+        injectFonts();
+
+        // Esc closes the panel
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && S.open) togglePanel();
+        });
     }
     function applyThemeFromWidget() {
         if (!el.root || !S.widget) return;
-        el.root.style.setProperty('--wvch-color', S.widget.theme_color || '#2563eb');
+        var accent = S.widget.theme_color || CONFIG.accent || '#2E5BFF';
+        el.root.style.setProperty('--wvch-accent',      accent);
+        el.root.style.setProperty('--wvch-accent-2',    shade(accent, -8));
+        el.root.style.setProperty('--wvch-accent-soft', rgba(accent, 0.12));
+        el.root.style.setProperty('--wvch-accent-ring', rgba(accent, 0.28));
         el.root.setAttribute('data-position', S.widget.position || 'right');
-        el.root.setAttribute('data-bubble',   S.widget.bubble_style || 'soft');
     }
+    function switchLang(newLang) {
+        if (newLang !== 'ar' && newLang !== 'en') return;
+        if (S.lang === newLang) return;
+        S.lang = newLang;
+        lsSet(LS_LANG, newLang);
+        if (el.root) {
+            el.root.setAttribute('data-lang', newLang);
+            el.root.setAttribute('dir', t().dir);
+        }
+        render();
+    }
+
     function render() {
         ensureRoot();
         if (S.widget && S.widget.enabled === false) {
-            // If the tenant disabled the widget after page load, hide everything.
             if (el.launcher) el.launcher.style.display = 'none';
-            if (el.panel) el.panel.style.display = 'none';
+            if (el.panel)    el.panel.style.display    = 'none';
             return;
         }
         renderLauncher();
         renderPanel();
     }
+
     function renderLauncher() {
         if (el.launcher && el.launcher.parentNode) el.launcher.parentNode.removeChild(el.launcher);
-        var label = null;
-        if (S.widget && S.widget.launcher_text) {
-            label = _('span', { class: 'wvch-launcher-label', text: S.widget.launcher_text });
+        if (el.hintPill && el.hintPill.parentNode) el.hintPill.parentNode.removeChild(el.hintPill);
+
+        // The floating hint pill sits above/beside the launcher and fades in
+        // after 1 s, once per session (spec §5). Not shown when the panel is
+        // open (icon becomes ✕).
+        if (!S.open && !S.hintShown) {
+            var hint = _('div', { class: 'wvch-hint', role: 'status' }, [
+                _('span', { text: t().floatingHint })
+            ]);
+            el.hintPill = hint;
+            el.root.appendChild(hint);
+            setTimeout(function () {
+                hint.classList.add('wvch-hint-in');
+            }, 1000);
+            setTimeout(function () {
+                if (hint.parentNode) hint.parentNode.removeChild(hint);
+                el.hintPill = null;
+                S.hintShown = true;
+                lsSet(LS_TIP, '1');
+            }, 9000);
         }
-        var iconKey = (S.widget && S.widget.launcher_icon) || 'chat';
+
         var bubble = _('button', {
-            class: 'wvch-launcher',
-            'aria-label': (S.widget && S.widget.launcher_text) || 'Open chat',
+            class: 'wvch-launcher' + (S.open ? ' wvch-launcher-open' : ''),
+            'aria-label': S.open ? t().closeAria : t().openAria,
             'aria-expanded': String(!!S.open),
             onclick: togglePanel
         }, [
-            label,
-            _('span', { class: 'wvch-launcher-icon', html: svg(iconKey) })
+            _('span', { class: 'wvch-launcher-ring' }),
+            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-chat', html: svg('chat') }),
+            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-close', html: svg('close') })
         ]);
         el.launcher = bubble;
         el.root.appendChild(bubble);
     }
+
     function renderPanel() {
         if (!S.open) {
             if (el.panel && el.panel.parentNode) el.panel.parentNode.removeChild(el.panel);
-            el.panel = null; return;
+            el.panel = el.header = el.body = el.thread = el.statusBar = el.composer = null;
+            return;
         }
         if (el.panel && el.panel.parentNode) el.panel.parentNode.removeChild(el.panel);
 
-        var titleName = (S.widget && S.widget.name) || 'Live Chat';
-        var subtitle  = (S.widget && S.widget.header_subtitle) || '';
-        var headerInner = [_('div', { class: 'wvch-header-name', text: titleName })];
-        if (subtitle) {
-            headerInner.push(_('div', { class: 'wvch-header-sub', text: subtitle }));
-        }
-        var header = _('div', { class: 'wvch-header' }, [
-            _('div', { class: 'wvch-header-titles' }, headerInner),
-            _('button', {
-                class: 'wvch-header-close',
-                'aria-label': 'Close chat',
-                onclick: togglePanel,
-                html: svg('close')
-            })
+        var titleName = t().headerTitle || (S.widget && S.widget.name) || t().headerFallback;
+        var promise   = (S.widget && S.widget.header_subtitle) || t().headerPromise;
+
+        var langBtn = _('button', {
+            class: 'wvch-header-lang',
+            type: 'button',
+            'aria-label': t().langToggleAria,
+            onclick: function () { switchLang(S.lang === 'ar' ? 'en' : 'ar'); },
+            text: t().langToggle
+        });
+        var closeBtn = _('button', {
+            class: 'wvch-header-close',
+            type: 'button',
+            'aria-label': t().closeAria,
+            onclick: togglePanel,
+            html: svg('close')
+        });
+
+        var brandInitial = (titleName || '?').trim().charAt(0).toUpperCase();
+        var brandBadge = _('div', { class: 'wvch-header-brand' }, [
+            _('span', { class: 'wvch-header-brand-badge', text: brandInitial }),
+            _('span', { class: 'wvch-header-brand-dot',  'aria-hidden': 'true' })
         ]);
+        var titles = _('div', { class: 'wvch-header-titles' }, [
+            _('div', { class: 'wvch-header-name',    text: titleName }),
+            _('div', { class: 'wvch-header-promise', text: promise })
+        ]);
+        var actions = _('div', { class: 'wvch-header-actions' }, [langBtn, closeBtn]);
+
+        el.header = _('div', { class: 'wvch-header' }, [brandBadge, titles, actions]);
 
         el.body = _('div', { class: 'wvch-body' });
         el.statusBar = _('div', { class: 'wvch-statusbar' });
-        el.composer = _('div', { class: 'wvch-composer' });
+        el.composer  = _('div', { class: 'wvch-composer' });
 
-        var panelKids = [header, el.statusBar, el.body, el.composer];
+        var panelKids = [el.header, el.statusBar, el.body, el.composer];
         if (S.widget && S.widget.show_branding) {
             panelKids.push(_('div', { class: 'wvch-branding' }, [
-                _('span', { class: 'wvch-branding-bolt', html: svg('bolt') }),
-                _('span', { html: 'Powered by <b>TshlBot</b>' })
+                _('span', { class: 'wvch-branding-bolt', html: svg('spark') }),
+                _('span', { html: t().branding + ' <b>Wavadesk</b>' })
             ]));
         }
 
-        el.panel = _('div', { class: 'wvch-panel', role: 'dialog', 'aria-label': titleName }, panelKids);
+        el.panel = _('div', {
+            class: 'wvch-panel',
+            role: 'dialog',
+            'aria-modal': 'false',
+            'aria-label': titleName
+        }, panelKids);
         el.root.appendChild(el.panel);
 
         renderStatus();
         renderView();
     }
+
+    function switchToChat() {
+        S.view = 'chat';
+        renderView();
+    }
+
     function renderView() {
+        if (!el.body || !el.composer) return;
         el.body.innerHTML = '';
         el.composer.innerHTML = '';
+        el.thread = null;
+        el.typingBubble = null;
+
         if (!S.booted) {
-            el.body.appendChild(_('div', { class: 'wvch-loading', text: 'Loading…' }));
+            el.body.appendChild(_('div', { class: 'wvch-loading', text: '…' }));
             return;
         }
         switch (S.view) {
             case 'prechat':  return renderPrechat();
-            case 'welcome':  return renderWelcome();
-            case 'chat':     renderMessages(); renderComposer(); return;
+            case 'welcome':  renderWelcome(); renderComposer(); return;
+            case 'chat':     renderThread();  renderComposer(); return;
             case 'closed':   return renderClosed();
             case 'offline':  return renderOffline();
         }
     }
+
+    // ── Welcome (empty state — spec §2) ───────────────────────────────
+    function renderWelcome() {
+        var wrap = _('div', { class: 'wvch-welcome' });
+        wrap.appendChild(_('div', { class: 'wvch-welcome-title', text: t().welcomeTitle }));
+        var subText = (S.widget && S.widget.welcome_message) || t().welcomeSub;
+        wrap.appendChild(_('div', { class: 'wvch-welcome-sub', text: subText }));
+
+        var list = _('div', { class: 'wvch-topics', role: 'list' });
+        t().topics.forEach(function (topic, i) {
+            var badge = _('span', { class: 'wvch-topic-num', text: toDigit(i + 1) });
+            var card = _('button', {
+                class: 'wvch-topic wvch-topic-' + topic.tint,
+                type: 'button',
+                role: 'listitem',
+                'aria-label': topic.label,
+                onclick: function () { onTopicClick(topic); }
+            }, [
+                badge,
+                _('span', { class: 'wvch-topic-label', text: topic.label }),
+                _('span', { class: 'wvch-topic-arrow', html: svg('arrow') })
+            ]);
+            card.style.setProperty('--wvch-stagger', (i * 70) + 'ms');
+            list.appendChild(card);
+        });
+        wrap.appendChild(list);
+
+        el.body.appendChild(wrap);
+    }
+
+    function onTopicClick(topic) {
+        // Every topic goes through the real backend so answers come from the
+        // AI / assigned agent — the typing dots animate until the reply lands.
+        if (topic.id === 't-agent') {
+            requestAgent();
+            return;
+        }
+        sendMessage(topic.label);
+    }
+
+    // ── Thread ────────────────────────────────────────────────────────
+    function renderThread() {
+        el.thread = _('div', { class: 'wvch-thread' });
+        el.body.appendChild(el.thread);
+        S.messages.forEach(function (m) { appendMessage(m, { skipAnim: true }); });
+        if (S.typing) drawTyping();
+        scrollToBottom(true);
+    }
+
+    function appendMessage(m, opts) {
+        if (!el.thread) return;
+        opts = opts || {};
+        var side;
+        if (m.sender_type === 'visitor')      side = 'right';
+        else if (m.sender_type === 'system')  side = 'center';
+        else                                  side = 'left';
+
+        var row = _('div', { class: 'wvch-msg wvch-msg-' + side, 'data-mid': String(m.id) });
+
+        if (m.sender_type === 'system') {
+            row.appendChild(_('div', { class: 'wvch-system', text: m.body }));
+            el.thread.appendChild(row);
+            scrollToBottom();
+            m._rendered = true;
+            return;
+        }
+
+        // Avatar for the bot/agent side. Turns green after the first human handoff.
+        if (side === 'left') {
+            var isHuman = S.humanOnce || m.sender_type === 'agent';
+            row.appendChild(_('div', {
+                class: 'wvch-avatar' + (isHuman ? ' wvch-avatar-human' : ' wvch-avatar-bot'),
+                'aria-hidden': 'true',
+                text: initialsOf(m)
+            }));
+        }
+
+        var bubble = _('div', { class: 'wvch-bubble wvch-bubble-' + side });
+        if (m.pending) bubble.classList.add('wvch-bubble-pending');
+        if (m.failed)  bubble.classList.add('wvch-bubble-failed');
+        bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: m.body }));
+        row.appendChild(bubble);
+
+        // Fresh bot replies get the typewriter effect (spec §2). History replays
+        // instantly so re-opens don't feel slow.
+        if (!opts.skipAnim && side === 'left' && !m._rendered && (m.body || '').length > 0) {
+            typewriter(bubble.querySelector('.wvch-bubble-body'), m.body);
+        }
+        m._rendered = true;
+
+        el.thread.appendChild(row);
+        scrollToBottom();
+    }
+
+    function typewriter(node, text) {
+        node.textContent = '';
+        var caret = document.createElement('span');
+        caret.className = 'wvch-caret';
+        node.appendChild(caret);
+        var i = 0, step = 2;
+        var timer = setInterval(function () {
+            i = Math.min(text.length, i + step);
+            caret.remove();
+            node.textContent = text.slice(0, i);
+            node.appendChild(caret);
+            scrollToBottom();
+            if (i >= text.length) {
+                clearInterval(timer);
+                setTimeout(function () { if (caret.parentNode) caret.remove(); }, 400);
+            }
+        }, 16);
+    }
+
+    function showTyping() {
+        S.typing = true;
+        S.typingSince = Date.now();
+        drawTyping();
+    }
+    function hideTyping() {
+        S.typing = false;
+        if (el.typingBubble && el.typingBubble.parentNode) el.typingBubble.parentNode.removeChild(el.typingBubble);
+        el.typingBubble = null;
+    }
+    function drawTyping() {
+        if (!el.thread) return;
+        if (el.typingBubble && el.typingBubble.parentNode) return; // already visible
+        var row = _('div', { class: 'wvch-msg wvch-msg-left wvch-typing-row' }, [
+            _('div', {
+                class: 'wvch-avatar ' + (S.humanOnce ? 'wvch-avatar-human' : 'wvch-avatar-bot'),
+                'aria-hidden': 'true',
+                text: '·'
+            }),
+            _('div', { class: 'wvch-bubble wvch-bubble-left wvch-typing' }, [
+                _('span', { class: 'wvch-dot' }),
+                _('span', { class: 'wvch-dot' }),
+                _('span', { class: 'wvch-dot' })
+            ])
+        ]);
+        el.typingBubble = row;
+        el.thread.appendChild(row);
+        scrollToBottom();
+    }
+
+    // ── Status bar (delivery shimmer + human-handoff card) ────────────
+    function renderStatus() {
+        if (!el.statusBar) return;
+        el.statusBar.innerHTML = '';
+        if (S.status === 'pending') {
+            el.statusBar.appendChild(_('div', { class: 'wvch-connecting' }, [
+                _('div', { class: 'wvch-connecting-bar' }, [_('span', { class: 'wvch-connecting-shine' })]),
+                _('div', { class: 'wvch-connecting-row' }, [
+                    _('span', { class: 'wvch-spinner', 'aria-hidden': 'true' }),
+                    _('span', { text: t().connecting })
+                ])
+            ]));
+        } else if (S.status === 'assigned' && S.agent) {
+            var name = S.agent.name || S.agent.display_name || '';
+            var role = S.agent.role_title || S.agent.title || t().handoffRoleFallback;
+            el.statusBar.appendChild(_('div', { class: 'wvch-handoff' }, [
+                _('div', { class: 'wvch-handoff-avatar', text: initialsOf({ sender: S.agent, body: name }) }),
+                _('div', { class: 'wvch-handoff-meta' }, [
+                    _('div', { class: 'wvch-handoff-name', text: (t().handoffPrefix + ' ' + name).trim() }),
+                    _('div', { class: 'wvch-handoff-role', text: role })
+                ]),
+                _('span', { class: 'wvch-handoff-check', html: svg('check') })
+            ]));
+        }
+    }
+
+    // ── Prechat form ──────────────────────────────────────────────────
     function renderPrechat() {
-        var nameInput  = _('input', { type: 'text',  class: 'wvch-input', placeholder: 'Your name (optional)' });
-        var emailInput = _('input', { type: 'email', class: 'wvch-input', placeholder: 'Your email (optional)' });
+        var nameInput  = _('input', { type: 'text',  class: 'wvch-input',      placeholder: t().prechatName  });
+        var emailInput = _('input', { type: 'email', class: 'wvch-input',      placeholder: t().prechatEmail });
         var btn = _('button', {
             class: 'wvch-btn wvch-btn-primary',
-            text: 'Start chat',
+            type: 'button',
+            text: t().prechatStart,
             onclick: function () {
-                btn.disabled = true; btn.textContent = 'Starting…';
+                btn.disabled = true; btn.textContent = t().prechatStarting;
                 submitPrechat(nameInput.value, emailInput.value)
-                    .catch(function () { btn.disabled = false; btn.textContent = 'Start chat'; });
+                    .catch(function () { btn.disabled = false; btn.textContent = t().prechatStart; });
             }
         });
         el.body.appendChild(_('div', { class: 'wvch-prechat' }, [
-            _('div', { class: 'wvch-prechat-title', text: 'Before we start' }),
-            _('div', { class: 'wvch-prechat-sub', text: 'Leave your details so we can get back to you.' }),
+            _('div', { class: 'wvch-welcome-title', text: t().prechatTitle }),
+            _('div', { class: 'wvch-welcome-sub',   text: t().prechatSub }),
             nameInput, emailInput, btn
         ]));
     }
-    function renderWelcome() {
-        var welcome = (S.widget && S.widget.welcome_message) || 'How can we help?';
-        var chips = (S.widget && S.widget.suggestions) || [];
 
-        var chipRow = _('div', { class: 'wvch-chips' });
-        chips.slice(0, 12).forEach(function (label) {
-            chipRow.appendChild(_('button', {
-                class: 'wvch-chip',
-                text: label,
-                onclick: function () { sendMessage(label); }
-            }));
-        });
-
-        var humanBtn = _('button', {
-            class: 'wvch-btn wvch-btn-primary wvch-human-btn',
-            text: 'Talk to a human',
-            onclick: function () { requestAgent(); }
-        });
-
-        el.body.appendChild(_('div', { class: 'wvch-welcome' }, [
-            _('div', { class: 'wvch-welcome-msg', text: welcome }),
-            chipRow,
-            humanBtn
-        ]));
-
-        renderComposer();
-    }
-    function renderMessages() {
-        if (!el.body) return;
-        // Only rebuild if we're in chat view — welcome/closed views own body
-        var list = el.body.querySelector('.wvch-thread');
-        if (!list) {
-            el.body.innerHTML = '';
-            list = _('div', { class: 'wvch-thread' });
-            el.body.appendChild(list);
-        }
-        list.innerHTML = '';
-        S.messages.forEach(function (m) {
-            var side = m.sender_type === 'visitor' ? 'right' : (m.sender_type === 'system' ? 'center' : 'left');
-            var bubble = _('div', { class: 'wvch-bubble' }, [
-                _('div', { class: 'wvch-bubble-body', text: m.body })
-            ]);
-            if (m.pending) bubble.classList.add('wvch-bubble-pending');
-            if (m.failed)  bubble.classList.add('wvch-bubble-failed');
-            var row = _('div', { class: 'wvch-msg wvch-msg-' + side });
-            if (m.sender_type === 'system') {
-                row.appendChild(_('div', { class: 'wvch-system', text: m.body }));
-            } else {
-                row.appendChild(bubble);
-            }
-            list.appendChild(row);
-        });
-    }
     function renderClosed() {
         el.body.appendChild(_('div', { class: 'wvch-closed' }, [
-            _('div', { class: 'wvch-closed-title', text: 'Chat ended' }),
-            _('div', { class: 'wvch-closed-sub', text: 'Thanks for reaching out. Feel free to start a new chat any time.' }),
+            _('div', { class: 'wvch-welcome-title', text: t().closedTitle }),
+            _('div', { class: 'wvch-welcome-sub',   text: t().closedSub }),
             _('button', {
                 class: 'wvch-btn wvch-btn-primary',
-                text: 'Start a new chat',
+                type: 'button',
+                text: t().startNew,
                 onclick: startNewChat
             })
         ]));
     }
     function renderOffline() {
-        var msg = (S.widget && S.widget.offline_message) || 'We are offline right now.';
+        var msg = (S.widget && S.widget.offline_message) || t().welcomeSub;
         el.body.appendChild(_('div', { class: 'wvch-closed' }, [
-            _('div', { class: 'wvch-closed-title', text: 'We are offline' }),
-            _('div', { class: 'wvch-closed-sub', text: msg })
+            _('div', { class: 'wvch-welcome-title', text: t().offlineTitle }),
+            _('div', { class: 'wvch-welcome-sub',   text: msg })
         ]));
     }
-    function renderStatus() {
-        if (!el.statusBar) return;
-        el.statusBar.innerHTML = '';
-        if (S.status === 'pending') {
-            el.statusBar.appendChild(_('div', { class: 'wvch-status wvch-status-pending' }, [
-                _('span', { class: 'wvch-status-dot' }),
-                _('span', { text: 'Connecting you to an agent…' })
-            ]));
-        } else if (S.status === 'assigned' && S.agent) {
-            el.statusBar.appendChild(_('div', { class: 'wvch-status wvch-status-connected' }, [
-                _('span', { class: 'wvch-status-dot' }),
-                _('span', { text: "You're connected to " + S.agent.name })
-            ]));
-        }
-    }
+
+    // ── Composer ──────────────────────────────────────────────────────
     function renderComposer() {
         if (!el.composer) return;
         el.composer.innerHTML = '';
         if (S.view === 'closed' || S.view === 'prechat' || S.view === 'offline') return;
 
         var textarea = _('textarea', {
-            class: 'wvch-input wvch-input-composer',
+            class: 'wvch-composer-input',
             rows: '1',
-            placeholder: 'Type your message…',
-            'aria-label': 'Type your message'
-        });
-        textarea.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                var body = textarea.value;
-                if (body.trim()) { textarea.value = ''; sendMessage(body); }
-            }
+            placeholder: t().composerPlaceholder,
+            'aria-label': t().composerPlaceholder
         });
         var sendBtn = _('button', {
-            class: 'wvch-btn wvch-btn-icon wvch-composer-send',
-            'aria-label': 'Send',
-            onclick: function () {
-                var body = textarea.value;
-                if (body.trim()) { textarea.value = ''; sendMessage(body); }
-            },
-            html: svg('send')
+            class: 'wvch-composer-send',
+            type: 'button',
+            'aria-label': t().sendAria,
+            html: svg('send'),
+            disabled: 'disabled'
         });
-        el.composer.appendChild(textarea);
-        el.composer.appendChild(sendBtn);
+        function tryUnlock() {
+            var has = textarea.value.trim().length > 0;
+            if (has) sendBtn.removeAttribute('disabled');
+            else     sendBtn.setAttribute('disabled', 'disabled');
+        }
+        function submit() {
+            var body = textarea.value;
+            if (!body.trim()) return;
+            textarea.value = '';
+            autoGrow(textarea);
+            tryUnlock();
+            sendMessage(body);
+        }
+        textarea.addEventListener('input', function () { autoGrow(textarea); tryUnlock(); });
+        textarea.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+        });
+        sendBtn.addEventListener('click', submit);
 
-        // focus after render (unless mobile — avoid blocking scroll)
-        if (window.innerWidth >= 640) setTimeout(function () { textarea.focus(); }, 50);
+        el.composer.appendChild(_('div', { class: 'wvch-composer-shell' }, [textarea, sendBtn]));
+
+        // Focus on desktop only — don't shove up mobile keyboards behind the user's back
+        if (window.innerWidth >= 640) setTimeout(function () { textarea.focus(); }, 60);
     }
-    function scrollToBottom() {
-        var list = el.body && el.body.querySelector('.wvch-thread');
-        if (list) list.scrollTop = list.scrollHeight;
+
+    function autoGrow(t) {
+        t.style.height = 'auto';
+        t.style.height = Math.min(140, t.scrollHeight) + 'px';
+    }
+
+    function scrollToBottom(force) {
+        var body = el.body; if (!body) return;
+        if (force) { body.scrollTop = body.scrollHeight; return; }
+        var near = body.scrollHeight - body.scrollTop - body.clientHeight < 120;
+        if (near) body.scrollTop = body.scrollHeight;
     }
     function togglePanel() {
         S.open = !S.open;
         lsSet(LS_OPEN, S.open ? '1' : null);
         if (S.open && !S.booted && !S.booting) {
-            render();               // shows loading state
+            render();
             ensureSession().then(render).catch(function () {
-                if (el.body) el.body.innerHTML = '<div class="wvch-loading">Could not connect. Please try again.</div>';
+                if (el.body) {
+                    el.body.innerHTML = '';
+                    el.body.appendChild(_('div', { class: 'wvch-loading', text: t().couldNotConnect }));
+                }
             });
         } else {
             render();
         }
     }
 
-    // ── Styles ─────────────────────────────────────────────────────────
+    // ── Small helpers ─────────────────────────────────────────────────
+    function initialsOf(m) {
+        var name = '';
+        if (m && m.sender && m.sender.name)      name = m.sender.name;
+        else if (m && m.sender_name)             name = m.sender_name;
+        if (!name) return '·';
+        var parts = name.trim().split(/\s+/);
+        var a = parts[0].charAt(0);
+        var b = parts[1] ? parts[1].charAt(0) : '';
+        return (a + b).toUpperCase() || '·';
+    }
+    function toDigit(n) {
+        // AR-Indic digits under the Arabic locale, Western digits under EN
+        if (S.lang !== 'ar') return String(n);
+        var map = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        return String(n).split('').map(function (d) { return map[+d] || d; }).join('');
+    }
+    function hexToRgb(hex) {
+        var h = (hex || '').replace('#', '');
+        if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+        var n = parseInt(h, 16);
+        if (isNaN(n)) return { r: 46, g: 91, b: 255 };
+        return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+    function rgba(hex, a) {
+        var c = hexToRgb(hex);
+        return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')';
+    }
+    function shade(hex, percent) {
+        var c = hexToRgb(hex);
+        function s(v) { return Math.max(0, Math.min(255, v + Math.round(v * percent / 100))); }
+        return 'rgb(' + s(c.r) + ',' + s(c.g) + ',' + s(c.b) + ')';
+    }
+
+    // ── Fonts (IBM Plex Sans Arabic) ──────────────────────────────────
+    function injectFonts() {
+        if (document.getElementById('wvch-fonts')) return;
+        var pre1 = document.createElement('link');
+        pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
+        var pre2 = document.createElement('link');
+        pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = 'anonymous';
+        var link = document.createElement('link');
+        link.id = 'wvch-fonts';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap';
+        document.head.appendChild(pre1);
+        document.head.appendChild(pre2);
+        document.head.appendChild(link);
+    }
+
+    // ── Styles (spec §3 design system + §4 animation table) ──────────
     function injectStyles() {
         if (document.getElementById('wvch-styles')) return;
         var css = [
-            "#wvch-root { --wvch-color: #2563eb; --wvch-radius: 12px; --wvch-bubble-radius: 14px; --wvch-chip-radius: 999px; --wvch-shadow: 0 12px 30px rgba(0,0,0,.15); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; direction: ltr; text-align: left; unicode-bidi: isolate; }",
-            "#wvch-root, #wvch-root *, #wvch-root *::before, #wvch-root *::after { box-sizing: border-box; direction: ltr; }",
-            /* Bubble-style variants — driven by data-bubble on the root */
-            "#wvch-root[data-bubble='soft']    { --wvch-radius: 12px; --wvch-bubble-radius: 14px; --wvch-chip-radius: 999px; }",
-            "#wvch-root[data-bubble='rounded'] { --wvch-radius: 20px; --wvch-bubble-radius: 20px; --wvch-chip-radius: 999px; }",
-            "#wvch-root[data-bubble='square']  { --wvch-radius: 4px;  --wvch-bubble-radius: 4px;  --wvch-chip-radius: 4px; }",
+            "#wvch-root {",
+            "  --wvch-accent: #2E5BFF;",
+            "  --wvch-accent-2: #4B4BE0;",
+            "  --wvch-accent-soft: rgba(46,91,255,.12);",
+            "  --wvch-accent-ring: rgba(46,91,255,.28);",
+            "  --wvch-text: #10162B;",
+            "  --wvch-text-2: #6E7691;",
+            "  --wvch-text-3: #A5AEC6;",
+            "  --wvch-line: #E7EAF3;",
+            "  --wvch-panel-bg: #F7F8FC;",
+            "  --wvch-card: #FFFFFF;",
+            "  --wvch-success: #17A85C;",
+            "  --wvch-success-2: #2ED47A;",
+            "  --wvch-tint-blue: #EDF1FF;",
+            "  --wvch-tint-orange: #FFF1EC;",
+            "  --wvch-tint-green: #EAF7F1;",
+            "  --wvch-tint-purple: #F1EDFF;",
+            "  font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;",
+            "  color: var(--wvch-text);",
+            "  -webkit-font-smoothing: antialiased;",
+            "  -moz-osx-font-smoothing: grayscale;",
+            "}",
+            "#wvch-root, #wvch-root *, #wvch-root *::before, #wvch-root *::after { box-sizing: border-box; }",
+            "#wvch-root button { font: inherit; color: inherit; }",
 
-            /* Launcher */
-            "#wvch-root .wvch-launcher { position: fixed; bottom: 20px; display: inline-flex; align-items: center; gap: 10px; padding: 0 18px; height: 56px; border-radius: 999px; border: none; background: var(--wvch-color); color: #fff; cursor: pointer; box-shadow: var(--wvch-shadow); font-size: 15px; z-index: 2147483000; transition: transform .15s ease; }",
+            /* ---------- Launcher (spec §2 floating bubble) ---------- */
+            "#wvch-root .wvch-launcher {",
+            "  position: fixed; bottom: 24px;",
+            "  width: 62px; height: 62px; border-radius: 22px;",
+            "  border: none; cursor: pointer;",
+            "  background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2));",
+            "  color: #fff;",
+            "  box-shadow: 0 14px 34px -10px " + "rgba(46,91,255,.55)" + ";",
+            "  z-index: 2147483000;",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  animation: wvch-float 4.5s ease-in-out infinite;",
+            "  transition: transform .18s ease;",
+            "}",
+            "#wvch-root[data-position='right'] .wvch-launcher { right: 24px; }",
+            "#wvch-root[data-position='left']  .wvch-launcher { left: 24px; }",
             "#wvch-root .wvch-launcher:hover { transform: translateY(-2px); }",
-            "#wvch-root[data-position='right'] .wvch-launcher { right: 20px; }",
-            "#wvch-root[data-position='left']  .wvch-launcher { left: 20px; }",
-            "#wvch-root .wvch-launcher-icon { display: inline-flex; align-items: center; }",
-            "#wvch-root .wvch-launcher-label { white-space: nowrap; font-weight: 500; }",
+            "#wvch-root .wvch-launcher:active { transform: scale(.96); }",
+            "#wvch-root .wvch-launcher-ring {",
+            "  position: absolute; inset: -6px; border-radius: 26px;",
+            "  border: 2px solid var(--wvch-accent);",
+            "  opacity: 0; pointer-events: none;",
+            "  animation: wvch-pulse 2.6s ease-out infinite;",
+            "}",
+            "#wvch-root .wvch-launcher-icon { display: inline-flex; align-items: center; justify-content: center; transition: opacity .18s ease, transform .18s ease; }",
+            "#wvch-root .wvch-launcher-icon-close { position: absolute; opacity: 0; transform: rotate(-90deg); }",
+            "#wvch-root .wvch-launcher-open .wvch-launcher-icon-chat  { opacity: 0; transform: rotate(90deg); }",
+            "#wvch-root .wvch-launcher-open .wvch-launcher-icon-close { opacity: 1; transform: rotate(0); }",
+            "#wvch-root .wvch-launcher-open .wvch-launcher-ring { animation: none; opacity: 0; }",
 
-            /* Panel */
-            "#wvch-root .wvch-panel { position: fixed; bottom: 92px; width: 360px; max-width: calc(100vw - 40px); height: 560px; max-height: calc(100vh - 120px); background: #fff; border-radius: var(--wvch-radius); box-shadow: var(--wvch-shadow); overflow: hidden; display: flex; flex-direction: column; z-index: 2147483000; animation: wvch-in .18s ease-out; }",
-            "@keyframes wvch-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }",
-            "#wvch-root[data-position='right'] .wvch-panel { right: 20px; }",
-            "#wvch-root[data-position='left']  .wvch-panel { left: 20px; }",
-            "@media (max-width: 640px) { #wvch-root .wvch-panel { width: calc(100vw - 20px); height: calc(100vh - 100px); right: 10px; left: 10px; bottom: 82px; } #wvch-root[data-position='left'] .wvch-panel { right: 10px; left: 10px; } }",
+            "@keyframes wvch-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }",
+            "@keyframes wvch-pulse { 0% { opacity: .55; transform: scale(.9); } 70% { opacity: 0; transform: scale(1.25); } 100% { opacity: 0; transform: scale(1.25); } }",
 
-            /* Header */
-            "#wvch-root .wvch-header { background: var(--wvch-color); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
-            "#wvch-root .wvch-header-titles { min-width: 0; }",
-            "#wvch-root .wvch-header-name { font-weight: 600; font-size: 15px; line-height: 1.2; }",
-            "#wvch-root .wvch-header-sub  { font-size: 12px; opacity: .85; margin-top: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
-            "#wvch-root .wvch-header-close { background: transparent; border: none; color: #fff; cursor: pointer; padding: 4px; opacity: .85; display: inline-flex; flex-shrink: 0; }",
-            "#wvch-root .wvch-header-close:hover { opacity: 1; }",
+            /* ---------- Floating hint pill ---------- */
+            "#wvch-root .wvch-hint {",
+            "  position: fixed; bottom: 40px;",
+            "  padding: 8px 14px;",
+            "  background: #fff; color: var(--wvch-text);",
+            "  border-radius: 999px;",
+            "  box-shadow: 0 12px 28px -12px rgba(16,22,43,.35);",
+            "  font-size: 13px; font-weight: 500;",
+            "  opacity: 0; transform: translateY(4px);",
+            "  transition: opacity .28s ease, transform .28s ease;",
+            "  z-index: 2147482999;",
+            "  pointer-events: none;",
+            "}",
+            "#wvch-root[data-position='right'] .wvch-hint { right: 96px; }",
+            "#wvch-root[data-position='left']  .wvch-hint { left: 96px; }",
+            "#wvch-root .wvch-hint.wvch-hint-in { opacity: 1; transform: translateY(0); }",
 
-            /* Status bar */
-            "#wvch-root .wvch-statusbar { padding: 0 12px; }",
-            "#wvch-root .wvch-status { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-top: 8px; border-radius: 8px; font-size: 12px; background: #f3f4f6; color: #4b5563; }",
-            "#wvch-root .wvch-status-dot { width: 8px; height: 8px; border-radius: 50%; }",
-            "#wvch-root .wvch-status-pending .wvch-status-dot { background: #f59e0b; animation: wvch-pulse 1.4s ease-in-out infinite; }",
-            "#wvch-root .wvch-status-connected .wvch-status-dot { background: #10b981; }",
-            "@keyframes wvch-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }",
+            /* ---------- Panel ---------- */
+            "#wvch-root .wvch-panel {",
+            "  position: fixed; bottom: 104px;",
+            "  width: 404px; max-width: calc(100vw - 32px);",
+            "  height: 660px; max-height: calc(100vh - 130px);",
+            "  background: var(--wvch-panel-bg);",
+            "  border-radius: 26px;",
+            "  box-shadow: 0 40px 80px -28px rgba(16,22,43,.42);",
+            "  overflow: hidden;",
+            "  display: flex; flex-direction: column;",
+            "  z-index: 2147483000;",
+            "  transform-origin: bottom right;",
+            "  animation: wvch-panel-in 520ms cubic-bezier(.22,1.2,.36,1);",
+            "}",
+            "#wvch-root[data-position='right'] .wvch-panel { right: 24px; transform-origin: bottom right; }",
+            "#wvch-root[data-position='left']  .wvch-panel { left: 24px;  transform-origin: bottom left; }",
+            "@keyframes wvch-panel-in { from { opacity: 0; transform: translateY(24px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }",
+            "@media (max-width: 480px) {",
+            "  #wvch-root .wvch-panel { width: calc(100vw - 16px); height: calc(100vh - 100px); left: 8px; right: 8px; bottom: 92px; border-radius: 22px; }",
+            "  #wvch-root .wvch-launcher { width: 58px; height: 58px; }",
+            "}",
 
-            /* Body */
-            "#wvch-root .wvch-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 8px; background: #f9fafb; }",
-            "#wvch-root .wvch-loading { padding: 30px 20px; text-align: center; color: #6b7280; font-size: 13px; }",
+            /* ---------- Header ---------- */
+            "#wvch-root .wvch-header {",
+            "  background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2));",
+            "  color: #fff;",
+            "  padding: 16px 18px 18px;",
+            "  display: flex; align-items: center; gap: 12px;",
+            "}",
+            "#wvch-root .wvch-header-brand {",
+            "  position: relative; width: 40px; height: 40px; border-radius: 14px;",
+            "  background: rgba(255,255,255,.16);",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  flex-shrink: 0;",
+            "}",
+            "#wvch-root .wvch-header-brand-badge {",
+            "  font-size: 15px; font-weight: 700; color: #fff; letter-spacing: .02em;",
+            "}",
+            "#wvch-root .wvch-header-brand-dot {",
+            "  position: absolute; width: 12px; height: 12px; border-radius: 50%;",
+            "  background: var(--wvch-success-2);",
+            "  border: 2px solid var(--wvch-accent-2);",
+            "  bottom: -2px;",
+            "}",
+            "#wvch-root[dir='ltr'] .wvch-header-brand-dot { right: -2px; }",
+            "#wvch-root[dir='rtl'] .wvch-header-brand-dot { left: -2px; }",
+            "#wvch-root .wvch-header-titles { flex: 1; min-width: 0; line-height: 1.25; }",
+            "#wvch-root .wvch-header-name    { font-size: 15px; font-weight: 700; }",
+            "#wvch-root .wvch-header-promise { font-size: 12.5px; opacity: .88; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+            "#wvch-root .wvch-header-actions { display: inline-flex; gap: 6px; align-items: center; }",
+            "#wvch-root .wvch-header-lang, #wvch-root .wvch-header-close {",
+            "  background: rgba(255,255,255,.14); border: none;",
+            "  color: #fff; cursor: pointer;",
+            "  height: 34px; min-width: 34px; padding: 0 10px;",
+            "  border-radius: 12px;",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  font-size: 13px; font-weight: 600;",
+            "  transition: background .18s ease, transform .18s ease;",
+            "}",
+            "#wvch-root .wvch-header-lang:hover, #wvch-root .wvch-header-close:hover { background: rgba(255,255,255,.24); }",
+            "#wvch-root .wvch-header-close:hover { transform: rotate(90deg); }",
 
-            /* Welcome */
-            "#wvch-root .wvch-welcome-msg { font-size: 14px; color: #111827; line-height: 1.5; margin-bottom: 12px; white-space: pre-wrap; }",
-            "#wvch-root .wvch-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }",
-            "#wvch-root .wvch-chip { background: #fff; border: 1px solid var(--wvch-color); color: var(--wvch-color); padding: 6px 12px; border-radius: var(--wvch-chip-radius); font-size: 12px; cursor: pointer; font-family: inherit; }",
-            "#wvch-root .wvch-chip:hover { background: var(--wvch-color); color: #fff; }",
-            "#wvch-root .wvch-human-btn { width: 100%; }",
+            /* ---------- Status bar ---------- */
+            "#wvch-root .wvch-statusbar { padding: 0 18px; }",
+            "#wvch-root .wvch-statusbar:empty { display: none; }",
 
-            /* Prechat form */
-            "#wvch-root .wvch-prechat { display: flex; flex-direction: column; gap: 10px; }",
-            "#wvch-root .wvch-prechat-title { font-size: 15px; font-weight: 600; color: #111827; }",
-            "#wvch-root .wvch-prechat-sub { font-size: 12px; color: #6b7280; margin-bottom: 4px; }",
+            "#wvch-root .wvch-connecting { margin-top: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 1px 0 var(--wvch-line); }",
+            "#wvch-root .wvch-connecting-bar { position: relative; height: 6px; border-radius: 999px; background: var(--wvch-accent-soft); overflow: hidden; }",
+            "#wvch-root .wvch-connecting-shine { position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--wvch-accent), transparent); animation: wvch-shine 1.5s linear infinite; }",
+            "@keyframes wvch-shine { from { transform: translateX(-100%); } to { transform: translateX(260%); } }",
+            "#wvch-root .wvch-connecting-row { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--wvch-text-2); }",
+            "#wvch-root .wvch-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--wvch-accent-soft); border-top-color: var(--wvch-accent); animation: wvch-spin .8s linear infinite; }",
+            "@keyframes wvch-spin { to { transform: rotate(360deg); } }",
 
-            /* Thread */
-            "#wvch-root .wvch-thread { display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px; }",
-            "#wvch-root .wvch-msg { display: flex; }",
+            "#wvch-root .wvch-handoff { margin-top: 12px; display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, var(--wvch-success-2), var(--wvch-success)); color: #fff; padding: 12px 14px; border-radius: 16px; box-shadow: 0 12px 22px -14px rgba(23,168,92,.65); animation: wvch-handoff-in 400ms cubic-bezier(.2,1.2,.4,1); }",
+            "@keyframes wvch-handoff-in { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }",
+            "#wvch-root .wvch-handoff-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.22); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }",
+            "#wvch-root .wvch-handoff-meta { flex: 1; min-width: 0; line-height: 1.25; }",
+            "#wvch-root .wvch-handoff-name { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+            "#wvch-root .wvch-handoff-role { font-size: 11.5px; opacity: .9; margin-top: 2px; }",
+            "#wvch-root .wvch-handoff-check { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.22); align-items: center; justify-content: center; flex-shrink: 0; }",
+
+            /* ---------- Body ---------- */
+            "#wvch-root .wvch-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 18px 14px; }",
+            "#wvch-root .wvch-body::-webkit-scrollbar { width: 8px; }",
+            "#wvch-root .wvch-body::-webkit-scrollbar-thumb { background: #d5dbe8; border-radius: 999px; }",
+            "#wvch-root .wvch-loading { padding: 40px 20px; text-align: center; color: var(--wvch-text-2); font-size: 13px; }",
+
+            /* ---------- Welcome (spec §2) ---------- */
+            "#wvch-root .wvch-welcome-title { font-size: 22px; font-weight: 700; color: var(--wvch-text); line-height: 1.3; }",
+            "#wvch-root .wvch-welcome-sub   { font-size: 13.5px; color: var(--wvch-text-2); margin-top: 6px; line-height: 1.55; }",
+            "#wvch-root .wvch-topics { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }",
+            "#wvch-root .wvch-topic {",
+            "  --wvch-tint: var(--wvch-tint-blue);",
+            "  --wvch-num-bg: var(--wvch-accent);",
+            "  display: flex; align-items: center; gap: 12px;",
+            "  padding: 14px; border-radius: 16px;",
+            "  background: var(--wvch-card); border: 1px solid var(--wvch-line);",
+            "  cursor: pointer; text-align: inherit;",
+            "  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;",
+            "  opacity: 0; transform: translateY(8px);",
+            "  animation: wvch-topic-in 450ms cubic-bezier(.2,1.1,.4,1) forwards;",
+            "  animation-delay: var(--wvch-stagger, 0ms);",
+            "}",
+            "@keyframes wvch-topic-in { to { opacity: 1; transform: translateY(0); } }",
+            "#wvch-root .wvch-topic:hover { transform: translateY(-1px); box-shadow: 0 12px 22px -18px rgba(16,22,43,.35); border-color: transparent; }",
+            "#wvch-root .wvch-topic:active { transform: scale(.98); }",
+            "#wvch-root .wvch-topic-num { width: 32px; height: 32px; border-radius: 12px; background: var(--wvch-tint); color: var(--wvch-num-bg); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0; }",
+            "#wvch-root .wvch-topic-label { flex: 1; font-size: 14px; font-weight: 500; color: var(--wvch-text); }",
+            "#wvch-root .wvch-topic-arrow { color: var(--wvch-text-3); display: inline-flex; }",
+            "#wvch-root[dir='rtl'] .wvch-topic-arrow { transform: scaleX(-1); }",
+            "#wvch-root .wvch-topic-blue   { --wvch-tint: var(--wvch-tint-blue);   --wvch-num-bg: #2E5BFF; }",
+            "#wvch-root .wvch-topic-orange { --wvch-tint: var(--wvch-tint-orange); --wvch-num-bg: #E5734A; }",
+            "#wvch-root .wvch-topic-green  { --wvch-tint: var(--wvch-tint-green);  --wvch-num-bg: #17A85C; }",
+            "#wvch-root .wvch-topic-purple { --wvch-tint: var(--wvch-tint-purple); --wvch-num-bg: #6E4BE0; }",
+
+            /* ---------- Thread ---------- */
+            "#wvch-root .wvch-thread { display: flex; flex-direction: column; gap: 12px; padding-bottom: 6px; }",
+            "#wvch-root .wvch-msg { display: flex; gap: 8px; align-items: flex-end; animation: wvch-bubble-in 380ms cubic-bezier(.2,1.1,.4,1); }",
             "#wvch-root .wvch-msg-right { justify-content: flex-end; }",
             "#wvch-root .wvch-msg-left  { justify-content: flex-start; }",
-            "#wvch-root .wvch-msg-center { justify-content: center; }",
-            "#wvch-root .wvch-bubble { max-width: 78%; padding: 8px 12px; border-radius: var(--wvch-bubble-radius); background: #fff; color: #111827; font-size: 13.5px; line-height: 1.45; box-shadow: 0 1px 2px rgba(0,0,0,.04); word-break: break-word; }",
-            "#wvch-root .wvch-msg-right .wvch-bubble { background: var(--wvch-color); color: #fff; }",
-            "#wvch-root .wvch-bubble-pending { opacity: .6; }",
-            "#wvch-root .wvch-bubble-failed { background: #fee2e2; color: #b91c1c; }",
-            "#wvch-root .wvch-system { font-size: 11px; color: #6b7280; background: transparent; border: 1px dashed #d1d5db; padding: 3px 10px; border-radius: 999px; }",
+            "#wvch-root .wvch-msg-center{ justify-content: center; }",
+            "@keyframes wvch-bubble-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }",
+            "#wvch-root .wvch-avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }",
+            "#wvch-root .wvch-avatar-bot   { background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2)); }",
+            "#wvch-root .wvch-avatar-human { background: linear-gradient(135deg, var(--wvch-success-2), var(--wvch-success)); }",
+            "#wvch-root .wvch-bubble { max-width: 78%; padding: 10px 14px; font-size: 14.5px; line-height: 1.7; word-break: break-word; border-radius: 16px; }",
+            "#wvch-root .wvch-bubble-left  { background: #fff; color: var(--wvch-text); border: 1px solid var(--wvch-line); }",
+            "#wvch-root[dir='rtl'] .wvch-bubble-left  { border-top-right-radius: 5px; }",
+            "#wvch-root[dir='ltr'] .wvch-bubble-left  { border-top-left-radius: 5px; }",
+            "#wvch-root .wvch-bubble-right { background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2)); color: #fff; box-shadow: 0 12px 22px -14px " + "rgba(46,91,255,.85)" + "; border: none; }",
+            "#wvch-root[dir='rtl'] .wvch-bubble-right { border-top-left-radius: 5px; }",
+            "#wvch-root[dir='ltr'] .wvch-bubble-right { border-top-right-radius: 5px; }",
+            "#wvch-root .wvch-bubble-body { white-space: pre-wrap; }",
+            "#wvch-root .wvch-bubble-pending { opacity: .78; }",
+            "#wvch-root .wvch-bubble-failed  { background: #fdecec; color: #b91c1c; border: 1px solid #f7c8c8; box-shadow: none; }",
+            "#wvch-root .wvch-system { font-size: 11.5px; color: var(--wvch-text-3); background: transparent; padding: 4px 12px; border: 1px dashed var(--wvch-line); border-radius: 999px; }",
 
-            /* Closed */
-            "#wvch-root .wvch-closed { text-align: center; padding: 24px 12px; }",
-            "#wvch-root .wvch-closed-title { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 6px; }",
-            "#wvch-root .wvch-closed-sub { font-size: 13px; color: #6b7280; margin-bottom: 14px; line-height: 1.5; }",
+            /* Blinking caret during typewriter effect */
+            "#wvch-root .wvch-caret { display: inline-block; width: 6px; height: 1em; margin-inline-start: 2px; vertical-align: -2px; background: var(--wvch-text-3); animation: wvch-caret 800ms steps(1) infinite; }",
+            "@keyframes wvch-caret { 50% { opacity: 0; } }",
 
-            /* Composer */
-            "#wvch-root .wvch-composer { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #e5e7eb; background: #fff; }",
-            "#wvch-root .wvch-input { flex: 1; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 13.5px; outline: none; resize: none; }",
-            "#wvch-root .wvch-input:focus { border-color: var(--wvch-color); }",
-            "#wvch-root .wvch-input-composer { max-height: 100px; min-height: 38px; }",
+            /* Typing dots */
+            "#wvch-root .wvch-typing { display: inline-flex; align-items: center; gap: 4px; padding: 12px 14px; }",
+            "#wvch-root .wvch-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--wvch-text-3); animation: wvch-bounce 1.1s ease-in-out infinite; }",
+            "#wvch-root .wvch-dot:nth-child(2) { animation-delay: .16s; }",
+            "#wvch-root .wvch-dot:nth-child(3) { animation-delay: .32s; }",
+            "@keyframes wvch-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-3px); opacity: 1; } }",
 
-            /* Buttons */
-            "#wvch-root .wvch-btn { border: none; border-radius: 8px; padding: 8px 14px; font-family: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; }",
-            "#wvch-root .wvch-btn-primary { background: var(--wvch-color); color: #fff; }",
-            "#wvch-root .wvch-btn-primary:hover { filter: brightness(1.05); }",
-            "#wvch-root .wvch-btn-primary:disabled { opacity: .6; cursor: not-allowed; }",
-            "#wvch-root .wvch-btn-icon { padding: 8px 10px; background: var(--wvch-color); color: #fff; display: inline-flex; align-items: center; }",
-            "#wvch-root .wvch-composer-send:hover { filter: brightness(1.05); }",
+            /* ---------- Composer ---------- */
+            "#wvch-root .wvch-composer { padding: 12px 18px 16px; background: transparent; }",
+            "#wvch-root .wvch-composer-shell {",
+            "  display: flex; align-items: flex-end; gap: 8px;",
+            "  background: #fff;",
+            "  border: 1px solid var(--wvch-line);",
+            "  border-radius: 18px;",
+            "  padding: 8px 10px;",
+            "  transition: border-color .18s ease, box-shadow .18s ease;",
+            "}",
+            "#wvch-root .wvch-composer-shell:focus-within { border-color: var(--wvch-accent); box-shadow: 0 0 0 4px var(--wvch-accent-ring); }",
+            "#wvch-root .wvch-composer-input {",
+            "  flex: 1; min-height: 36px; max-height: 140px;",
+            "  border: none; outline: none; resize: none;",
+            "  background: transparent; color: var(--wvch-text);",
+            "  font: inherit; font-size: 14px; line-height: 1.55;",
+            "  padding: 6px 8px;",
+            "}",
+            "#wvch-root .wvch-composer-input::placeholder { color: var(--wvch-text-3); }",
+            "#wvch-root .wvch-composer-send {",
+            "  width: 40px; height: 40px; border-radius: 14px;",
+            "  border: none; cursor: pointer;",
+            "  background: #E7EAF3; color: #fff;",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  transform: scale(.92); transition: transform .2s cubic-bezier(.22,1.2,.36,1), background .2s ease, box-shadow .2s ease;",
+            "}",
+            "#wvch-root .wvch-composer-send:not([disabled]) {",
+            "  background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2));",
+            "  transform: scale(1);",
+            "  box-shadow: 0 10px 22px -12px rgba(46,91,255,.75);",
+            "}",
+            "#wvch-root .wvch-composer-send:not([disabled]):hover { transform: scale(1.06); }",
+            "#wvch-root .wvch-composer-send:not([disabled]):active { transform: scale(.94); }",
+            "#wvch-root .wvch-composer-send[disabled] { cursor: default; }",
+            "#wvch-root[dir='rtl'] .wvch-composer-send svg { transform: scaleX(-1); }",
 
-            /* Powered-by footer */
-            "#wvch-root .wvch-branding { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; font-size: 11px; color: #6b7280; background: #fff; border-top: 1px solid #e5e7eb; }",
-            "#wvch-root .wvch-branding b { color: #111827; font-weight: 600; }",
-            "#wvch-root .wvch-branding-bolt { display: inline-flex; color: var(--wvch-color); }"
+            /* ---------- Prechat / Closed / Offline ---------- */
+            "#wvch-root .wvch-prechat { display: flex; flex-direction: column; gap: 10px; }",
+            "#wvch-root .wvch-prechat .wvch-input { border: 1px solid var(--wvch-line); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 14px; outline: none; }",
+            "#wvch-root .wvch-prechat .wvch-input:focus { border-color: var(--wvch-accent); box-shadow: 0 0 0 4px var(--wvch-accent-ring); }",
+            "#wvch-root .wvch-btn { border: none; border-radius: 14px; padding: 12px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }",
+            "#wvch-root .wvch-btn-primary { background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2)); color: #fff; box-shadow: 0 12px 22px -14px rgba(46,91,255,.75); }",
+            "#wvch-root .wvch-btn-primary:hover { filter: brightness(1.04); }",
+            "#wvch-root .wvch-btn-primary:disabled { opacity: .7; cursor: not-allowed; }",
+            "#wvch-root .wvch-closed { text-align: center; padding: 40px 12px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; }",
+
+            /* ---------- Powered-by footer ---------- */
+            "#wvch-root .wvch-branding { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11.5px; color: var(--wvch-text-2); background: #fff; border-top: 1px solid var(--wvch-line); }",
+            "#wvch-root .wvch-branding b { color: var(--wvch-text); font-weight: 700; }",
+            "#wvch-root .wvch-branding-bolt { display: inline-flex; color: var(--wvch-accent); }",
+
+            /* Reduce motion — respect the user */
+            "@media (prefers-reduced-motion: reduce) {",
+            "  #wvch-root .wvch-launcher { animation: none; }",
+            "  #wvch-root .wvch-launcher-ring { animation: none; }",
+            "  #wvch-root .wvch-panel { animation: none; }",
+            "  #wvch-root .wvch-topic { animation: none; opacity: 1; transform: none; }",
+            "  #wvch-root .wvch-msg { animation: none; }",
+            "  #wvch-root .wvch-connecting-shine { animation: none; }",
+            "  #wvch-root .wvch-spinner { animation: none; }",
+            "}"
         ].join('\n');
 
         var styleEl = document.createElement('style');
@@ -708,7 +1294,13 @@
     function boot() {
         ensureRoot();
         render();
+        // Auto-open respects a stored open state or the `startOpen` config knob
+        if (!S.open && CONFIG.startOpen === true) {
+            S.open = true;
+            lsSet(LS_OPEN, '1');
+        }
         if (S.open) {
+            render();
             ensureSession().then(render).catch(function () { S.open = false; render(); });
         }
     }
@@ -718,8 +1310,13 @@
         boot();
     }
 
-    // Expose a tiny public API for debugging / programmatic control
-    window.TshlBotChat.open  = function () { if (!S.open) togglePanel(); };
-    window.TshlBotChat.close = function () { if (S.open)  togglePanel(); };
-    window.TshlBotChat.reset = function () { lsSet(LS_TOKEN, null); lsSet(LS_CONV, null); lsSet(LS_OPEN, null); location.reload(); };
+    // ── Public API ────────────────────────────────────────────────────
+    function bindApi(target) {
+        target.open   = function () { if (!S.open) togglePanel(); };
+        target.close  = function () { if (S.open)  togglePanel(); };
+        target.reset  = function () { lsSet(LS_TOKEN, null); lsSet(LS_CONV, null); lsSet(LS_OPEN, null); lsSet(LS_HUMAN, null); location.reload(); };
+        target.setLang= function (l) { switchLang(l); };
+    }
+    bindApi(window.WavadeskChat);
+    bindApi(window.TshlBotChat);
 })();
