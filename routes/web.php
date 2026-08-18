@@ -32,8 +32,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
-// Root redirects to login — landing page removed.
-Route::get('/', fn () => redirect()->route('login'))->name('landing');
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 Route::get('/docs/api', fn () => response()->file(public_path('docs/api.html')))->name('docs.api');
 
 // Legal pages (still reachable — required for Stripe/regulators)
