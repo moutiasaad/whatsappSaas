@@ -40,8 +40,6 @@ Route::get('/legal/terms',   [LandingController::class, 'terms'])->name('legal.t
 Route::get('/legal/privacy', [LandingController::class, 'privacy'])->name('legal.privacy');
 Route::get('/legal/cookies', [LandingController::class, 'cookies'])->name('legal.cookies');
 
-// TSHLBOT-INVITE-ONLY:begin — public registration disabled. Restore by uncommenting.
-/*
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
@@ -49,8 +47,6 @@ Route::middleware('guest')->group(function () {
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.otp.verify');
     Route::post('/register/resend-otp', [RegisterController::class, 'resendOtp'])->name('register.otp.resend');
 });
-*/
-// TSHLBOT-INVITE-ONLY:end
 
 // Payment (Stripe)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
