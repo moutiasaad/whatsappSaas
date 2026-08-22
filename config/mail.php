@@ -115,4 +115,20 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Global "Reply-To" Address
+    |--------------------------------------------------------------------------
+    |
+    | Relays will only send from a domain you have verified, so the "From"
+    | address above must belong to such a domain. Set this to the mailbox
+    | that should actually receive replies when the two differ.
+    |
+    */
+
+    'reply_to' => [
+        'address' => env('MAIL_REPLY_TO_ADDRESS'),
+        'name' => env('MAIL_REPLY_TO_NAME', env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel'))),
+    ],
+
 ];
