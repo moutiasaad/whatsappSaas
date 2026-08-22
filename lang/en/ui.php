@@ -1306,6 +1306,7 @@ Always:
         'customers' => 'Customers',
         'live_chat' => 'Live Chat',
         'live_chat_settings' => 'Live Chat Settings',
+        'otp_service' => 'OTP Service',
         'teams' => 'Teams',
         'whatsapp_instances' => 'WhatsApp Instances',
         'agents_users' => 'Agents & Users',

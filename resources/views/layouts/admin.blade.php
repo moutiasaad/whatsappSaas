@@ -1900,6 +1900,11 @@
                     <span>{{ __('ui.sidebar.live_chat_settings') }}</span>
                 </a>
 
+                <a href="{{ route($panelPrefix . '.otp-service.show') }}" class="{{ $navActive([$panelPrefix . '.otp-service.*']) }}">
+                    <i class="ri-shield-keyhole-line"></i>
+                    <span>{{ __('ui.sidebar.otp_service') }}</span>
+                </a>
+
                 @if(Auth::user()->tenant?->plan?->reservations_enabled)
                 <a href="{{ route($panelPrefix . '.reservations.index') }}" class="{{ $navActive([$panelPrefix . '.reservations.*']) }}">
                     <i class="ri-calendar-check-line"></i>

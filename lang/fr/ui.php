@@ -1307,6 +1307,7 @@ Toujours :
         'customers' => 'Clients',
         'live_chat' => 'Chat en direct',
         'live_chat_settings' => 'Paramètres du chat',
+        'otp_service' => 'Service OTP',
         'teams' => 'Équipes',
         'whatsapp_instances' => 'Instances WhatsApp',
         'agents_users' => 'Agents & Utilisateurs',

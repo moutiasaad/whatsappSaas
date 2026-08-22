@@ -1266,6 +1266,7 @@ return [
         'customers' => 'العملاء',
         'live_chat' => 'الدردشة المباشرة',
         'live_chat_settings' => 'إعدادات الدردشة',
+        'otp_service' => 'خدمة OTP',
         'teams' => 'الفرق',
         'whatsapp_instances' => 'حالات WhatsApp',
         'agents_users' => 'الوكلاء والمستخدمون',

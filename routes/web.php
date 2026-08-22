@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InstanceWebController;
 use App\Http\Controllers\Admin\KnowledgeController;
+use App\Http\Controllers\Admin\OtpServiceController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SavedReplyWebController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -224,6 +225,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Web Live-Chat — widget settings (per-tenant customization)
                 Route::get('/webchat/settings', [WebChatWidgetSettingsController::class, 'show'])->name('webchat.settings.show');
                 Route::put('/webchat/settings', [WebChatWidgetSettingsController::class, 'update'])->name('webchat.settings.update');
+
+                // OTP-over-WhatsApp API service (tenant configuration + integration snippets)
+                Route::get('/otp-service', [OtpServiceController::class, 'show'])->name('otp-service.show');
+                Route::put('/otp-service', [OtpServiceController::class, 'update'])->name('otp-service.update');
             });
 
             // SaaS control plane (super admin only)

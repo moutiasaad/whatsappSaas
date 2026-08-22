@@ -137,6 +137,7 @@
 
   <div class="nav-section">Endpoints</div>
   <a href="#ep-send">Direct Send</a>
+  <a href="#ep-otp">OTP Service</a>
   <a href="#ep-instance">Single Instance</a>
   <a href="#ep-instances">Instances</a>
   <a href="#ep-conversations">Conversations</a>
@@ -331,6 +332,84 @@ Content-Type: application/json
   "data": { ... }
 }</code></pre>
       <div class="alert alert-warn">Returns 422 if no connected WhatsApp instance is found on your account.</div>
+    </div>
+  </div>
+
+  <h2 id="ep-otp">OTP Service</h2>
+  <p>Send and verify WhatsApp OTP codes for use in your own Laravel or web/API projects. Configure the template, code length, and validity from the <em>OTP Service</em> page in your Wavadesk dashboard.</p>
+
+  <div class="alert alert-info">Requires a connected WhatsApp instance on your account. Codes are single-use and expire based on your configured TTL (default 10 min).</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/otp/send</span>
+      <span class="endpoint-desc">Generate a code and send it via WhatsApp</span>
+    </div>
+    <div class="endpoint-body">
+      <h3>Request body</h3>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>phone</td><td>string</td><td>✓</td><td>Recipient phone with country code (e.g. <code>+212600000000</code> or <code>212600000000</code>). Non-digits are stripped.</td></tr>
+      </table>
+      <h3>Example request</h3>
+      <pre><code>POST /api/otp/send
+X-Api-Key: wvd_yourApiKey
+Content-Type: application/json
+
+{ "phone": "+212600000000" }</code></pre>
+      <h3>Success response (200)</h3>
+      <pre><code>{
+  "ok": true,
+  "identifier": "212600000000",
+  "expires_in": 600
+}</code></pre>
+      <h3>Error responses</h3>
+      <table>
+        <tr><th>Status</th><th>error</th><th>When</th></tr>
+        <tr><td>403</td><td>otp_disabled</td><td>OTP service is disabled in dashboard settings.</td></tr>
+        <tr><td>422</td><td>invalid_phone</td><td>Phone has no digits.</td></tr>
+        <tr><td>422</td><td>no_instance</td><td>No connected WhatsApp instance on the account.</td></tr>
+        <tr><td>429</td><td>cooldown</td><td>Resent too soon. Response includes <code>retry_after</code> in seconds.</td></tr>
+        <tr><td>502</td><td>gateway_error</td><td>WhatsApp gateway rejected the message. See <code>message</code>.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="badge post">POST</span>
+      <span class="endpoint-url">/api/otp/verify</span>
+      <span class="endpoint-desc">Verify a code the user submitted</span>
+    </div>
+    <div class="endpoint-body">
+      <h3>Request body</h3>
+      <table>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td>phone</td><td>string</td><td>✓</td><td>Same phone used in <code>/api/otp/send</code>.</td></tr>
+        <tr><td>code</td><td>string</td><td>✓</td><td>Code entered by the user.</td></tr>
+      </table>
+      <h3>Example request</h3>
+      <pre><code>POST /api/otp/verify
+X-Api-Key: wvd_yourApiKey
+Content-Type: application/json
+
+{ "phone": "+212600000000", "code": "123456" }</code></pre>
+      <h3>Success response (200)</h3>
+      <pre><code>{
+  "ok": true,
+  "identifier": "212600000000",
+  "verified_at": "2026-08-22T10:00:00+00:00"
+}</code></pre>
+      <h3>Error responses</h3>
+      <table>
+        <tr><th>Status</th><th>error</th><th>When</th></tr>
+        <tr><td>404</td><td>not_found</td><td>No code was requested for this phone.</td></tr>
+        <tr><td>410</td><td>expired</td><td>Code TTL elapsed. Request a new one.</td></tr>
+        <tr><td>410</td><td>already_used</td><td>Code was already verified successfully.</td></tr>
+        <tr><td>401</td><td>invalid_code</td><td>Wrong code. Response includes <code>attempts_left</code>.</td></tr>
+        <tr><td>429</td><td>too_many_attempts</td><td>5 failed attempts on this code. Request a new one.</td></tr>
+      </table>
     </div>
   </div>
 

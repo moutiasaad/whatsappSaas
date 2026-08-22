@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\SingleInstanceController;
 use App\Http\Controllers\Api\AgentPresenceController;
 use App\Http\Controllers\Api\NotificationApiController;
+use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\InstanceController;
@@ -76,6 +77,12 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
     });
     */
     // TSHLBOT-HIDE-WHATSAPP:end
+
+    // ── OTP service (WhatsApp) — X-Api-Key auth, tenant-scoped ────────────────
+    Route::prefix('otp')->group(function () {
+        Route::post('/send',   [OtpController::class, 'send'])->name('api.otp.send');
+        Route::post('/verify', [OtpController::class, 'verify'])->name('api.otp.verify');
+    });
 
     // ── Notifications (all roles, no subscription gate) ───────────────────────
     Route::middleware('role:admin,super_admin,supervisor,agent')->group(function () {
