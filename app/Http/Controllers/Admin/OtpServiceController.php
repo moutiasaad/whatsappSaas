@@ -39,7 +39,11 @@ class OtpServiceController extends Controller
             'template'    => ['required', 'string', 'max:1000'],
         ]);
 
-        $data['enabled'] = $request->boolean('enabled');
+        // Checkboxes are absent from the payload when unchecked, and the
+        // validator hands back the raw string values for the numeric fields.
+        $data['enabled']     = $request->boolean('enabled');
+        $data['code_length'] = (int) $data['code_length'];
+        $data['ttl_minutes'] = (int) $data['ttl_minutes'];
 
         if (!str_contains($data['template'], '{code}')) {
             return back()
