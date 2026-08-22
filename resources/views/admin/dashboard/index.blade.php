@@ -8,6 +8,11 @@
 
 @section('content')
 
+@php
+    $panelPrefix        = auth()->user()->routeNamePrefix();
+    $canManageInstances = auth()->user()->hasAnyRole(['admin', 'super_admin']);
+@endphp
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-card-icon"><i class="ri-chat-3-line"></i></div>
@@ -142,6 +147,7 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1.5rem">
+            @if($canManageInstances)
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">{{ __('ui.dashboard_page.whatsapp_instances') }}</div>
@@ -166,6 +172,7 @@
                     @endforelse
                 </div>
             </div>
+            @endif
 
             <div class="card">
                 <div class="card-header">
