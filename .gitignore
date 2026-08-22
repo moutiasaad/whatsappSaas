@@ -27,3 +27,6 @@ Thumbs.db
 
 # Environment backups
 .env.bak.*
+
+# Certbot / ACME HTTP-01 validation tokens (transient, server-local)
+/public/.well-known/acme-challenge/
