@@ -171,8 +171,6 @@
             <div class="empty-state-icon"><i class="ri-message-3-line"></i></div>
             <h4 x-text="emptyTitle()"></h4>
             <p x-text="emptyDesc()"></p>
-            {{-- TSHLBOT-HIDE-WHATSAPP:begin — "check instances" empty-state CTA disabled. --}}
-            {{--
             <div x-show="tab === 'pool'">
                 @if(auth()->user()->isAdmin() || auth()->user()->isSuperAdmin())
                     <a href="{{ route($panelPrefix . '.instances.index') }}" class="btn btn-outline btn-sm">
@@ -180,8 +178,6 @@
                     </a>
                 @endif
             </div>
-            --}}
-            {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
         </div>
 
         <div x-show="!loading && conversations.length > 0">

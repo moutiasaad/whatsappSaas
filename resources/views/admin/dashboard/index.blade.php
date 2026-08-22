@@ -142,8 +142,6 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:1.5rem">
-            {{-- TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances dashboard card disabled. Restore by uncommenting. --}}
-            {{--
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">{{ __('ui.dashboard_page.whatsapp_instances') }}</div>
@@ -168,8 +166,6 @@
                     @endforelse
                 </div>
             </div>
-            --}}
-            {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
 
             <div class="card">
                 <div class="card-header">

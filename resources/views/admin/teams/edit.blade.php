@@ -156,8 +156,6 @@
         </div>
 
         {{-- Linked Instances --}}
-        {{-- TSHLBOT-HIDE-WHATSAPP:begin — Linked WhatsApp Instances card on team edit page disabled. --}}
-        {{--
         <div class="card">
             <div class="card-header" style="padding-bottom:.75rem">
                 <div class="card-title">{{ __('ui.team_edit_page.linked_instances') }}</div>
@@ -183,8 +181,6 @@
                 @endforelse
             </div>
         </div>
-        --}}
-        {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
 
         {{-- Quick Members Summary --}}
         <div class="card">

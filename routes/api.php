@@ -18,12 +18,8 @@ use App\Http\Controllers\WebChat\Public\MessageController as WebChatPublicMessag
 use App\Http\Controllers\WebChat\Public\SessionController as WebChatPublicSessionController;
 use Illuminate\Support\Facades\Route;
 
-// TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp gateway webhook disabled. Restore by uncommenting.
-/*
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
-*/
-// TSHLBOT-HIDE-WHATSAPP:end
 
 // ─── Web Live-Chat public widget API ─────────────────────────────────────────
 // Cross-origin. Auth via widget public_key + visitor bearer token — NOT web
@@ -65,8 +61,6 @@ Route::post('/webchat/broadcasting/auth', [WebChatBroadcastAuthController::class
 // All API routes authenticated via X-Api-Key header
 Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group(function () {
 
-    // TSHLBOT-HIDE-WHATSAPP:begin — DirectSend + SingleInstance API disabled. Restore by uncommenting.
-    /*
     Route::post('/send', [DirectSendController::class, 'send']);
 
     Route::prefix('instance')->group(function () {
@@ -75,8 +69,6 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::post('/connect',    [SingleInstanceController::class, 'connect']);
         Route::post('/disconnect', [SingleInstanceController::class, 'disconnect']);
     });
-    */
-    // TSHLBOT-HIDE-WHATSAPP:end
 
     // ── OTP service (WhatsApp) — X-Api-Key auth, tenant-scoped ────────────────
     Route::prefix('otp')->group(function () {
@@ -131,8 +123,6 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::get('/agents/online', [AgentPresenceController::class, 'online']);
     });
 
-    // TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances API CRUD disabled. Restore by uncommenting.
-    /*
     Route::middleware(['role:admin,super_admin', 'subscription'])->group(function () {
         Route::get('/instances', [InstanceController::class, 'index']);
         Route::post('/instances', [InstanceController::class, 'store']);
@@ -143,8 +133,6 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::post('/instances/{instance}/logout', [InstanceController::class, 'disconnect']);
         Route::delete('/instances/{instance}', [InstanceController::class, 'destroy']);
     });
-    */
-    // TSHLBOT-HIDE-WHATSAPP:end
 
     Route::middleware(['role:admin', 'subscription'])->group(function () {
         Route::get('/ai/settings', [AiController::class, 'show']);

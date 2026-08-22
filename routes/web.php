@@ -138,8 +138,6 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Management routes - admin and super admin only
             Route::middleware('role:admin,super_admin')->group(function () {
-                // TSHLBOT-HIDE-WHATSAPP:begin — Instances routes disabled. Restore by uncommenting.
-                /*
                 Route::get('/instances', [InstanceWebController::class, 'index'])->name('instances.index');
                 Route::get('/instances/create', [InstanceWebController::class, 'create'])->name('instances.create');
                 Route::post('/instances', [InstanceWebController::class, 'store'])->name('instances.store');
@@ -149,8 +147,6 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/instances/{instance}/edit', [InstanceWebController::class, 'edit'])->name('instances.edit');
                 Route::put('/instances/{instance}', [InstanceWebController::class, 'update'])->name('instances.update');
                 Route::delete('/instances/{instance}', [InstanceWebController::class, 'destroy'])->name('instances.destroy');
-                */
-                // TSHLBOT-HIDE-WHATSAPP:end
 
                 // Users
                 Route::get('/users', [UserController::class, 'index'])->name('users.index');

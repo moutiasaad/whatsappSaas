@@ -1852,16 +1852,12 @@
                 <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
                 @endif
 
-            {{-- TSHLBOT-HIDE-WHATSAPP:begin — WhatsApp Instances sidebar item disabled. Restore by uncommenting. --}}
-            {{--
             @if(!Auth::user()->isSuperAdmin() || $sp('instances'))
             <a href="{{ route($panelPrefix . '.instances.index') }}" class="{{ $navActive([$panelPrefix . '.instances.*']) }}">
                 <i class="ri-smartphone-line"></i>
                 <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
             </a>
             @endif
-            --}}
-            {{-- TSHLBOT-HIDE-WHATSAPP:end --}}
 
             @if(!Auth::user()->isSuperAdmin() || $sp('teams'))
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
