@@ -84,6 +84,10 @@ class ConversationController extends Controller
         /** @var Visitor $visitor */
         $visitor = $request->attributes->get('webchat_visitor');
 
+        $data = $request->validate([
+            'feedback' => ['nullable', 'string', 'in:positive,negative'],
+        ]);
+
         $conversation = $this->findConversationOr404($widget, $visitor, $uuid);
 
         if ($conversation->isClosed()) {
@@ -95,7 +99,15 @@ class ConversationController extends Controller
             ]);
         }
 
-        $systemMessage = DB::transaction(function () use ($conversation) {
+        $feedback = $data['feedback'] ?? null;
+        $body = 'Visitor ended the chat';
+        if ($feedback === 'positive') {
+            $body .= ' (feedback: 👍)';
+        } elseif ($feedback === 'negative') {
+            $body .= ' (feedback: 👎)';
+        }
+
+        $systemMessage = DB::transaction(function () use ($conversation, $body) {
             $conversation->status           = Conversation::STATUS_CLOSED;
             $conversation->closed_by        = null;
             $conversation->closed_at        = now();
@@ -108,7 +120,7 @@ class ConversationController extends Controller
                 'conversation_id' => $conversation->id,
                 'sender_type'     => Message::SENDER_SYSTEM,
                 'sender_id'       => null,
-                'body'            => 'Visitor ended the chat',
+                'body'            => $body,
             ]);
         });
 
