@@ -69,6 +69,13 @@
             settingsAria:   'الإعدادات',
             soundLabel:     'تنبيهات صوتية',
             endChatMenu:    'إنهاء المحادثة',
+            leavingTitle:   'هل ساعدناك؟',
+            leavingSub:     'رأيك يهمنا',
+            feedbackLikeAria:    'مفيد',
+            feedbackDislikeAria: 'غير مفيد',
+            goBackBtn:      'العودة',
+            leaveChatBtn:   'إنهاء المحادثة',
+            leavingDisclaimer: 'سيؤدي إنهاء المحادثة إلى إغلاق هذه الجلسة. إذا احتجت إلى التواصل معنا مجددًا، فسيتم الاحتفاظ بسجل محادثتك.',
             langToggle:     'EN',
             langToggleAria: 'التبديل إلى الإنجليزية',
             headerTitle:    null, // fallback to widget.name, else "الدعم الفني"
@@ -114,6 +121,13 @@
             settingsAria:   'Settings',
             soundLabel:     'Sound notifications',
             endChatMenu:    'End chat',
+            leavingTitle:   'Did we help you?',
+            leavingSub:     'Your feedback matters',
+            feedbackLikeAria:    'Helpful',
+            feedbackDislikeAria: 'Not helpful',
+            goBackBtn:      'Go Back',
+            leaveChatBtn:   'Leave Chat',
+            leavingDisclaimer: 'Leaving chat will end this session. If you need to chat to us again, we will have a record of your chat history.',
             langToggle:     'ع',
             langToggleAria: 'Switch to Arabic',
             headerTitle:    null,
@@ -156,7 +170,7 @@
         open:          lsGet(LS_OPEN) === '1',
         booted:        false,
         booting:       false,
-        view:          'welcome',           // welcome | prechat | chat | closed | offline
+        view:          'welcome',           // welcome | prechat | chat | leaving | closed | offline
         visitorToken:  lsGet(LS_TOKEN),
         convUuid:      lsGet(LS_CONV),
         widget:        null,
@@ -176,7 +190,8 @@
         hintShown:     lsGet(LS_TIP) === '1',
         humanOnce:     lsGet(LS_HUMAN) === '1', // avatar stays green after first handoff
         soundEnabled:  lsGet(LS_SOUND) !== '0', // default on, opt-out via settings menu
-        settingsOpen:  false
+        settingsOpen:  false,
+        feedback:      null // 'positive' | 'negative' | null — captured on the leaving view
     };
 
     // ── HTTP helper ───────────────────────────────────────────────────
@@ -517,17 +532,27 @@
 
     function endSession() {
         if (!S.convUuid) { startNewChat(); return; }
-        if (!window.confirm(t().endChatConfirm)) return;
+        // Show the leaving/feedback screen — the actual close only fires when
+        // the visitor confirms via "Leave Chat" from that view.
+        S.feedback = null;
+        S.view = 'leaving';
+        render();
+    }
 
-        // Flip the UI to "ended" immediately so the visitor sees feedback
-        // even before the server round-trip finishes. The Reverb broadcast
-        // (webchat.conversation.closed) will land later and stay consistent.
+    function confirmLeaveChat() {
+        var uuid = S.convUuid;
+        // Flip UI to "ended" immediately so the visitor sees feedback even
+        // before the server round-trip finishes. The Reverb broadcast
+        // (webchat.conversation.closed) lands later and stays consistent.
         S.status = 'closed';
         S.view   = 'closed';
         render();
 
-        api('/conversations/' + S.convUuid + '/close', { method: 'POST', body: {} })
-            .catch(function () { /* server already noop-safe on repeat close */ });
+        if (!uuid) return;
+        api('/conversations/' + uuid + '/close', {
+            method: 'POST',
+            body: S.feedback ? { feedback: S.feedback } : {}
+        }).catch(function () { /* server is noop-safe on repeat close */ });
     }
 
     // ── Start a fresh chat (after closed) ─────────────────────────────
@@ -535,7 +560,7 @@
         if (S.pusher) { try { S.pusher.disconnect(); } catch (e) {} S.pusher = null; }
         stopPolling();
         S.convUuid = null; S.messages = []; S.seenIds = {}; S.lastMessageId = 0;
-        S.status = null; S.agent = null; S.humanOnce = false;
+        S.status = null; S.agent = null; S.humanOnce = false; S.feedback = null;
         lsSet(LS_CONV, null); lsSet(LS_HUMAN, null);
         S.view = S.widget && S.widget.pre_chat_ask_email ? 'prechat' : 'welcome';
         render();
@@ -567,6 +592,8 @@
             end:     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/></svg>',
             settings:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
             bell:    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+            thumbUp: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 22V11"/><path d="M15 5.88L14 12h5.5a2 2 0 0 1 2 2.26l-1.34 8A2 2 0 0 1 18.18 24H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 4h.5a2.5 2.5 0 0 1 2.5 2.5V5.88z"/></svg>',
+            thumbDn: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v11"/><path d="M9 18.12L10 12H4.5a2 2 0 0 1-2-2.26l1.34-8A2 2 0 0 1 5.82 0H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 20h-.5a2.5 2.5 0 0 1-2.5-2.5v-.62z"/></svg>',
             send:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 18-3-8z"/></svg>',
             chat:    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.13L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
             arrow:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
@@ -694,13 +721,15 @@
             text: t().langToggle
         });
         var backBtn = null;
-        if (S.view === 'chat') {
+        if (S.view === 'chat' || S.view === 'leaving') {
             backBtn = _('button', {
                 class: 'wvch-header-btn wvch-header-back',
                 type: 'button',
                 'aria-label': t().backAria,
                 title: t().backAria,
-                onclick: goBackToWelcome,
+                onclick: S.view === 'leaving'
+                    ? function () { S.view = 'chat'; renderView(); }
+                    : goBackToWelcome,
                 html: svg('back')
             });
         }
@@ -869,6 +898,7 @@
             case 'prechat':  return renderPrechat();
             case 'welcome':  renderWelcome(); renderComposer(); return;
             case 'chat':     renderThread();  renderComposer(); return;
+            case 'leaving':  return renderLeaving();
             case 'closed':   return renderClosed();
             case 'offline':  return renderOffline();
         }
@@ -1084,6 +1114,48 @@
         ]));
     }
 
+    function renderLeaving() {
+        function feedbackBtn(kind, iconName, ariaLabel) {
+            var btn = _('button', {
+                class: 'wvch-feedback-btn' + (S.feedback === kind ? ' wvch-feedback-btn-active' : ''),
+                type: 'button',
+                'aria-label': ariaLabel,
+                'aria-pressed': String(S.feedback === kind),
+                onclick: function () {
+                    // Toggle off if the same choice is tapped twice
+                    S.feedback = (S.feedback === kind) ? null : kind;
+                    renderView();
+                },
+                html: svg(iconName)
+            });
+            return btn;
+        }
+
+        el.body.appendChild(_('div', { class: 'wvch-leaving' }, [
+            _('div', { class: 'wvch-leaving-title', text: t().leavingTitle }),
+            _('div', { class: 'wvch-leaving-sub',   text: t().leavingSub }),
+            _('div', { class: 'wvch-feedback' }, [
+                feedbackBtn('positive', 'thumbUp', t().feedbackLikeAria),
+                feedbackBtn('negative', 'thumbDn', t().feedbackDislikeAria)
+            ]),
+            _('div', { class: 'wvch-leaving-actions' }, [
+                _('button', {
+                    class: 'wvch-leaving-back',
+                    type: 'button',
+                    onclick: function () { S.view = 'chat'; renderView(); },
+                    text: t().goBackBtn
+                }),
+                _('button', {
+                    class: 'wvch-leaving-confirm',
+                    type: 'button',
+                    onclick: confirmLeaveChat,
+                    text: t().leaveChatBtn
+                })
+            ]),
+            _('div', { class: 'wvch-leaving-note', text: t().leavingDisclaimer })
+        ]));
+    }
+
     function renderClosed() {
         el.body.appendChild(_('div', { class: 'wvch-closed' }, [
             _('div', { class: 'wvch-welcome-title', text: t().closedTitle }),
@@ -1108,7 +1180,7 @@
     function renderComposer() {
         if (!el.composer) return;
         el.composer.innerHTML = '';
-        if (S.view === 'closed' || S.view === 'prechat' || S.view === 'offline') return;
+        if (S.view === 'closed' || S.view === 'prechat' || S.view === 'offline' || S.view === 'leaving') return;
 
         var textarea = _('textarea', {
             class: 'wvch-composer-input',
@@ -1563,6 +1635,41 @@
             "#wvch-root .wvch-btn-primary:hover { filter: brightness(1.04); }",
             "#wvch-root .wvch-btn-primary:disabled { opacity: .7; cursor: not-allowed; }",
             "#wvch-root .wvch-closed { text-align: center; padding: 40px 12px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; }",
+
+            /* ---------- Leaving / feedback view ---------- */
+            "#wvch-root .wvch-leaving { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 46px 20px 24px; gap: 6px; animation: wvch-bubble-in 380ms cubic-bezier(.2,1.1,.4,1); }",
+            "#wvch-root .wvch-leaving-title { font-size: 18px; font-weight: 700; color: var(--wvch-text); }",
+            "#wvch-root .wvch-leaving-sub { font-size: 13.5px; color: var(--wvch-text-2); margin-bottom: 8px; }",
+            "#wvch-root .wvch-feedback { display: inline-flex; gap: 14px; margin: 10px 0 22px; }",
+            "#wvch-root .wvch-feedback-btn {",
+            "  width: 54px; height: 54px; border-radius: 50%;",
+            "  background: #f1f5f9; color: var(--wvch-text);",
+            "  border: 1px solid transparent; cursor: pointer;",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  transition: background .18s ease, transform .18s ease, color .18s ease, border-color .18s ease;",
+            "}",
+            "#wvch-root .wvch-feedback-btn:hover { background: #e2e8f0; transform: translateY(-1px); }",
+            "#wvch-root .wvch-feedback-btn-active { background: var(--wvch-accent-soft); color: var(--wvch-accent); border-color: var(--wvch-accent-ring); }",
+            "#wvch-root .wvch-leaving-actions {",
+            "  display: flex; align-items: center; justify-content: center; gap: 24px;",
+            "  width: 100%; margin-top: 6px;",
+            "}",
+            "#wvch-root .wvch-leaving-back {",
+            "  background: transparent; border: none; padding: 10px 8px; cursor: pointer;",
+            "  font: inherit; font-size: 15px; font-weight: 700; color: var(--wvch-accent);",
+            "}",
+            "#wvch-root .wvch-leaving-back:hover { text-decoration: underline; }",
+            "#wvch-root .wvch-leaving-confirm {",
+            "  background: var(--wvch-accent-soft); color: var(--wvch-accent);",
+            "  border: none; padding: 12px 26px; border-radius: 999px;",
+            "  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;",
+            "  transition: background .18s ease, transform .18s ease;",
+            "}",
+            "#wvch-root .wvch-leaving-confirm:hover { background: var(--wvch-accent-ring); transform: translateY(-1px); }",
+            "#wvch-root .wvch-leaving-note {",
+            "  font-size: 12px; color: var(--wvch-text-2); line-height: 1.5;",
+            "  margin-top: 22px; max-width: 320px;",
+            "}",
 
             /* ---------- Powered-by footer ---------- */
             "#wvch-root .wvch-branding { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11.5px; color: var(--wvch-text-2); background: #fff; border-top: 1px solid var(--wvch-line); }",
