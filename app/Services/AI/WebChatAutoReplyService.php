@@ -92,7 +92,17 @@ class WebChatAutoReplyService
                 'conversation_id' => $conversation->id,
                 'tenant_id'       => $tenant->id,
                 'tokens'          => $tokens,
+                'was_pending'     => $conversation->isPending(),
             ]);
+
+            // If we were rescuing a stale `pending` conversation, drop it back
+            // to `bot` now that the AI has answered — otherwise the widget
+            // keeps showing "Connecting to a support specialist…" indefinitely.
+            // Claimed conversations stay assigned; the AI reply just co-exists.
+            if ($conversation->isPending()) {
+                $conversation->status = Conversation::STATUS_BOT;
+                $conversation->save();
+            }
 
             return $this->persistBotReply($conversation, $text);
         } catch (\Throwable $e) {
