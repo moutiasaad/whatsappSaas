@@ -42,6 +42,10 @@ Route::prefix('webchat/{key}')
                 ->middleware('throttle:webchat-session')
                 ->name('webchat.public.conversations.request-agent');
 
+            Route::post('/conversations/{uuid}/close', [WebChatPublicConversationController::class, 'close'])
+                ->middleware('throttle:webchat-session')
+                ->name('webchat.public.conversations.close');
+
             Route::post('/conversations/{uuid}/messages', [WebChatPublicMessageController::class, 'store'])
                 ->middleware('throttle:webchat-message')
                 ->name('webchat.public.messages.store');

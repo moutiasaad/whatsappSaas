@@ -15,7 +15,7 @@ class WebChatConversationClosed implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Conversation $conversation, public User $actor) {}
+    public function __construct(public Conversation $conversation, public ?User $actor = null) {}
 
     public function broadcastOn(): array
     {
@@ -42,9 +42,12 @@ class WebChatConversationClosed implements ShouldBroadcastNow
                 'closed_by' => $c->closed_by,
                 'closed_at' => $c->closed_at?->toISOString(),
             ],
-            'actor' => [
+            'actor' => $this->actor ? [
                 'id'   => $this->actor->id,
                 'name' => $this->actor->name,
+            ] : [
+                'id'   => null,
+                'name' => 'visitor',
             ],
         ];
     }

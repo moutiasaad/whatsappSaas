@@ -61,6 +61,10 @@
             floatingHint:   'تحتاج مساعدة؟',
             openAria:       'افتح محادثة الدعم',
             closeAria:      'إغلاق المحادثة',
+            backAria:       'العودة إلى المواضيع',
+            endChatAria:    'إنهاء المحادثة',
+            endChatConfirm: 'إنهاء المحادثة الحالية؟',
+            resumeChat:     'استكمال المحادثة الجارية',
             langToggle:     'EN',
             langToggleAria: 'التبديل إلى الإنجليزية',
             headerTitle:    null, // fallback to widget.name, else "الدعم الفني"
@@ -99,6 +103,10 @@
             floatingHint:   'Need help?',
             openAria:       'Open support chat',
             closeAria:      'Close chat',
+            backAria:       'Back to topics',
+            endChatAria:    'End chat',
+            endChatConfirm: 'End this chat?',
+            resumeChat:     'Resume your ongoing chat',
             langToggle:     'ع',
             langToggleAria: 'Switch to Arabic',
             headerTitle:    null,
@@ -448,6 +456,30 @@
         document.head.appendChild(s);
     }
 
+    // ── Visitor navigation: back to welcome / end current session ─────
+    function goBackToWelcome() {
+        // Keep convUuid + messages + status intact so the visitor can resume
+        // via the pill on the welcome view, or start another topic (which
+        // just posts to the same conversation).
+        S.view = 'welcome';
+        render();
+    }
+
+    function endSession() {
+        if (!S.convUuid) { startNewChat(); return; }
+        if (!window.confirm(t().endChatConfirm)) return;
+
+        // Flip the UI to "ended" immediately so the visitor sees feedback
+        // even before the server round-trip finishes. The Reverb broadcast
+        // (webchat.conversation.closed) will land later and stay consistent.
+        S.status = 'closed';
+        S.view   = 'closed';
+        render();
+
+        api('/conversations/' + S.convUuid + '/close', { method: 'POST', body: {} })
+            .catch(function () { /* server already noop-safe on repeat close */ });
+    }
+
     // ── Start a fresh chat (after closed) ─────────────────────────────
     function startNewChat() {
         if (S.pusher) { try { S.pusher.disconnect(); } catch (e) {} S.pusher = null; }
@@ -480,6 +512,8 @@
     function svg(icon) {
         var SVGS = {
             close:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+            back:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+            end:     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/></svg>',
             send:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 18-3-8z"/></svg>',
             chat:    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.13L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
             arrow:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
@@ -594,6 +628,28 @@
             onclick: function () { switchLang(S.lang === 'ar' ? 'en' : 'ar'); },
             text: t().langToggle
         });
+        var backBtn = null;
+        if (S.view === 'chat') {
+            backBtn = _('button', {
+                class: 'wvch-header-btn wvch-header-back',
+                type: 'button',
+                'aria-label': t().backAria,
+                title: t().backAria,
+                onclick: goBackToWelcome,
+                html: svg('back')
+            });
+        }
+        var endBtn = null;
+        if (S.convUuid && S.status && S.status !== 'closed') {
+            endBtn = _('button', {
+                class: 'wvch-header-btn wvch-header-end',
+                type: 'button',
+                'aria-label': t().endChatAria,
+                title: t().endChatAria,
+                onclick: endSession,
+                html: svg('end')
+            });
+        }
         var closeBtn = _('button', {
             class: 'wvch-header-close',
             type: 'button',
@@ -611,7 +667,12 @@
             _('div', { class: 'wvch-header-name',    text: titleName }),
             _('div', { class: 'wvch-header-promise', text: promise })
         ]);
-        var actions = _('div', { class: 'wvch-header-actions' }, [langBtn, closeBtn]);
+        var actionKids = [];
+        if (backBtn) actionKids.push(backBtn);
+        actionKids.push(langBtn);
+        if (endBtn) actionKids.push(endBtn);
+        actionKids.push(closeBtn);
+        var actions = _('div', { class: 'wvch-header-actions' }, actionKids);
 
         el.header = _('div', { class: 'wvch-header' }, [brandBadge, titles, actions]);
 
@@ -667,6 +728,24 @@
     // ── Welcome (empty state — spec §2) ───────────────────────────────
     function renderWelcome() {
         var wrap = _('div', { class: 'wvch-welcome' });
+
+        // Visitor came back via the header ⤺ arrow while a live conversation
+        // is still open — surface a one-click "resume" pill so they don't
+        // silently lose their thread.
+        if (S.convUuid && S.status && S.status !== 'closed') {
+            var resumeBtn = _('button', {
+                class: 'wvch-resume',
+                type: 'button',
+                'aria-label': t().resumeChat,
+                onclick: function () { S.view = 'chat'; renderView(); }
+            }, [
+                _('span', { class: 'wvch-resume-dot', 'aria-hidden': 'true' }),
+                _('span', { class: 'wvch-resume-text', text: t().resumeChat }),
+                _('span', { class: 'wvch-resume-chev', 'aria-hidden': 'true', html: svg('arrow') })
+            ]);
+            wrap.appendChild(resumeBtn);
+        }
+
         wrap.appendChild(_('div', { class: 'wvch-welcome-title', text: t().welcomeTitle }));
         var subText = (S.widget && S.widget.welcome_message) || t().welcomeSub;
         wrap.appendChild(_('div', { class: 'wvch-welcome-sub', text: subText }));
@@ -810,6 +889,9 @@
     function renderStatus() {
         if (!el.statusBar) return;
         el.statusBar.innerHTML = '';
+        // Only surface pending/handoff cards inside the actual chat view — on
+        // welcome (visitor tapped ← back) they'd look orphaned above the topics.
+        if (S.view !== 'chat') return;
         if (S.status === 'pending') {
             el.statusBar.appendChild(_('div', { class: 'wvch-connecting' }, [
                 _('div', { class: 'wvch-connecting-bar' }, [_('span', { class: 'wvch-connecting-shine' })]),
@@ -1122,7 +1204,7 @@
             "#wvch-root .wvch-header-name    { font-size: 15px; font-weight: 700; }",
             "#wvch-root .wvch-header-promise { font-size: 12.5px; opacity: .88; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
             "#wvch-root .wvch-header-actions { display: inline-flex; gap: 6px; align-items: center; }",
-            "#wvch-root .wvch-header-lang, #wvch-root .wvch-header-close {",
+            "#wvch-root .wvch-header-lang, #wvch-root .wvch-header-close, #wvch-root .wvch-header-btn {",
             "  background: rgba(255,255,255,.14); border: none;",
             "  color: #fff; cursor: pointer;",
             "  height: 34px; min-width: 34px; padding: 0 10px;",
@@ -1131,8 +1213,12 @@
             "  font-size: 13px; font-weight: 600;",
             "  transition: background .18s ease, transform .18s ease;",
             "}",
-            "#wvch-root .wvch-header-lang:hover, #wvch-root .wvch-header-close:hover { background: rgba(255,255,255,.24); }",
+            "#wvch-root .wvch-header-lang:hover, #wvch-root .wvch-header-close:hover, #wvch-root .wvch-header-btn:hover { background: rgba(255,255,255,.24); }",
             "#wvch-root .wvch-header-close:hover { transform: rotate(90deg); }",
+            "#wvch-root .wvch-header-back:hover { transform: translateX(-2px); }",
+            "#wvch-root[dir='rtl'] .wvch-header-back svg { transform: scaleX(-1); }",
+            "#wvch-root[dir='rtl'] .wvch-header-back:hover { transform: translateX(2px); }",
+            "#wvch-root .wvch-header-end:hover { background: rgba(220,53,69,.55); }",
 
             /* ---------- Status bar ---------- */
             "#wvch-root .wvch-statusbar { padding: 0 18px; }",
@@ -1161,6 +1247,20 @@
             "#wvch-root .wvch-loading { padding: 40px 20px; text-align: center; color: var(--wvch-text-2); font-size: 13px; }",
 
             /* ---------- Welcome (spec §2) ---------- */
+            "#wvch-root .wvch-resume {",
+            "  display: flex; align-items: center; gap: 10px; width: 100%;",
+            "  padding: 10px 14px; margin-bottom: 14px;",
+            "  background: var(--wvch-accent-soft); color: var(--wvch-accent);",
+            "  border: 1px solid var(--wvch-accent-ring); border-radius: 14px;",
+            "  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;",
+            "  text-align: inherit;",
+            "  transition: background .18s ease, transform .18s ease;",
+            "}",
+            "#wvch-root .wvch-resume:hover { background: var(--wvch-accent-ring); }",
+            "#wvch-root .wvch-resume-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wvch-success); box-shadow: 0 0 0 3px rgba(23,168,92,.18); flex-shrink: 0; }",
+            "#wvch-root .wvch-resume-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+            "#wvch-root .wvch-resume-chev { display: inline-flex; opacity: .8; }",
+            "#wvch-root[dir='rtl'] .wvch-resume-chev svg { transform: scaleX(-1); }",
             "#wvch-root .wvch-welcome-title { font-size: 22px; font-weight: 700; color: var(--wvch-text); line-height: 1.3; }",
             "#wvch-root .wvch-welcome-sub   { font-size: 13.5px; color: var(--wvch-text-2); margin-top: 6px; line-height: 1.55; }",
             "#wvch-root .wvch-topics { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }",
