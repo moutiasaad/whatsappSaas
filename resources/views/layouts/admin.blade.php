@@ -2693,6 +2693,23 @@
             showToast(d.ok ? 'success' : 'error', d.message || 'Updated');
         }).catch(() => showToast('error', 'Request failed'));
     });
+
+    /* ====================================================
+       UNSAVED CHANGES GUARD — forms marked [data-unsaved]
+       The attribute was already on 6 forms but nothing implemented it, so
+       edits could be lost on reload with no warning.
+    ==================================================== */
+    document.querySelectorAll('form[data-unsaved]').forEach(function (form) {
+        var dirty = false, submitting = false;
+        form.addEventListener('input',  function () { dirty = true; });
+        form.addEventListener('change', function () { dirty = true; });
+        form.addEventListener('submit', function () { submitting = true; });
+        window.addEventListener('beforeunload', function (e) {
+            if (!dirty || submitting) return;
+            e.preventDefault();
+            e.returnValue = '';
+        });
+    });
     </script>
 
     @stack('scripts')

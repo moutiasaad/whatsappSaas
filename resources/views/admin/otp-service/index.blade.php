@@ -332,7 +332,16 @@ document.addEventListener('DOMContentLoaded', () => {
         track.appendChild(thumb);
         const paintThumb = () => { thumb.style.transform = input.checked ? 'translateX(1.25rem)' : 'translateX(0)'; };
         paint(); paintThumb();
-        input.addEventListener('change', () => { paint(); paintThumb(); });
+        input.addEventListener('change', () => {
+            paint(); paintThumb();
+            // A switch reads as "applies immediately", so persist it right away
+            // instead of relying on the Save button further down the card —
+            // otherwise the choice is silently lost on the next page load.
+            const form = input.closest('form');
+            if (!form) return;
+            if (typeof form.requestSubmit === 'function') form.requestSubmit();
+            else form.submit();
+        });
     });
 });
 
