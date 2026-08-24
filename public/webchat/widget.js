@@ -526,9 +526,14 @@
         if (el.root) return;
         // Give the widget its own directionality so RTL host pages don't warp us
         // and vice-versa. `data-lang` flips the panel from AR-RTL to EN-LTR.
+        // Seed data-position immediately (before /session resolves) so the
+        // fixed-positioned launcher doesn't flash flush against the viewport
+        // edge without its 24px offset. applyThemeFromWidget() will overwrite
+        // this once the tenant's widget config lands.
         el.root = _('div', {
             id: 'wvch-root',
             'data-lang': S.lang,
+            'data-position': CONFIG.position === 'left' ? 'left' : 'right',
             dir: t().dir
         });
         document.body.appendChild(el.root);
