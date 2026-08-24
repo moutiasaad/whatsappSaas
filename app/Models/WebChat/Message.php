@@ -13,6 +13,7 @@ class Message extends Model
     public const SENDER_VISITOR = 'visitor';
     public const SENDER_AGENT   = 'agent';
     public const SENDER_SYSTEM  = 'system';
+    public const SENDER_BOT     = 'bot';
 
     protected $fillable = [
         'conversation_id', 'sender_type', 'sender_id', 'body', 'meta', 'read_at',
@@ -31,4 +32,5 @@ class Message extends Model
     public function isFromVisitor(): bool { return $this->sender_type === self::SENDER_VISITOR; }
     public function isFromAgent(): bool   { return $this->sender_type === self::SENDER_AGENT; }
     public function isSystem(): bool      { return $this->sender_type === self::SENDER_SYSTEM; }
+    public function isFromBot(): bool     { return $this->sender_type === self::SENDER_BOT; }
 }
