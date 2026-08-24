@@ -128,7 +128,9 @@ class WebChatAutoReplyService
         $raw = $conversation->messages()
             ->orderBy('id')
             ->get()
-            ->takeLast($limit)
+            // takeLast() only exists on LazyCollection; slice(-n) is the
+            // Eloquent Collection equivalent (->values() below re-indexes).
+            ->slice(-$limit)
             ->map(function (Message $msg) {
                 if ($msg->isSystem()) {
                     return null;
