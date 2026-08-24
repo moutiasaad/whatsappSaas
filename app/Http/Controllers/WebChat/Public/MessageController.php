@@ -46,11 +46,14 @@ class MessageController extends Controller
 
         rescue(fn () => event(new WebChatMessageSent($message->fresh(['conversation']))));
 
-        // Hand off to the AI. The job decides whether Claude answers (keeping
-        // the conversation in `bot` state) or falls back to promoting it to
-        // `pending` so a human picks it up. This intentionally replaces the
-        // previous unconditional "flip to pending" behaviour.
-        if ($conversation->isBot() || $conversation->isAssigned()) {
+        // Hand off to the AI on any non-closed conversation. The job/service
+        // decides whether to answer or fall back to `pending`:
+        //   - bot:      AI answers, keeps `bot`. On failure, promotes to `pending`.
+        //   - pending:  AI answers, promotes back to `bot`. Rescues visitors
+        //               stranded in the pool when no human ever claimed.
+        //   - assigned: AI only answers if tenant opted-in via
+        //               ai_settings.reply_when_claimed.
+        if (!$conversation->isClosed()) {
             rescue(fn () => ProcessWebChatIncomingMessage::dispatch($conversation->id, $message->id));
         }
 
