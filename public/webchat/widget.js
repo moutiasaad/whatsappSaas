@@ -352,7 +352,14 @@
                     }
                 }
                 if (data.message.id > S.lastMessageId) S.lastMessageId = data.message.id;
-                if (S.status === 'bot') { S.status = 'pending'; renderStatus(); }
+                // Trust the server's real status. With AI wiring, the backend
+                // keeps status='bot' while Claude is going to answer, so
+                // preemptively flipping to 'pending' would show a fake
+                // "Connecting to a support specialist…" card.
+                if (data.conversation && data.conversation.status && data.conversation.status !== S.status) {
+                    S.status = data.conversation.status;
+                    renderStatus();
+                }
                 if (!S.pusher) { subscribeRealtime(); startPolling(); }
             })
             .catch(function () {
@@ -742,6 +749,17 @@
             onclick: function (e) { e.stopPropagation(); toggleSettingsMenu(); },
             html: svg('settings')
         });
+        var endBtn = null;
+        if (S.convUuid && S.status && S.status !== 'closed' && S.view !== 'leaving' && S.view !== 'closed') {
+            endBtn = _('button', {
+                class: 'wvch-header-btn wvch-header-end',
+                type: 'button',
+                'aria-label': t().endChatAria,
+                title: t().endChatAria,
+                onclick: endSession,
+                html: svg('end')
+            });
+        }
         var closeBtn = _('button', {
             class: 'wvch-header-close',
             type: 'button',
@@ -763,6 +781,7 @@
         if (backBtn) actionKids.push(backBtn);
         actionKids.push(langBtn);
         actionKids.push(settingsBtn);
+        if (endBtn) actionKids.push(endBtn);
         actionKids.push(closeBtn);
         var actions = _('div', { class: 'wvch-header-actions' }, actionKids);
 
@@ -837,19 +856,9 @@
             }, [_('span', { class: 'wvch-toggle-knob' })])
         ]);
 
+        // End-chat lives as a visible header button now — no need to
+        // duplicate it here. The settings menu is sound-toggle only.
         var kids = [soundRow];
-
-        if (S.convUuid && S.status && S.status !== 'closed') {
-            kids.push(_('div', { class: 'wvch-menu-sep', 'aria-hidden': 'true' }));
-            kids.push(_('button', {
-                class: 'wvch-menu-row wvch-menu-row-danger',
-                type: 'button',
-                onclick: function (e) { e.stopPropagation(); closeSettingsMenu(); endSession(); }
-            }, [
-                _('span', { class: 'wvch-menu-icon', html: svg('end') }),
-                _('span', { class: 'wvch-menu-label', text: t().endChatMenu })
-            ]));
-        }
 
         el.settingsMenu = _('div', {
             class: 'wvch-menu',
