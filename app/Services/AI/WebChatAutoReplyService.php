@@ -61,12 +61,14 @@ class WebChatAutoReplyService
 
         try {
             $client   = new \Anthropic\Client($apiKey);
-            $response = $client->messages()->create([
-                'model'      => config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
-                'max_tokens' => 1024,
-                'system'     => $this->promptBuilder->buildSystemPrompt($tenant),
-                'messages'   => $this->buildMessages($conversation),
-            ]);
+            // anthropic-ai/sdk v0.23 exposes `messages` as a property and
+            // create() takes named arguments, not a single payload array.
+            $response = $client->messages->create(
+                maxTokens: 1024,
+                messages: $this->buildMessages($conversation),
+                model: config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
+                system: $this->promptBuilder->buildSystemPrompt($tenant),
+            );
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
             if ($tokens > 0) {
