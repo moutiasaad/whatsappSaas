@@ -59,6 +59,13 @@ return [
             'days'   => 7,
         ],
 
+        'webchat' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/webchat.log'),
+            'level'  => 'debug',
+            'days'   => 7,
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

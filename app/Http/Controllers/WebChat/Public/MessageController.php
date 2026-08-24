@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\WebChat\Public;
 
-use App\Events\WebChat\WebChatConversationRequested;
 use App\Events\WebChat\WebChatMessageSent;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessWebChatIncomingMessage;
 use App\Models\WebChat\Conversation;
 use App\Models\WebChat\Message;
 use App\Models\WebChat\Visitor;
@@ -32,14 +32,7 @@ class MessageController extends Controller
             return response()->json(['error' => 'conversation_closed'], 409);
         }
 
-        $justPromoted = false;
-
-        $message = DB::transaction(function () use ($conversation, $data, &$justPromoted) {
-            if ($conversation->isBot()) {
-                $conversation->status = Conversation::STATUS_PENDING;
-                $justPromoted = true;
-            }
-
+        $message = DB::transaction(function () use ($conversation, $data) {
             $conversation->last_activity_at = now();
             $conversation->save();
 
@@ -51,11 +44,15 @@ class MessageController extends Controller
             ]);
         });
 
-        if ($justPromoted) {
-            rescue(fn () => event(new WebChatConversationRequested($conversation->fresh())));
-        }
-
         rescue(fn () => event(new WebChatMessageSent($message->fresh(['conversation']))));
+
+        // Hand off to the AI. The job decides whether Claude answers (keeping
+        // the conversation in `bot` state) or falls back to promoting it to
+        // `pending` so a human picks it up. This intentionally replaces the
+        // previous unconditional "flip to pending" behaviour.
+        if ($conversation->isBot() || $conversation->isAssigned()) {
+            rescue(fn () => ProcessWebChatIncomingMessage::dispatch($conversation->id, $message->id));
+        }
 
         return response()->json([
             'message' => [
