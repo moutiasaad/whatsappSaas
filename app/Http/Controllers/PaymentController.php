@@ -418,6 +418,93 @@ class PaymentController extends Controller
         return response('OK');
     }
 
+    // ── PayPal Smart Buttons (JS SDK) ───────────────────────────────────────
+    //
+    // Renders PayPal's official 3-button stack (PayPal / Pay Later / Card) on
+    // the checkout page. Requires PAYPAL_CLIENT_ID. The SDK calls createOrder
+    // first (server creates the PayPal order + persists a pending payment),
+    // then onApprove (server captures + activates the tenant subscription).
+
+    public function createPaypalOrder(Request $request)
+    {
+        $request->validate(['tenant_id' => 'required|exists:tenants,id']);
+
+        $tenant = Tenant::with('plan')->findOrFail($request->tenant_id);
+        $plan   = $tenant->plan;
+
+        if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return response()->json(['error' => 'no_price'], 422);
+        }
+
+        $amount = (float) $plan->price_monthly;
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $plan->name . ' — ' . $tenant->name,
+                // Not used by the SDK flow, but PayPal still requires these on the order.
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'tenant_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $plan->id,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'sdk', 'order' => $order],
+            ]);
+
+            return response()->json(['id' => $order['id']]);
+        } catch (\Throwable $e) {
+            Log::error('PayPal SDK create-order failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function capturePaypalOrder(Request $request, string $orderId)
+    {
+        $payment = TenantPayment::where('paypal_order_id', $orderId)->first();
+        if (!$payment) {
+            return response()->json(['error' => 'payment_not_found'], 404);
+        }
+
+        try {
+            $this->capturePaypalPayment($payment);
+            $payment->refresh();
+
+            if ($payment->isCompleted()) {
+                // Log the buyer in if this was a fresh registration.
+                if (!Auth::check()) {
+                    $userId = session()->pull('_pending_register_user');
+                    $user   = $userId
+                        ? User::find($userId)
+                        : $payment->tenant?->users()->where('role', 'admin')->where('is_active', true)->first();
+                    if ($user) {
+                        Auth::login($user);
+                    }
+                }
+
+                return response()->json([
+                    'success'  => true,
+                    'redirect' => route('payment.success', ['token' => $orderId]),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => 'not_completed'], 402);
+        } catch (\Throwable $e) {
+            Log::error('PayPal SDK capture failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function paypalReturn(Request $request)
     {
         $orderId = $request->query('token');

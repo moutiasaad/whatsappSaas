@@ -64,6 +64,9 @@ Route::get('/payment/paypal/cancel',    [PaymentController::class, 'paypalCancel
 Route::post('/payment/paypal/webhook',  [PaymentController::class, 'paypalWebhook'])->name('payment.paypal.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 // Standard Payments IPN — email-only PayPal flow, no OAuth
 Route::post('/payment/paypal/ipn',      [PaymentController::class, 'paypalIpn'])->name('payment.paypal.ipn')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+// PayPal Smart Buttons SDK — JSON endpoints called from checkout page
+Route::post('/payment/paypal/create-order',            [PaymentController::class, 'createPaypalOrder'])->name('payment.paypal.create-order');
+Route::post('/payment/paypal/capture-order/{orderId}', [PaymentController::class, 'capturePaypalOrder'])->name('payment.paypal.capture-order');
 
 // Auth
 Route::middleware('guest')->group(function () {
