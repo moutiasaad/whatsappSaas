@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\MailtrapApiTransport;
 use App\Models\Conversation;
 use App\Models\WhatsAppInstance;
 use App\Policies\ConversationPolicy;
@@ -10,6 +11,7 @@ use App\Services\WhatsApp\Gateway\GatewayClientInterface;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Mailtrap HTTP API transport — see config/mail.php 'mailtrap' mailer.
+        Mail::extend('mailtrap', function (array $config) {
+            return new MailtrapApiTransport((string) ($config['token'] ?? ''));
+        });
+
         Gate::policy(Conversation::class, ConversationPolicy::class);
 
         // Allow super_admin to impersonate any user

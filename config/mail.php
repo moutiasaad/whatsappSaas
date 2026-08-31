@@ -37,6 +37,14 @@ return [
 
     'mailers' => [
 
+        // Mailtrap's HTTP sending API. Preferred over the SMTP mailer below:
+        // SMTP answers 250 on handoff even when the message is later dropped,
+        // whereas the API returns a per-message verdict we can act on.
+        'mailtrap' => [
+            'transport' => 'mailtrap',
+            'token' => env('MAILTRAP_TOKEN', env('MAIL_PASSWORD')),
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'url' => env('MAIL_URL'),
