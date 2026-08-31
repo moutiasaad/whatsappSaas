@@ -1145,6 +1145,8 @@ Always:
         'closed' => 'Closed',
         'ai_off' => 'AI Off',
         'claim' => 'Claim',
+        'take_over' => 'Take over',
+        'take_over_hint' => 'AI is answering. Click to take over — AI will stop replying.',
         'reassign' => 'Reassign',
         'release' => 'Release',
         'close' => 'Close',
