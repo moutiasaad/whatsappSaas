@@ -57,7 +57,9 @@ class BillingController extends Controller
                 'paid_at_date'     => $p->paid_at?->format('d M Y'),
                 'paid_at_time'     => $p->paid_at?->format('H:i'),
                 'created_at_date'  => $p->created_at?->format('d M Y'),
+                'payment_method'   => $p->payment_method ?? 'stripe',
                 'stripe_session_id'=> $p->stripe_session_id ? Str::limit($p->stripe_session_id, 24) : null,
+                'paypal_order_id'  => $p->paypal_order_id ? Str::limit($p->paypal_order_id, 24) : null,
             ])->toArray();
             $result['stats'] = [
                 'total_revenue' => (float) TenantPayment::where('status', 'completed')->sum('amount'),

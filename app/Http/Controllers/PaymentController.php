@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
 use App\Models\User;
+use App\Services\PayPalService;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,10 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function __construct(private StripeService $stripe) {}
+    public function __construct(
+        private StripeService $stripe,
+        private PayPalService $paypal,
+    ) {}
 
     public function upgrade(Request $request)
     {
@@ -97,6 +101,7 @@ class PaymentController extends Controller
                 'plan_id'             => $plan->id,
                 'amount'              => $amount,
                 'currency'            => 'USD',
+                'payment_method'      => 'stripe',
                 'stripe_session_id'   => $session->id,
                 'stripe_checkout_url' => $session->url,
                 'status'              => 'pending',
@@ -115,15 +120,22 @@ class PaymentController extends Controller
     public function success(Request $request)
     {
         $sessionId = $request->query('session_id');
+        $orderId   = $request->query('token'); // PayPal returns ?token={ORDER_ID}
 
-        if (!$sessionId) {
+        if (!$sessionId && !$orderId) {
             return view('payment.success', ['tenant' => null, 'plan' => null, 'payment' => null, 'redirectToDash' => false]);
         }
 
-        $payment = TenantPayment::where('stripe_session_id', $sessionId)->first();
+        $payment = $sessionId
+            ? TenantPayment::where('stripe_session_id', $sessionId)->first()
+            : TenantPayment::where('paypal_order_id', $orderId)->first();
 
         if ($payment && !$payment->isCompleted()) {
-            $this->processPayment($payment, $sessionId);
+            if ($payment->payment_method === 'paypal') {
+                $this->capturePaypalPayment($payment);
+            } else {
+                $this->processPayment($payment, $sessionId);
+            }
             $payment->refresh();
             $payment->load('tenant', 'plan');
         }
@@ -216,16 +228,7 @@ class PaymentController extends Controller
                     'gateway_response' => $session->toArray(),
                 ]);
 
-                $tenant = $payment->tenant;
-
-                // Payment completed = subscription is always active, regardless of new vs upgrade
-                $tenant->update([
-                    'plan_id'                 => $payment->plan_id,
-                    'subscription_status'     => 'active',
-                    'subscription_starts_at'  => now(),
-                    'subscription_ends_at'    => now()->addMonth(),
-                    'is_active'               => true,
-                ]);
+                $this->activateTenantSubscription($payment);
 
                 Log::info('Tenant activated via Stripe', [
                     'tenant_id'  => $payment->tenant_id,
@@ -236,5 +239,175 @@ class PaymentController extends Controller
         } catch (\Throwable $e) {
             Log::error('processPayment failed', ['session_id' => $sessionId, 'error' => $e->getMessage()]);
         }
+    }
+
+    // ── PayPal ──────────────────────────────────────────────────────────────
+
+    public function initiatePaypal(Request $request)
+    {
+        $request->validate(['tenant_id' => 'required|exists:tenants,id']);
+
+        $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
+        $plan   = $tenant->plan;
+
+        if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return redirect()->route('register');
+        }
+
+        $amount = (float) $plan->price_monthly;
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $plan->name . ' — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'tenant_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            $approveUrl = $this->paypal->extractApproveUrl($order);
+            if (!$approveUrl) {
+                throw new \RuntimeException('PayPal approve URL not found in order response.');
+            }
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $plan->id,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['order' => $order],
+            ]);
+
+            return redirect($approveUrl);
+        } catch (\Throwable $e) {
+            Log::error('PayPal initiate failed', ['error' => $e->getMessage()]);
+            $msg = config('app.debug') ? $e->getMessage() : __('auth.register.payment_init_failed');
+            return redirect()->route('payment.checkout', $tenant->id)
+                ->withErrors(['payment' => $msg]);
+        }
+    }
+
+    public function paypalReturn(Request $request)
+    {
+        $orderId = $request->query('token');
+        if (!$orderId) {
+            return redirect()->route('payment.failed');
+        }
+        return redirect()->route('payment.success', ['token' => $orderId]);
+    }
+
+    public function paypalCancel(Request $request)
+    {
+        $orderId = $request->query('token');
+        $payment = $orderId
+            ? TenantPayment::where('paypal_order_id', $orderId)->with('tenant', 'plan')->first()
+            : null;
+
+        if ($payment && $payment->isPending()) {
+            $payment->update(['status' => 'failed']);
+        }
+
+        return view('payment.failed', ['payment' => $payment]);
+    }
+
+    public function paypalWebhook(Request $request)
+    {
+        $rawBody = $request->getContent();
+        $headers = [];
+        foreach ($request->headers->all() as $key => $values) {
+            $headers[strtolower($key)] = is_array($values) ? ($values[0] ?? '') : $values;
+        }
+
+        try {
+            $verified = $this->paypal->verifyWebhookSignature($headers, $rawBody);
+            if (!$verified) {
+                Log::warning('PayPal webhook signature invalid');
+                return response()->json(['error' => 'invalid signature'], 400);
+            }
+
+            $event = json_decode($rawBody, true) ?: [];
+            $type  = $event['event_type'] ?? '';
+
+            if (in_array($type, ['CHECKOUT.ORDER.APPROVED', 'PAYMENT.CAPTURE.COMPLETED'], true)) {
+                $orderId = $event['resource']['id']
+                    ?? $event['resource']['supplementary_data']['related_ids']['order_id']
+                    ?? null;
+
+                if ($orderId) {
+                    $payment = TenantPayment::where('paypal_order_id', $orderId)->first();
+                    if ($payment && !$payment->isCompleted()) {
+                        $this->capturePaypalPayment($payment);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('PayPal webhook failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    private function capturePaypalPayment(TenantPayment $payment): void
+    {
+        try {
+            $orderId = $payment->paypal_order_id;
+            if (!$orderId) {
+                return;
+            }
+
+            $order = $this->paypal->getOrder($orderId);
+
+            // Only capture if approved but not yet captured
+            if (($order['status'] ?? null) === 'APPROVED') {
+                $capture = $this->paypal->captureOrder($orderId);
+            } else {
+                $capture = $order;
+            }
+
+            if ($this->paypal->isCompleted($capture)) {
+                $payment->update([
+                    'status'            => 'completed',
+                    'paid_at'           => now(),
+                    'paypal_capture_id' => $this->paypal->extractCaptureId($capture),
+                    'gateway_response'  => ['order' => $order, 'capture' => $capture],
+                ]);
+
+                $this->activateTenantSubscription($payment);
+
+                Log::info('Tenant activated via PayPal', [
+                    'tenant_id' => $payment->tenant_id,
+                    'plan_id'   => $payment->plan_id,
+                    'order_id'  => $orderId,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('capturePaypalPayment failed', [
+                'payment_id' => $payment->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function activateTenantSubscription(TenantPayment $payment): void
+    {
+        $tenant = $payment->tenant;
+        if (!$tenant) {
+            return;
+        }
+
+        $tenant->update([
+            'plan_id'                => $payment->plan_id,
+            'subscription_status'    => 'active',
+            'subscription_starts_at' => now(),
+            'subscription_ends_at'   => now()->addMonth(),
+            'is_active'              => true,
+        ]);
     }
 }

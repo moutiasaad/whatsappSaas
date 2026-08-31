@@ -49,13 +49,19 @@ Route::middleware('guest')->group(function () {
     Route::post('/register/resend-otp', [RegisterController::class, 'resendOtp'])->middleware('throttle:3,1')->name('register.otp.resend');
 });
 
-// Payment (Stripe)
+// Payment (Stripe + PayPal)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
 Route::post('/payment/initiate', [PaymentController::class, 'initiate'])->name('payment.initiate');
 Route::post('/payment/upgrade', [PaymentController::class, 'upgrade'])->name('payment.upgrade')->middleware('auth');
 Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/failed', [PaymentController::class, 'failed'])->name('payment.failed');
 Route::post('/payment/webhook', [PaymentController::class, 'webhook'])->name('payment.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+// PayPal
+Route::post('/payment/paypal/initiate', [PaymentController::class, 'initiatePaypal'])->name('payment.paypal.initiate');
+Route::get('/payment/paypal/return',    [PaymentController::class, 'paypalReturn'])->name('payment.paypal.return');
+Route::get('/payment/paypal/cancel',    [PaymentController::class, 'paypalCancel'])->name('payment.paypal.cancel');
+Route::post('/payment/paypal/webhook',  [PaymentController::class, 'paypalWebhook'])->name('payment.paypal.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // Auth
 Route::middleware('guest')->group(function () {
