@@ -213,6 +213,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Knowledge Base
                 Route::get('/knowledge', [KnowledgeController::class, 'index'])->name('knowledge.index');
                 Route::post('/knowledge', [KnowledgeController::class, 'store'])->name('knowledge.store');
+                Route::get('/knowledge/import/template', [KnowledgeController::class, 'importJsonTemplate'])->name('knowledge.import.template');
+                Route::post('/knowledge/import', [KnowledgeController::class, 'importJson'])->name('knowledge.import');
                 Route::get('/knowledge/{entry}/edit', [KnowledgeController::class, 'edit'])->name('knowledge.edit');
                 Route::put('/knowledge/{entry}', [KnowledgeController::class, 'update'])->name('knowledge.update');
                 Route::delete('/knowledge/{entry}', [KnowledgeController::class, 'destroy'])->name('knowledge.destroy');
