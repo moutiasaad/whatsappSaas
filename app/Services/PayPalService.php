@@ -13,6 +13,7 @@ class PayPalService
     private ?string $clientSecret;
     private ?string $webhookId;
     private string $currency;
+    private ?string $payeeEmail;
 
     public function __construct()
     {
@@ -24,6 +25,7 @@ class PayPalService
         $this->clientSecret= config('services.paypal.client_secret');
         $this->webhookId   = config('services.paypal.webhook_id');
         $this->currency    = config('services.paypal.currency', 'USD');
+        $this->payeeEmail  = config('services.paypal.payee_email');
     }
 
     public function getAccessToken(): string
@@ -48,17 +50,27 @@ class PayPalService
     {
         $token = $this->getAccessToken();
 
+        $purchaseUnit = [
+            'amount' => [
+                'currency_code' => $this->currency,
+                'value'         => number_format($amount, 2, '.', ''),
+            ],
+            'description'   => mb_substr($description, 0, 127),
+            'custom_id'     => (string) ($metadata['tenant_id'] ?? ''),
+            'invoice_id'    => (string) ($metadata['invoice_id'] ?? uniqid('inv_', true)),
+        ];
+
+        // Route funds to a specific PayPal account when PAYPAL_PAYEE_EMAIL is set.
+        // Without this, payment goes to whichever merchant owns PAYPAL_CLIENT_ID.
+        if ($this->payeeEmail) {
+            $purchaseUnit['payee'] = [
+                'email_address' => $this->payeeEmail,
+            ];
+        }
+
         $payload = [
-            'intent' => 'CAPTURE',
-            'purchase_units' => [[
-                'amount' => [
-                    'currency_code' => $this->currency,
-                    'value'         => number_format($amount, 2, '.', ''),
-                ],
-                'description'   => mb_substr($description, 0, 127),
-                'custom_id'     => (string) ($metadata['tenant_id'] ?? ''),
-                'invoice_id'    => (string) ($metadata['invoice_id'] ?? uniqid('inv_', true)),
-            ]],
+            'intent'         => 'CAPTURE',
+            'purchase_units' => [$purchaseUnit],
             'application_context' => [
                 'brand_name'          => config('app.name', 'Wavadesk'),
                 'landing_page'        => 'LOGIN',

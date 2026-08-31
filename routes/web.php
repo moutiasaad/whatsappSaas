@@ -62,6 +62,8 @@ Route::post('/payment/paypal/initiate', [PaymentController::class, 'initiatePayp
 Route::get('/payment/paypal/return',    [PaymentController::class, 'paypalReturn'])->name('payment.paypal.return');
 Route::get('/payment/paypal/cancel',    [PaymentController::class, 'paypalCancel'])->name('payment.paypal.cancel');
 Route::post('/payment/paypal/webhook',  [PaymentController::class, 'paypalWebhook'])->name('payment.paypal.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+// Standard Payments IPN — email-only PayPal flow, no OAuth
+Route::post('/payment/paypal/ipn',      [PaymentController::class, 'paypalIpn'])->name('payment.paypal.ipn')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // Auth
 Route::middleware('guest')->group(function () {
