@@ -42,10 +42,13 @@
         </div>
     @endif
 
-    {{-- Import JSON modal --}}
+    {{-- Import JSON modal — teleported to <body> so it escapes the admin layout
+         wrappers (sidebar sits at z-index:100 and would otherwise cover the
+         backdrop, which is what caused the clipped-modal design bug). --}}
+    <template x-teleport="body">
     <div x-show="showImport" x-cloak
          @keydown.escape.window="showImport = false"
-         style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:1rem"
+         style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem"
          x-transition.opacity>
         <div @click.outside="showImport = false" x-transition
              style="background:#fff;border-radius:12px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25);overflow:hidden">
@@ -85,6 +88,7 @@
             </form>
         </div>
     </div>
+    </template>
 
     <div style="display:grid;grid-template-columns:1fr 380px;gap:1.5rem;align-items:start">
         <div>
