@@ -6,6 +6,89 @@
     <span>{{ __('ui.knowledge_page.breadcrumb') }}</span>
 @endsection
 
+@push('styles')
+<style>
+    /* Import JSON modal — scoped to avoid collisions with the admin layout.
+       Uses fixed positioning at very high z-index so the sidebar (z-index:100)
+       doesn't cover the backdrop. Backdrop centers the dialog via flex. */
+    .kb-import-backdrop {
+        position: fixed !important;
+        top: 0; right: 0; bottom: 0; left: 0;
+        background: rgba(15, 23, 42, .55);
+        z-index: 10000;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+    .kb-import-dialog {
+        background: #fff;
+        border-radius: 12px;
+        max-width: 520px;
+        width: 100%;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+        overflow: hidden;
+        max-height: calc(100vh - 2rem);
+        display: flex;
+        flex-direction: column;
+    }
+    .kb-import-head {
+        padding: 1.125rem 1.25rem;
+        border-bottom: 1px solid var(--card-border, #e5e7eb);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .kb-import-title { font-weight: 700; font-size: 1rem; color: var(--text-primary, #0f172a); }
+    .kb-import-close {
+        background: none; border: none; font-size: 1.5rem; line-height: 1;
+        color: var(--text-muted, #64748b); cursor: pointer; padding: 0 .25rem;
+    }
+    .kb-import-close:hover { color: var(--text-primary, #0f172a); }
+    .kb-import-body {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        overflow-y: auto;
+    }
+    .kb-import-hint {
+        font-size: .8125rem;
+        color: var(--text-muted, #64748b);
+        margin: 0;
+        line-height: 1.55;
+    }
+    .kb-import-field {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        cursor: pointer;
+        font-size: .875rem;
+        font-weight: 500;
+        color: var(--text-primary, #0f172a);
+    }
+    .kb-import-filename { font-size: .75rem; color: var(--text-muted, #64748b); }
+    .kb-import-template-link {
+        font-size: .8125rem;
+        color: var(--brand, #6366f1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: .375rem;
+        align-self: flex-start;
+    }
+    .kb-import-template-link:hover { text-decoration: underline; }
+    .kb-import-foot {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--card-border, #e5e7eb);
+        display: flex;
+        gap: .5rem;
+        justify-content: flex-end;
+    }
+</style>
+@endpush
+
 @section('content')
 <div x-data="{ showForm: {{ old('title') ? 'true' : 'false' }}, editId: null, showImport: false, importFileName: '' }">
 
@@ -42,46 +125,42 @@
         </div>
     @endif
 
-    {{-- Import JSON modal — teleported to <body> so it escapes the admin layout
-         wrappers (sidebar sits at z-index:100 and would otherwise cover the
-         backdrop, which is what caused the clipped-modal design bug). --}}
+    {{-- Import JSON modal — teleported to <body> so it escapes the admin
+         layout wrappers. Uses a scoped .kb-import-* CSS class set rather
+         than inline styles so no global admin CSS can override the layout. --}}
     <template x-teleport="body">
-    <div x-show="showImport" x-cloak
+    <div class="kb-import-backdrop" x-show="showImport" x-cloak
          @keydown.escape.window="showImport = false"
-         style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem"
+         @click.self="showImport = false"
          x-transition.opacity>
-        <div @click.outside="showImport = false" x-transition
-             style="background:#fff;border-radius:12px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25);overflow:hidden">
-            <div style="padding:1.125rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between">
-                <div style="font-weight:700;font-size:1rem">{{ __('ui.knowledge_page.import_json_title') }}</div>
-                <button @click="showImport = false" class="modal-close" type="button">&times;</button>
+        <div class="kb-import-dialog" x-transition>
+            <div class="kb-import-head">
+                <div class="kb-import-title">{{ __('ui.knowledge_page.import_json_title') }}</div>
+                <button @click="showImport = false" class="kb-import-close" type="button" aria-label="Close">&times;</button>
             </div>
             <form action="{{ route('admin.knowledge.import') }}" method="POST" enctype="multipart/form-data" data-loading>
                 @csrf
-                <div style="padding:1.25rem;display:flex;flex-direction:column;gap:1rem">
-                    <p style="font-size:.8125rem;color:var(--text-muted);margin:0;line-height:1.55">
-                        {{ __('ui.knowledge_page.import_json_hint') }}
-                    </p>
+                <div class="kb-import-body">
+                    <p class="kb-import-hint">{{ __('ui.knowledge_page.import_json_hint') }}</p>
 
-                    <label class="form-label" style="display:flex;flex-direction:column;gap:.5rem;cursor:pointer">
+                    <label class="kb-import-field">
                         <span>{{ __('ui.knowledge_page.select_file') }} <span style="color:#ef4444">*</span></span>
                         <input type="file" name="file" accept=".json,application/json,text/json,text/plain" required
                                @change="importFileName = $event.target.files[0]?.name || ''"
                                class="form-control @error('file') error @enderror"
                                style="padding:.5rem">
                         <template x-if="importFileName">
-                            <span style="font-size:.75rem;color:var(--text-muted)" x-text="importFileName"></span>
+                            <span class="kb-import-filename" x-text="importFileName"></span>
                         </template>
                         @error('file') <span class="form-error">{{ $message }}</span> @enderror
                     </label>
 
-                    <a href="{{ route('admin.knowledge.import.template') }}"
-                       style="font-size:.8125rem;color:var(--brand);text-decoration:none;display:inline-flex;align-items:center;gap:.375rem;align-self:flex-start">
+                    <a href="{{ route('admin.knowledge.import.template') }}" class="kb-import-template-link">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         {{ __('ui.knowledge_page.download_template') }}
                     </a>
                 </div>
-                <div style="padding:1rem 1.25rem;border-top:1px solid var(--card-border);display:flex;gap:.5rem;justify-content:flex-end">
+                <div class="kb-import-foot">
                     <button type="button" @click="showImport = false" class="btn btn-outline">{{ __('ui.knowledge_page.cancel') }}</button>
                     <button type="submit" class="btn btn-primary">{{ __('ui.knowledge_page.upload_button') }}</button>
                 </div>
