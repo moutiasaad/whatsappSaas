@@ -34,14 +34,17 @@ class PromptBuilder
 
         $parts = [$base];
 
-        $profile  = $entries->firstWhere('type', 'company_profile');
+        $profiles = $entries->where('type', 'company_profile');
         $products = $entries->where('type', 'product');
         $faqs     = $entries->where('type', 'faq');
         $policies = $entries->where('type', 'policy');
-        $custom   = $entries->firstWhere('type', 'custom_instruction');
+        $customs  = $entries->where('type', 'custom_instruction');
 
-        if ($profile) {
-            $parts[] = "## Company\n{$profile->body}";
+        if ($profiles->isNotEmpty()) {
+            $parts[] = "## Company";
+            foreach ($profiles as $profile) {
+                $parts[] = "### {$profile->title}\n{$profile->body}";
+            }
         }
 
         if ($products->isNotEmpty()) {
@@ -65,8 +68,11 @@ class PromptBuilder
             }
         }
 
-        if ($custom) {
-            $parts[] = "## Additional Instructions\n{$custom->body}";
+        if ($customs->isNotEmpty()) {
+            $parts[] = "## Additional Instructions";
+            foreach ($customs as $custom) {
+                $parts[] = "### {$custom->title}\n{$custom->body}";
+            }
         }
 
         return implode("\n\n", $parts);
