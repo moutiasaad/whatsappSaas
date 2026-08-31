@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpVerification;
 use App\Models\Plan;
+use App\Models\RegisterOtp;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -46,9 +47,12 @@ class RegisterController extends Controller
             'plan_id'      => 'required|exists:plans,id',
         ]);
 
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp        = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt  = now()->addMinutes(self::OTP_TTL_MINUTES);
+        $pendingData = $request->except(['_token', 'password', 'password_confirmation']);
+        $passwordHash = Hash::make($request->password);
 
-        // DEV ONLY: log plaintext OTP when APP_DEBUG=true. Same guard as OtpService.
+        // DEV ONLY: log plaintext OTP when APP_DEBUG=true.
         if (config('app.debug')) {
             Log::info('[OTP DEBUG] register code generated', [
                 'email' => $request->email,
@@ -56,24 +60,48 @@ class RegisterController extends Controller
             ]);
         }
 
+        // Persist BEFORE attempting to send the email — if delivery fails, the code
+        // still exists in `register_otp_codes` and can be recovered/retried without
+        // losing the pending registration data.
+        $record = RegisterOtp::updateOrCreate(
+            ['email' => $request->email],
+            [
+                'otp'           => $otp,
+                'data'          => $pendingData,
+                'password_hash' => $passwordHash,
+                'expires_at'    => $expiresAt,
+                'sent_at'       => null,
+                'verified_at'   => null,
+                'resend_count'  => 0,
+            ]
+        );
+
         session([
             '_reg_pending' => [
                 'otp'        => $otp,
-                'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp,
+                'expires_at' => $expiresAt->timestamp,
                 'sent_at'    => now()->timestamp,
-                'data'       => $request->except(['_token', 'password', 'password_confirmation']),
-                'password'   => Hash::make($request->password),
+                'data'       => $pendingData,
+                'password'   => $passwordHash,
             ],
         ]);
 
+        $mailSent = false;
         try {
             Mail::to($request->email)->send(new OtpVerification($otp));
+            $mailSent = true;
+            $record->update(['sent_at' => now()]);
         } catch (\Throwable $e) {
-            Log::error('OTP email failed', ['error' => $e->getMessage()]);
-            return back()->withInput()->withErrors(['email' => __('auth.register.otp_send_failed')]);
+            Log::error('OTP email failed', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
         }
 
-        return redirect()->route('register.otp');
+        $redirect = redirect()->route('register.otp');
+        return $mailSent
+            ? $redirect
+            : $redirect->with('warning', __('auth.register.otp_email_saved_but_not_sent'));
     }
 
     // ── Step 3: show OTP entry page ─────────────────────────────────────────
@@ -91,6 +119,21 @@ class RegisterController extends Controller
         return view('auth.verify-otp', compact('maskedEmail'));
     }
 
+    private function rehydratePendingFromDb(string $email): ?array
+    {
+        $record = RegisterOtp::where('email', $email)->first();
+        if (!$record || $record->isExpired() || $record->isVerified()) {
+            return null;
+        }
+        return [
+            'otp'        => $record->otp,
+            'expires_at' => $record->expires_at->timestamp,
+            'sent_at'    => $record->sent_at?->timestamp ?? now()->timestamp,
+            'data'       => $record->data ?? [],
+            'password'   => $record->password_hash,
+        ];
+    }
+
     // ── Step 4: verify OTP → create account ─────────────────────────────────
 
     public function verifyOtp(Request $request)
@@ -105,12 +148,17 @@ class RegisterController extends Controller
 
         if (now()->timestamp > $pending['expires_at']) {
             session()->forget('_reg_pending');
+            RegisterOtp::where('email', $pending['data']['email'] ?? '')->delete();
             return redirect()->route('register')->withErrors(['general' => __('auth.register.otp_expired')]);
         }
 
         if (!hash_equals($pending['otp'], $request->otp)) {
             return back()->withErrors(['otp' => __('auth.register.otp_invalid')]);
         }
+
+        // Mark DB record as verified before we consume the pending payload.
+        RegisterOtp::where('email', $pending['data']['email'] ?? '')
+            ->update(['verified_at' => now()]);
 
         // OTP verified — create the account
         $data = $pending['data'];
@@ -146,6 +194,7 @@ class RegisterController extends Controller
         }
 
         session()->forget('_reg_pending');
+        RegisterOtp::where('email', $data['email'])->delete();
 
         if ($isFree) {
             Auth::login($user);
@@ -174,26 +223,51 @@ class RegisterController extends Controller
             return response()->json(['error' => "Please wait {$wait}s before resending."], 429);
         }
 
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp       = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $email     = $pending['data']['email'];
+        $expiresAt = now()->addMinutes(self::OTP_TTL_MINUTES);
 
         if (config('app.debug')) {
             Log::info('[OTP DEBUG] register code resent', [
-                'email' => $pending['data']['email'],
+                'email' => $email,
                 'otp'   => $otp,
             ]);
         }
 
+        // Persist BEFORE attempting mail so the new code survives delivery failures.
+        $record = RegisterOtp::where('email', $email)->first();
+        if ($record) {
+            $record->update([
+                'otp'          => $otp,
+                'expires_at'   => $expiresAt,
+                'sent_at'      => null,
+                'resend_count' => $record->resend_count + 1,
+            ]);
+        }
+
+        $mailSent = false;
         try {
-            Mail::to($pending['data']['email'])->send(new OtpVerification($otp));
+            Mail::to($email)->send(new OtpVerification($otp));
+            $mailSent = true;
+            $record?->update(['sent_at' => now()]);
         } catch (\Throwable $e) {
-            Log::error('OTP resend failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => __('auth.register.otp_send_failed')], 500);
+            Log::error('OTP resend failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $pending['otp']        = $otp;
-        $pending['expires_at'] = now()->addMinutes(self::OTP_TTL_MINUTES)->timestamp;
+        $pending['expires_at'] = $expiresAt->timestamp;
         $pending['sent_at']    = now()->timestamp;
         session(['_reg_pending' => $pending]);
+
+        if (!$mailSent) {
+            return response()->json([
+                'ok'      => true,
+                'warning' => __('auth.register.otp_email_saved_but_not_sent'),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }

@@ -75,6 +75,7 @@ return [
         'welcome_trial'            => 'Welcome! Your free trial has started.',
         'server_error'             => 'An error occurred. Please try again.',
         'otp_send_failed'          => 'Could not send the verification email. Please try again.',
+        'otp_email_saved_but_not_sent' => 'Your verification code was saved but the email could not be delivered. Contact support if you did not receive it.',
         'session_expired'          => 'Your session has expired. Please start registration again.',
         'otp_expired'              => 'The verification code has expired. Please start registration again.',
         'otp_invalid'              => 'Invalid code. Please check and try again.',
