@@ -7,17 +7,83 @@
 @endsection
 
 @section('content')
-<div x-data="{ showForm: {{ old('title') ? 'true' : 'false' }}, editId: null }">
+<div x-data="{ showForm: {{ old('title') ? 'true' : 'false' }}, editId: null, showImport: false, importFileName: '' }">
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:.75rem;flex-wrap:wrap">
         <div>
             <h1 style="font-size:1.375rem;font-weight:700;color:var(--text-primary)">{{ __('ui.knowledge_page.title') }}</h1>
             <p style="font-size:.875rem;color:var(--text-muted);margin-top:.125rem">{{ __('ui.knowledge_page.subtitle') }}</p>
         </div>
-        <button @click="showForm = true; editId = null" class="btn btn-primary">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {{ __('ui.knowledge_page.add_entry') }}
-        </button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button @click="showImport = true" class="btn btn-outline" type="button">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {{ __('ui.knowledge_page.import_json') }}
+            </button>
+            <button @click="showForm = true; editId = null" class="btn btn-primary" type="button">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                {{ __('ui.knowledge_page.add_entry') }}
+            </button>
+        </div>
+    </div>
+
+    @if(session('import_errors'))
+        <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #f59e0b;background:#fffbeb">
+            <div style="font-weight:600;font-size:.875rem;color:#92400e;margin-bottom:.375rem">
+                {{ __('ui.knowledge_page.import_errors_title') }}
+            </div>
+            <ul style="margin:0;padding-inline-start:1.25rem;font-size:.8125rem;color:#78350f;line-height:1.6">
+                @foreach(array_slice(session('import_errors'), 0, 20) as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+                @if(count(session('import_errors')) > 20)
+                    <li style="color:#a16207">…{{ count(session('import_errors')) - 20 }} more</li>
+                @endif
+            </ul>
+        </div>
+    @endif
+
+    {{-- Import JSON modal --}}
+    <div x-show="showImport" x-cloak
+         @keydown.escape.window="showImport = false"
+         style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:1rem"
+         x-transition.opacity>
+        <div @click.outside="showImport = false" x-transition
+             style="background:#fff;border-radius:12px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25);overflow:hidden">
+            <div style="padding:1.125rem 1.25rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between">
+                <div style="font-weight:700;font-size:1rem">{{ __('ui.knowledge_page.import_json_title') }}</div>
+                <button @click="showImport = false" class="modal-close" type="button">&times;</button>
+            </div>
+            <form action="{{ route('admin.knowledge.import') }}" method="POST" enctype="multipart/form-data" data-loading>
+                @csrf
+                <div style="padding:1.25rem;display:flex;flex-direction:column;gap:1rem">
+                    <p style="font-size:.8125rem;color:var(--text-muted);margin:0;line-height:1.55">
+                        {{ __('ui.knowledge_page.import_json_hint') }}
+                    </p>
+
+                    <label class="form-label" style="display:flex;flex-direction:column;gap:.5rem;cursor:pointer">
+                        <span>{{ __('ui.knowledge_page.select_file') }} <span style="color:#ef4444">*</span></span>
+                        <input type="file" name="file" accept=".json,application/json,text/json,text/plain" required
+                               @change="importFileName = $event.target.files[0]?.name || ''"
+                               class="form-control @error('file') error @enderror"
+                               style="padding:.5rem">
+                        <template x-if="importFileName">
+                            <span style="font-size:.75rem;color:var(--text-muted)" x-text="importFileName"></span>
+                        </template>
+                        @error('file') <span class="form-error">{{ $message }}</span> @enderror
+                    </label>
+
+                    <a href="{{ route('admin.knowledge.import.template') }}"
+                       style="font-size:.8125rem;color:var(--brand);text-decoration:none;display:inline-flex;align-items:center;gap:.375rem;align-self:flex-start">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        {{ __('ui.knowledge_page.download_template') }}
+                    </a>
+                </div>
+                <div style="padding:1rem 1.25rem;border-top:1px solid var(--card-border);display:flex;gap:.5rem;justify-content:flex-end">
+                    <button type="button" @click="showImport = false" class="btn btn-outline">{{ __('ui.knowledge_page.cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('ui.knowledge_page.upload_button') }}</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 380px;gap:1.5rem;align-items:start">

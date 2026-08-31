@@ -75,6 +75,7 @@ return [
         'welcome_trial'            => 'Bienvenue ! Votre essai gratuit a démarré.',
         'server_error'             => 'Une erreur est survenue. Veuillez réessayer.',
         'otp_send_failed'          => "L'envoi du code de vérification a échoué. Veuillez réessayer.",
+        'otp_email_saved_but_not_sent' => "Votre code de vérification a été enregistré, mais l'e-mail n'a pas pu être envoyé. Contactez le support si vous ne le recevez pas.",
         'session_expired'          => 'Votre session a expiré. Veuillez recommencer l\'inscription.',
         'otp_expired'              => 'Le code de vérification a expiré. Veuillez recommencer l\'inscription.',
         'otp_invalid'              => 'Code incorrect. Vérifiez et réessayez.',
