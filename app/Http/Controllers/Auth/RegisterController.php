@@ -48,6 +48,14 @@ class RegisterController extends Controller
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+        // DEV ONLY: log plaintext OTP when APP_DEBUG=true. Same guard as OtpService.
+        if (config('app.debug')) {
+            Log::info('[OTP DEBUG] register code generated', [
+                'email' => $request->email,
+                'otp'   => $otp,
+            ]);
+        }
+
         session([
             '_reg_pending' => [
                 'otp'        => $otp,
@@ -167,6 +175,13 @@ class RegisterController extends Controller
         }
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        if (config('app.debug')) {
+            Log::info('[OTP DEBUG] register code resent', [
+                'email' => $pending['data']['email'],
+                'otp'   => $otp,
+            ]);
+        }
 
         try {
             Mail::to($pending['data']['email'])->send(new OtpVerification($otp));

@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class OtpService
 {
@@ -51,6 +52,18 @@ class OtpService
         $code = $this->generateCode((int) $settings['code_length']);
         $ttl  = (int) $settings['ttl_minutes'];
         $body = $this->renderTemplate($settings['template'], $code, $ttl);
+
+        // DEV ONLY: log the plaintext OTP when APP_DEBUG=true. Never enable this in production —
+        // the code is one-time and short-lived but still sensitive. Gate is on APP_DEBUG so it
+        // follows the same visibility rules as Laravel's exception stack traces.
+        if (config('app.debug')) {
+            Log::info('[OTP DEBUG] api code generated', [
+                'tenant_id'  => $tenant->id,
+                'identifier' => $identifier,
+                'code'       => $code,
+                'expires_at' => now()->addMinutes($ttl)->toIso8601String(),
+            ]);
+        }
 
         try {
             $gateway = new EvolutionApiClient(
