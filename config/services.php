@@ -57,6 +57,7 @@ return [
         'client_secret' => env('PAYPAL_CLIENT_SECRET'),
         'webhook_id'    => env('PAYPAL_WEBHOOK_ID'),
         'currency'      => env('PAYPAL_CURRENCY', 'USD'),
+        'payee_email'   => env('PAYPAL_PAYEE_EMAIL'),
     ],
 
 ];
