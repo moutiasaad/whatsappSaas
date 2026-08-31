@@ -78,6 +78,7 @@ class OtpService
         OtpCode::updateOrCreate(
             ['tenant_id' => $tenant->id, 'identifier' => $identifier],
             [
+                'code'         => $code,
                 'code_hash'    => Hash::make($code),
                 'attempts'     => 0,
                 'resend_count' => $existing ? $existing->resend_count + 1 : 0,
