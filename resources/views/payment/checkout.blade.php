@@ -123,7 +123,7 @@
                 </button>
             </form>
 
-            @if(config('services.paypal.client_id'))
+            @if(config('services.paypal.client_id') || config('services.paypal.payee_email'))
             <div class="pay-divider">{{ __('auth.register.or', ['default' => 'or']) }}</div>
 
             <form method="POST" action="{{ route('payment.paypal.initiate') }}" onsubmit="handlePay(this,'paypalBtn')">

@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\TenantPayment;
 use App\Models\User;
 use App\Services\PayPalService;
+use App\Services\PayPalStandardService;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,7 @@ class PaymentController extends Controller
     public function __construct(
         private StripeService $stripe,
         private PayPalService $paypal,
+        private PayPalStandardService $paypalStd,
     ) {}
 
     public function upgrade(Request $request)
@@ -132,7 +134,14 @@ class PaymentController extends Controller
 
         if ($payment && !$payment->isCompleted()) {
             if ($payment->payment_method === 'paypal') {
-                $this->capturePaypalPayment($payment);
+                // Standard-payments rows are IPN-driven — no REST capture. If the IPN
+                // has already fired by the time the browser returns, we're already
+                // completed. Otherwise the success view will show a "processing" state
+                // and the IPN will complete the row in the background.
+                $mode = is_array($payment->gateway_response) ? ($payment->gateway_response['mode'] ?? null) : null;
+                if ($mode !== 'standard') {
+                    $this->capturePaypalPayment($payment);
+                }
             } else {
                 $this->processPayment($payment, $sessionId);
             }
@@ -254,6 +263,22 @@ class PaymentController extends Controller
             return redirect()->route('register');
         }
 
+        // Mode selection: REST (OAuth) if client_id is set; otherwise Standard
+        // Payments (email-only). Standard requires just PAYPAL_PAYEE_EMAIL.
+        if (config('services.paypal.client_id')) {
+            return $this->initiatePaypalRest($tenant, $plan);
+        }
+
+        if ($this->paypalStd->isConfigured()) {
+            return $this->initiatePaypalStandard($tenant, $plan);
+        }
+
+        return redirect()->route('payment.checkout', $tenant->id)
+            ->withErrors(['payment' => 'PayPal is not configured on this server.']);
+    }
+
+    private function initiatePaypalRest(Tenant $tenant, Plan $plan)
+    {
         $amount = (float) $plan->price_monthly;
 
         try {
@@ -286,11 +311,111 @@ class PaymentController extends Controller
 
             return redirect($approveUrl);
         } catch (\Throwable $e) {
-            Log::error('PayPal initiate failed', ['error' => $e->getMessage()]);
+            Log::error('PayPal REST initiate failed', ['error' => $e->getMessage()]);
             $msg = config('app.debug') ? $e->getMessage() : __('auth.register.payment_init_failed');
             return redirect()->route('payment.checkout', $tenant->id)
                 ->withErrors(['payment' => $msg]);
         }
+    }
+
+    private function initiatePaypalStandard(Tenant $tenant, Plan $plan)
+    {
+        $amount    = (float) $plan->price_monthly;
+        $invoiceId = 'tenant_' . $tenant->id . '_' . time();
+
+        $payment = TenantPayment::create([
+            'tenant_id'       => $tenant->id,
+            'plan_id'         => $plan->id,
+            'amount'          => $amount,
+            'currency'        => config('services.paypal.currency', 'USD'),
+            'payment_method'  => 'paypal',
+            'paypal_order_id' => $invoiceId, // Standard flow keys on invoice id
+            'status'          => 'pending',
+            'gateway_response'=> ['mode' => 'standard'],
+        ]);
+
+        $params = $this->paypalStd->buildCheckoutParams(
+            amount:        $amount,
+            itemName:      $plan->name . ' — ' . $tenant->name,
+            invoiceId:     $invoiceId,
+            returnUrl:     route('payment.success', ['token' => $invoiceId]),
+            cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
+            notifyUrl:     route('payment.paypal.ipn'),
+            customPayload: (string) $payment->id,
+        );
+
+        // Return a self-submitting form so the browser POSTs to PayPal.
+        return response()
+            ->view('payment.paypal-standard-redirect', [
+                'action' => $this->paypalStd->getCheckoutUrl(),
+                'params' => $params,
+            ]);
+    }
+
+    public function paypalIpn(Request $request)
+    {
+        $rawBody = $request->getContent();
+
+        if (!$this->paypalStd->verifyIpn($rawBody)) {
+            Log::warning('PayPal IPN: verification failed', ['body_preview' => substr($rawBody, 0, 200)]);
+            return response('INVALID', 400);
+        }
+
+        $data = $request->all();
+
+        // Only complete payments — PayPal IPN also fires for refunds, disputes, etc.
+        if (($data['payment_status'] ?? '') !== 'Completed') {
+            Log::info('PayPal IPN: non-completed status ignored', [
+                'status' => $data['payment_status'] ?? null,
+                'txn_id' => $data['txn_id'] ?? null,
+            ]);
+            return response('OK');
+        }
+
+        $payment = null;
+        if (!empty($data['custom']) && is_numeric($data['custom'])) {
+            $payment = TenantPayment::find((int) $data['custom']);
+        }
+        if (!$payment && !empty($data['invoice'])) {
+            $payment = TenantPayment::where('paypal_order_id', $data['invoice'])->first();
+        }
+
+        if (!$payment) {
+            Log::warning('PayPal IPN: no matching payment', ['invoice' => $data['invoice'] ?? null, 'custom' => $data['custom'] ?? null]);
+            return response('OK');
+        }
+
+        // Guard: amount + currency + payee email must match what we sent.
+        $expectedEmail = strtolower((string) config('services.paypal.payee_email'));
+        $receivedEmail = strtolower((string) ($data['receiver_email'] ?? $data['business'] ?? ''));
+        if ($expectedEmail && $receivedEmail && $expectedEmail !== $receivedEmail) {
+            Log::warning('PayPal IPN: payee mismatch', ['expected' => $expectedEmail, 'received' => $receivedEmail]);
+            return response('OK');
+        }
+
+        $paidAmount = (float) ($data['mc_gross'] ?? 0);
+        if ($paidAmount + 0.001 < (float) $payment->amount) {
+            Log::warning('PayPal IPN: underpayment', ['expected' => $payment->amount, 'received' => $paidAmount]);
+            return response('OK');
+        }
+
+        if (!$payment->isCompleted()) {
+            $payment->update([
+                'status'            => 'completed',
+                'paid_at'           => now(),
+                'paypal_capture_id' => $data['txn_id'] ?? null,
+                'gateway_response'  => array_merge(is_array($payment->gateway_response) ? $payment->gateway_response : [], ['ipn' => $data]),
+            ]);
+            $this->activateTenantSubscription($payment);
+
+            Log::info('Tenant activated via PayPal Standard IPN', [
+                'tenant_id' => $payment->tenant_id,
+                'plan_id'   => $payment->plan_id,
+                'txn_id'    => $data['txn_id'] ?? null,
+            ]);
+        }
+
+        return response('OK');
     }
 
     public function paypalReturn(Request $request)
