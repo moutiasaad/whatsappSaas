@@ -69,7 +69,7 @@
 <main>
     <div class="checkout-box">
         <div class="checkout-header">
-            <h1>@auth{{ __('auth.register.upgrade_heading', ['default' => 'Upgrade Plan']) }}@else{{ __('auth.register.checkout_heading') }}@endauth</h1>
+            <h1>@auth{{ __('auth.register.upgrade_heading') }}@else{{ __('auth.register.checkout_heading') }}@endauth</h1>
             <p>{{ $tenant->name }}</p>
         </div>
 
@@ -124,21 +124,21 @@
             </form>
 
             @if(config('services.paypal.client_id') || config('services.paypal.payee_email'))
-            <div class="pay-divider">{{ __('auth.register.or', ['default' => 'or']) }}</div>
+            <div class="pay-divider">{{ __('auth.register.or') }}</div>
 
             <form method="POST" action="{{ route('payment.paypal.initiate') }}" onsubmit="handlePay(this,'paypalBtn')">
                 @csrf
                 <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
                 <button type="submit" class="btn-paypal" id="paypalBtn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.067 8.478c.492.315.844.755 1.048 1.316.203.562.213 1.209.03 1.943-.19.762-.517 1.44-.98 2.036-.464.596-1.036 1.089-1.717 1.478a7.213 7.213 0 0 1-2.24.826c-.815.171-1.68.257-2.593.257h-.514c-.293 0-.55.104-.771.313a1.14 1.14 0 0 0-.379.775l-.03.166-.514 3.257-.03.257c-.03.14-.099.264-.207.373a.501.501 0 0 1-.36.163H7.777a.312.312 0 0 1-.257-.115.28.28 0 0 1-.05-.259l2.293-14.514c.04-.223.148-.406.325-.549A.914.914 0 0 1 10.674 6h4.933c.874 0 1.667.104 2.379.313.712.208 1.328.502 1.848.882.52.379.936.842 1.247 1.386.31.544.518 1.13.622 1.756.081.5.09 1.04.028 1.619-.171-.51-.407-.943-.708-1.298-.302-.354-.657-.635-1.066-.843l-.001-.003c-.056-.028-.114-.055-.174-.079l-.003-.001a4.53 4.53 0 0 0-.192-.076c-.024-.008-.048-.017-.073-.024-.076-.026-.155-.05-.235-.073h-.001l-.005-.002a5.9 5.9 0 0 0-.284-.068c-.086-.02-.174-.037-.264-.053-.09-.017-.181-.032-.274-.045a7.44 7.44 0 0 0-.594-.062 8.6 8.6 0 0 0-.62-.02H11.53c-.144 0-.27.048-.376.143a.577.577 0 0 0-.195.362l-1.267 8.028c-.03.128-.005.235.076.322.081.086.185.129.313.129h1.964c1.028 0 1.951-.09 2.767-.271.816-.181 1.53-.457 2.14-.828.61-.371 1.111-.844 1.503-1.418.393-.573.674-1.253.843-2.041l.001-.003a3.71 3.71 0 0 0 .112-.639c.02-.194.02-.402 0-.622z"/></svg>
-                    {{ __('auth.register.pay_with_paypal', ['default' => 'Pay with PayPal']) }}
+                    {{ __('auth.register.pay_with_paypal') }}
                 </button>
             </form>
             @endif
 
             @auth
                 <a href="{{ route(auth()->user()->routeNamePrefix() . '.billing.index') }}" class="btn-back">
-                    ← {{ __('auth.register.back_to_billing', ['default' => 'Back to Billing']) }}
+                    ← {{ __('auth.register.back_to_billing') }}
                 </a>
             @else
                 <a href="{{ route('login') }}" class="btn-back">← {{ __('auth.login.sign_in') }}</a>

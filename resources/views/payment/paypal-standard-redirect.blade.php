@@ -2,7 +2,7 @@
 <html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="UTF-8">
-    <title>{{ __('auth.register.redirecting_to_paypal', ['default' => 'Redirecting to PayPal…']) }}</title>
+    <title>{{ __('auth.register.redirecting_to_paypal') }}</title>
     <meta name="robots" content="noindex,nofollow">
     <style>
         body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
@@ -20,10 +20,10 @@
         @endforeach
         <div class="box">
             <div class="spin"></div>
-            <div>{{ __('auth.register.redirecting_to_paypal', ['default' => 'Redirecting to PayPal…']) }}</div>
-            <div class="hint">{{ __('auth.register.redirecting_hint', ['default' => 'If you are not redirected automatically, click the button below.']) }}</div>
+            <div>{{ __('auth.register.redirecting_to_paypal') }}</div>
+            <div class="hint">{{ __('auth.register.redirecting_hint') }}</div>
             <noscript>
-                <button type="submit">{{ __('auth.register.continue_to_paypal', ['default' => 'Continue to PayPal']) }}</button>
+                <button type="submit">{{ __('auth.register.continue_to_paypal') }}</button>
             </noscript>
         </div>
     </form>
