@@ -90,23 +90,42 @@ class WebChatAutoReplyService
                 return null;
             }
 
+            // Anthropic can take several seconds — an agent may have taken over
+            // (assigned) or closed the conversation while we waited. Re-check
+            // fresh state and drop the reply if the takeover already happened
+            // (unless the tenant opted-in to AI replies on claimed chats).
+            $fresh = Conversation::withoutGlobalScope('tenant')->find($conversation->id);
+            if (!$fresh || $fresh->isClosed()) {
+                Log::channel('webchat')->info('AI: reply discarded — conversation closed mid-call', [
+                    'conversation_id' => $conversation->id,
+                ]);
+                return null;
+            }
+            if ($fresh->isAssigned() && !$this->replyWhenClaimed($settings)) {
+                Log::channel('webchat')->info('AI: reply discarded — agent took over mid-call', [
+                    'conversation_id' => $conversation->id,
+                    'claimed_by'      => $fresh->claimed_by,
+                ]);
+                return null;
+            }
+
             Log::channel('webchat')->info('AI: reply generated', [
                 'conversation_id' => $conversation->id,
                 'tenant_id'       => $tenant->id,
                 'tokens'          => $tokens,
-                'was_pending'     => $conversation->isPending(),
+                'was_pending'     => $fresh->isPending(),
             ]);
 
             // If we were rescuing a stale `pending` conversation, drop it back
             // to `bot` now that the AI has answered — otherwise the widget
             // keeps showing "Connecting to a support specialist…" indefinitely.
             // Claimed conversations stay assigned; the AI reply just co-exists.
-            if ($conversation->isPending()) {
-                $conversation->status = Conversation::STATUS_BOT;
-                $conversation->save();
+            if ($fresh->isPending()) {
+                $fresh->status = Conversation::STATUS_BOT;
+                $fresh->save();
             }
 
-            return $this->persistBotReply($conversation, $text);
+            return $this->persistBotReply($fresh, $text);
         } catch (\Throwable $e) {
             Log::channel('webchat')->error('AI: reply failed', [
                 'conversation_id' => $conversation->id,

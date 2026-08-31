@@ -145,13 +145,17 @@ class ConversationController extends Controller
         }
 
         // Atomic compare-and-swap — tenant-hardened via WHERE clause.
-        // NOT check-then-set: the DB rejects the update if the row was
-        // already claimed or the tenant does not match.
+        // Accepts both `bot` (AI is currently handling) and `pending` (waiting for
+        // a human). A `bot` claim is an explicit takeover from the AI. Assigned or
+        // closed rows are rejected. NOT check-then-set: the DB rejects the update
+        // if the row is already claimed or the tenant does not match.
+        $claimableStatuses = [Conversation::STATUS_BOT, Conversation::STATUS_PENDING];
+
         $updated = Conversation::withoutGlobalScope('tenant')
             ->where('uuid', $uuid)
             ->where('tenant_id', $tenantId)
             ->whereNull('claimed_by')
-            ->where('status', Conversation::STATUS_PENDING)
+            ->whereIn('status', $claimableStatuses)
             ->update([
                 'claimed_by'       => $user->id,
                 'claimed_at'       => now(),
@@ -160,15 +164,19 @@ class ConversationController extends Controller
             ]);
 
         if ($updated === 0) {
-            // Determine whether the row is missing / wrong tenant (→ 404)
-            // or exists and was already claimed by someone else (→ 409).
-            $exists = Conversation::withoutGlobalScope('tenant')
+            // Distinguish missing/other-tenant (→ 404), already-assigned (→ 409
+            // already_claimed), or closed (→ 409 conversation_closed).
+            $existing = Conversation::withoutGlobalScope('tenant')
                 ->where('uuid', $uuid)
                 ->where('tenant_id', $tenantId)
-                ->exists();
+                ->first(['status', 'claimed_by']);
 
-            if (!$exists) {
+            if (!$existing) {
                 abort(404, 'webchat_conversation_not_found');
+            }
+
+            if ($existing->status === Conversation::STATUS_CLOSED) {
+                return response()->json(['error' => 'conversation_closed'], 409);
             }
 
             return response()->json(['error' => 'already_claimed'], 409);

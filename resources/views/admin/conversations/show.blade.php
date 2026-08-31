@@ -158,8 +158,15 @@
                 <span x-show="aiSuspended" class="cw-state-badge cw-state-neutral">{{ __('ui.conversation_show_page.ai_off') }}</span>
 
                 <template x-if="state === 'pool' && perms.can_claim">
-                    <button @click="claim()" :disabled="actionLoading" class="btn btn-primary btn-sm">
-                        <i class="ri-hand-coin-line"></i> {{ __('ui.conversation_show_page.claim') }}
+                    <button @click="claim()" :disabled="actionLoading"
+                            :class="aiIsHandling ? 'btn btn-warning btn-sm' : 'btn btn-primary btn-sm'"
+                            :title="aiIsHandling ? @js(__('ui.conversation_show_page.take_over_hint')) : null">
+                        <template x-if="aiIsHandling">
+                            <span><i class="ri-robot-2-line"></i> {{ __('ui.conversation_show_page.take_over') }}</span>
+                        </template>
+                        <template x-if="!aiIsHandling">
+                            <span><i class="ri-hand-coin-line"></i> {{ __('ui.conversation_show_page.claim') }}</span>
+                        </template>
                     </button>
                 </template>
 
@@ -1725,6 +1732,13 @@ function conversationPro() {
         get canAct() {
             if (['admin', 'super_admin', 'supervisor'].includes(this._role)) return true;
             return this.agentId === this._meId;
+        },
+
+        get aiIsHandling() {
+            // AI is actively handling this pool conversation — surface a distinct "Take over" CTA
+            return this.state === 'pool'
+                && !this.aiSuspended
+                && (this.messages || []).some(m => m.author_type === 'ai');
         },
 
         get perms() {

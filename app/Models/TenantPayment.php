@@ -9,7 +9,9 @@ class TenantPayment extends Model
 {
     protected $fillable = [
         'tenant_id', 'plan_id', 'amount', 'currency',
+        'payment_method',
         'stripe_session_id', 'stripe_checkout_url',
+        'paypal_order_id', 'paypal_capture_id',
         'status', 'gateway_response', 'paid_at',
     ];
 

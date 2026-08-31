@@ -43,6 +43,22 @@ class SendOutgoingMessage implements ShouldQueue
             return;
         }
 
+        // Cancel AI replies whose conversation was taken over (claimed / ai_suspended) or closed
+        // between message creation and this job running. Prevents the AI from stealing the last
+        // word after an agent grabs the chat.
+        if ($message->author_type === 'ai'
+            && ($conversation->ai_suspended || $conversation->state === 'claimed' || $conversation->state === 'closed')
+        ) {
+            $message->update(['status' => 'cancelled']);
+            Log::channel('whatsapp')->info('SendOutgoingMessage: AI reply cancelled — conversation taken over', [
+                'message_id'     => $message->id,
+                'conversation'   => $conversation->id,
+                'state'          => $conversation->state,
+                'ai_suspended'   => (bool) $conversation->ai_suspended,
+            ]);
+            return;
+        }
+
         Log::channel('whatsapp')->info('SendOutgoingMessage: start', [
             'message_id'          => $message->id,
             'gateway_instance_id' => $instance->gateway_instance_id,

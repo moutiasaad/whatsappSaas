@@ -105,6 +105,17 @@
                     </div>
                 </div>
 
+                <div class="detail-item">
+                    <div class="detail-label">{{ __('ui.payments_page.payment_method', ['default' => 'Payment method']) }}</div>
+                    <div class="detail-value" style="display:flex;align-items:center;gap:.4rem;">
+                        @if(($payment->payment_method ?? 'stripe') === 'paypal')
+                            <span class="badge badge-blue"><i class="ri-paypal-line"></i> PayPal</span>
+                        @else
+                            <span class="badge badge-purple"><i class="ri-bank-card-line"></i> Stripe</span>
+                        @endif
+                    </div>
+                </div>
+
                 @if($payment->stripe_session_id)
                 <div class="detail-item" style="grid-column:1/-1;">
                     <div class="detail-label">{{ __('ui.payments_page.col_session') }}</div>
@@ -126,6 +137,32 @@
                            style="font-size:.8125rem;color:var(--brand);word-break:break-all;">
                             <i class="ri-external-link-line"></i> {{ Str::limit($payment->stripe_checkout_url, 80) }}
                         </a>
+                    </div>
+                </div>
+                @endif
+
+                @if($payment->paypal_order_id)
+                <div class="detail-item" style="grid-column:1/-1;">
+                    <div class="detail-label">{{ __('ui.payments_page.paypal_order_id', ['default' => 'PayPal order ID']) }}</div>
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;">
+                        <code style="font-size:.8125rem;background:var(--page-bg);border:1px solid var(--card-border);padding:.3rem .625rem;border-radius:.5rem;word-break:break-all;flex:1;">{{ $payment->paypal_order_id }}</code>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ $payment->paypal_order_id }}');this.innerHTML='<i class=\'ri-check-line\'></i>';setTimeout(()=>this.innerHTML='<i class=\'ri-file-copy-line\'></i>',1500)"
+                                class="btn btn-outline btn-sm" title="Copy" style="flex-shrink:0;">
+                            <i class="ri-file-copy-line"></i>
+                        </button>
+                    </div>
+                </div>
+                @endif
+
+                @if($payment->paypal_capture_id)
+                <div class="detail-item" style="grid-column:1/-1;">
+                    <div class="detail-label">{{ __('ui.payments_page.paypal_capture_id', ['default' => 'PayPal capture ID']) }}</div>
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;">
+                        <code style="font-size:.8125rem;background:var(--page-bg);border:1px solid var(--card-border);padding:.3rem .625rem;border-radius:.5rem;word-break:break-all;flex:1;">{{ $payment->paypal_capture_id }}</code>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ $payment->paypal_capture_id }}');this.innerHTML='<i class=\'ri-check-line\'></i>';setTimeout(()=>this.innerHTML='<i class=\'ri-file-copy-line\'></i>',1500)"
+                                class="btn btn-outline btn-sm" title="Copy" style="flex-shrink:0;">
+                            <i class="ri-file-copy-line"></i>
+                        </button>
                     </div>
                 </div>
                 @endif

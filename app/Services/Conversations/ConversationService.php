@@ -9,6 +9,7 @@ use App\Events\ConversationReopened;
 use App\Models\Conversation;
 use App\Models\ConversationEvent;
 use App\Models\Customer;
+use App\Models\Message;
 use App\Models\User;
 use App\Models\WhatsAppInstance;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ class ConversationService
         ]);
 
         $this->logEvent($conversation, 'reopened', null, ['reason' => 'new_inbound_message']);
-        broadcast(new ConversationReopened($conversation->fresh()))->toOthers();
+        rescue(fn () => broadcast(new ConversationReopened($conversation->fresh()))->toOthers());
 
         return true;
     }
@@ -78,9 +79,11 @@ class ConversationService
 
         if ($affected === 0) return false;
 
+        $this->cancelPendingAiMessages($conversation->id);
+
         $fresh = $conversation->fresh();
         $this->logEvent($fresh, 'claimed', $agent->id);
-        broadcast(new ConversationClaimed($fresh, $agent));
+        rescue(fn () => broadcast(new ConversationClaimed($fresh, $agent)));
 
         return true;
     }
@@ -95,7 +98,7 @@ class ConversationService
         ]);
 
         $this->logEvent($conversation->fresh(), 'released', $actor->id);
-        broadcast(new ConversationReleased($conversation->fresh(), $actor));
+        rescue(fn () => broadcast(new ConversationReleased($conversation->fresh(), $actor)));
     }
 
     public function close(Conversation $conversation, User $actor): void
@@ -106,7 +109,7 @@ class ConversationService
         ]);
 
         $this->logEvent($conversation->fresh(), 'closed', $actor->id);
-        broadcast(new ConversationClosed($conversation->fresh(), $actor));
+        rescue(fn () => broadcast(new ConversationClosed($conversation->fresh(), $actor)));
     }
 
     public function reassign(Conversation $conversation, User $newAgent, User $actor): void
@@ -119,12 +122,14 @@ class ConversationService
             'ai_suspended'   => true,
         ]);
 
+        $this->cancelPendingAiMessages($conversation->id);
+
         $this->logEvent($conversation->fresh(), 'reassigned', $actor->id, [
             'from_agent_id' => $oldAgentId,
             'to_agent_id'   => $newAgent->id,
         ]);
 
-        broadcast(new ConversationClaimed($conversation->fresh(), $newAgent));
+        rescue(fn () => broadcast(new ConversationClaimed($conversation->fresh(), $newAgent)));
     }
 
     public function reopen(Conversation $conversation, User $actor): void
@@ -142,7 +147,7 @@ class ConversationService
         ]);
 
         $this->logEvent($conversation->fresh(), 'reopened', $actor->id, ['reason' => 'manual_reopen']);
-        broadcast(new ConversationReopened($conversation->fresh()));
+        rescue(fn () => broadcast(new ConversationReopened($conversation->fresh())));
     }
 
     public function toggleAi(Conversation $conversation, User $actor, bool $suspended): void
@@ -151,7 +156,20 @@ class ConversationService
             'ai_suspended' => $suspended,
         ]);
 
+        if ($suspended) {
+            $this->cancelPendingAiMessages($conversation->id);
+        }
+
         $this->logEvent($conversation->fresh(), $suspended ? 'ai_suspended' : 'ai_resumed', $actor->id);
+    }
+
+    private function cancelPendingAiMessages(int $conversationId): void
+    {
+        Message::withoutGlobalScopes()
+            ->where('conversation_id', $conversationId)
+            ->where('author_type', 'ai')
+            ->where('status', 'pending')
+            ->update(['status' => 'cancelled']);
     }
 
     private function logEvent(Conversation $conversation, string $type, ?int $actorId = null, array $payload = []): void

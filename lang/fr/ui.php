@@ -1146,6 +1146,8 @@ Toujours :
         'closed' => 'Fermée',
         'ai_off' => 'IA désactivée',
         'claim' => 'Prendre',
+        'take_over' => 'Reprendre',
+        'take_over_hint' => "L'IA répond. Cliquez pour reprendre — l'IA arrêtera de répondre.",
         'reassign' => 'Réattribuer',
         'release' => 'Libérer',
         'close' => 'Clore',
