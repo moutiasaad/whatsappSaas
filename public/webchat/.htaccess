@@ -1,0 +1,20 @@
+# The widget is embedded on third-party sites, so its URL is the only thing we
+# control once a tenant has pasted the snippet — an update has to reach those
+# pages without them re-pasting anything.
+#
+# Apache sends no Cache-Control for this file, so browsers fall back to
+# heuristic freshness (~10% of the time since Last-Modified) and keep running a
+# stale build for hours. `no-cache` still lets the browser store the file; it
+# just has to revalidate, which the existing ETag turns into a cheap 304.
+<IfModule mod_headers.c>
+    <FilesMatch "\.js$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+# mod_expires would otherwise re-add a far-future Expires for JS.
+<IfModule mod_expires.c>
+    <FilesMatch "\.js$">
+        ExpiresActive Off
+    </FilesMatch>
+</IfModule>
