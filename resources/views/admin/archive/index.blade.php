@@ -173,13 +173,13 @@
                             </td>
                             <td>
                                 @if ($tab === 'whatsapp')
-                                    <a href="{{ route($panelPrefix . '.conversations.show', $item) }}"
+                                    <a href="{{ route($panelPrefix . '.archive.whatsapp.show', $item) }}"
                                        class="action-btn"
                                        title="{{ __('ui.archive_page.open') }}">
                                         <i class="ri-arrow-right-up-line"></i>
                                     </a>
                                 @else
-                                    <a href="{{ route($panelPrefix . '.webchat.conversations.index') }}?open={{ $item->uuid }}"
+                                    <a href="{{ route($panelPrefix . '.archive.webchat.show', $item->uuid) }}"
                                        class="action-btn"
                                        title="{{ __('ui.archive_page.open') }}">
                                         <i class="ri-arrow-right-up-line"></i>
