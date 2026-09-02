@@ -1001,6 +1001,17 @@
         scrollToBottom(true);
     }
 
+    // Strip minimal markdown noise so the visitor never sees raw `**bold**`
+    // markers when the parser doesn't detect a clickable menu. Keeps line
+    // breaks + emoji intact; drops the asterisks around bold spans and the
+    // trailing underscores markdown uses for emphasis.
+    function cleanInlineMarkdown(body) {
+        var s = String(body || '');
+        s = s.replace(/\*\*(.+?)\*\*/g, '$1');
+        s = s.replace(/(^|\s)__(\S(?:.*?\S)?)__($|\s)/g, '$1$2$3');
+        return s;
+    }
+
     // Parse a bot reply into { intro, options[], outro }. Any consecutive block
     // of markdown-bullet lines whose primary text is wrapped in **bold** is
     // interpreted as a quick-reply menu. The bold label becomes the button
@@ -1014,7 +1025,7 @@
         var lines = text.split(/\r?\n/);
         var intro = [], options = [], outro = [];
         var inList = false, listEnded = false;
-        var bulletBold = /^[-*•]\s+\*\*(.+?)\*\*/;
+        var bulletBold = /^[-*•·▪–—]\s+\*\*(.+?)\*\*/;
 
         for (var i = 0; i < lines.length; i++) {
             var raw = lines[i];
@@ -1104,7 +1115,10 @@
                 bubble.appendChild(_('div', { class: 'wvch-bubble-body wvch-bubble-outro', text: parsed.outro }));
             }
         } else {
-            bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: m.body }));
+            // Even when there's no clickable menu, strip markdown bold markers
+            // so visitors never see raw ** in a rendered bubble.
+            var clean = side === 'left' ? cleanInlineMarkdown(m.body) : m.body;
+            bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: clean }));
         }
 
         row.appendChild(bubble);
@@ -1116,7 +1130,7 @@
             if (hasMenu && parsed.intro) {
                 typewriter(bubble.querySelector('.wvch-bubble-body'), parsed.intro);
             } else if (!hasMenu && (m.body || '').length > 0) {
-                typewriter(bubble.querySelector('.wvch-bubble-body'), m.body);
+                typewriter(bubble.querySelector('.wvch-bubble-body'), cleanInlineMarkdown(m.body));
             }
         }
         m._rendered = true;
