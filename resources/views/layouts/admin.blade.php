@@ -1839,6 +1839,13 @@
             </a>
             @endif
 
+            @if(!Auth::user()->isSuperAdmin() || $sp('conversations'))
+            <a href="{{ route($panelPrefix . '.archive.index') }}" class="{{ $navActive([$panelPrefix . '.archive.*']) }}">
+                <i class="ri-inbox-archive-line"></i>
+                <span>{{ __('ui.sidebar.archive') }}</span>
+            </a>
+            @endif
+
             @if(Auth::user()->isSupervisor())
             <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
                 <i class="ri-team-line"></i>

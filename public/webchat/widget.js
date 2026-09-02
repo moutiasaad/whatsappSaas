@@ -979,6 +979,47 @@
         scrollToBottom(true);
     }
 
+    // Parse a bot reply into { intro, options[], outro }. Any consecutive block
+    // of markdown-bullet lines whose primary text is wrapped in **bold** is
+    // interpreted as a quick-reply menu. The bold label becomes the button
+    // caption AND the message sent back when the visitor taps it.
+    // Example input:
+    //   "If you're looking for:\n- **Help with an invoice** → …\n- **Subscription**"
+    // Yields:
+    //   { intro: "If you're looking for:", options: ["Help with an invoice", "Subscription"], outro: "" }
+    function parseBotOptions(body) {
+        var text = String(body || '');
+        var lines = text.split(/\r?\n/);
+        var intro = [], options = [], outro = [];
+        var inList = false, listEnded = false;
+        var bulletBold = /^[-*•]\s+\*\*(.+?)\*\*/;
+
+        for (var i = 0; i < lines.length; i++) {
+            var raw = lines[i];
+            var t = raw.trim();
+            var m = t.match(bulletBold);
+
+            if (m && !listEnded) {
+                inList = true;
+                var label = m[1].replace(/[.,;:!？?]+$/, '').trim();
+                if (label.length > 0 && label.length <= 80) options.push(label);
+                continue;
+            }
+
+            if (inList) listEnded = true;
+
+            if (listEnded) outro.push(raw);
+            else           intro.push(raw);
+        }
+
+        var cleanBold = function (s) { return s.replace(/\*\*(.+?)\*\*/g, '$1'); };
+        return {
+            intro:   cleanBold(intro.join('\n')).replace(/\s+$/, ''),
+            options: options,
+            outro:   cleanBold(outro.join('\n')).replace(/^\s+/, ''),
+        };
+    }
+
     function appendMessage(m, opts) {
         if (!el.thread) return;
         opts = opts || {};
@@ -1010,13 +1051,51 @@
         var bubble = _('div', { class: 'wvch-bubble wvch-bubble-' + side });
         if (m.pending) bubble.classList.add('wvch-bubble-pending');
         if (m.failed)  bubble.classList.add('wvch-bubble-failed');
-        bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: m.body }));
+
+        // Only bot/agent replies get parsed for menu options. Human agents can
+        // still hit the parser, but with the strict "**bold**" bullet rule the
+        // false-positive rate is negligible.
+        var parsed = (side === 'left') ? parseBotOptions(m.body) : null;
+        var hasMenu = parsed && parsed.options.length >= 2;
+
+        if (hasMenu) {
+            if (parsed.intro) {
+                bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: parsed.intro }));
+            }
+            var qr = _('div', { class: 'wvch-quick-replies', role: 'group' });
+            parsed.options.forEach(function (opt) {
+                var btn = _('button', {
+                    type: 'button',
+                    class: 'wvch-quick-btn',
+                    text: opt,
+                });
+                btn.addEventListener('click', function () {
+                    // Freeze the whole group so a visitor can't double-tap.
+                    Array.prototype.forEach.call(qr.querySelectorAll('button'), function (b) { b.disabled = true; });
+                    qr.classList.add('is-used');
+                    sendMessage(opt);
+                });
+                qr.appendChild(btn);
+            });
+            bubble.appendChild(qr);
+            if (parsed.outro) {
+                bubble.appendChild(_('div', { class: 'wvch-bubble-body wvch-bubble-outro', text: parsed.outro }));
+            }
+        } else {
+            bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: m.body }));
+        }
+
         row.appendChild(bubble);
 
         // Fresh bot replies get the typewriter effect (spec §2). History replays
-        // instantly so re-opens don't feel slow.
-        if (!opts.skipAnim && side === 'left' && !m._rendered && (m.body || '').length > 0) {
-            typewriter(bubble.querySelector('.wvch-bubble-body'), m.body);
+        // instantly so re-opens don't feel slow. Menu bubbles only typewriter
+        // the intro line; the buttons/outro appear immediately below.
+        if (!opts.skipAnim && side === 'left' && !m._rendered) {
+            if (hasMenu && parsed.intro) {
+                typewriter(bubble.querySelector('.wvch-bubble-body'), parsed.intro);
+            } else if (!hasMenu && (m.body || '').length > 0) {
+                typewriter(bubble.querySelector('.wvch-bubble-body'), m.body);
+            }
         }
         m._rendered = true;
 
@@ -1584,6 +1663,27 @@
             "#wvch-root[dir='rtl'] .wvch-bubble-right { border-top-left-radius: 5px; }",
             "#wvch-root[dir='ltr'] .wvch-bubble-right { border-top-right-radius: 5px; }",
             "#wvch-root .wvch-bubble-body { white-space: pre-wrap; }",
+            "#wvch-root .wvch-bubble-outro { margin-top: 10px; color: var(--wvch-text-2, #4b5563); font-size: 13.5px; }",
+
+            /* Quick-reply option buttons rendered inside a bot bubble when the
+               AI replies with a bulleted **bold** menu. Wrap flows on narrow
+               widgets; buttons keep the widget's brand color on hover. */
+            "#wvch-root .wvch-quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }",
+            "#wvch-root .wvch-quick-replies.is-used { opacity: .55; }",
+            "#wvch-root .wvch-quick-btn {",
+            "  font: inherit; font-size: 13px; font-weight: 600;",
+            "  color: var(--wvch-accent); background: rgba(46,91,255,.08);",
+            "  border: 1px solid rgba(46,91,255,.28);",
+            "  padding: 8px 12px; border-radius: 999px;",
+            "  cursor: pointer;",
+            "  transition: background .15s ease, transform .15s ease, box-shadow .15s ease;",
+            "  text-align: start; line-height: 1.35;",
+            "  max-width: 100%; white-space: normal;",
+            "}",
+            "#wvch-root .wvch-quick-btn:hover:not(:disabled) { background: var(--wvch-accent); color: #fff; transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(46,91,255,.65); }",
+            "#wvch-root .wvch-quick-btn:active:not(:disabled) { transform: translateY(0); }",
+            "#wvch-root .wvch-quick-btn:disabled { cursor: default; opacity: .7; }",
+
             "#wvch-root .wvch-bubble-pending { opacity: .78; }",
             "#wvch-root .wvch-bubble-failed  { background: #fdecec; color: #b91c1c; border: 1px solid #f7c8c8; box-shadow: none; }",
             "#wvch-root .wvch-system { font-size: 11.5px; color: var(--wvch-text-3); background: transparent; padding: 4px 12px; border: 1px dashed var(--wvch-line); border-radius: 999px; }",
