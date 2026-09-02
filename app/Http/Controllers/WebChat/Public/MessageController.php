@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\WebChat\Public;
 
+use App\Events\WebChat\WebChatConversationReopened;
 use App\Events\WebChat\WebChatMessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessWebChatIncomingMessage;
@@ -28,8 +29,19 @@ class MessageController extends Controller
 
         $conversation = $this->findConversationOr404($widget, $visitor, $uuid);
 
+        // If the visitor sends a new message after the ticket was closed, mirror
+        // the WhatsApp behavior: silently reopen and let the AI take over again.
+        // Human agents can still take the conversation via the pool → claim flow.
+        $wasReopened = false;
         if ($conversation->isClosed()) {
-            return response()->json(['error' => 'conversation_closed'], 409);
+            $conversation->status     = Conversation::STATUS_BOT;
+            $conversation->closed_at  = null;
+            $conversation->closed_by  = null;
+            $conversation->claimed_by = null;
+            $conversation->claimed_at = null;
+            // Keep the ticket title so history stays in the Archive.
+            $conversation->save();
+            $wasReopened = true;
         }
 
         $message = DB::transaction(function () use ($conversation, $data) {
@@ -43,6 +55,10 @@ class MessageController extends Controller
                 'body'            => $data['body'],
             ]);
         });
+
+        if ($wasReopened) {
+            rescue(fn () => event(new WebChatConversationReopened($conversation->fresh())));
+        }
 
         rescue(fn () => event(new WebChatMessageSent($message->fresh(['conversation']))));
 

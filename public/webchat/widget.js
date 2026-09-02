@@ -96,7 +96,8 @@
             handoffRoleFallback: 'أخصائي دعم العملاء',
             handoffPrefix:  'أنت الآن مع',
             closedTitle:    'انتهت المحادثة',
-            closedSub:      'شكرًا للتواصل معنا. يمكنك بدء محادثة جديدة في أي وقت.',
+            closedSub:      'شكرًا للتواصل معنا. يمكنك متابعة نفس المحادثة أو بدء محادثة جديدة.',
+            continueChat:   'متابعة المحادثة',
             startNew:       'بدء محادثة جديدة',
             offlineTitle:   'نحن خارج الخدمة حاليًا',
             prechatTitle:   'قبل أن نبدأ',
@@ -148,7 +149,8 @@
             handoffRoleFallback: 'Customer support specialist',
             handoffPrefix:  'You’re now with',
             closedTitle:    'Chat ended',
-            closedSub:      'Thanks for reaching out. Feel free to start a new chat any time.',
+            closedSub:      'Thanks for reaching out. You can continue this chat or start a new one.',
+            continueChat:   'Continue this chat',
             startNew:       'Start a new chat',
             offlineTitle:   'We’re offline right now',
             prechatTitle:   'Before we start',
@@ -571,6 +573,26 @@
         lsSet(LS_CONV, null); lsSet(LS_HUMAN, null);
         S.view = S.widget && S.widget.pre_chat_ask_email ? 'prechat' : 'welcome';
         render();
+    }
+
+    // ── Resume the closed chat (server auto-reopens on next visitor msg) ──
+    // Keeps the same uuid + history so the visitor picks up where they left off.
+    // The AI takes over again until a human agent claims.
+    function resumeChat() {
+        if (!S.convUuid) { startNewChat(); return; }
+        S.status = 'bot';               // optimistic; server confirms on next send
+        S.humanOnce = false;             // fresh AI turn, avatar goes back to bot
+        S.feedback = null;
+        lsSet(LS_HUMAN, null);
+        S.view = 'chat';
+        // Reload the transcript so the visitor sees the prior conversation.
+        loadMessages({ initial: true })
+            .catch(function () { /* fall through to empty view */ })
+            .then(function () {
+                subscribeRealtime();
+                startPolling();
+                render();
+            });
     }
 
     // ── DOM rendering ─────────────────────────────────────────────────
@@ -1251,6 +1273,12 @@
             _('button', {
                 class: 'wvch-btn wvch-btn-primary',
                 type: 'button',
+                text: t().continueChat || t().startNew,
+                onclick: resumeChat
+            }),
+            _('button', {
+                class: 'wvch-btn wvch-btn-link',
+                type: 'button',
                 text: t().startNew,
                 onclick: startNewChat
             })
@@ -1743,6 +1771,8 @@
             "#wvch-root .wvch-btn-primary { background: linear-gradient(135deg, var(--wvch-accent), var(--wvch-accent-2)); color: #fff; box-shadow: 0 12px 22px -14px rgba(46,91,255,.75); }",
             "#wvch-root .wvch-btn-primary:hover { filter: brightness(1.04); }",
             "#wvch-root .wvch-btn-primary:disabled { opacity: .7; cursor: not-allowed; }",
+            "#wvch-root .wvch-btn-link { background: transparent; color: var(--wvch-text-3, #64748b); text-decoration: underline; padding: 6px 8px; font-weight: 500; font-size: 13px; }",
+            "#wvch-root .wvch-btn-link:hover { color: var(--wvch-accent); }",
             "#wvch-root .wvch-closed { text-align: center; padding: 40px 12px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; }",
 
             /* ---------- Leaving / feedback view ---------- */
