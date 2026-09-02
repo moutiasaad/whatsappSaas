@@ -1845,6 +1845,10 @@ Always:
 
         'label_show_branding'    => 'Show "Powered by TshlBot"',
         'help_show_branding'     => 'Small credit line at the bottom of the widget. Uncheck to hide it on paid plans.',
+        'label_languages'        => 'Widget languages',
+        'help_languages'         => 'Pick which languages visitors can choose. The language button only appears when at least two are enabled.',
+        'label_default_lang'     => 'Default language',
+        'help_default_lang'      => 'Shown the first time the widget opens.',
 
         'label_allowed_domains'  => 'Allowed origins',
         'help_allowed_domains'   => 'Full origins where the widget may load. Leave empty to allow any origin (useful during development). Format: https://example.com',

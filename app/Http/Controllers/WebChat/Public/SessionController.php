@@ -69,6 +69,8 @@ class SessionController extends Controller
                 'launcher_icon'      => $widget->launcher_icon ?: 'chat',
                 'bubble_style'       => $widget->bubble_style ?: 'soft',
                 'show_branding'      => (bool) $widget->show_branding,
+                'default_lang'       => $widget->default_lang ?: 'ar',
+                'available_languages'=> $this->normalizeLangs($widget->available_languages),
                 'pre_chat_ask_email' => (bool) $widget->pre_chat_ask_email,
             ],
             // Reverb credentials the widget needs to open a WebSocket. Values
@@ -90,5 +92,13 @@ class SessionController extends Controller
                 'message_max_length' => (int) config('webchat.message_max_length', 4000),
             ],
         ]);
+    }
+
+    private function normalizeLangs($raw): array
+    {
+        $allowed = ['ar', 'en', 'fr'];
+        $list = is_array($raw) ? $raw : (is_string($raw) ? (json_decode($raw, true) ?: []) : []);
+        $list = array_values(array_intersect($allowed, array_map('strval', $list)));
+        return $list ?: ['ar', 'en'];
     }
 }

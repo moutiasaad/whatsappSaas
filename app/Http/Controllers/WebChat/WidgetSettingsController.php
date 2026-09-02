@@ -25,21 +25,29 @@ class WidgetSettingsController extends Controller
 
         $data = $this->validateInput($request);
 
+        $languages   = $data['available_languages'] ?? ['ar', 'en'];
+        $defaultLang = $data['default_lang'] ?? ($languages[0] ?? 'ar');
+        if (!in_array($defaultLang, $languages, true)) {
+            $defaultLang = $languages[0] ?? 'ar';
+        }
+
         $widget->fill([
-            'name'               => $data['name'],
-            'enabled'            => (bool) ($data['enabled'] ?? false),
-            'welcome_message'    => $data['welcome_message'],
-            'suggestions'        => $data['suggestions'] ?? [],
-            'pre_chat_ask_email' => (bool) ($data['pre_chat_ask_email'] ?? false),
-            'offline_message'    => $data['offline_message'] ?? null,
-            'theme_color'        => $data['theme_color'],
-            'position'           => $data['position'],
-            'launcher_text'      => $data['launcher_text'] ?: null,
-            'header_subtitle'    => $data['header_subtitle'] ?: null,
-            'launcher_icon'      => $data['launcher_icon'],
-            'bubble_style'       => $data['bubble_style'],
-            'show_branding'      => (bool) ($data['show_branding'] ?? false),
-            'allowed_domains'    => $data['allowed_domains'] ?? [],
+            'name'                => $data['name'],
+            'enabled'             => (bool) ($data['enabled'] ?? false),
+            'welcome_message'     => $data['welcome_message'],
+            'suggestions'         => $data['suggestions'] ?? [],
+            'pre_chat_ask_email'  => (bool) ($data['pre_chat_ask_email'] ?? false),
+            'offline_message'     => $data['offline_message'] ?? null,
+            'theme_color'         => $data['theme_color'],
+            'position'            => $data['position'],
+            'launcher_text'       => $data['launcher_text'] ?: null,
+            'header_subtitle'     => $data['header_subtitle'] ?: null,
+            'launcher_icon'       => $data['launcher_icon'],
+            'bubble_style'        => $data['bubble_style'],
+            'show_branding'       => (bool) ($data['show_branding'] ?? false),
+            'default_lang'        => $defaultLang,
+            'available_languages' => $languages,
+            'allowed_domains'     => $data['allowed_domains'] ?? [],
         ])->save();
 
         $prefix = $request->user()->routeNamePrefix();
@@ -76,6 +84,8 @@ class WidgetSettingsController extends Controller
                     'launcher_icon'      => 'chat',
                     'bubble_style'       => 'soft',
                     'show_branding'      => true,
+                    'default_lang'       => 'ar',
+                    'available_languages'=> ['ar', 'en'],
                     'allowed_domains'    => [],
                 ]
             );
@@ -100,6 +110,18 @@ class WidgetSettingsController extends Controller
             ->all();
         $request->merge(['allowed_domains' => $domains]);
 
+        // Languages — filter to the supported set and de-duplicate, keeping the
+        // tenant-picked order. Fall back to [ar, en] if the tenant submitted
+        // nothing so the widget never boots without at least one language.
+        $allowedLangs = ['ar', 'en', 'fr'];
+        $languages = collect($request->input('available_languages', []))
+            ->filter(fn ($l) => in_array($l, $allowedLangs, true))
+            ->unique()
+            ->values()
+            ->all();
+        if (empty($languages)) $languages = ['ar', 'en'];
+        $request->merge(['available_languages' => $languages]);
+
         $validator = Validator::make($request->all(), [
             'name'               => ['required', 'string', 'max:120'],
             'enabled'            => ['sometimes', 'boolean'],
@@ -115,6 +137,9 @@ class WidgetSettingsController extends Controller
             'launcher_icon'      => ['required', 'in:chat,message,help,sparkle'],
             'bubble_style'       => ['required', 'in:soft,rounded,square'],
             'show_branding'      => ['sometimes', 'boolean'],
+            'default_lang'         => ['required', 'in:ar,en,fr'],
+            'available_languages'  => ['required', 'array', 'min:1', 'max:3'],
+            'available_languages.*'=> ['in:ar,en,fr'],
             'allowed_domains'    => ['array', 'max:32'],
             'allowed_domains.*'  => ['string', 'regex:/^https?:\/\/[a-zA-Z0-9.\-]+(:[0-9]{1,5})?$/', 'max:255'],
         ], [

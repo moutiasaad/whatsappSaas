@@ -20,16 +20,18 @@ class Widget extends Model
         'welcome_message', 'suggestions', 'pre_chat_ask_email',
         'offline_message', 'theme_color', 'position', 'launcher_text',
         'header_subtitle', 'launcher_icon', 'bubble_style', 'show_branding',
+        'default_lang', 'available_languages',
         'allowed_domains',
     ];
 
     protected $casts = [
-        'tenant_id'          => 'integer',
-        'enabled'            => 'boolean',
-        'pre_chat_ask_email' => 'boolean',
-        'show_branding'      => 'boolean',
-        'suggestions'        => 'array',
-        'allowed_domains'    => 'array',
+        'tenant_id'           => 'integer',
+        'enabled'             => 'boolean',
+        'pre_chat_ask_email'  => 'boolean',
+        'show_branding'       => 'boolean',
+        'suggestions'         => 'array',
+        'available_languages' => 'array',
+        'allowed_domains'     => 'array',
     ];
 
     protected static function booted(): void

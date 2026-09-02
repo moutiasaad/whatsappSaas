@@ -1845,6 +1845,10 @@ Toujours :
 
         'label_show_branding'    => 'Afficher « Propulsé par TshlBot »',
         'help_show_branding'     => 'Petite mention en bas du widget. Décochez pour la masquer sur les offres payantes.',
+        'label_languages'        => 'Langues du widget',
+        'help_languages'         => 'Choisissez les langues que les visiteurs pourront sélectionner. Le bouton de langue apparaît uniquement si au moins deux langues sont activées.',
+        'label_default_lang'     => 'Langue par défaut',
+        'help_default_lang'      => 'Langue affichée à la première ouverture du widget.',
 
         'label_allowed_domains'  => 'Origines autorisées',
         'help_allowed_domains'   => 'Origines complètes où le widget peut se charger. Laissez vide pour autoriser toute origine (utile en développement). Format : https://exemple.com',
