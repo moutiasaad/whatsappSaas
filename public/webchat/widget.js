@@ -43,16 +43,23 @@
     function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 
-    // ── Language auto-detect (AR default, EN toggle) ──────────────────
-    function detectLang() {
+    // ── Language auto-detect (respects tenant's enabled list) ─────────
+    // Priority: localStorage → tenant defaultLang → embed defaultLang → html
+    // `lang`/`dir` attributes → 'ar'. Any pick outside the tenant's enabled
+    // list is snapped back to the default.
+    var SUPPORTED = ['ar', 'en', 'fr'];
+    function detectLang(enabled, tenantDefault) {
+        enabled = (enabled && enabled.length) ? enabled : ['ar', 'en'];
         var stored = lsGet(LS_LANG);
-        if (stored === 'ar' || stored === 'en') return stored;
-        if (CONFIG.defaultLang === 'ar' || CONFIG.defaultLang === 'en') return CONFIG.defaultLang;
+        if (stored && enabled.indexOf(stored) !== -1) return stored;
+        if (tenantDefault && enabled.indexOf(tenantDefault) !== -1) return tenantDefault;
+        if (SUPPORTED.indexOf(CONFIG.defaultLang) !== -1 && enabled.indexOf(CONFIG.defaultLang) !== -1) return CONFIG.defaultLang;
         var htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
         var htmlDir  = (document.documentElement.getAttribute('dir')  || '').toLowerCase();
-        if (htmlLang.indexOf('ar') === 0 || htmlDir === 'rtl') return 'ar';
-        if (htmlLang.indexOf('en') === 0) return 'en';
-        return 'ar'; // spec default
+        if ((htmlLang.indexOf('ar') === 0 || htmlDir === 'rtl') && enabled.indexOf('ar') !== -1) return 'ar';
+        if (htmlLang.indexOf('en') === 0 && enabled.indexOf('en') !== -1) return 'en';
+        if (htmlLang.indexOf('fr') === 0 && enabled.indexOf('fr') !== -1) return 'fr';
+        return enabled[0];
     }
 
     // ── Text bundles ──────────────────────────────────────────────────
@@ -162,13 +169,77 @@
             couldNotConnect:'Could not connect. Please try again.',
             failedSend:     'Failed to send',
             branding:       'Powered by'
+        },
+        fr: {
+            dir: 'ltr',
+            floatingHint:   'Besoin d’aide ?',
+            openAria:       'Ouvrir le chat de support',
+            closeAria:      'Fermer le chat',
+            backAria:       'Retour aux sujets',
+            endChatAria:    'Terminer le chat',
+            endChatConfirm: 'Terminer cette conversation ?',
+            resumeChat:     'Reprendre la conversation en cours',
+            settingsAria:   'Paramètres',
+            soundLabel:     'Notifications sonores',
+            endChatMenu:    'Terminer la conversation',
+            leavingTitle:   'Avons-nous été utiles ?',
+            leavingSub:     'Votre avis compte',
+            feedbackLikeAria:    'Utile',
+            feedbackDislikeAria: 'Pas utile',
+            goBackBtn:      'Retour',
+            leaveChatBtn:   'Quitter le chat',
+            leavingDisclaimer: 'Quitter le chat mettra fin à cette session. Si vous souhaitez nous recontacter, nous garderons l’historique.',
+            langToggle:     'FR',
+            langToggleAria: 'Changer la langue',
+            headerTitle:    null,
+            headerFallback: 'Support client',
+            headerPromise:  'Nous répondons en une minute',
+            statusOnline:   'En ligne',
+            welcomeTitle:   'Bonjour 👋',
+            welcomeSub:     'Choisissez un sujet pour démarrer.',
+            topics: [
+                { id: 't-order',   label: 'Où est ma commande ?', tint: 'blue'   },
+                { id: 't-return',  label: 'Retour ou échange',    tint: 'orange' },
+                { id: 't-payment', label: 'Problème de paiement', tint: 'green'  },
+                { id: 't-agent',   label: 'Parler à un agent',    tint: 'purple' }
+            ],
+            composerPlaceholder: 'Tapez votre message…',
+            sendAria:       'Envoyer',
+            connecting:     'Mise en relation avec un conseiller…',
+            handoffRoleFallback: 'Spécialiste support client',
+            handoffPrefix:  'Vous discutez avec',
+            closedTitle:    'Conversation terminée',
+            closedSub:      'Merci de nous avoir contactés. Vous pouvez reprendre cette conversation ou en démarrer une nouvelle.',
+            continueChat:   'Reprendre cette conversation',
+            startNew:       'Démarrer une nouvelle conversation',
+            offlineTitle:   'Nous sommes hors ligne',
+            prechatTitle:   'Avant de commencer',
+            prechatSub:     'Laissez vos coordonnées pour qu’on puisse vous répondre.',
+            prechatName:    'Votre nom (facultatif)',
+            prechatEmail:   'Votre email (facultatif)',
+            prechatStart:   'Commencer',
+            prechatStarting:'Démarrage…',
+            couldNotConnect:'Connexion impossible. Réessayez.',
+            failedSend:     'Envoi impossible',
+            branding:       'Propulsé par'
         }
     };
     function t() { return I18N[S.lang] || I18N.ar; }
 
+    // Rotation labels shown on the toggle: current lang → next in the tenant's
+    // enabled list. Keeps the button always meaningful (never shows current).
+    var LANG_SHORT = { ar: 'ع', en: 'EN', fr: 'FR' };
+    function nextLang() {
+        var langs = S.availableLangs && S.availableLangs.length ? S.availableLangs : ['ar','en'];
+        var idx = langs.indexOf(S.lang);
+        if (idx === -1) return langs[0];
+        return langs[(idx + 1) % langs.length];
+    }
+
     // ── State ─────────────────────────────────────────────────────────
     var S = {
         lang:          detectLang(),
+        availableLangs: ['ar', 'en'],   // hydrated from widget config on boot
         open:          lsGet(LS_OPEN) === '1',
         booted:        false,
         booting:       false,
@@ -242,6 +313,16 @@
                 S.reverb  = data.reverb  || null;
                 S.runtime = data.runtime || null;
                 lsSet(LS_TOKEN, S.visitorToken);
+
+                // Hydrate language config from the widget payload. If the
+                // tenant only enabled one language, the toggle button is
+                // suppressed downstream (see renderPanel).
+                var enabled = Array.isArray(S.widget.available_languages)
+                    ? S.widget.available_languages.filter(function (l) { return SUPPORTED.indexOf(l) !== -1; })
+                    : [];
+                S.availableLangs = enabled.length ? enabled : ['ar','en'];
+                S.lang = detectLang(S.availableLangs, S.widget.default_lang);
+                lsSet(LS_LANG, S.lang);
                 if (data.active_conversation) {
                     S.convUuid = data.active_conversation.uuid;
                     S.status   = data.active_conversation.status;
@@ -380,6 +461,36 @@
             });
     }
 
+    // Rescue the "sent twice" bug: when the WebSocket broadcast beats the
+    // HTTP response, the incoming visitor message lands before seenIds[realId]
+    // is set, and we render a second bubble. Match by (sender_type='visitor',
+    // body, still-local id) and promote the pending echo in-place instead.
+    function claimLocalEcho(m) {
+        if (!m || m.sender_type !== 'visitor') return false;
+        for (var i = 0; i < S.messages.length; i++) {
+            var existing = S.messages[i];
+            if (typeof existing.id === 'string' && existing.id.indexOf('local-') === 0
+                && (existing.body || '') === (m.body || '')) {
+                var localId = existing.id;
+                var node = el.thread && el.thread.querySelector('[data-mid="' + localId + '"]');
+                delete S.seenIds[localId];
+                existing.id         = m.id;
+                existing.created_at = m.created_at;
+                existing.pending    = false;
+                existing.failed     = false;
+                existing._rendered  = true;
+                S.seenIds[m.id]     = true;
+                if (node) {
+                    node.setAttribute('data-mid', String(m.id));
+                    node.classList.remove('wvch-bubble-failed');
+                }
+                if (m.id > S.lastMessageId) S.lastMessageId = m.id;
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ── Message polling (fallback for no-WS) ──────────────────────────
     function loadMessages(opts) {
         opts = opts || {};
@@ -387,6 +498,7 @@
         return api('/conversations/' + S.convUuid + '/messages?after=' + S.lastMessageId)
             .then(function (data) {
                 (data.messages || []).forEach(function (m) {
+                    if (claimLocalEcho(m)) return;
                     if (S.seenIds[m.id]) return;
                     if (m.id <= S.lastMessageId && !opts.initial) return;
                     S.messages.push(m);
@@ -443,6 +555,7 @@
                 ch.bind('webchat.message.sent', function (payload) {
                     var m = payload.message;
                     if (!m || m.conversation_uuid !== S.convUuid) return;
+                    if (claimLocalEcho(m)) return;
                     if (S.seenIds[m.id]) return;
                     S.messages.push({
                         id: m.id, sender_type: m.sender_type, sender_id: m.sender_id,
@@ -671,7 +784,9 @@
         el.root.setAttribute('data-position', S.widget.position || 'right');
     }
     function switchLang(newLang) {
-        if (newLang !== 'ar' && newLang !== 'en') return;
+        if (SUPPORTED.indexOf(newLang) === -1) return;
+        var enabled = S.availableLangs || ['ar','en'];
+        if (enabled.indexOf(newLang) === -1) return;
         if (S.lang === newLang) return;
         S.lang = newLang;
         lsSet(LS_LANG, newLang);
@@ -742,13 +857,20 @@
         var titleName = t().headerTitle || (S.widget && S.widget.name) || t().headerFallback;
         var promise   = (S.widget && S.widget.header_subtitle) || t().headerPromise;
 
-        var langBtn = _('button', {
-            class: 'wvch-header-lang',
-            type: 'button',
-            'aria-label': t().langToggleAria,
-            onclick: function () { switchLang(S.lang === 'ar' ? 'en' : 'ar'); },
-            text: t().langToggle
-        });
+        // Language toggle: only render when 2+ languages are enabled by the
+        // tenant. Label shows the code of the NEXT language in the cycle so
+        // the visitor always knows what tapping it does.
+        var langBtn = null;
+        if ((S.availableLangs || []).length > 1) {
+            var target = nextLang();
+            langBtn = _('button', {
+                class: 'wvch-header-lang',
+                type: 'button',
+                'aria-label': t().langToggleAria,
+                onclick: function () { switchLang(nextLang()); },
+                text: LANG_SHORT[target] || target.toUpperCase()
+            });
+        }
         var backBtn = null;
         if (S.view === 'chat' || S.view === 'leaving') {
             backBtn = _('button', {
@@ -801,7 +923,7 @@
         ]);
         var actionKids = [];
         if (backBtn) actionKids.push(backBtn);
-        actionKids.push(langBtn);
+        if (langBtn) actionKids.push(langBtn);
         actionKids.push(settingsBtn);
         if (endBtn) actionKids.push(endBtn);
         actionKids.push(closeBtn);

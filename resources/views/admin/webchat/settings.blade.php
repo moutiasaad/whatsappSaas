@@ -37,6 +37,8 @@
         'launcher_icon'      => (string) old('launcher_icon', $widget->launcher_icon ?: 'chat'),
         'bubble_style'       => (string) old('bubble_style', $widget->bubble_style ?: 'soft'),
         'show_branding'      => (bool)   old('show_branding', $widget->show_branding),
+        'default_lang'       => (string) old('default_lang', $widget->default_lang ?: 'ar'),
+        'available_languages'=> (array)  old('available_languages', $widget->available_languages ?: ['ar', 'en']),
         'allowed_domains'    => (array)  old('allowed_domains', $widget->allowed_domains ?? []),
     ];
 
@@ -250,6 +252,42 @@
                                 </span>
                             </label>
                         </div>
+
+                        {{-- Languages --}}
+                        <div class="form-group">
+                            <label class="form-label">{{ __('ui.webchat_settings.label_languages') }}</label>
+                            <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_languages') }}</div>
+                            <div class="wcs-lang-grid">
+                                @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $label)
+                                    <label class="wcs-lang-tile"
+                                           :class="form.available_languages.includes('{{ $code }}') ? 'wcs-lang-tile-active' : ''">
+                                        <input type="checkbox"
+                                               name="available_languages[]"
+                                               value="{{ $code }}"
+                                               x-model="form.available_languages"
+                                               @change="ensureDefaultLangInList()">
+                                        <span class="wcs-lang-code">{{ strtoupper($code) }}</span>
+                                        <span class="wcs-lang-label">{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('available_languages') <div class="form-error">{{ $message }}</div> @enderror
+                            @error('available_languages.*') <div class="form-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">{{ __('ui.webchat_settings.label_default_lang') }}</label>
+                            <select name="default_lang" x-model="form.default_lang" class="form-control">
+                                @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $label)
+                                    <option value="{{ $code }}"
+                                            x-show="form.available_languages.includes('{{ $code }}')">
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-help">{{ __('ui.webchat_settings.help_default_lang') }}</div>
+                            @error('default_lang') <div class="form-error">{{ $message }}</div> @enderror
+                        </div>
                     </div>
                 </div>
 
@@ -431,6 +469,17 @@ function webchatSettings() {
         },
         removeDomain(idx) { this.form.allowed_domains.splice(idx, 1); },
 
+        ensureDefaultLangInList() {
+            // Keep at least one language enabled + make sure default_lang is
+            // in the enabled set (otherwise fall back to the first enabled).
+            if (this.form.available_languages.length === 0) {
+                this.form.available_languages = [this.form.default_lang || 'ar'];
+            }
+            if (!this.form.available_languages.includes(this.form.default_lang)) {
+                this.form.default_lang = this.form.available_languages[0];
+            }
+        },
+
         copy(value, target) {
             if (!value) return;
             const done = () => {
@@ -572,6 +621,25 @@ function webchatSettings() {
     .wcs-icon-tile-active               { border-color: var(--brand); background: var(--brand-xlight); color: var(--brand-dark); }
     .wcs-icon-tile-active i             { color: var(--brand); }
     @media (max-width: 480px) { .wcs-icon-row { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Language multi-select tiles */
+    .wcs-lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .wcs-lang-tile {
+        position: relative;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: .125rem; padding: .625rem .375rem;
+        border: 1px solid var(--card-border); border-radius: var(--radius);
+        cursor: pointer; font-size: .75rem; color: var(--text-primary);
+        transition: var(--transition); background: var(--card-bg);
+    }
+    .wcs-lang-tile input { position: absolute; opacity: 0; pointer-events: none; }
+    .wcs-lang-code  { font-size: .95rem; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
+    .wcs-lang-label { font-size: .75rem; color: var(--text-secondary); }
+    .wcs-lang-tile:hover              { background: var(--page-bg); }
+    .wcs-lang-tile-active             { border-color: var(--brand); background: var(--brand-xlight); }
+    .wcs-lang-tile-active .wcs-lang-code  { color: var(--brand); }
+    .wcs-lang-tile-active .wcs-lang-label { color: var(--brand-dark); }
+    @media (max-width: 480px) { .wcs-lang-grid { grid-template-columns: repeat(2, 1fr); } }
 
     /* Copy row + snippet */
     .wcs-copy-row { display: flex; gap: .5rem; align-items: center; margin-top: .375rem; }
