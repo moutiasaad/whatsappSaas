@@ -33,9 +33,10 @@
     })();
 
     // ── localStorage helpers (keyed per widget key so multiple sites work) ─
-    var LS_TOKEN = 'wvch:v1:token:' + CONFIG.key;
-    var LS_CONV  = 'wvch:v1:conv:'  + CONFIG.key;
-    var LS_OPEN  = 'wvch:v1:open:'  + CONFIG.key;
+    var LS_TOKEN  = 'wvch:v1:token:'  + CONFIG.key;
+    var LS_CONV   = 'wvch:v1:conv:'   + CONFIG.key;
+    var LS_OPEN   = 'wvch:v1:open:'   + CONFIG.key;
+    var LS_UNREAD = 'wvch:v1:unread:' + CONFIG.key;
     var LS_LANG  = 'wvch:v1:lang:'  + CONFIG.key;
     var LS_TIP   = 'wvch:v1:tip:'   + CONFIG.key;
     var LS_HUMAN = 'wvch:v1:human:' + CONFIG.key;
@@ -241,6 +242,7 @@
         lang:          detectLang(),
         availableLangs: ['ar', 'en'],   // hydrated from widget config on boot
         open:          lsGet(LS_OPEN) === '1',
+        unreadCount:   Math.max(0, parseInt(lsGet(LS_UNREAD) || '0', 10) || 0),
         booted:        false,
         booting:       false,
         view:          'welcome',           // welcome | prechat | chat | leaving | closed | offline
@@ -641,6 +643,22 @@
         if (!m) return;
         if (m.sender_type === 'visitor' || m.sender_type === 'system') return;
         playNotificationSound();
+        bumpUnreadIfClosed();
+    }
+
+    // Increment the launcher badge when a bot/agent reply arrives while the
+    // panel is closed. Persisted so a reload still shows the dot.
+    function bumpUnreadIfClosed() {
+        if (S.open) return;
+        S.unreadCount = (S.unreadCount || 0) + 1;
+        lsSet(LS_UNREAD, String(S.unreadCount));
+        renderLauncher();
+    }
+
+    function clearUnread() {
+        if (!S.unreadCount) return;
+        S.unreadCount = 0;
+        lsSet(LS_UNREAD, null);
     }
 
     // ── Visitor navigation: back to welcome / end current session ─────
@@ -832,16 +850,30 @@
             }, 9000);
         }
 
+        var kids = [
+            _('span', { class: 'wvch-launcher-ring' }),
+            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-chat', html: svg('chat') }),
+            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-close', html: svg('close') })
+        ];
+
+        // Unread badge: shown only when the panel is closed and at least one
+        // bot/agent reply arrived since the last open. Falls back to a dot
+        // when the count would exceed the pill's readable width.
+        if (!S.open && (S.unreadCount || 0) > 0) {
+            var label = S.unreadCount > 9 ? '9+' : String(S.unreadCount);
+            kids.push(_('span', {
+                class: 'wvch-launcher-badge',
+                'aria-label': label,
+                text: label
+            }));
+        }
+
         var bubble = _('button', {
             class: 'wvch-launcher' + (S.open ? ' wvch-launcher-open' : ''),
             'aria-label': S.open ? t().closeAria : t().openAria,
             'aria-expanded': String(!!S.open),
             onclick: togglePanel
-        }, [
-            _('span', { class: 'wvch-launcher-ring' }),
-            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-chat', html: svg('chat') }),
-            _('span', { class: 'wvch-launcher-icon wvch-launcher-icon-close', html: svg('close') })
-        ]);
+        }, kids);
         el.launcher = bubble;
         el.root.appendChild(bubble);
     }
@@ -1492,6 +1524,7 @@
     function togglePanel() {
         S.open = !S.open;
         lsSet(LS_OPEN, S.open ? '1' : null);
+        if (S.open) clearUnread();
         if (S.open && !S.booted && !S.booting) {
             render();
             ensureSession().then(render).catch(function () {
@@ -1612,6 +1645,22 @@
             "#wvch-root .wvch-launcher-open .wvch-launcher-icon-chat  { opacity: 0; transform: rotate(90deg); }",
             "#wvch-root .wvch-launcher-open .wvch-launcher-icon-close { opacity: 1; transform: rotate(0); }",
             "#wvch-root .wvch-launcher-open .wvch-launcher-ring { animation: none; opacity: 0; }",
+
+            /* Unread badge on the closed launcher — red pill in the top-inline
+               corner. Uses a fixed 20px min-width so a single-digit count sits
+               centered and 9+ still fits without wrapping. */
+            "#wvch-root .wvch-launcher-badge {",
+            "  position: absolute; top: -4px; inset-inline-end: -4px;",
+            "  min-width: 20px; height: 20px; padding: 0 6px;",
+            "  display: inline-flex; align-items: center; justify-content: center;",
+            "  background: #ef4444; color: #fff;",
+            "  font-size: 11px; font-weight: 700; line-height: 1;",
+            "  border-radius: 999px; border: 2px solid #fff;",
+            "  box-shadow: 0 4px 10px -4px rgba(239,68,68,.65);",
+            "  animation: wvch-badge-in 260ms cubic-bezier(.2,1.4,.4,1);",
+            "  pointer-events: none;",
+            "}",
+            "@keyframes wvch-badge-in { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }",
 
             "@keyframes wvch-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }",
             "@keyframes wvch-pulse { 0% { opacity: .55; transform: scale(.9); } 70% { opacity: 0; transform: scale(1.25); } 100% { opacity: 0; transform: scale(1.25); } }",
