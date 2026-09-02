@@ -19,6 +19,7 @@
         'profile_pic_url'      => $c->customer?->profile_pic_url,
         'last_message_at'      => optional($c->last_message_at)->toIso8601String(),
         'last_message_preview' => $c->last_message_preview,
+        'title'                => $c->title,
         'unread_count'         => (int) $c->unread_count,
         'state'                => $c->state,
         'owner_agent_id'       => $c->owner_agent_id,
@@ -88,7 +89,7 @@
                             <span class="cw-row-time" x-text="timeAgoShort(c.last_message_at)"></span>
                         </div>
                         <div class="cw-row-bottom">
-                            <span class="cw-row-preview" x-text="c.last_message_preview || '—'"></span>
+                            <span class="cw-row-preview" x-text="c.title || c.last_message_preview || '—'"></span>
                             <template x-if="(c.unread_count||0) > 0">
                                 <span class="cw-row-badge" x-text="c.unread_count > 99 ? '99+' : c.unread_count"></span>
                             </template>
@@ -129,6 +130,8 @@
                 </div>
                 <div class="cw-thread-copy">
                     <div class="cw-thread-name" x-text="customerName"></div>
+                    <div x-show="conversationTitle" x-cloak class="cw-thread-title"
+                         :title="conversationTitle" x-text="conversationTitle"></div>
                     <div class="cw-thread-meta">
                         <span class="cw-presence" :class="wsConnected ? 'online' : 'offline'"></span>
                         <span x-show="!customerTyping" x-text="wsConnected ? i18n.live_workspace : i18n.reconnecting"></span>
@@ -506,7 +509,43 @@
             </div>
         </div>
     </div>
+
+    {{-- Close-with-title modal --}}
+    <div x-show="showCloseModal" x-cloak class="modal-overlay show" @click.self="cancelCloseModal()">
+        <div class="modal-box" style="max-width:480px;text-align:left;" @click.stop>
+            <div class="modal-send-icon"><i class="ri-close-circle-line"></i></div>
+            <h3 x-text="i18n.close_modal_title"></h3>
+            <p x-text="i18n.close_modal_intro"></p>
+
+            <label class="form-label" style="margin-top:12px;display:block;font-weight:600;font-size:13px;" x-text="i18n.close_modal_title_label"></label>
+            <div style="position:relative;">
+                <input type="text" class="form-control" maxlength="180"
+                       x-model="closeTitle"
+                       :placeholder="i18n.close_modal_title_placeholder"
+                       :disabled="closeTitleLoading">
+                <div x-show="closeTitleLoading" x-cloak
+                     style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;">
+                    <i class="ri-loader-4-line" style="animation:spin 1s linear infinite;"></i>
+                    <span x-text="i18n.close_modal_generating"></span>
+                </div>
+            </div>
+            <div style="margin-top:8px;">
+                <button type="button" class="btn btn-outline btn-sm" @click="suggestCloseTitle()" :disabled="closeTitleLoading">
+                    <i class="ri-magic-line"></i> <span x-text="i18n.close_modal_regenerate"></span>
+                </button>
+            </div>
+
+            <div class="modal-actions" style="margin-top:18px;">
+                <button type="button" class="btn btn-outline" @click="cancelCloseModal()" x-text="i18n.close_modal_cancel"></button>
+                <button type="button" class="btn btn-danger" :disabled="actionLoading" @click="submitCloseWithTitle()" x-text="i18n.close_modal_close_btn"></button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+@keyframes spin { from { transform: translateY(-50%) rotate(0); } to { transform: translateY(-50%) rotate(360deg); } }
+</style>
 
 <style>
 /* ============================================================
@@ -809,6 +848,16 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.cw-thread-title {
+    font-size: .82rem;
+    color: #475569;
+    font-weight: 500;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 .cw-thread-meta {
     display: flex;
@@ -1662,6 +1711,7 @@ function conversationPro() {
         conversationId: {{ $conversation->id }},
         tenantId: {{ $conversation->tenant_id }},
         state: '{{ $conversation->state }}',
+        conversationTitle: @json($conversation->title),
         agentName: @json($conversation->ownerAgent?->name),
         agentId: {{ $conversation->owner_agent_id ?? 'null' }},
         aiSuspended: {{ $conversation->ai_suspended ? 'true' : 'false' }},
@@ -1693,6 +1743,9 @@ function conversationPro() {
         actionLoading: false,
         showReassign: false,
         reassignAgentId: '',
+        showCloseModal: false,
+        closeTitle: '',
+        closeTitleLoading: false,
         sideTab: 'details',
         wsConnected: false,
         customerTyping: false,
@@ -1849,9 +1902,10 @@ function conversationPro() {
 
         applyWorkspace(data) {
             const conv = data.conversation || {};
-            this.conversationId   = conv.id;
-            this.tenantId         = conv.tenant_id;
-            this.state            = conv.state;
+            this.conversationId    = conv.id;
+            this.tenantId          = conv.tenant_id;
+            this.state             = conv.state;
+            this.conversationTitle = conv.title ?? null;
             this.agentId          = data.owner_agent?.id ?? null;
             this.agentName        = data.owner_agent?.name ?? null;
             this.aiSuspended      = !!conv.ai_suspended;
@@ -2011,6 +2065,7 @@ function conversationPro() {
                     profile_pic_url: c.customer?.profile_pic_url,
                     last_message_at: c.last_message_at,
                     last_message_preview: c.last_message_preview,
+                    title: c.title,
                     unread_count: c.unread_count || 0,
                     state: c.state,
                     owner_agent_id: c.owner_agent_id,
@@ -2425,24 +2480,59 @@ function conversationPro() {
         },
 
         closeConv() {
-            confirmSend({
-                title: this.i18n.close_title,
-                message: this.i18n.close_desc,
-                callback: async () => {
-                    this.actionLoading = true;
-                    await fetch(`/api/conversations/${this.conversationId}/close`, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                        }
-                    });
-                    this.state = 'closed';
-                    this.actionLoading = false;
-                    window.showToast?.('success', this.i18n.close_success);
+            this.closeTitle = '';
+            this.showCloseModal = true;
+            this.suggestCloseTitle();
+        },
+
+        async suggestCloseTitle() {
+            this.closeTitleLoading = true;
+            try {
+                const res = await fetch(`/api/conversations/${this.conversationId}/suggest-title`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.title) this.closeTitle = data.title;
                 }
-            });
+            } catch (e) {
+                window.showToast?.('error', this.i18n.close_modal_generate_failed);
+            } finally {
+                this.closeTitleLoading = false;
+            }
+        },
+
+        cancelCloseModal() {
+            this.showCloseModal = false;
+            this.closeTitle = '';
+            this.closeTitleLoading = false;
+        },
+
+        async submitCloseWithTitle() {
+            this.actionLoading = true;
+            try {
+                await fetch(`/api/conversations/${this.conversationId}/close`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ title: (this.closeTitle || '').trim() })
+                });
+                this.state = 'closed';
+                this.conversationTitle = (this.closeTitle || '').trim() || this.conversationTitle;
+                window.showToast?.('success', this.i18n.close_success);
+                this.showCloseModal = false;
+            } finally {
+                this.actionLoading = false;
+            }
         },
 
         reopen() {

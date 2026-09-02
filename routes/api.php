@@ -101,6 +101,7 @@ Route::middleware(['api.key', \App\Http\Middleware\ResolveTenant::class])->group
         Route::get('/conversations/{conversation}/workspace', [ConversationController::class, 'workspace']);
         Route::post('/conversations/{conversation}/claim', [ConversationController::class, 'claim']);
         Route::post('/conversations/{conversation}/release', [ConversationController::class, 'release']);
+        Route::post('/conversations/{conversation}/suggest-title', [ConversationController::class, 'suggestTitle']);
         Route::post('/conversations/{conversation}/close', [ConversationController::class, 'close']);
         Route::post('/conversations/{conversation}/reassign', [ConversationController::class, 'reassign']);
         Route::post('/conversations/{conversation}/reopen', [ConversationController::class, 'reopen']);

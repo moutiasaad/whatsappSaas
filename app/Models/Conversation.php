@@ -12,7 +12,7 @@ class Conversation extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'instance_id', 'customer_id', 'team_id', 'state',
+        'tenant_id', 'instance_id', 'customer_id', 'team_id', 'title', 'state',
         'owner_agent_id', 'claimed_at', 'closed_at', 'ai_suspended',
         'last_message_at', 'last_message_preview', 'unread_count',
     ];

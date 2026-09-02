@@ -6,6 +6,7 @@ use App\Events\AgentTyping;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\AI\ConversationTitleGenerator;
 use App\Services\Conversations\ConversationService;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\JsonResponse;
@@ -105,6 +106,7 @@ class ConversationController extends Controller
         if ($search = trim((string) ($data['search'] ?? ''))) {
             $query->where(function ($inner) use ($search) {
                 $inner->where('last_message_preview', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%")
                     ->orWhere('id', is_numeric($search) ? (int) $search : 0)
                     ->orWhereHas('customer', function ($q) use ($search) {
                         $q->where('display_name', 'like', "%{$search}%")
@@ -174,6 +176,7 @@ class ConversationController extends Controller
                 'id'              => $conversation->id,
                 'tenant_id'       => $conversation->tenant_id,
                 'state'           => $conversation->state,
+                'title'           => $conversation->title,
                 'owner_agent_id'  => $conversation->owner_agent_id,
                 'ai_suspended'    => (bool) $conversation->ai_suspended,
                 'last_message_at' => optional($conversation->last_message_at)->toIso8601String(),
@@ -254,8 +257,27 @@ class ConversationController extends Controller
     public function close(Conversation $conversation, Request $request): JsonResponse
     {
         $this->authorize('close', $conversation);
-        $this->service->close($conversation, $request->user());
-        return response()->json(['message' => 'Closed.']);
+
+        $data = $request->validate([
+            'title' => 'nullable|string|max:180',
+        ]);
+
+        $title = isset($data['title']) ? trim($data['title']) : null;
+        $this->service->close($conversation, $request->user(), $title !== '' ? $title : null);
+
+        return response()->json([
+            'message'      => 'Closed.',
+            'conversation' => [
+                'id'    => $conversation->id,
+                'title' => $conversation->fresh()->title,
+            ],
+        ]);
+    }
+
+    public function suggestTitle(Conversation $conversation, ConversationTitleGenerator $titles): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+        return response()->json(['title' => $titles->forWhatsApp($conversation)]);
     }
 
     public function reassign(Conversation $conversation, Request $request): JsonResponse

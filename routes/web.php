@@ -117,6 +117,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                         ->name('conversations.claim');
                     Route::post('/conversations/{uuid}/release', [WebChatConversationController::class, 'release'])
                         ->name('conversations.release');
+                    Route::post('/conversations/{uuid}/suggest-title', [WebChatConversationController::class, 'suggestTitle'])
+                        ->name('conversations.suggest-title');
                     Route::post('/conversations/{uuid}/close', [WebChatConversationController::class, 'close'])
                         ->name('conversations.close');
                     Route::post('/conversations/{uuid}/read', [WebChatConversationController::class, 'markRead'])

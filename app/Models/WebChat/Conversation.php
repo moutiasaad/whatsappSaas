@@ -23,7 +23,7 @@ class Conversation extends Model
     public const STATUS_CLOSED   = 'closed';
 
     protected $fillable = [
-        'uuid', 'tenant_id', 'widget_id', 'visitor_id', 'status',
+        'uuid', 'tenant_id', 'widget_id', 'visitor_id', 'status', 'title',
         'claimed_by', 'claimed_at', 'closed_by', 'closed_at', 'last_activity_at',
         'visitor_name', 'visitor_email', 'page_url', 'referrer', 'user_agent', 'ip',
     ];

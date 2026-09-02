@@ -63,6 +63,16 @@
         'not_your_conversation' => __('ui.webchat_page.not_your_conversation'),
         'conversation_closed'   => __('ui.webchat_page.conversation_closed'),
         'new_pending_toast'     => __('ui.webchat_page.new_pending_toast'),
+
+        'close_modal_title'             => __('ui.conversation_show_page.close_modal_title'),
+        'close_modal_intro'             => __('ui.conversation_show_page.close_modal_intro'),
+        'close_modal_title_label'       => __('ui.conversation_show_page.close_modal_title_label'),
+        'close_modal_title_placeholder' => __('ui.conversation_show_page.close_modal_title_placeholder'),
+        'close_modal_generating'        => __('ui.conversation_show_page.close_modal_generating'),
+        'close_modal_regenerate'        => __('ui.conversation_show_page.close_modal_regenerate'),
+        'close_modal_close_btn'         => __('ui.conversation_show_page.close_modal_close_btn'),
+        'close_modal_cancel'            => __('ui.conversation_show_page.close_modal_cancel'),
+        'close_modal_generate_failed'   => __('ui.conversation_show_page.close_modal_generate_failed'),
     ];
 @endphp
 
@@ -118,7 +128,7 @@
                             <div class="cw-row-time" x-text="timeAgo(conv.last_activity_at || conv.created_at)"></div>
                         </div>
                         <div class="cw-row-bottom">
-                            <div class="cw-row-preview" x-text="conv.last_message_preview || i18n.no_messages_yet"></div>
+                            <div class="cw-row-preview" x-text="conv.title || conv.last_message_preview || i18n.no_messages_yet"></div>
                         </div>
                         <div class="cw-row-meta">
                             <span class="cw-pill" :class="statePillClass(conv.status)" x-text="i18n['status_' + conv.status]"></span>
@@ -152,6 +162,8 @@
                         <div class="cw-avatar cw-avatar-lg" x-text="visitorInitials(active.conversation || active.visitor)"></div>
                         <div class="cw-thread-copy">
                             <div class="cw-thread-name" x-text="active.visitor?.name || i18n.anonymous"></div>
+                            <div x-show="active.conversation?.title" x-cloak class="cw-thread-title"
+                                 :title="active.conversation?.title" x-text="active.conversation?.title"></div>
                             <div class="cw-thread-meta">
                                 <span class="cw-state-badge" :class="stateBadgeClass(active.conversation?.status)" x-text="i18n['status_' + (active.conversation?.status || 'bot')]"></span>
                                 <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
@@ -298,6 +310,45 @@
         </div>
     </aside>
 
+    {{-- Close-with-title modal --}}
+    <template x-teleport="body">
+        <div x-show="showCloseModal" x-cloak class="modal-overlay show wc-close-modal-overlay"
+             @click.self="cancelCloseModal()">
+            <div class="modal-box wc-close-modal-box" @click.stop>
+                <div class="modal-send-icon"><i class="ri-close-circle-line"></i></div>
+                <h3 x-text="i18n.close_modal_title"></h3>
+                <p x-text="i18n.close_modal_intro"></p>
+
+                <label class="form-label wc-close-modal-label" x-text="i18n.close_modal_title_label"></label>
+                <div class="wc-close-modal-input-wrap">
+                    <input type="text" class="form-control" maxlength="180"
+                           x-model="closeTitle"
+                           :placeholder="i18n.close_modal_title_placeholder"
+                           :disabled="closeTitleLoading">
+                    <div class="wc-close-modal-generating" x-show="closeTitleLoading" x-cloak>
+                        <i class="ri-loader-4-line wc-spin"></i>
+                        <span x-text="i18n.close_modal_generating"></span>
+                    </div>
+                </div>
+                <div class="wc-close-modal-regen">
+                    <button type="button" class="btn btn-outline btn-sm"
+                            @click="suggestCloseTitle()" :disabled="closeTitleLoading">
+                        <i class="ri-magic-line"></i>
+                        <span x-text="i18n.close_modal_regenerate"></span>
+                    </button>
+                </div>
+
+                <div class="modal-actions wc-close-modal-actions">
+                    <button type="button" class="btn btn-outline"
+                            @click="cancelCloseModal()" x-text="i18n.close_modal_cancel"></button>
+                    <button type="button" class="btn btn-danger"
+                            :disabled="closing" @click="submitCloseWithTitle()"
+                            x-text="i18n.close_modal_close_btn"></button>
+                </div>
+            </div>
+        </div>
+    </template>
+
 </div>
 
 <script>
@@ -309,6 +360,7 @@ function webchatInbox() {
         claimUrlTpl:    @json(route($panelPrefix . '.webchat.conversations.claim',   ['uuid' => '__UUID__'])),
         releaseUrlTpl:  @json(route($panelPrefix . '.webchat.conversations.release', ['uuid' => '__UUID__'])),
         closeUrlTpl:    @json(route($panelPrefix . '.webchat.conversations.close',   ['uuid' => '__UUID__'])),
+        suggestTitleUrlTpl: @json(route($panelPrefix . '.webchat.conversations.suggest-title', ['uuid' => '__UUID__'])),
         readUrlTpl:     @json(route($panelPrefix . '.webchat.conversations.read',    ['uuid' => '__UUID__'])),
         messageUrlTpl:  @json(route($panelPrefix . '.webchat.messages.store',        ['uuid' => '__UUID__'])),
         tenantId:       @json((int) auth()->user()->tenant_id),
@@ -330,6 +382,11 @@ function webchatInbox() {
         wsConnected:    false,
         _pollTimer:     null,
         _threadPoll:    null,
+
+        showCloseModal:    false,
+        closeTitle:        '',
+        closeTitleLoading: false,
+        closing:           false,
 
         get pendingCount() {
             return this.conversations.filter(c => c.status === 'pending').length;
@@ -492,18 +549,64 @@ function webchatInbox() {
             }
         },
 
-        async close() {
+        close() {
             if (!this.activeUuid) return;
-            if (!window.confirm(this.i18n.close_confirm)) return;
+            this.closeTitle = '';
+            this.showCloseModal = true;
+            this.suggestCloseTitle();
+        },
 
+        async suggestCloseTitle() {
+            if (!this.activeUuid) return;
+            this.closeTitleLoading = true;
             try {
-                const r = await this.post(this.closeUrlTpl.replace('__UUID__', this.activeUuid));
+                const r = await this.post(this.suggestTitleUrlTpl.replace('__UUID__', this.activeUuid));
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.title) this.closeTitle = data.title;
+                }
+            } catch (e) {
+                console.warn('[webchat] title suggest failed', e);
+                window.showToast?.('error', this.i18n.close_modal_generate_failed);
+            } finally {
+                this.closeTitleLoading = false;
+            }
+        },
+
+        cancelCloseModal() {
+            this.showCloseModal = false;
+            this.closeTitle = '';
+            this.closeTitleLoading = false;
+        },
+
+        async submitCloseWithTitle() {
+            if (!this.activeUuid || this.closing) return;
+            this.closing = true;
+            try {
+                const url = this.closeUrlTpl.replace('__UUID__', this.activeUuid);
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ title: (this.closeTitle || '').trim() })
+                });
                 if (!r.ok) throw new Error('HTTP ' + r.status);
+                const data = await r.json();
+                if (this.active.conversation) {
+                    this.active.conversation.title = data.conversation?.title || this.closeTitle;
+                }
                 window.showToast?.('success', this.i18n.close_success);
+                this.showCloseModal = false;
                 this.loadList(true);
             } catch (e) {
                 console.error('[webchat] close failed', e);
                 window.showToast?.('error', this.i18n.close_error);
+            } finally {
+                this.closing = false;
             }
         },
 
@@ -1042,6 +1145,28 @@ function webchatInbox() {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.cw-thread-title {
+    font-size: .82rem;
+    color: #475569;
+    font-weight: 500;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.wc-close-modal-overlay { z-index: 10000 !important; }
+.wc-close-modal-box     { max-width: 480px !important; text-align: left !important; }
+.wc-close-modal-label   { margin-top: 12px; display: block; font-weight: 600; font-size: 13px; }
+.wc-close-modal-input-wrap { position: relative; }
+.wc-close-modal-generating {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    color: #64748b; font-size: 12px; display: flex; align-items: center; gap: 6px;
+}
+.wc-close-modal-regen    { margin-top: 8px; }
+.wc-close-modal-actions  { margin-top: 18px; }
+.wc-spin                 { display: inline-block; animation: wcSpin 1s linear infinite; }
+@keyframes wcSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 .cw-thread-meta {
     display: flex;
     align-items: center;
