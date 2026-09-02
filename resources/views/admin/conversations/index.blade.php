@@ -199,7 +199,8 @@
                             </div>
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
                                 <div style="min-width:0;flex:1;">
-                                    <span class="conv-preview" x-text="conv.last_message_preview || '-'"></span>
+                                    <span class="conv-preview" x-text="conv.title || conv.last_message_preview || '-'"
+                                          :style="conv.title ? 'color:#334155;font-weight:500;' : ''"></span>
                                     <div x-show="conv.state === 'claimed' && conv.owner_agent?.name"
                                          style="font-size:.6875rem;color:#3b82f6;margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                         <i class="ri-user-line" style="font-size:.625rem;"></i>

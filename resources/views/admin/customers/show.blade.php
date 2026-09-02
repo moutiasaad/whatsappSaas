@@ -147,6 +147,7 @@
                         <thead>
                             <tr>
                                 <th>{{ __('ui.customer_show_page.state') }}</th>
+                                <th>{{ __('ui.customer_show_page.title') }}</th>
                                 <th>{{ __('ui.customer_show_page.instance') }}</th>
                                 <th>{{ __('ui.customer_show_page.agent') }}</th>
                                 <th>{{ __('ui.customer_show_page.unread') }}</th>
@@ -182,6 +183,12 @@
                                         <span class="badge {{ $stateClass }}">
                                             <i class="{{ $stateIcon }}"></i>
                                             {{ $stateLabel }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style="font-size:.8125rem;color:var(--text-primary);font-weight:500"
+                                              title="{{ $conv->title }}">
+                                            {{ $conv->title ? \Illuminate\Support\Str::limit($conv->title, 45) : '—' }}
                                         </span>
                                     </td>
                                     <td>

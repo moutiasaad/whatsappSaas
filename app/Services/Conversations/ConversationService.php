@@ -101,14 +101,19 @@ class ConversationService
         rescue(fn () => broadcast(new ConversationReleased($conversation->fresh(), $actor)));
     }
 
-    public function close(Conversation $conversation, User $actor): void
+    public function close(Conversation $conversation, User $actor, ?string $title = null): void
     {
-        $conversation->update([
-            'state'      => 'closed',
-            'closed_at'  => now(),
-        ]);
+        $updates = [
+            'state'     => 'closed',
+            'closed_at' => now(),
+        ];
+        if ($title !== null && $title !== '') {
+            $updates['title'] = $title;
+        }
 
-        $this->logEvent($conversation->fresh(), 'closed', $actor->id);
+        $conversation->update($updates);
+
+        $this->logEvent($conversation->fresh(), 'closed', $actor->id, $title ? ['title' => $title] : []);
         rescue(fn () => broadcast(new ConversationClosed($conversation->fresh(), $actor)));
     }
 

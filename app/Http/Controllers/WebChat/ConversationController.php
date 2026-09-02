@@ -9,6 +9,7 @@ use App\Events\WebChat\WebChatMessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\WebChat\Conversation;
 use App\Models\WebChat\Message;
+use App\Services\AI\ConversationTitleGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ class ConversationController extends Controller
         $data = $rows->map(fn (Conversation $c) => [
             'uuid'                 => $c->uuid,
             'status'               => $c->status,
+            'title'                => $c->title,
             'visitor_name'         => $c->visitor_name,
             'visitor_email'        => $c->visitor_email,
             'page_url'             => $c->page_url,
@@ -106,6 +108,7 @@ class ConversationController extends Controller
             'conversation' => [
                 'uuid'             => $conversation->uuid,
                 'status'           => $conversation->status,
+                'title'            => $conversation->title,
                 'claimed_by'       => $conversation->claimed_by,
                 'claimer'          => $conversation->claimer ? ['id' => $conversation->claimer->id, 'name' => $conversation->claimer->name] : null,
                 'claimed_at'       => $conversation->claimed_at?->toISOString(),
@@ -246,13 +249,22 @@ class ConversationController extends Controller
             ]);
         }
 
-        $systemMessage = DB::transaction(function () use ($conversation, $user) {
+        $data = $request->validate([
+            'title' => 'nullable|string|max:180',
+        ]);
+        $title = isset($data['title']) ? trim($data['title']) : null;
+        if ($title === '') $title = null;
+
+        $systemMessage = DB::transaction(function () use ($conversation, $user, $title) {
             $conversation->status           = Conversation::STATUS_CLOSED;
             $conversation->closed_by        = $user->id;
             $conversation->closed_at        = now();
             $conversation->claimed_by       = null;
             $conversation->claimed_at       = null;
             $conversation->last_activity_at = now();
+            if ($title !== null) {
+                $conversation->title = $title;
+            }
             $conversation->save();
 
             return Message::create([
@@ -271,10 +283,23 @@ class ConversationController extends Controller
             'conversation' => [
                 'uuid'      => $fresh->uuid,
                 'status'    => $fresh->status,
+                'title'     => $fresh->title,
                 'closed_by' => $fresh->closed_by,
                 'closed_at' => $fresh->closed_at?->toISOString(),
             ],
         ]);
+    }
+
+    public function suggestTitle(Request $request, string $uuid, ConversationTitleGenerator $titles): JsonResponse
+    {
+        $conversation = $this->findConversationForCurrentTenantOrFail($request, $uuid);
+        $user = $request->user();
+
+        if (!$this->canManageLock($conversation, $user)) {
+            abort(403, 'not_your_conversation');
+        }
+
+        return response()->json(['title' => $titles->forWebChat($conversation)]);
     }
 
     public function markRead(Request $request, string $uuid): JsonResponse
