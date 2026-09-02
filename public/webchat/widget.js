@@ -815,7 +815,13 @@
 
         var panelKids = [el.header, el.statusBar, el.body, el.composer];
         if (S.widget && S.widget.show_branding) {
-            panelKids.push(_('div', { class: 'wvch-branding' }, [
+            panelKids.push(_('a', {
+                class: 'wvch-branding',
+                href: 'https://wavadesk.com/?utm_source=widget&utm_medium=chat&utm_campaign=powered_by',
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                'aria-label': (t().branding + ' Wavadesk').trim()
+            }, [
                 _('span', { class: 'wvch-branding-bolt', html: svg('spark') }),
                 _('span', { html: t().branding + ' <b>Wavadesk</b>' })
             ]));
@@ -1840,8 +1846,10 @@
             "}",
 
             /* ---------- Powered-by footer ---------- */
-            "#wvch-root .wvch-branding { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11.5px; color: var(--wvch-text-2); background: #fff; border-top: 1px solid var(--wvch-line); }",
-            "#wvch-root .wvch-branding b { color: var(--wvch-text); font-weight: 700; }",
+            "#wvch-root .wvch-branding { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11.5px; color: var(--wvch-text-2); background: #fff; border-top: 1px solid var(--wvch-line); text-decoration: none; cursor: pointer; transition: color .15s ease, background .15s ease; }",
+            "#wvch-root .wvch-branding:hover { color: var(--wvch-accent); background: #fbfcff; }",
+            "#wvch-root .wvch-branding:hover b { color: var(--wvch-accent); }",
+            "#wvch-root .wvch-branding b { color: var(--wvch-text); font-weight: 700; transition: color .15s ease; }",
             "#wvch-root .wvch-branding-bolt { display: inline-flex; color: var(--wvch-accent); }",
 
             /* Reduce motion — respect the user */
