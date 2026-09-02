@@ -461,6 +461,36 @@
             });
     }
 
+    // Rescue the "sent twice" bug: when the WebSocket broadcast beats the
+    // HTTP response, the incoming visitor message lands before seenIds[realId]
+    // is set, and we render a second bubble. Match by (sender_type='visitor',
+    // body, still-local id) and promote the pending echo in-place instead.
+    function claimLocalEcho(m) {
+        if (!m || m.sender_type !== 'visitor') return false;
+        for (var i = 0; i < S.messages.length; i++) {
+            var existing = S.messages[i];
+            if (typeof existing.id === 'string' && existing.id.indexOf('local-') === 0
+                && (existing.body || '') === (m.body || '')) {
+                var localId = existing.id;
+                var node = el.thread && el.thread.querySelector('[data-mid="' + localId + '"]');
+                delete S.seenIds[localId];
+                existing.id         = m.id;
+                existing.created_at = m.created_at;
+                existing.pending    = false;
+                existing.failed     = false;
+                existing._rendered  = true;
+                S.seenIds[m.id]     = true;
+                if (node) {
+                    node.setAttribute('data-mid', String(m.id));
+                    node.classList.remove('wvch-bubble-failed');
+                }
+                if (m.id > S.lastMessageId) S.lastMessageId = m.id;
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ── Message polling (fallback for no-WS) ──────────────────────────
     function loadMessages(opts) {
         opts = opts || {};
@@ -468,6 +498,7 @@
         return api('/conversations/' + S.convUuid + '/messages?after=' + S.lastMessageId)
             .then(function (data) {
                 (data.messages || []).forEach(function (m) {
+                    if (claimLocalEcho(m)) return;
                     if (S.seenIds[m.id]) return;
                     if (m.id <= S.lastMessageId && !opts.initial) return;
                     S.messages.push(m);
@@ -524,6 +555,7 @@
                 ch.bind('webchat.message.sent', function (payload) {
                     var m = payload.message;
                     if (!m || m.conversation_uuid !== S.convUuid) return;
+                    if (claimLocalEcho(m)) return;
                     if (S.seenIds[m.id]) return;
                     S.messages.push({
                         id: m.id, sender_type: m.sender_type, sender_id: m.sender_id,
