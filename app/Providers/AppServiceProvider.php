@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\BrevoApiTransport;
 use App\Mail\Transport\MailtrapApiTransport;
 use App\Models\Conversation;
 use App\Models\WhatsAppInstance;
@@ -30,9 +31,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Mailtrap HTTP API transport — see config/mail.php 'mailtrap' mailer.
+        // HTTP API mail transports — see config/mail.php. Outbound SMTP is
+        // blocked on this host, so API-based delivery is the only option.
         Mail::extend('mailtrap', function (array $config) {
             return new MailtrapApiTransport((string) ($config['token'] ?? ''));
+        });
+
+        Mail::extend('brevo', function (array $config) {
+            return new BrevoApiTransport((string) ($config['key'] ?? ''));
         });
 
         Gate::policy(Conversation::class, ConversationPolicy::class);

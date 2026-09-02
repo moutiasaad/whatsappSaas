@@ -45,6 +45,13 @@ return [
             'token' => env('MAILTRAP_TOKEN', env('MAIL_PASSWORD')),
         ],
 
+        // Brevo over HTTPS. This host blocks outbound SMTP (25/587/465), so an
+        // API transport is the only option that can actually leave the box.
+        'brevo' => [
+            'transport' => 'brevo',
+            'key' => env('BREVO_API_KEY'),
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'url' => env('MAIL_URL'),
