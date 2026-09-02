@@ -102,6 +102,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Archive - closed tickets from both channels
             Route::get('/archive', [ArchiveController::class, 'index'])->name('archive.index');
+            Route::get('/archive/whatsapp/{conversation}', [ArchiveController::class, 'showWhatsApp'])->name('archive.whatsapp.show');
+            Route::get('/archive/webchat/{uuid}', [ArchiveController::class, 'showWebChat'])->name('archive.webchat.show');
 
             // Customers - all system users
             Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');

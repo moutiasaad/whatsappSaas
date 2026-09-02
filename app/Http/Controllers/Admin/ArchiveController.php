@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\ConversationEvent;
+use App\Models\Message;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WebChat\Conversation as WebChatConversation;
+use App\Models\WebChat\Message as WebChatMessage;
 use App\Models\WhatsAppInstance;
 use Illuminate\Http\Request;
 
@@ -101,6 +104,135 @@ class ArchiveController extends Controller
             ->orderByDesc('closed_at');
 
         return $q->paginate(20)->withQueryString();
+    }
+
+    public function showWhatsApp(Request $request, Conversation $conversation)
+    {
+        $this->guardTenant($request->user(), $conversation->tenant_id);
+
+        $conversation->load(['customer', 'instance', 'tenant', 'ownerAgent', 'team']);
+
+        $messages = Message::withoutGlobalScopes()
+            ->where('conversation_id', $conversation->id)
+            ->orderBy('id')
+            ->with('author:id,name')
+            ->get();
+
+        $events = ConversationEvent::query()
+            ->where('conversation_id', $conversation->id)
+            ->orderBy('created_at')
+            ->with('actor:id,name')
+            ->get();
+
+        $related = Conversation::withoutGlobalScope('tenant')
+            ->where('customer_id', $conversation->customer_id)
+            ->where('id', '!=', $conversation->id)
+            ->orderByDesc('closed_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['id', 'title', 'state', 'closed_at', 'created_at']);
+
+        $stats = [
+            'messages_total'    => $messages->count(),
+            'messages_customer' => $messages->where('direction', 'in')->count(),
+            'messages_agent'    => $messages->where('direction', 'out')->where('author_type', '!=', 'ai')->count(),
+            'messages_ai'       => $messages->where('author_type', 'ai')->count(),
+        ];
+
+        return view('admin.archive.show', [
+            'channel'      => 'whatsapp',
+            'conversation' => $conversation,
+            'messages'     => $messages,
+            'events'       => $events,
+            'related'      => $related,
+            'stats'        => $stats,
+            'meta'         => $this->normalizeWhatsAppMeta($conversation),
+        ]);
+    }
+
+    public function showWebChat(Request $request, string $uuid)
+    {
+        $conversation = WebChatConversation::withoutGlobalScope('tenant')
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $this->guardTenant($request->user(), $conversation->tenant_id);
+
+        $conversation->load(['visitor', 'widget', 'tenant', 'claimer', 'closer']);
+
+        $messages = WebChatMessage::where('conversation_id', $conversation->id)
+            ->orderBy('id')
+            ->with('sender:id,name')
+            ->get();
+
+        $related = WebChatConversation::withoutGlobalScope('tenant')
+            ->where('visitor_id', $conversation->visitor_id)
+            ->where('id', '!=', $conversation->id)
+            ->orderByDesc('closed_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['id', 'uuid', 'title', 'status', 'closed_at', 'created_at']);
+
+        $stats = [
+            'messages_total'   => $messages->count(),
+            'messages_visitor' => $messages->where('sender_type', WebChatMessage::SENDER_VISITOR)->count(),
+            'messages_agent'   => $messages->where('sender_type', WebChatMessage::SENDER_AGENT)->count(),
+            'messages_ai'      => $messages->where('sender_type', WebChatMessage::SENDER_BOT)->count(),
+        ];
+
+        return view('admin.archive.show', [
+            'channel'      => 'webchat',
+            'conversation' => $conversation,
+            'messages'     => $messages,
+            'events'       => collect(),
+            'related'      => $related,
+            'stats'        => $stats,
+            'meta'         => $this->normalizeWebChatMeta($conversation),
+        ]);
+    }
+
+    private function guardTenant(User $actor, int $tenantId): void
+    {
+        if ($actor->isSuperAdmin()) return;
+        abort_unless((int) $actor->tenant_id === (int) $tenantId, 404);
+    }
+
+    private function normalizeWhatsAppMeta(Conversation $c): array
+    {
+        return [
+            'display_id'    => '#' . $c->id,
+            'title'         => $c->title,
+            'contact_name'  => $c->customer?->display_name ?: $c->customer?->phone_e164 ?: '—',
+            'contact_sub'   => $c->customer?->phone_e164,
+            'source_label'  => $c->instance?->name,
+            'source_url'    => null,
+            'tenant_name'   => $c->tenant?->name,
+            'created_at'    => $c->created_at,
+            'closed_at'     => $c->closed_at,
+            'closed_by'     => $c->ownerAgent?->name,
+            'claimed_at'    => $c->claimed_at,
+            'claimed_by'    => $c->ownerAgent?->name,
+            'team_name'     => $c->team?->name,
+        ];
+    }
+
+    private function normalizeWebChatMeta(WebChatConversation $c): array
+    {
+        return [
+            'display_id'    => '#' . $c->id,
+            'title'         => $c->title,
+            'contact_name'  => $c->visitor?->name ?: $c->visitor_name ?: __('ui.archive_page.anonymous'),
+            'contact_sub'   => $c->visitor?->email ?: $c->visitor_email,
+            'source_label'  => $c->widget?->name,
+            'source_url'    => $c->page_url,
+            'tenant_name'   => $c->tenant?->name,
+            'created_at'    => $c->created_at,
+            'closed_at'     => $c->closed_at,
+            'closed_by'     => $c->closer?->name,
+            'claimed_at'    => $c->claimed_at,
+            'claimed_by'    => $c->claimer?->name,
+            'team_name'     => null,
+        ];
     }
 
     private function queryWebChat(Request $request, ?int $tenantId)
