@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\ArchiveController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\LegalPageController;
 use App\Http\Controllers\Admin\ReservationController;
@@ -98,6 +99,9 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             // Conversations - all system users
             Route::get('/conversations', [ConversationWebController::class, 'index'])->name('conversations.index');
             Route::get('/conversations/{conversation}', [ConversationWebController::class, 'show'])->name('conversations.show');
+
+            // Archive - closed tickets from both channels
+            Route::get('/archive', [ArchiveController::class, 'index'])->name('archive.index');
 
             // Customers - all system users
             Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');

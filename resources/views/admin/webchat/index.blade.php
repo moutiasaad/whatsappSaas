@@ -586,6 +586,7 @@ function webchatInbox() {
                 const url = this.closeUrlTpl.replace('__UUID__', this.activeUuid);
                 const r = await fetch(url, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
@@ -594,7 +595,16 @@ function webchatInbox() {
                     },
                     body: JSON.stringify({ title: (this.closeTitle || '').trim() })
                 });
-                if (!r.ok) throw new Error('HTTP ' + r.status);
+                if (!r.ok) {
+                    // Read the body once so we can log and surface it to the user.
+                    const bodyText = await r.text().catch(() => '');
+                    let msg = '';
+                    try { msg = JSON.parse(bodyText)?.message || ''; } catch (_) {}
+                    console.error('[webchat] close failed', r.status, bodyText);
+                    const detail = msg || `HTTP ${r.status}`;
+                    window.showToast?.('error', `${this.i18n.close_error} (${detail})`);
+                    return;
+                }
                 const data = await r.json();
                 if (this.active.conversation) {
                     this.active.conversation.title = data.conversation?.title || this.closeTitle;
@@ -604,7 +614,7 @@ function webchatInbox() {
                 this.loadList(true);
             } catch (e) {
                 console.error('[webchat] close failed', e);
-                window.showToast?.('error', this.i18n.close_error);
+                window.showToast?.('error', `${this.i18n.close_error} (${e.message || 'network'})`);
             } finally {
                 this.closing = false;
             }
