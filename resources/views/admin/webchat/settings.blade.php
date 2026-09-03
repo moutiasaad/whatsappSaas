@@ -285,10 +285,17 @@
 
                         <div class="form-group">
                             <label class="form-label">{{ __('ui.webchat_settings.label_default_lang') }}</label>
-                            <select name="default_lang" x-model="form.default_lang" class="form-control">
+                            {{-- data-no-ss opts out of the admin layout's Select2-like
+                                 enhancer (see initSS in layouts/admin.blade.php). That
+                                 enhancer snapshots options at load time, so x-show on
+                                 <option> tags never reaches the visible list AND its
+                                 dropdown was being clipped by the card overflow.
+                                 :hidden reactively removes disabled languages from
+                                 the native dropdown as tenants toggle checkboxes. --}}
+                            <select name="default_lang" x-model="form.default_lang" data-no-ss class="form-control">
                                 @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $label)
                                     <option value="{{ $code }}"
-                                            x-show="form.available_languages.includes('{{ $code }}')">
+                                            :hidden="!form.available_languages.includes('{{ $code }}')">
                                         {{ $label }}
                                     </option>
                                 @endforeach
