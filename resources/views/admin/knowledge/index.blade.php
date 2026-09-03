@@ -16,11 +16,21 @@
         top: 0; right: 0; bottom: 0; left: 0;
         background: rgba(15, 23, 42, .55);
         z-index: 10000;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         padding: 1rem;
         box-sizing: border-box;
+    }
+    /* On desktop the fixed sidebar (268px) covers the left edge, so the
+       viewport-centered dialog visually lands left of the content column.
+       Reserve that width as inline-start padding so the dialog centers over
+       the content area instead. Below 1024px the sidebar is a drawer, not
+       a fixed column, so the full-viewport centering is already correct. */
+    @media (min-width: 1024px) {
+        .kb-import-backdrop {
+            padding-inline-start: calc(var(--sidebar-width, 268px) + 1rem);
+        }
     }
     .kb-import-dialog {
         background: #fff;
