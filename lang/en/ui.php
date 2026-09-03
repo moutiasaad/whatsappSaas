@@ -1850,6 +1850,12 @@ Always:
         'label_default_lang'     => 'Default language',
         'help_default_lang'      => 'Shown the first time the widget opens.',
 
+        'card_topics'            => 'Welcome topics',
+        'help_topics'            => 'Cards visitors see on the welcome screen. Add up to 6, pick a color, and choose whether tapping sends the label as a message or connects to a human agent. Fill a label in each enabled language; a language falls back to the default language if left empty.',
+        'add_topic'              => 'Add topic',
+        'topic_action_message'   => 'Send as message',
+        'topic_action_agent'     => 'Connect to agent',
+
         'label_allowed_domains'  => 'Allowed origins',
         'help_allowed_domains'   => 'Full origins where the widget may load. Leave empty to allow any origin (useful during development). Format: https://example.com',
         'placeholder_domain'     => 'https://your-site.com',

@@ -58,7 +58,7 @@ class AutoReplyService
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
             $settings->increment('tokens_used_this_period', $tokens);
 
-            $text = trim($response->content[0]->text ?? '');
+            $text = PromptBuilder::sanitizeReply((string) ($response->content[0]->text ?? ''));
 
             if ($text === '') {
                 Log::channel('whatsapp')->warning('AI: empty response', ['conversation_id' => $conversation->id]);

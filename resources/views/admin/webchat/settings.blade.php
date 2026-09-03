@@ -39,7 +39,15 @@
         'show_branding'      => (bool)   old('show_branding', $widget->show_branding),
         'default_lang'       => (string) old('default_lang', $widget->default_lang ?: 'ar'),
         'available_languages'=> (array)  old('available_languages', $widget->available_languages ?: ['ar', 'en']),
+        'topics'             => (array)  old('topics', $widget->topics ?? []),
         'allowed_domains'    => (array)  old('allowed_domains', $widget->allowed_domains ?? []),
+    ];
+
+    // Palette matches widget.js CSS classes (.wvch-topic-<tint>).
+    $topicTints = ['blue', 'orange', 'green', 'purple', 'red', 'gray', 'teal'];
+    $topicTintHex = [
+        'blue' => '#3b82f6', 'orange' => '#f97316', 'green' => '#10b981',
+        'purple' => '#8b5cf6', 'red' => '#ef4444', 'gray' => '#6b7280', 'teal' => '#14b8a6',
     ];
 
     $i18n = [
@@ -291,6 +299,86 @@
                     </div>
                 </div>
 
+                {{-- Welcome topics card --}}
+                <div class="card wcs-card">
+                    <div class="card-header">
+                        <div class="card-title">{{ __('ui.webchat_settings.card_topics') }}</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_topics') }}</div>
+
+                        {{-- Existing topic rows --}}
+                        <div class="wcs-topics" x-show="form.topics.length > 0">
+                            <template x-for="(topic, tIdx) in form.topics" :key="tIdx">
+                                <div class="wcs-topic-row">
+                                    <div class="wcs-topic-head">
+                                        <span class="wcs-topic-index" x-text="tIdx + 1"></span>
+
+                                        {{-- Tint picker --}}
+                                        <div class="wcs-tint-picker">
+                                            @foreach ($topicTints as $tint)
+                                                <button type="button"
+                                                        class="wcs-tint-dot wcs-tint-dot-{{ $tint }}"
+                                                        :class="topic.tint === '{{ $tint }}' ? 'wcs-tint-dot-active' : ''"
+                                                        @click="topic.tint = '{{ $tint }}'"
+                                                        :aria-label="'{{ ucfirst($tint) }}'"
+                                                        title="{{ ucfirst($tint) }}"></button>
+                                            @endforeach
+                                            <input type="hidden"
+                                                   :name="'topics[' + tIdx + '][tint]'"
+                                                   :value="topic.tint">
+                                        </div>
+
+                                        <div class="wcs-topic-actions">
+                                            <button type="button" class="wcs-chip-btn" @click="moveTopicUp(tIdx)"   :disabled="tIdx === 0"                       title="↑"><i class="ri-arrow-up-s-line"></i></button>
+                                            <button type="button" class="wcs-chip-btn" @click="moveTopicDown(tIdx)" :disabled="tIdx === form.topics.length - 1" title="↓"><i class="ri-arrow-down-s-line"></i></button>
+                                            <button type="button" class="wcs-chip-btn wcs-chip-btn-danger" @click="removeTopic(tIdx)" title="×"><i class="ri-close-line"></i></button>
+                                        </div>
+                                    </div>
+
+                                    {{-- Action selector: sends the label as a message OR triggers request-agent --}}
+                                    <div class="wcs-topic-action-row">
+                                        <label class="wcs-topic-action-opt">
+                                            <input type="radio" :name="'topics[' + tIdx + '][action]'" value="message" x-model="topic.action">
+                                            <span>{{ __('ui.webchat_settings.topic_action_message') }}</span>
+                                        </label>
+                                        <label class="wcs-topic-action-opt">
+                                            <input type="radio" :name="'topics[' + tIdx + '][action]'" value="agent" x-model="topic.action">
+                                            <span>{{ __('ui.webchat_settings.topic_action_agent') }}</span>
+                                        </label>
+                                    </div>
+
+                                    {{-- Per-language label inputs (only for enabled languages) --}}
+                                    <div class="wcs-topic-labels">
+                                        @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $langLabel)
+                                            <div class="wcs-topic-label-group"
+                                                 x-show="form.available_languages.includes('{{ $code }}')">
+                                                <label class="wcs-topic-label-tag">{{ strtoupper($code) }}</label>
+                                                <input type="text"
+                                                       :name="'topics[' + tIdx + '][labels][{{ $code }}]'"
+                                                       x-model="topic.labels['{{ $code }}']"
+                                                       maxlength="60"
+                                                       placeholder="{{ $langLabel }}"
+                                                       class="form-control wcs-topic-label-input">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="wcs-topics-add" x-show="form.topics.length < 6">
+                            <button type="button" class="btn btn-outline btn-sm" @click="addTopic()">
+                                <i class="ri-add-line"></i> {{ __('ui.webchat_settings.add_topic') }}
+                            </button>
+                        </div>
+
+                        @error('topics') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('topics.*') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('topics.*.labels') <div class="form-error">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+
                 {{-- Security card --}}
                 <div class="card wcs-card">
                     <div class="card-header"><div class="card-title">{{ __('ui.webchat_settings.card_security') }}</div></div>
@@ -468,6 +556,29 @@ function webchatSettings() {
             this.newDomain = '';
         },
         removeDomain(idx) { this.form.allowed_domains.splice(idx, 1); },
+
+        addTopic() {
+            if (this.form.topics.length >= 6) return;
+            // Rotate the default tint so successive rows get distinct colors.
+            const palette = ['blue','orange','green','purple','red','gray','teal'];
+            const tint    = palette[this.form.topics.length % palette.length];
+            this.form.topics.push({
+                tint:   tint,
+                action: 'message',
+                labels: { ar: '', en: '', fr: '' },
+            });
+        },
+        removeTopic(idx) { this.form.topics.splice(idx, 1); },
+        moveTopicUp(idx) {
+            if (idx <= 0) return;
+            const [t] = this.form.topics.splice(idx, 1);
+            this.form.topics.splice(idx - 1, 0, t);
+        },
+        moveTopicDown(idx) {
+            if (idx >= this.form.topics.length - 1) return;
+            const [t] = this.form.topics.splice(idx, 1);
+            this.form.topics.splice(idx + 1, 0, t);
+        },
 
         ensureDefaultLangInList() {
             // Keep at least one language enabled + make sure default_lang is
@@ -711,6 +822,62 @@ function webchatSettings() {
         flex-direction: column; gap: .5rem; color: var(--text-muted); font-size: .875rem;
     }
     .wcs-preview-disabled i { font-size: 2rem; opacity: .4; }
+
+    /* ── Welcome topics editor ──────────────────────────────────────── */
+    .wcs-topics { display: flex; flex-direction: column; gap: .75rem; margin-top: .75rem; }
+    .wcs-topic-row {
+        border: 1px solid var(--card-border, #e5e7eb);
+        border-radius: 10px;
+        padding: .75rem;
+        background: var(--card-bg, #fff);
+        display: flex; flex-direction: column; gap: .625rem;
+    }
+    .wcs-topic-head {
+        display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    }
+    .wcs-topic-index {
+        width: 24px; height: 24px; border-radius: 999px;
+        background: var(--brand-soft, #eef2ff); color: var(--brand, #6366f1);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: .8125rem; font-weight: 700;
+    }
+    .wcs-topic-actions { margin-inline-start: auto; display: flex; gap: .25rem; }
+
+    .wcs-tint-picker { display: inline-flex; gap: .3125rem; align-items: center; }
+    .wcs-tint-dot {
+        width: 22px; height: 22px; border-radius: 999px;
+        border: 2px solid transparent;
+        padding: 0; cursor: pointer;
+        transition: transform .12s ease, border-color .12s ease;
+    }
+    .wcs-tint-dot:hover { transform: scale(1.1); }
+    .wcs-tint-dot-active { border-color: var(--text-primary, #0f172a); transform: scale(1.1); }
+    .wcs-tint-dot-blue   { background: #3b82f6; }
+    .wcs-tint-dot-orange { background: #f97316; }
+    .wcs-tint-dot-green  { background: #10b981; }
+    .wcs-tint-dot-purple { background: #8b5cf6; }
+    .wcs-tint-dot-red    { background: #ef4444; }
+    .wcs-tint-dot-gray   { background: #6b7280; }
+    .wcs-tint-dot-teal   { background: #14b8a6; }
+
+    .wcs-topic-action-row { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .8125rem; }
+    .wcs-topic-action-opt {
+        display: inline-flex; align-items: center; gap: .375rem;
+        color: var(--text-primary, #0f172a); cursor: pointer;
+    }
+    .wcs-topic-action-opt input { accent-color: var(--brand, #6366f1); }
+
+    .wcs-topic-labels { display: flex; flex-direction: column; gap: .375rem; }
+    .wcs-topic-label-group {
+        display: grid; grid-template-columns: 42px 1fr; gap: .5rem; align-items: center;
+    }
+    .wcs-topic-label-tag {
+        font-size: .6875rem; font-weight: 700; letter-spacing: .05em;
+        color: var(--text-muted, #64748b); text-align: center;
+    }
+    .wcs-topic-label-input { font-size: .8125rem; }
+
+    .wcs-topics-add { margin-top: .75rem; }
 </style>
 @endpush
 @endsection

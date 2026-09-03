@@ -47,6 +47,9 @@ class WidgetSettingsController extends Controller
             'show_branding'       => (bool) ($data['show_branding'] ?? false),
             'default_lang'        => $defaultLang,
             'available_languages' => $languages,
+            // Empty array → widget.js falls back to its hardcoded defaults.
+            // Non-empty → tenant overrides win.
+            'topics'              => empty($data['topics']) ? null : $data['topics'],
             'allowed_domains'     => $data['allowed_domains'] ?? [],
         ])->save();
 
@@ -122,6 +125,31 @@ class WidgetSettingsController extends Controller
         if (empty($languages)) $languages = ['ar', 'en'];
         $request->merge(['available_languages' => $languages]);
 
+        // Topics — same shape the widget consumes:
+        //   [{ tint, action, labels: { ar, en, fr } }, ...]
+        // Drop rows where every language label is empty; that's what "user
+        // left the row blank" looks like in the per-language editor.
+        $allowedLangs = ['ar', 'en', 'fr'];
+        $allowedTints = ['blue', 'orange', 'green', 'purple', 'red', 'gray', 'teal'];
+        $topics = collect($request->input('topics', []))
+            ->filter(fn ($t) => is_array($t))
+            ->map(function ($t) use ($allowedLangs) {
+                $labels = [];
+                foreach ($allowedLangs as $lang) {
+                    $v = trim((string) ($t['labels'][$lang] ?? ''));
+                    if ($v !== '') $labels[$lang] = mb_substr($v, 0, 60);
+                }
+                return [
+                    'tint'   => is_string($t['tint'] ?? null) ? $t['tint'] : 'blue',
+                    'action' => (($t['action'] ?? '') === 'agent') ? 'agent' : 'message',
+                    'labels' => $labels,
+                ];
+            })
+            ->filter(fn ($t) => !empty($t['labels']))
+            ->values()
+            ->all();
+        $request->merge(['topics' => $topics]);
+
         $validator = Validator::make($request->all(), [
             'name'               => ['required', 'string', 'max:120'],
             'enabled'            => ['sometimes', 'boolean'],
@@ -142,6 +170,13 @@ class WidgetSettingsController extends Controller
             'available_languages.*'=> ['in:ar,en,fr'],
             'allowed_domains'    => ['array', 'max:32'],
             'allowed_domains.*'  => ['string', 'regex:/^https?:\/\/[a-zA-Z0-9.\-]+(:[0-9]{1,5})?$/', 'max:255'],
+            'topics'              => ['array', 'max:6'],
+            'topics.*.tint'       => ['required', 'in:' . implode(',', $allowedTints)],
+            'topics.*.action'     => ['required', 'in:message,agent'],
+            'topics.*.labels'     => ['required', 'array', 'min:1'],
+            'topics.*.labels.ar'  => ['nullable', 'string', 'max:60'],
+            'topics.*.labels.en'  => ['nullable', 'string', 'max:60'],
+            'topics.*.labels.fr'  => ['nullable', 'string', 'max:60'],
         ], [
             'theme_color.regex'       => __('ui.webchat_settings.err_theme_color'),
             'allowed_domains.*.regex' => __('ui.webchat_settings.err_domain_format'),

@@ -71,6 +71,9 @@ class SessionController extends Controller
                 'show_branding'      => (bool) $widget->show_branding,
                 'default_lang'       => $widget->default_lang ?: 'ar',
                 'available_languages'=> $this->normalizeLangs($widget->available_languages),
+                // null → widget.js uses its hardcoded per-language defaults.
+                // Otherwise: [{tint, action, labels:{ar,en,fr}}, ...].
+                'topics'             => $widget->topics,
                 'pre_chat_ask_email' => (bool) $widget->pre_chat_ask_email,
             ],
             // Reverb credentials the widget needs to open a WebSocket. Values
