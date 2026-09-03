@@ -16,9 +16,9 @@
         top: 0; right: 0; bottom: 0; left: 0;
         background: rgba(15, 23, 42, .55);
         z-index: 10000;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         padding: 1rem;
         box-sizing: border-box;
     }
