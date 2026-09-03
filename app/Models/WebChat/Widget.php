@@ -21,6 +21,7 @@ class Widget extends Model
         'offline_message', 'theme_color', 'position', 'launcher_text',
         'header_subtitle', 'launcher_icon', 'bubble_style', 'show_branding',
         'default_lang', 'available_languages',
+        'topics',
         'allowed_domains',
     ];
 
@@ -31,6 +32,7 @@ class Widget extends Model
         'show_branding'       => 'boolean',
         'suggestions'         => 'array',
         'available_languages' => 'array',
+        'topics'              => 'array',
         'allowed_domains'     => 'array',
     ];
 

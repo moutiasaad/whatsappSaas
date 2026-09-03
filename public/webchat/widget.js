@@ -1121,7 +1121,8 @@
         wrap.appendChild(_('div', { class: 'wvch-welcome-sub', text: subText }));
 
         var list = _('div', { class: 'wvch-topics', role: 'list' });
-        t().topics.forEach(function (topic, i) {
+        var topics = resolveTopics();
+        topics.forEach(function (topic, i) {
             var badge = _('span', { class: 'wvch-topic-num', text: toDigit(i + 1) });
             var card = _('button', {
                 class: 'wvch-topic wvch-topic-' + topic.tint,
@@ -1142,10 +1143,39 @@
         el.body.appendChild(wrap);
     }
 
+    // Prefer tenant-configured topics from the boot payload; fall back to the
+    // hardcoded per-language defaults so existing widgets keep working when
+    // the tenant hasn't customized anything yet.
+    //
+    // Server shape: [{ tint, action, labels: { ar?, en?, fr? } }, ...]
+    // Rendered shape: { tint, label, action }
+    function resolveTopics() {
+        var configured = S.widget && S.widget.topics;
+        if (!Array.isArray(configured) || configured.length === 0) {
+            // Legacy hardcoded shape already carries `id` + `label` — return as-is.
+            return t().topics;
+        }
+        var defaultLang = (S.widget && S.widget.default_lang) || S.lang;
+        return configured.map(function (topic) {
+            var labels = (topic && topic.labels) || {};
+            // Prefer visitor's current language, then tenant default,
+            // then any non-empty label so the row is never rendered blank.
+            var label = labels[S.lang] || labels[defaultLang] ||
+                        labels.en || labels.ar || labels.fr || '';
+            return {
+                tint:   topic.tint || 'blue',
+                action: topic.action === 'agent' ? 'agent' : 'message',
+                label:  String(label)
+            };
+        }).filter(function (t) { return t.label.trim() !== ''; });
+    }
+
     function onTopicClick(topic) {
         // Every topic goes through the real backend so answers come from the
         // AI / assigned agent — the typing dots animate until the reply lands.
-        if (topic.id === 't-agent') {
+        // `action === 'agent'` is the new server-configured signal; legacy
+        // hardcoded topics still carry `id === 't-agent'`.
+        if (topic.action === 'agent' || topic.id === 't-agent') {
             requestAgent();
             return;
         }

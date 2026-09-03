@@ -1850,6 +1850,12 @@ Toujours :
         'label_default_lang'     => 'Langue par défaut',
         'help_default_lang'      => 'Langue affichée à la première ouverture du widget.',
 
+        'card_topics'            => 'Sujets d’accueil',
+        'help_topics'            => 'Cartes affichées sur l’écran d’accueil du widget. Ajoutez jusqu’à 6 sujets, choisissez une couleur, et précisez si un clic envoie le libellé comme message ou connecte à un agent humain. Renseignez un libellé pour chaque langue activée ; à défaut, la langue par défaut est utilisée.',
+        'add_topic'              => 'Ajouter un sujet',
+        'topic_action_message'   => 'Envoyer comme message',
+        'topic_action_agent'     => 'Connecter à un agent',
+
         'label_allowed_domains'  => 'Origines autorisées',
         'help_allowed_domains'   => 'Origines complètes où le widget peut se charger. Laissez vide pour autoriser toute origine (utile en développement). Format : https://exemple.com',
         'placeholder_domain'     => 'https://votre-site.com',
