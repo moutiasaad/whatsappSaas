@@ -73,7 +73,7 @@ class WebChatAutoReplyService
                 $settings->increment('tokens_used_this_period', $tokens);
             }
 
-            $text = trim($response->content[0]->text ?? '');
+            $text = PromptBuilder::sanitizeReply((string) ($response->content[0]->text ?? ''));
 
             if ($text === '') {
                 Log::channel('webchat')->warning('AI: empty response', [

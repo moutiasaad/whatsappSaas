@@ -19,11 +19,24 @@ class PromptBuilder
             $base = $customPrompt;
         } else {
             $base = implode("\n", [
-                "You are a helpful customer support assistant for {$tenant->name}.",
-                "Be concise, warm, and professional.",
-                "If you don't know the answer, politely say so and suggest the customer contact a human agent.",
+                "You are a customer support assistant for {$tenant->name}.",
+                "If you don't know the answer, say so plainly and suggest the customer wait for a human agent.",
             ]);
         }
+
+        // Style guardrails — appended even to custom prompts because the
+        // widget/WhatsApp bubbles render plain text (markdown shows as raw
+        // asterisks) and the model otherwise opens with sycophantic
+        // pleasantries like "Excellente question !".
+        $base .= "\n\n" . implode("\n", [
+            "## Response style (strict)",
+            "- Answer immediately. Never open with pleasantries like \"Great question\", \"Excellent question\", \"Excellente question\", \"Bien sûr\", \"Certainly\", \"Of course\", \"Absolutely\", or any variant. Start with the actual answer.",
+            "- Keep replies short: 1–3 short sentences by default. Only go longer if the user explicitly asks for detail.",
+            "- Plain text only. NO markdown: no **bold**, no *italics*, no ## headings, no bullet lists with `-` or `*`. Write natural prose.",
+            "- Do not restate the user's question before answering.",
+            "- Do not end with meta phrases like \"I hope this helps\" or \"Let me know if you need more info\" unless a follow-up question is genuinely useful.",
+            "- Match the user's language automatically (French, English, or Arabic).",
+        ]);
 
         // Append Knowledge Base entries on top of whatever base prompt is set
         $entries = KnowledgeEntry::withoutGlobalScope('tenant')
@@ -76,6 +89,46 @@ class PromptBuilder
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * Clean an AI-generated reply before it hits WhatsApp/webchat bubbles.
+     * Strips markdown that would render as raw asterisks in plain-text
+     * surfaces and drops sycophantic openers that leak past the prompt.
+     */
+    public static function sanitizeReply(string $text): string
+    {
+        // Bold + italic (both `**x**` / `__x__` and `*x*` / `_x_`)
+        $text = preg_replace('/\*\*(.+?)\*\*/s', '$1', $text);
+        $text = preg_replace('/__(.+?)__/s', '$1', $text);
+        $text = preg_replace('/(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/s', '$1', $text);
+        $text = preg_replace('/(?<![\w_])_(?!\s)(.+?)(?<!\s)_(?![\w_])/s', '$1', $text);
+
+        // Leading `#`, `##`, `###` heading marks at line start
+        $text = preg_replace('/^\s{0,3}#{1,6}\s+/m', '', $text);
+
+        // Sycophantic openers on the first line. The pattern matches the
+        // whole phrase up to and including the punctuation + space that
+        // usually follows it, so the real answer starts cleanly.
+        $openers = [
+            'excellente question',
+            'excellent question',
+            'great question',
+            'good question',
+            'très bonne question',
+            'bonne question',
+            'bien sûr',
+            'bien sur',
+            'of course',
+            'certainly',
+            'absolutely',
+            'sure thing',
+            'sure',
+        ];
+        $pattern = '/^\s*(?:' . implode('|', array_map('preg_quote', $openers)) . ')\s*[!.,:;]+\s*/i';
+        $text = preg_replace($pattern, '', $text);
+
+        return trim($text);
     }
 
     public function buildMessages(Conversation $conversation, int $limit = 20): array
