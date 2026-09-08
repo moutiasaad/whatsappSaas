@@ -10,6 +10,7 @@ use App\Models\WebhookEvent;
 use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class InstanceWebController extends Controller
 {
@@ -150,7 +151,7 @@ class InstanceWebController extends Controller
 
         $data = $request->validate([
             'name'    => 'required|string|max:100',
-            'team_id' => 'nullable|exists:teams,id',
+            'team_id' => ['nullable', Rule::exists('teams', 'id')->where('tenant_id', $tenantId)],
         ]);
 
         $data['gateway']         = 'evolution_api';
@@ -236,7 +237,7 @@ class InstanceWebController extends Controller
 
         $data = $request->validate([
             'name'    => 'required|string|max:100',
-            'team_id' => 'nullable|exists:teams,id',
+            'team_id' => ['nullable', Rule::exists('teams', 'id')->where('tenant_id', $instance->tenant_id)],
         ]);
 
         $instance->update($data);
