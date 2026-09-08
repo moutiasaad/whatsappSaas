@@ -250,7 +250,14 @@ class InstanceController extends Controller
         try {
             return $gateway->createInstance($name);
         } catch (\Throwable $e) {
-            if (stripos($e->getMessage(), 'already exists') !== false) {
+            // Different gateway versions phrase the name-clash error differently:
+            // iStoreBox now returns "This name ... is already in use", older
+            // Evolution builds returned "Instance already exists". Both mean
+            // "reuse the existing one".
+            $msg = strtolower($e->getMessage());
+            if (str_contains($msg, 'already exists')
+                || str_contains($msg, 'already in use')
+                || str_contains($msg, 'already registered')) {
                 return [];
             }
             throw $e;

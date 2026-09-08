@@ -257,13 +257,25 @@ class InstanceWebController extends Controller
     {
         $this->ensureInstanceAccess($instance);
 
-        try {
-            if ($instance->gateway_instance_id && $instance->hasGatewayCredentials()) {
-                $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
-                $gateway->logout($instance->gateway_instance_id);
+        // The gateway name is deterministic (wa-<tenant>-<id>), so a row whose
+        // gateway_instance_id is null may still have a stale entry on the
+        // gateway from a previous connect attempt. Try both keys so the name
+        // is freed and the next create with the same tenant/id can succeed.
+        if ($instance->hasGatewayCredentials()) {
+            $candidates = array_unique(array_filter([
+                $instance->gateway_instance_id,
+                'wa-' . $instance->tenant_id . '-' . $instance->id,
+            ]));
+
+            $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+            foreach ($candidates as $name) {
+                try {
+                    $gateway->deleteInstance($name);
+                } catch (\Throwable $e) {
+                    // Best-effort — a missing / already-deleted instance is fine.
+                    report($e);
+                }
             }
-        } catch (\Throwable $e) {
-            report($e);
         }
 
         AuditLog::record('instance.deleted', $instance, ['name' => $instance->name]);
