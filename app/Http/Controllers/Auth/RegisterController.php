@@ -43,9 +43,13 @@ class RegisterController extends Controller
             'plan_id'      => 'required|exists:plans,id',
         ]);
 
-        $plan   = Plan::findOrFail($request->plan_id);
-        $isFree = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
-        $slug   = $this->generateSlug($request->company_name);
+        $plan = Plan::findOrFail($request->plan_id);
+        $slug = $this->generateSlug($request->company_name);
+
+        // Every signup gets a trial on the plan they picked — no payment at
+        // signup. CheckSubscription starts blocking API access when
+        // trial_ends_at passes, at which point they must pay from /billing.
+        $trialDays = (int) config('app.trial_days', 7);
 
         DB::beginTransaction();
         try {
@@ -53,9 +57,9 @@ class RegisterController extends Controller
                 'name'                => $request->company_name,
                 'slug'                => $slug,
                 'plan_id'             => $plan->id,
-                'subscription_status' => $isFree ? 'trial' : 'suspended',
-                'trial_ends_at'       => $isFree ? now()->addDays((int) config('app.trial_days', 14)) : null,
-                'is_active'           => $isFree,
+                'subscription_status' => 'trial',
+                'trial_ends_at'       => now()->addDays($trialDays),
+                'is_active'           => true,
             ]);
 
             $user = User::create([
@@ -77,17 +81,10 @@ class RegisterController extends Controller
                 ->withErrors(['general' => __('auth.register.server_error')]);
         }
 
-        if ($isFree) {
-            Auth::login($user);
+        Auth::login($user);
 
-            return redirect()->route('tenant_admin.dashboard')
-                ->with('success', __('auth.register.welcome_trial'));
-        }
-
-        // Paid plan — the workspace stays suspended until the payment lands.
-        session(['_pending_register_user' => $user->id]);
-
-        return redirect()->route('payment.checkout', ['tenant' => $tenant->id]);
+        return redirect()->route('tenant_admin.dashboard')
+            ->with('success', __('auth.register.welcome_trial'));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
