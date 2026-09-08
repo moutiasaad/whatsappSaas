@@ -83,7 +83,13 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
 $registerPanelRoutes = function (string $prefix, string $namePrefix, array $roles, bool $includeManagement, bool $legacy = false): void {
-    $middleware = ['auth', ResolveTenant::class, 'role:' . implode(',', $roles)];
+    // 'subscription' gates the whole panel so a suspended tenant loses access
+    // to server-rendered pages (conversations, customers, archive, reports)
+    // and not only to the JSON API. Super admins are exempted inside the
+    // middleware itself. Billing and profile routes clear the middleware
+    // individually so a lapsed tenant can still pay to reactivate and
+    // manage credentials.
+    $middleware = ['auth', ResolveTenant::class, 'subscription', 'role:' . implode(',', $roles)];
     if ($legacy) {
         $middleware[] = 'role_path';
     }
@@ -141,12 +147,15 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             // Impersonation leave route (when admin is currently impersonating)
             Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
 
-            // Profile — all roles
-            Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
-            Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
-            Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
-            Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
-            Route::post('/profile/regenerate-api-key', [ProfileController::class, 'regenerateApiKey'])->name('profile.regenerate-api-key');
+            // Profile — all roles. Exempted from the subscription gate so a
+            // lapsed tenant's users can still see and manage their own account.
+            Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class])->group(function () {
+                Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+                Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+                Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
+                Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
+                Route::post('/profile/regenerate-api-key', [ProfileController::class, 'regenerateApiKey'])->name('profile.regenerate-api-key');
+            });
 
             if (!$includeManagement && in_array('supervisor', $roles, true)) {
                 Route::middleware('role:supervisor')->group(function () {
@@ -198,10 +207,14 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 // Audit Log
                 Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
 
-                // Billing — accessible to both admin and super_admin (controller gates by role)
-                Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
-                Route::get('/billing/payments', [BillingController::class, 'payments'])->name('billing.payments');
-                Route::get('/billing/payments/{payment}', [BillingController::class, 'showPayment'])->name('billing.payment.show');
+                // Billing — accessible to both admin and super_admin (controller gates by role).
+                // Exempted from the subscription gate so a lapsed tenant can still reach the
+                // page that lets them pay to reactivate.
+                Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class])->group(function () {
+                    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+                    Route::get('/billing/payments', [BillingController::class, 'payments'])->name('billing.payments');
+                    Route::get('/billing/payments/{payment}', [BillingController::class, 'showPayment'])->name('billing.payment.show');
+                });
 
                 // Settings
                 Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
