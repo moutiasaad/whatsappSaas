@@ -607,11 +607,23 @@ class PaymentController extends Controller
             return;
         }
 
+        $currentEnd    = $tenant->subscription_ends_at;
+        $hasLivePeriod = $currentEnd && $currentEnd->isFuture();
+
+        // Renewing early must not discard time already paid for: extend from the
+        // existing end date when it is still in the future, otherwise from today.
+        $base = $hasLivePeriod ? $currentEnd : now();
+
         $tenant->update([
             'plan_id'                => $payment->plan_id,
             'subscription_status'    => 'active',
-            'subscription_starts_at' => now(),
-            'subscription_ends_at'   => now()->addMonth(),
+            // starts_at anchors the period, so it survives a renewal and only
+            // resets when there was no live period to extend.
+            'subscription_starts_at' => $hasLivePeriod
+                ? $tenant->subscription_starts_at
+                : now(),
+            // NoOverflow: Jan 31 + 1 month is Feb 28, not Mar 3.
+            'subscription_ends_at'   => $base->copy()->addMonthNoOverflow(),
             'is_active'              => true,
         ]);
     }
