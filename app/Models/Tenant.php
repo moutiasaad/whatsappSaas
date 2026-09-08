@@ -35,7 +35,7 @@ class Tenant extends Model
     public function isActive(): bool
     {
         if (!$this->is_active) return false;
-        if (!in_array($this->subscription_status, ['active'])) return false;
+        if (!in_array($this->subscription_status, ['active', 'trial'], true)) return false;
         if ($this->subscription_ends_at && $this->subscription_ends_at->isPast()) return false;
         return true;
     }
