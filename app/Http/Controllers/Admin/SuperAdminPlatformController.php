@@ -179,7 +179,7 @@ class SuperAdminPlatformController extends Controller
                 'subscription_ends_at'   => $endsAt,
                 'stripe_id'              => $data['stripe_id'] ?? null,
                 'settings'               => $this->parseSettings($data['settings'] ?? null),
-                'is_active'              => $status === 'active',
+                'is_active'              => in_array($status, ['active', 'trial'], true),
             ]);
 
             if (!empty($data['admin_email']) || !empty($data['admin_password']) || !empty($data['admin_name'])) {
