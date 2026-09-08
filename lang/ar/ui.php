@@ -1020,6 +1020,8 @@ return [
     ],
     'controller_messages' => [
         'unauthorized' => 'غير مصرح.',
+        'instance_limit_reached' => 'خطتك تسمح بـ :count حساب واتساب.',
+        'user_limit_reached' => 'خطتك تسمح بـ :count مستخدم.',
         'not_allowed_to_manage_team' => 'غير مسموح لك بإدارة هذا الفريق.',
         'invalid_selected_team_members' => 'واحد أو أكثر من أعضاء الفريق المحددين غير صالحين.',
         'invalid_selected_teams' => 'واحد أو أكثر من الفرق المحددة غير صالحين.',

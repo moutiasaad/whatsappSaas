@@ -115,6 +115,9 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $actor = $this->actor();
+
+        app(\App\Services\Billing\TenantQuota::class)->assertCanCreateUser($actor);
+
         $isSuperAdmin = $actor->isSuperAdmin();
 
         $data = $request->validate([

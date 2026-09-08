@@ -35,6 +35,8 @@ class InstanceController extends Controller
         $user     = auth()->user();
         $tenantId = $user->tenant_id;
 
+        app(\App\Services\Billing\TenantQuota::class)->assertCanCreateInstance($user);
+
         $request->validate([
             'name'    => 'required|string|max:100',
             'team_id' => 'nullable|integer|exists:teams,id',

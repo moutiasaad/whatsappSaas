@@ -55,18 +55,19 @@ class InstanceWebController extends Controller
         }
 
         $tenantId    = auth()->user()->tenant_id;
-        $hasInstance = $tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists();
+        $canCreateInstance = app(\App\Services\Billing\TenantQuota::class)->canCreateInstance(auth()->user());
 
-        return view('admin.instances.index', compact('hasInstance', 'isSuperAdmin'));
+        return view('admin.instances.index', compact('canCreateInstance', 'isSuperAdmin'));
     }
 
     public function create()
     {
         $tenantId = auth()->user()->tenant_id;
 
-        if ($tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists()) {
+        $quota = app(\App\Services\Billing\TenantQuota::class);
+        if (!$quota->canCreateInstance(auth()->user())) {
             return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
-                ->with('error', __('ui.controller_messages.instance_limit_reached'));
+                ->with('error', __('ui.controller_messages.instance_limit_reached', ['count' => $quota->instanceLimit(auth()->user())]));
         }
 
         $teams  = Team::where('is_active', true)->orderBy('name')->get();
@@ -82,9 +83,10 @@ class InstanceWebController extends Controller
     {
         $tenantId = auth()->user()->tenant_id;
 
-        if ($tenantId && WhatsAppInstance::where('tenant_id', $tenantId)->exists()) {
+        $quota = app(\App\Services\Billing\TenantQuota::class);
+        if (!$quota->canCreateInstance(auth()->user())) {
             return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
-                ->with('error', __('ui.controller_messages.instance_limit_reached'));
+                ->with('error', __('ui.controller_messages.instance_limit_reached', ['count' => $quota->instanceLimit(auth()->user())]));
         }
 
         $data = $request->validate([
