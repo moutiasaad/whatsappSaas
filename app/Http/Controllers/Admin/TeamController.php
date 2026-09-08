@@ -16,6 +16,10 @@ class TeamController extends Controller
     {
         $user = auth()->user();
 
+        if (!$user->isSuperAdmin() && (int) $team->tenant_id !== (int) $user->tenant_id) {
+            abort(403, __('ui.controller_messages.not_allowed_to_manage_team'));
+        }
+
         if (!$user->isSupervisor()) {
             return;
         }
@@ -187,6 +191,8 @@ class TeamController extends Controller
 
     public function destroy(Request $request, Team $team)
     {
+        $this->ensureTeamAccess($team);
+
         AuditLog::record('team.deleted', $team, ['name' => $team->name]);
         $team->delete();
 
