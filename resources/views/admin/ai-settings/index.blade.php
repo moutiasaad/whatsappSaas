@@ -47,52 +47,88 @@ $modes = [
     'hybrid' => [
         'label' => __('ui.ai_settings_page.modes.hybrid.label'),
         'desc'  => __('ui.ai_settings_page.modes.hybrid.desc'),
-        'color' => '#8b5cf6',
-        'shadow'=> 'rgba(139,92,246,.22)',
-        'bg'    => 'rgba(139,92,246,.07)',
+        'color' => '#15b6a8',
+        'shadow'=> 'rgba(21,182,168,.22)',
+        'bg'    => 'rgba(21,182,168,.07)',
         'icon'  => 'ri-git-branch-line',
     ],
-];
-$sampleTests = [
-    __('ui.ai_settings_page.sample_1'),
-    __('ui.ai_settings_page.sample_2'),
-    __('ui.ai_settings_page.sample_3'),
 ];
 @endphp
 
 <style>
-.ai-mode-card {
-    border: 2px solid var(--card-border);
-    border-radius: 1rem;
-    padding: 1.375rem 1rem 1.125rem;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color .18s, box-shadow .18s, background .18s, transform .12s;
-    width: 100%;
-    background: transparent;
-    position: relative;
-    overflow: hidden;
+.ai-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
 }
-.ai-mode-card:hover { transform: translateY(-1px); }
+@media (max-width: 1100px) { .ai-mode-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px)  { .ai-mode-grid { grid-template-columns: 1fr; } }
+
+.ai-mode-card {
+    border: 1.5px solid var(--card-border);
+    border-radius: .875rem;
+    padding: 1rem;
+    text-align: start;
+    cursor: pointer;
+    transition: border-color .16s, box-shadow .16s, background .16s;
+    width: 100%;
+    background: var(--card-bg);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    min-height: 100%;
+}
+.ai-mode-card:hover { border-color: var(--border-2, #cbd5e1); }
+.ai-mode-card .mode-top { display: flex; align-items: center; gap: .625rem; }
 .ai-mode-card .mode-icon {
-    width: 2.75rem; height: 2.75rem; border-radius: 50%;
+    width: 2rem; height: 2rem; border-radius: .5rem;
     display: flex; align-items: center; justify-content: center;
-    margin: 0 auto .875rem; font-size: 1.25rem;
-    transition: background .18s, color .18s;
+    font-size: 1rem; flex-shrink: 0;
+    transition: background .16s, color .16s;
     background: var(--page-bg); color: var(--text-muted);
 }
 .ai-mode-card .mode-label {
-    font-weight: 700; font-size: .875rem; margin-bottom: .3rem;
-    color: var(--text-primary); transition: color .18s;
+    font-weight: 700; font-size: .875rem; letter-spacing: -.01em;
+    color: var(--text-primary); transition: color .16s;
+}
+.ai-mode-card .mode-check {
+    margin-inline-start: auto; width: 1.05rem; height: 1.05rem; border-radius: 50%;
+    border: 1.5px solid var(--card-border); display: grid; place-items: center;
+    color: #fff; font-size: .6rem; flex-shrink: 0; transition: .16s;
 }
 .ai-mode-card .mode-desc {
-    font-size: .75rem; color: var(--text-muted); line-height: 1.4;
+    font-size: .75rem; color: var(--text-muted); line-height: 1.45;
 }
-.ai-mode-card::after {
-    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 0; height: 3px; border-radius: 3px 3px 0 0;
-    transition: width .2s;
+
+/* channel switches */
+.ai-channel {
+    display: flex; align-items: flex-start; gap: .875rem;
+    padding: 1rem; border: 1.5px solid var(--card-border);
+    border-radius: .875rem; transition: border-color .16s, background .16s;
 }
+.ai-channel.on { border-color: var(--brand); background: var(--brand-xlight); }
+.ai-channel .ch-icon {
+    width: 2.25rem; height: 2.25rem; border-radius: .625rem; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 1.05rem; color: #fff;
+}
+.ai-channel .ch-m { flex: 1; min-width: 0; }
+.ai-channel .ch-name { font-size: .875rem; font-weight: 600; color: var(--text-primary); }
+.ai-channel .ch-desc { font-size: .75rem; color: var(--text-muted); margin-top: .15rem; line-height: 1.45; }
+.ai-switch {
+    width: 2.5rem; height: 1.4rem; border-radius: 999px; background: var(--card-border);
+    position: relative; flex-shrink: 0; transition: background .16s; border: none; cursor: pointer;
+    margin-top: .15rem;
+}
+.ai-switch::after {
+    content: ''; position: absolute; top: .175rem; inset-inline-start: .175rem;
+    width: 1.05rem; height: 1.05rem; border-radius: 50%; background: #fff;
+    transition: inset-inline-start .16s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.ai-switch.on { background: var(--brand); }
+.ai-switch.on::after { inset-inline-start: 1.275rem; }
+.ai-switch:disabled { opacity: .45; cursor: not-allowed; }
+
 .lang-btn {
     border: 1.5px solid var(--card-border); border-radius: .625rem;
     padding: .5rem .375rem; cursor: pointer; font-size: .8rem;
@@ -111,27 +147,6 @@ $sampleTests = [
     background: transparent; color: var(--text-secondary);
 }
 .count-btn:hover { border-color: var(--brand); color: var(--brand); }
-.sample-chip {
-    display: inline-flex; align-items: center; gap: .35rem;
-    padding: .3rem .75rem; border-radius: 999px; font-size: .75rem;
-    border: 1px solid var(--card-border); background: var(--page-bg);
-    cursor: pointer; transition: all .15s; color: var(--text-secondary);
-    white-space: nowrap;
-}
-.sample-chip:hover { border-color: var(--brand); color: var(--brand); background: rgba(16,185,129,.05); }
-.ai-response-box {
-    padding: 1rem; border-radius: .75rem;
-    background: rgba(16,185,129,.05); border: 1px solid rgba(16,185,129,.18);
-}
-.ai-response-label {
-    font-size: .6875rem; font-weight: 700; color: var(--brand);
-    text-transform: uppercase; letter-spacing: .07em;
-    display: flex; align-items: center; gap: .375rem; margin-bottom: .5rem;
-}
-.ai-response-text {
-    font-size: .8125rem; color: var(--text-secondary);
-    white-space: pre-wrap; line-height: 1.6;
-}
 .info-badge {
     padding: .75rem 1rem; border-radius: .625rem;
     display: flex; gap: .625rem; align-items: flex-start;
@@ -153,37 +168,104 @@ $sampleTests = [
         <input type="hidden" name="mode" :value="selectedMode">
 
         {{-- ── Mode selector ──────────────────────────────────────────────── --}}
-        <div class="card" style="margin-bottom:1.5rem;padding:1.5rem;">
-            <div style="font-weight:700;font-size:.9375rem;color:var(--text-primary);margin-bottom:.25rem;">
-                {{ __('ui.ai_settings_page.ai_mode') }}
+        <div class="card" style="margin-bottom:1.25rem">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">{{ __('ui.ai_settings_page.ai_mode') }}</div>
+                    <div class="card-subtitle">{{ __('ui.ai_settings_page.ai_mode_hint') }}</div>
+                </div>
             </div>
-            <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:1.25rem;">
-                {{ __('ui.ai_settings_page.ai_mode_hint') }}
+            <div style="padding:0 1.5rem 1.5rem">
+                <div class="ai-mode-grid">
+                    @foreach($modes as $value => $mode)
+                    <button type="button"
+                            class="ai-mode-card"
+                            @click="selectedMode = '{{ $value }}'"
+                            :style="selectedMode === '{{ $value }}'
+                                ? 'border-color:{{ $mode['color'] }};background:{{ $mode['bg'] }};box-shadow:0 3px 14px {{ $mode['shadow'] }};'
+                                : ''">
+                        <span class="mode-top">
+                            <span class="mode-icon"
+                                  :style="selectedMode === '{{ $value }}' ? 'background:{{ $mode['color'] }};color:#fff;' : ''">
+                                <i class="{{ $mode['icon'] }}"></i>
+                            </span>
+                            <span class="mode-label"
+                                  :style="selectedMode === '{{ $value }}' ? 'color:{{ $mode['color'] }}' : ''">
+                                {{ $mode['label'] }}
+                            </span>
+                            <span class="mode-check"
+                                  :style="selectedMode === '{{ $value }}'
+                                      ? 'background:{{ $mode['color'] }};border-color:{{ $mode['color'] }}'
+                                      : ''">
+                                <i class="ri-check-line" x-show="selectedMode === '{{ $value }}'"></i>
+                            </span>
+                        </span>
+                        <span class="mode-desc">{{ $mode['desc'] }}</span>
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Channels: where the AI is allowed to answer ─────────────────── --}}
+        <div class="card" style="margin-bottom:1.25rem" x-show="selectedMode !== 'off'">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">{{ __('ui.ai_settings_page.channels') }}</div>
+                    <div class="card-subtitle">{{ __('ui.ai_settings_page.channels_hint') }}</div>
+                </div>
+            </div>
+            <div style="padding:0 1.5rem 1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem" class="ai-channels">
+                <div class="ai-channel" :class="{ 'on': whatsappEnabled }">
+                    <div class="ch-icon" style="background:#25a35a">
+                        <i class="ri-whatsapp-line"></i>
+                    </div>
+                    <div class="ch-m">
+                        <div class="ch-name">{{ __('ui.ai_settings_page.channel_whatsapp') }}</div>
+                        <div class="ch-desc">{{ __('ui.ai_settings_page.channel_whatsapp_hint') }}</div>
+                    </div>
+                    <button type="button" class="ai-switch" :class="{ 'on': whatsappEnabled }"
+                            @click="whatsappEnabled = !whatsappEnabled"
+                            :aria-pressed="whatsappEnabled ? 'true' : 'false'"
+                            aria-label="{{ __('ui.ai_settings_page.channel_whatsapp') }}"></button>
+                    <input type="hidden" name="whatsapp_enabled" :value="whatsappEnabled ? 1 : 0">
+                </div>
+
+                <div class="ai-channel" :class="{ 'on': webchatEnabled }">
+                    <div class="ch-icon" style="background:#4f6bed">
+                        <i class="ri-chat-smile-2-line"></i>
+                    </div>
+                    <div class="ch-m">
+                        <div class="ch-name">{{ __('ui.ai_settings_page.channel_live_chat') }}</div>
+                        <div class="ch-desc">{{ __('ui.ai_settings_page.channel_live_chat_hint') }}</div>
+                    </div>
+                    <button type="button" class="ai-switch" :class="{ 'on': webchatEnabled }"
+                            @click="webchatEnabled = !webchatEnabled"
+                            :aria-pressed="webchatEnabled ? 'true' : 'false'"
+                            aria-label="{{ __('ui.ai_settings_page.channel_live_chat') }}"></button>
+                    <input type="hidden" name="webchat_enabled" :value="webchatEnabled ? 1 : 0">
+                </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;">
-                @foreach($modes as $value => $mode)
-                <button type="button"
-                        class="ai-mode-card"
-                        @click="selectedMode = '{{ $value }}'"
-                        :style="selectedMode === '{{ $value }}'
-                            ? 'border-color:{{ $mode['color'] }};background:{{ $mode['bg'] }};box-shadow:0 4px 18px {{ $mode['shadow'] }};'
-                            : ''">
-                    <div class="mode-icon"
-                         :style="selectedMode === '{{ $value }}'
-                             ? 'background:{{ $mode['color'] }};color:#fff;'
-                             : ''">
-                        <i class="{{ $mode['icon'] }}"></i>
+            <div style="padding:0 1.5rem 1.5rem">
+                <div class="ai-channel" :class="{ 'on': replyWhenClaimed }" style="padding:.875rem 1rem">
+                    <div class="ch-m">
+                        <div class="ch-name">{{ __('ui.ai_settings_page.reply_when_claimed') }}</div>
+                        <div class="ch-desc">{{ __('ui.ai_settings_page.reply_when_claimed_hint') }}</div>
                     </div>
-                    <div class="mode-label"
-                         :style="selectedMode === '{{ $value }}' ? 'color:{{ $mode['color'] }}' : ''">
-                        {{ $mode['label'] }}
-                    </div>
-                    <div class="mode-desc">{{ $mode['desc'] }}</div>
-                    <div x-show="selectedMode === '{{ $value }}'"
-                         style="position:absolute;bottom:0;left:12%;right:12%;height:3px;border-radius:3px 3px 0 0;background:{{ $mode['color'] }};"></div>
-                </button>
-                @endforeach
+                    <button type="button" class="ai-switch" :class="{ 'on': replyWhenClaimed }"
+                            @click="replyWhenClaimed = !replyWhenClaimed"
+                            :aria-pressed="replyWhenClaimed ? 'true' : 'false'"
+                            aria-label="{{ __('ui.ai_settings_page.reply_when_claimed') }}"></button>
+                    <input type="hidden" name="reply_when_claimed" :value="replyWhenClaimed ? 1 : 0">
+                </div>
+            </div>
+
+            <div style="padding:0 1.5rem 1.5rem" x-show="!whatsappEnabled && !webchatEnabled">
+                <div class="info-badge" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25)">
+                    <i class="ri-alert-line" style="color:#d97706;font-size:1rem;margin-top:.1rem;flex-shrink:0"></i>
+                    <span>{{ __('ui.ai_settings_page.no_channel_warning') }}</span>
+                </div>
             </div>
         </div>
 
@@ -336,86 +418,9 @@ $sampleTests = [
 
                         {{-- Hybrid info --}}
                         <div x-show="selectedMode === 'hybrid'"
-                             class="info-badge" style="background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);">
-                            <i class="ri-git-branch-line" style="color:#8b5cf6;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
+                             class="info-badge" style="background:rgba(21,182,168,.06);border:1px solid rgba(21,182,168,.2);">
+                            <i class="ri-git-branch-line" style="color:#15b6a8;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
                             <span>{{ __('ui.ai_settings_page.hybrid_info') }}</span>
-                        </div>
-
-                    </div>
-                </div>
-
-                {{-- ── Test Sandbox ────────────────────────────────────────── --}}
-                <div class="card" x-show="selectedMode !== 'off'" x-data="aiTest()">
-                    <div class="card-header">
-                        <div style="flex:1">
-                            <div class="card-title">{{ __('ui.ai_settings_page.test_sandbox') }}</div>
-                            <div class="card-subtitle">{{ __('ui.ai_settings_page.test_sandbox_hint') }}</div>
-                        </div>
-                        <button type="button" x-show="response || error" @click="response=null;error=null;tokensUsed=null"
-                                class="btn btn-ghost btn-sm" style="flex-shrink:0;">
-                            <i class="ri-refresh-line"></i> {{ __('ui.ai_settings_page.clear_response') }}
-                        </button>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:.875rem;">
-
-                        {{-- Quick sample chips --}}
-                        <div>
-                            <div style="font-size:.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">
-                                <i class="ri-magic-line" style="font-size:.8rem;"></i> {{ __('ui.ai_settings_page.quick_tests') }}
-                            </div>
-                            <div style="display:flex;flex-wrap:wrap;gap:.375rem;">
-                                @foreach($sampleTests as $sample)
-                                <button type="button" class="sample-chip"
-                                        @click="testMessage = '{{ $sample }}'; runTest()">
-                                    <i class="ri-sparkling-2-line" style="font-size:.8rem;opacity:.7;"></i>
-                                    {{ $sample }}
-                                </button>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Textarea --}}
-                        <div style="position:relative;">
-                            <textarea x-model="testMessage" rows="3" class="form-control"
-                                      placeholder="{{ __('ui.ai_settings_page.test_placeholder') }}"
-                                      style="resize:vertical;padding-bottom:2.5rem;"></textarea>
-                            <button type="button"
-                                    @click="runTest()"
-                                    :disabled="testing || !testMessage.trim()"
-                                    style="position:absolute;bottom:.5rem;right:.5rem;padding:.375rem .875rem;border-radius:.5rem;border:none;cursor:pointer;font-size:.8125rem;font-weight:600;display:flex;align-items:center;gap:.375rem;transition:all .15s;"
-                                    :style="(testing || !testMessage.trim())
-                                        ? 'background:var(--page-bg);color:var(--text-muted);cursor:not-allowed;'
-                                        : 'background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(16,185,129,.3);'">
-                                <template x-if="!testing">
-                                    <span style="display:flex;align-items:center;gap:.3rem;">
-                                        <i class="ri-sparkling-2-fill"></i> {{ __('ui.ai_settings_page.run_test') }}
-                                    </span>
-                                </template>
-                                <template x-if="testing">
-                                    <span style="display:flex;align-items:center;gap:.375rem;">
-                                        <div class="spinner" style="width:.8rem;height:.8rem;border-width:2px;"></div>
-                                        {{ __('ui.ai_settings_page.testing') }}
-                                    </span>
-                                </template>
-                            </button>
-                        </div>
-
-                        {{-- AI Response --}}
-                        <div x-show="response" x-transition class="ai-response-box">
-                            <div class="ai-response-label">
-                                <i class="ri-robot-2-line"></i> {{ __('ui.ai_settings_page.ai_response') }}
-                                <span x-show="tokensUsed"
-                                      style="margin-left:auto;font-weight:400;color:var(--text-muted);letter-spacing:0;"
-                                      x-text="tokensUsed + ' {{ __('ui.ai_settings_page.tokens_used') }}'"></span>
-                            </div>
-                            <div class="ai-response-text" x-text="response"></div>
-                        </div>
-
-                        {{-- Error --}}
-                        <div x-show="error" x-transition
-                             style="padding:.75rem 1rem;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:.625rem;font-size:.8125rem;color:#ef4444;display:flex;gap:.5rem;align-items:flex-start;">
-                            <i class="ri-error-warning-line" style="flex-shrink:0;margin-top:.05rem;"></i>
-                            <span x-text="error"></span>
                         </div>
 
                     </div>
@@ -459,7 +464,10 @@ $sampleTests = [
 <script>
 function aiSettingsPage() {
     return {
-        selectedMode: '{{ old('mode', $settings->mode) }}',
+        selectedMode:     '{{ old('mode', $settings->mode) }}',
+        whatsappEnabled:  {{ old('whatsapp_enabled', $settings->whatsapp_enabled ?? true) ? 'true' : 'false' }},
+        webchatEnabled:   {{ old('webchat_enabled', $settings->webchat_enabled ?? true) ? 'true' : 'false' }},
+        replyWhenClaimed: {{ old('reply_when_claimed', $settings->reply_when_claimed ?? false) ? 'true' : 'false' }},
     }
 }
 
@@ -476,45 +484,6 @@ function keywordManager(initial) {
     }
 }
 
-function aiTest() {
-    return {
-        testMessage: '',
-        testing:     false,
-        response:    null,
-        tokensUsed:  null,
-        error:       null,
-
-        async runTest() {
-            if (!this.testMessage.trim()) return;
-            this.testing  = true;
-            this.response = null;
-            this.error    = null;
-            try {
-                const res = await fetch('/api/ai/test', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept':       'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                    body: JSON.stringify({ question: this.testMessage }),
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    this.response   = data.answer;
-                    this.tokensUsed = data.tokens_used || null;
-                } else {
-                    this.error = data.message || data.errors?.question?.[0] || '{{ __('ui.ai_settings_page.test_failed') }}';
-                }
-            } catch {
-                this.error = '{{ __('ui.ai_settings_page.network_error') }}';
-            } finally {
-                this.testing = false;
-            }
-        }
-    }
-}
 </script>
 @endpush
 @endsection

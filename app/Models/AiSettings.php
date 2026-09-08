@@ -12,13 +12,17 @@ class AiSettings extends Model
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id', 'mode', 'reply_language', 'suggestion_count',
+        'tenant_id', 'mode', 'whatsapp_enabled', 'webchat_enabled',
+        'reply_language', 'suggestion_count', 'reply_when_claimed',
         'system_prompt', 'escalation_keywords',
         'monthly_token_quota', 'tokens_used_this_period', 'quota_reset_at',
     ];
 
     protected $casts = [
         'escalation_keywords'    => 'array',
+        'whatsapp_enabled'       => 'boolean',
+        'webchat_enabled'        => 'boolean',
+        'reply_when_claimed'     => 'boolean',
         'monthly_token_quota'    => 'integer',
         'tokens_used_this_period'=> 'integer',
         'suggestion_count'       => 'integer',
@@ -26,6 +30,20 @@ class AiSettings extends Model
     ];
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+
+    /** Is the AI allowed to act on this channel at all? */
+    public function enabledFor(string $channel): bool
+    {
+        if ($this->mode === 'off') {
+            return false;
+        }
+
+        return match ($channel) {
+            'whatsapp' => (bool) $this->whatsapp_enabled,
+            'webchat'  => (bool) $this->webchat_enabled,
+            default    => false,
+        };
+    }
 
     public function hasQuota(): bool
     {

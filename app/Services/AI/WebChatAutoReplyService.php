@@ -33,6 +33,11 @@ class WebChatAutoReplyService
             return null;
         }
 
+        if (!$settings->webchat_enabled) {
+            $this->promoteToPending($conversation, 'ai_disabled_for_webchat');
+            return null;
+        }
+
         // `suggestion` isn't meaningful for public visitors — nothing would
         // ever deliver the draft. Treat it as off + promote.
         if (!in_array($settings->mode, ['autonomous', 'hybrid'], true)) {

@@ -23,6 +23,13 @@ class AutoReplyService
             return null;
         }
 
+        if (!$settings->whatsapp_enabled) {
+            Log::channel('whatsapp')->debug('AI: skipped — auto-reply disabled for WhatsApp', [
+                'conversation_id' => $conversation->id,
+            ]);
+            return null;
+        }
+
         if (!$conversation->isAiEligible()) {
             Log::channel('whatsapp')->debug('AI: skipped — not eligible', [
                 'conversation_id' => $conversation->id,
@@ -48,12 +55,14 @@ class AutoReplyService
         try {
             $client = new \Anthropic\Client($apiKey);
 
-            $response = $client->messages()->create([
-                'model'      => 'claude-haiku-4-5-20251001',
-                'max_tokens' => 1024,
-                'system'     => $this->promptBuilder->buildSystemPrompt($conversation->tenant),
-                'messages'   => $this->promptBuilder->buildMessages($conversation),
-            ]);
+            // anthropic-ai/sdk v0.23 exposes `messages` as a property and
+            // create() takes named arguments, not a single payload array.
+            $response = $client->messages->create(
+                maxTokens: 1024,
+                messages: $this->promptBuilder->buildMessages($conversation),
+                model: config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
+                system: $this->promptBuilder->buildSystemPrompt($conversation->tenant),
+            );
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
             $settings->increment('tokens_used_this_period', $tokens);
@@ -85,10 +94,11 @@ class AutoReplyService
 
             return $this->sendAutonomously($conversation, $text);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::channel('whatsapp')->error('AI: reply failed', [
                 'conversation_id' => $conversation->id,
                 'error'           => $e->getMessage(),
+                'at'              => $e->getFile() . ':' . $e->getLine(),
             ]);
             return null;
         }

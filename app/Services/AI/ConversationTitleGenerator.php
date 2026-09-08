@@ -72,15 +72,16 @@ class ConversationTitleGenerator
 
         try {
             $client   = new \Anthropic\Client($apiKey);
-            $response = $client->messages()->create([
-                'model'      => 'claude-haiku-4-5-20251001',
-                'max_tokens' => 60,
-                'system'     => $this->systemPrompt($locale),
-                'messages'   => [[
+            // anthropic-ai/sdk v0.23: `messages` is a property, create() takes named args.
+            $response = $client->messages->create(
+                maxTokens: 60,
+                messages: [[
                     'role'    => 'user',
                     'content' => "Transcript:\n\n" . $transcript,
                 ]],
-            ]);
+                model: config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
+                system: $this->systemPrompt($locale),
+            );
 
             $text = trim($response->content[0]->text ?? '');
             $text = trim($text, "\"'“”‘’ \t\n\r\0\x0B");
