@@ -221,10 +221,10 @@ class PaymentController extends Controller
             ? TenantPayment::where('stripe_session_id', $sessionId)->with('tenant', 'plan')->first()
             : null;
 
-        if ($payment && $payment->isPending()) {
-            $payment->update(['status' => 'failed']);
-        }
-
+        // Read-only: the customer's browser landing here is a hint, not a
+        // settlement fact — Stripe's checkout.session.expired webhook is the
+        // authoritative source of a failed status. Writing here also let anyone
+        // who knew the session id flip a still-pending payment to failed.
         return view('payment.failed', ['payment' => $payment]);
     }
 
@@ -521,10 +521,8 @@ class PaymentController extends Controller
             ? TenantPayment::where('paypal_order_id', $orderId)->with('tenant', 'plan')->first()
             : null;
 
-        if ($payment && $payment->isPending()) {
-            $payment->update(['status' => 'failed']);
-        }
-
+        // Read-only — see PaymentController::failed(). PayPal's cancellation
+        // webhook decides the terminal status; this view only informs the user.
         return view('payment.failed', ['payment' => $payment]);
     }
 
