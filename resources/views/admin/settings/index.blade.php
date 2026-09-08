@@ -94,10 +94,6 @@
                         <span style="color:var(--text-muted)">{{ __('ui.settings_page.max_users') }}</span>
                         <span style="font-weight:600">{{ $tenant->plan->max_users }}</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--card-border)">
-                        <span style="color:var(--text-muted)">{{ __('ui.settings_page.max_instances') }}</span>
-                        <span style="font-weight:600">{{ $tenant->plan->max_instances }}</span>
-                    </div>
                     @endif
 
                     {{-- Actions --}}

@@ -31,12 +31,6 @@
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="max_instances">{{ __('ui.plan_form_fields.max_instances') }}</label>
-        <input id="max_instances" type="number" min="0" step="1" name="max_instances" value="{{ old('max_instances', $plan?->max_instances) }}" class="form-control @error('max_instances') error @enderror">
-        @error('max_instances') <div class="form-error">{{ $message }}</div> @enderror
-    </div>
-
-    <div class="form-group">
         <label class="form-label" for="max_conversations_per_month">{{ __('ui.plan_form_fields.max_conversations_per_month') }}</label>
         <input id="max_conversations_per_month" type="number" min="0" step="1" name="max_conversations_per_month" value="{{ old('max_conversations_per_month', $plan?->max_conversations_per_month) }}" class="form-control @error('max_conversations_per_month') error @enderror">
         @error('max_conversations_per_month') <div class="form-error">{{ $message }}</div> @enderror

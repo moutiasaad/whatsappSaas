@@ -8,13 +8,16 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TenantQuota
 {
-    private const DEFAULT_INSTANCE_LIMIT = 1;
-    private const DEFAULT_USER_LIMIT     = 5;
+    private const INSTANCE_LIMIT     = 1;
+    private const DEFAULT_USER_LIMIT = 5;
 
     public function instanceLimit(User $actor): ?int
     {
         if ($actor->isSuperAdmin()) return null; // null = unlimited
-        return (int) ($actor->tenant?->plan?->max_instances ?? self::DEFAULT_INSTANCE_LIMIT);
+
+        // One WhatsApp instance per tenant, whatever the plan says. The plan column
+        // is no longer configurable or shown, so it is deliberately not read here.
+        return self::INSTANCE_LIMIT;
     }
 
     public function userLimit(User $actor): ?int
@@ -48,8 +51,7 @@ class TenantQuota
     public function assertCanCreateInstance(User $actor): void
     {
         if ($this->canCreateInstance($actor)) return;
-        $max = $this->instanceLimit($actor);
-        throw new HttpException(422, __('ui.controller_messages.instance_limit_reached', ['count' => $max]));
+        throw new HttpException(422, __('ui.controller_messages.instance_limit_reached'));
     }
 
     public function assertCanCreateUser(User $actor): void

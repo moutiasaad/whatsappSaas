@@ -278,7 +278,6 @@
                     <div class="detail-label" style="margin-bottom:.625rem;">{{ __('ui.payments_page.plan_features') }}</div>
                     <div style="display:flex;flex-direction:column;gap:.5rem;">
                         <div class="plan-feat"><i class="ri-user-line"></i> {{ $payment->plan->max_users ?? '∞' }} {{ __('ui.payments_page.feat_users') }}</div>
-                        <div class="plan-feat"><i class="ri-smartphone-line"></i> {{ $payment->plan->max_instances ?? '∞' }} {{ __('ui.payments_page.feat_instances') }}</div>
                         <div class="plan-feat"><i class="ri-message-3-line"></i> {{ $payment->plan->max_conversations_per_month ?? '∞' }} {{ __('ui.payments_page.feat_conversations') }}</div>
                         <div class="plan-feat">
                             @if($payment->plan->ai_included)

@@ -38,11 +38,6 @@
             <div class="stat-card-value">{{ number_format($plan->max_users) }}</div>
             <div class="stat-card-label">{{ __('ui.platform_plans_show_page.max_users') }}</div>
         </div>
-        <div class="stat-card purple">
-            <div class="stat-card-icon"><i class="ri-whatsapp-line"></i></div>
-            <div class="stat-card-value">{{ number_format($plan->max_instances) }}</div>
-            <div class="stat-card-label">{{ __('ui.platform_plans_show_page.max_instances') }}</div>
-        </div>
         <div class="stat-card orange">
             <div class="stat-card-icon"><i class="ri-message-3-line"></i></div>
             <div class="stat-card-value">{{ number_format($plan->max_conversations_per_month) }}</div>

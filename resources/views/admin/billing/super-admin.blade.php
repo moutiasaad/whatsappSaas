@@ -173,7 +173,6 @@
                                     <td>
                                         <div style="display:flex;flex-wrap:wrap;gap:.25rem">
                                             <span class="badge badge-gray">{{ number_format($plan->max_users) }} {{ __('ui.billing_page.users') }}</span>
-                                            <span class="badge badge-gray">{{ number_format($plan->max_instances) }} {{ __('ui.billing_page.instances') }}</span>
                                         </div>
                                     </td>
                                 </tr>

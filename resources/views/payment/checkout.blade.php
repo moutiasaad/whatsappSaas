@@ -99,7 +99,6 @@
                 <span class="order-label">{{ __('auth.register.order_limits') }}</span>
                 <span class="order-value">
                     {{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}
-                    · {{ $plan->max_instances }} instances
                 </span>
             </div>
             @endif

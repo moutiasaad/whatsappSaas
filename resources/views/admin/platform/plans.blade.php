@@ -125,7 +125,6 @@
                             <td>
                                 <div style="display:flex;flex-wrap:wrap;gap:.25rem;">
                                     <span class="badge badge-gray" x-text="usersLimit(plan)"></span>
-                                    <span class="badge badge-gray" x-text="instancesLimit(plan)"></span>
                                     <span class="badge badge-gray" x-text="convLimit(plan)"></span>
                                 </div>
                             </td>
@@ -278,10 +277,6 @@ function plansPage() {
         usersLimit(plan) {
             return @json(__('ui.platform_plans_page.users_limit', ['count' => ':count']))
                 .replace(':count', plan.max_users ?? 0);
-        },
-        instancesLimit(plan) {
-            return @json(__('ui.platform_plans_page.instances_limit', ['count' => ':count']))
-                .replace(':count', plan.max_instances ?? 0);
         },
         convLimit(plan) {
             return @json(__('ui.platform_plans_page.conversations_limit', ['count' => ':count']))

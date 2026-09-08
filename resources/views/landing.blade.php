@@ -470,12 +470,6 @@
                         <span>{{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}</span>
                     </div>
                     @endif
-                    @if($plan->max_instances)
-                    <div class="plan-feat">
-                        <div class="plan-feat-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-                        <span>{{ $plan->max_instances > 1 ? __('landing.limit_instances_pl', ['n' => $plan->max_instances]) : __('landing.limit_instances', ['n' => 1]) }}</span>
-                    </div>
-                    @endif
                     @if($plan->max_conversations_per_month)
                     <div class="plan-feat">
                         <div class="plan-feat-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>

@@ -67,7 +67,7 @@ class InstanceWebController extends Controller
         $quota = app(\App\Services\Billing\TenantQuota::class);
         if (!$quota->canCreateInstance(auth()->user())) {
             return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
-                ->with('error', __('ui.controller_messages.instance_limit_reached', ['count' => $quota->instanceLimit(auth()->user())]));
+                ->with('error', __('ui.controller_messages.instance_limit_reached'));
         }
 
         $teams  = Team::where('is_active', true)->orderBy('name')->get();
@@ -86,7 +86,7 @@ class InstanceWebController extends Controller
         $quota = app(\App\Services\Billing\TenantQuota::class);
         if (!$quota->canCreateInstance(auth()->user())) {
             return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
-                ->with('error', __('ui.controller_messages.instance_limit_reached', ['count' => $quota->instanceLimit(auth()->user())]));
+                ->with('error', __('ui.controller_messages.instance_limit_reached'));
         }
 
         $data = $request->validate([

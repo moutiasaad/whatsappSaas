@@ -27,14 +27,10 @@
         </div>
         <div style="padding:0 1.5rem 1.5rem">
             @if($tenant->plan)
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem">
                 <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;text-align:center">
                     <div style="font-size:1.25rem;font-weight:700;color:var(--text-primary)">{{ $tenant->plan->max_users }}</div>
                     <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem">Max Users</div>
-                </div>
-                <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;text-align:center">
-                    <div style="font-size:1.25rem;font-weight:700;color:var(--text-primary)">{{ $tenant->plan->max_instances }}</div>
-                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem">Instances</div>
                 </div>
                 <div style="padding:.875rem;background:var(--page-bg);border-radius:.625rem;text-align:center">
                     <div style="font-size:1.25rem;font-weight:700;color:var(--text-primary)">{{ number_format($tenant->plan->max_conversations_per_month) }}</div>
@@ -82,10 +78,6 @@
                     <div style="display:flex;align-items:center;gap:.5rem">
                         <svg style="color:var(--brand);flex-shrink:0" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                         {{ $plan->max_users }} users
-                    </div>
-                    <div style="display:flex;align-items:center;gap:.5rem">
-                        <svg style="color:var(--brand);flex-shrink:0" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                        {{ $plan->max_instances }} WhatsApp instances
                     </div>
                     <div style="display:flex;align-items:center;gap:.5rem">
                         <svg style="color:var(--brand);flex-shrink:0" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
