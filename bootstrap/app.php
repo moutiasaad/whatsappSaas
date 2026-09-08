@@ -30,8 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
             prepend: \App\Http\Middleware\ResolveTenant::class,
         );
 
-        // All /api/* routes are protected by auth:sanctum — no CSRF needed
-        $middleware->validateCsrfTokens(except: ['api/*']);
+        // All /api/* routes are protected by auth:sanctum — no CSRF needed.
+        // Logout is exempted so an expired session (stale form token) still lets
+        // the user sign out cleanly instead of hitting a 419 PAGE EXPIRED wall.
+        $middleware->validateCsrfTokens(except: ['api/*', 'logout']);
 
         $middleware->alias([
             'role'         => \App\Http\Middleware\CheckRole::class,
