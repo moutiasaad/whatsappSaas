@@ -24,21 +24,28 @@ class PaymentController extends Controller
     public function upgrade(Request $request)
     {
         $request->validate([
-            'tenant_id' => 'required|exists:tenants,id',
-            'plan_id'   => 'required|exists:plans,id',
+            'plan_id' => 'required|exists:plans,id',
         ]);
 
-        $tenant = Tenant::findOrFail($request->tenant_id);
-        $plan   = Plan::findOrFail($request->plan_id);
+        // Resolve the tenant from the authenticated admin, never from a body
+        // parameter — an agent posting tenant_id of a foreign tenant used to
+        // rewrite that tenant's plan for free (PROC-002 cross-tenant write).
+        $tenant = $request->user()->tenant;
+        abort_unless($tenant, 403);
 
-        $tenant->update(['plan_id' => $plan->id]);
-
-        return redirect()->route('payment.checkout', $tenant);
+        // Do NOT persist plan_id here. Carry the picked plan through checkout
+        // so it only takes effect when the payment completes via
+        // activateTenantSubscription() — that closes the unpaid-upgrade path
+        // where a user set the top plan and abandoned checkout to keep it.
+        return redirect()->route('payment.checkout', [
+            'tenant'  => $tenant->id,
+            'plan_id' => (int) $request->plan_id,
+        ]);
     }
 
-    public function checkout(Tenant $tenant)
+    public function checkout(Request $request, Tenant $tenant)
     {
-        $plan = $tenant->plan;
+        $plan = $this->resolveIntendedPlan($request, $tenant);
 
         // Free plan — authenticated admin goes to their dashboard, guest goes to register
         if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
@@ -64,7 +71,7 @@ class PaymentController extends Controller
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
-        $plan   = $tenant->plan;
+        $plan   = $this->resolveIntendedPlan($request, $tenant);
 
         if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
             return redirect()->route('register');
@@ -253,7 +260,7 @@ class PaymentController extends Controller
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
-        $plan   = $tenant->plan;
+        $plan   = $this->resolveIntendedPlan($request, $tenant);
 
         if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
             return redirect()->route('register');
@@ -426,7 +433,7 @@ class PaymentController extends Controller
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with('plan')->findOrFail($request->tenant_id);
-        $plan   = $tenant->plan;
+        $plan   = $this->resolveIntendedPlan($request, $tenant);
 
         if (!$plan || !$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
             return response()->json(['error' => 'no_price'], 422);
@@ -598,6 +605,26 @@ class PaymentController extends Controller
                 'error'      => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Resolve the plan the caller intends to pay for. If plan_id is present on
+     * the request (from an upgrade link that carried it through checkout), use
+     * that; otherwise fall back to the tenant's currently assigned plan (the
+     * renewal / initial-checkout case). Falling back to the tenant plan means
+     * the change never persists until the payment completes.
+     */
+    private function resolveIntendedPlan(Request $request, Tenant $tenant): ?Plan
+    {
+        $requested = (int) $request->input('plan_id', 0);
+        if ($requested > 0) {
+            $plan = Plan::find($requested);
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        return $tenant->plan;
     }
 
     private function activateTenantSubscription(TenantPayment $payment): void

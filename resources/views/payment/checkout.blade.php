@@ -118,6 +118,7 @@
             <form method="POST" action="{{ route('payment.initiate') }}" onsubmit="handlePay(this,'payBtn')">
                 @csrf
                 <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                <input type="hidden" name="plan_id" value="{{ $plan->id }}">
                 <button type="submit" class="btn-pay" id="payBtn">
                     {{ __('auth.register.pay_btn', ['amount' => number_format($amount, 2)]) }}
                 </button>
@@ -134,6 +135,7 @@
                 <form method="POST" action="{{ route('payment.paypal.initiate') }}" onsubmit="handlePay(this,'paypalBtn')">
                     @csrf
                     <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
                     <button type="submit" class="btn-paypal" id="paypalBtn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.067 8.478c.492.315.844.755 1.048 1.316.203.562.213 1.209.03 1.943-.19.762-.517 1.44-.98 2.036-.464.596-1.036 1.089-1.717 1.478a7.213 7.213 0 0 1-2.24.826c-.815.171-1.68.257-2.593.257h-.514c-.293 0-.55.104-.771.313a1.14 1.14 0 0 0-.379.775l-.03.166-.514 3.257-.03.257c-.03.14-.099.264-.207.373a.501.501 0 0 1-.36.163H7.777a.312.312 0 0 1-.257-.115.28.28 0 0 1-.05-.259l2.293-14.514c.04-.223.148-.406.325-.549A.914.914 0 0 1 10.674 6h4.933c.874 0 1.667.104 2.379.313.712.208 1.328.502 1.848.882.52.379.936.842 1.247 1.386.31.544.518 1.13.622 1.756.081.5.09 1.04.028 1.619z"/></svg>
                         {{ __('auth.register.pay_with_paypal') }}
@@ -192,7 +194,7 @@ function handlePay(form, btnId) {
                         'X-CSRF-TOKEN': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
-                    body: JSON.stringify({ tenant_id: {{ (int) $tenant->id }} }),
+                    body: JSON.stringify({ tenant_id: {{ (int) $tenant->id }}, plan_id: {{ (int) $plan->id }} }),
                 });
                 if (!res.ok) throw new Error('create-order HTTP ' + res.status);
                 const data = await res.json();
