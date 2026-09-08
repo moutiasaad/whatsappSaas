@@ -36,20 +36,34 @@ class Tenant extends Model
     {
         if (!$this->is_active) return false;
         if (!in_array($this->subscription_status, ['active', 'trial'], true)) return false;
-        if ($this->subscription_ends_at && $this->subscription_ends_at->isPast()) return false;
-        return true;
+
+        // A trial is bounded by trial_ends_at; a paid subscription by
+        // subscription_ends_at. Conflating them blocks live trials whose
+        // stale subscription_ends_at was pre-populated by the edit form.
+        $endsAt = $this->subscription_status === 'trial'
+            ? $this->trial_ends_at
+            : $this->subscription_ends_at;
+
+        return !$endsAt || $endsAt->isFuture();
     }
 
     public function isExpired(): bool
     {
-        return $this->subscription_ends_at !== null && $this->subscription_ends_at->isPast();
+        $endsAt = $this->subscription_status === 'trial'
+            ? $this->trial_ends_at
+            : $this->subscription_ends_at;
+
+        return $endsAt !== null && $endsAt->isPast();
     }
 
     public function daysUntilExpiry(): ?int
     {
-        if (!$this->subscription_ends_at) return null;
-        $diff = (int) now()->diffInDays($this->subscription_ends_at, false);
-        return $diff;
+        $endsAt = $this->subscription_status === 'trial'
+            ? $this->trial_ends_at
+            : $this->subscription_ends_at;
+
+        if (!$endsAt) return null;
+        return (int) now()->diffInDays($endsAt, false);
     }
 
     public function hasAiQuotaRemaining(): bool

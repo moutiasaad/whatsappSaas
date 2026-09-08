@@ -124,7 +124,11 @@ class SuperAdminPlatformController extends Controller
         $suggestStart  = null;
         $suggestEnd    = null;
 
-        if (!$tenant->subscription_starts_at || !$tenant->subscription_ends_at) {
+        // Trials are bounded by trial_ends_at, not subscription_ends_at, so
+        // suggesting a paid-cycle end date for them would pollute the field
+        // and make the tenant look "expired" while the trial is still live.
+        if ($tenant->subscription_status !== 'trial'
+            && (!$tenant->subscription_starts_at || !$tenant->subscription_ends_at)) {
             $lastPayment = \App\Models\TenantPayment::where('tenant_id', $tenant->id)
                 ->where('status', 'completed')
                 ->latest('paid_at')
