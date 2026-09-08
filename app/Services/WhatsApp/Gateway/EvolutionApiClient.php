@@ -74,13 +74,26 @@ class EvolutionApiClient implements GatewayClientInterface
         return $this->get("/instance/fetchInstance/{$instanceId}");
     }
 
-    public function setWebhook(string $instanceId, string $url, array $events = []): array
+    public function setWebhook(string $instanceId, string $url, array $events = [], ?string $hmacSecret = null): array
     {
-        return $this->putJson("/webhook/set/{$instanceId}", [
+        $payload = [
             'enabled' => true,
             'url'     => $url,
             'events'  => $events ?: $this->defaultWebhookEvents(),
-        ]);
+        ];
+
+        // Advertise the HMAC secret to the gateway under the field names various
+        // Evolution / CodeChat forks use. Unknown fields are ignored, so this
+        // is safe against every version — if the gateway supports one of these
+        // names it will sign each webhook post with an X-Gateway-Signature
+        // header the receiver can verify (PROC-018).
+        if ($hmacSecret) {
+            $payload['hmac_secret']    = $hmacSecret;
+            $payload['webhook_secret'] = $hmacSecret;
+            $payload['secret']         = $hmacSecret;
+        }
+
+        return $this->putJson("/webhook/set/{$instanceId}", $payload);
     }
 
     public function findContacts(string $instanceId, string $remoteJid): array

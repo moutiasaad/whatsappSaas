@@ -10,6 +10,7 @@ use App\Models\WebhookEvent;
 use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class InstanceWebController extends Controller
@@ -157,6 +158,10 @@ class InstanceWebController extends Controller
         $data['gateway']         = 'evolution_api';
         $data['gateway_url']     = config('services.whatsapp.default_url');
         $data['gateway_api_key'] = config('services.whatsapp.default_api_key');
+        // Generate an HMAC secret per instance so the webhook receiver can
+        // verify the gateway's posts (PROC-018). Passed to the gateway in
+        // configureGatewayWebhook() below so it signs outgoing events.
+        $data['webhook_secret']  = Str::random(64);
 
         $instance = WhatsAppInstance::create($data + ['tenant_id' => auth()->user()->tenant_id]);
 
@@ -303,7 +308,13 @@ class InstanceWebController extends Controller
                     'connectionUpdated' => true,
                     'statusInstance' => true,
                     'refreshToken' => true,
-                ]
+                ],
+                // The gateway is asked to include an HMAC signature in each
+                // post. If the gateway version honors this field, inbound
+                // events will carry X-Gateway-Signature and the receiver
+                // rejects forgeries. If the gateway ignores it, the current
+                // fail-open branch keeps things working — PROC-018 phase 1.
+                $instance->webhook_secret
             );
         } catch (\Throwable) {
             // Webhook setup is best-effort; user can retry from the instance page.
