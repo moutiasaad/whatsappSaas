@@ -83,6 +83,14 @@ class CustomerController extends Controller
 
     public function show(Request $request, Customer $customer)
     {
+        $actor = $request->user();
+        $isSuperAdmin = $actor?->isSuperAdmin() ?? false;
+
+        abort_unless(
+            $isSuperAdmin || (int) $customer->tenant_id === (int) ($actor?->tenant_id ?? 0),
+            403
+        );
+
         $conversationBaseQuery = Conversation::query()
             ->with([
                 'ownerAgent:id,name',
