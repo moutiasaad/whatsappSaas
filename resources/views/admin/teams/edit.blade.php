@@ -418,6 +418,11 @@ function teamQuickCreate() {
         userErrors: {},
         userForm:   { name: '', email: '', password: '' },
 
+        // Supervisors reach this page but have no {prefix}.users.store route, so
+        // the URL is null for them and createUser() below refuses to run. The
+        // button and modal are already hidden for those roles.
+        userCreateUrl: @json(auth()->user()->hasAnyRole(['admin', 'super_admin']) ? route($panelPrefix . '.users.store') : null),
+
         openUserModal() {
             this.userErrors = {};
             this.userForm   = { name: '', email: '', password: '' };
@@ -425,10 +430,12 @@ function teamQuickCreate() {
         },
 
         async createUser() {
+            if (!this.userCreateUrl) return;
+
             this.userErrors = {};
             this.userSaving = true;
             try {
-                const res = await fetch(@json(route($panelPrefix . '.users.store')), {
+                const res = await fetch(this.userCreateUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
