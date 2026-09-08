@@ -141,7 +141,8 @@
       "Bash(curl *)",
       "Bash(robocopy \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\tshlbot.online\" /E /MT:16 /R:1 /W:1 /NFL /NDL /NP)",
       "Bash(echo \"ROBOCOPY_EXIT=$?\")",
-      "PowerShell(robocopy \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\tshlbot.online\" /E /MT:16 /R:1 /W:1 /NFL /NDL /NP; Write-Host \"ROBOCOPY_EXIT=$LASTEXITCODE\")"
+      "PowerShell(robocopy \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\whatsapp-saas\" \"C:\\\\Users\\\\mouti\\\\OneDrive\\\\Documents\\\\Projects\\\\Chatbot\\\\tshlbot.online\" /E /MT:16 /R:1 /W:1 /NFL /NDL /NP; Write-Host \"ROBOCOPY_EXIT=$LASTEXITCODE\")",
+      "Bash(cd *)"
     ]
   },
   "enableAllProjectMcpServers": true,
