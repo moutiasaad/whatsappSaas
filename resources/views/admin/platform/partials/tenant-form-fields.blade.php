@@ -22,7 +22,7 @@
     <div class="form-group">
         <label class="form-label" for="subscription_status">{{ __('ui.tenant_form_fields.subscription_status') }}</label>
         <select id="subscription_status" name="subscription_status" class="form-control @error('subscription_status') error @enderror">
-            @foreach(['active','suspended','cancelled'] as $status)
+            @foreach(['active','trial','suspended','cancelled'] as $status)
                 <option value="{{ $status }}" @selected(old('subscription_status', $tenant?->subscription_status ?? 'active') === $status)>{{ ucfirst($status) }}</option>
             @endforeach
         </select>

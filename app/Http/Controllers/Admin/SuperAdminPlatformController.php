@@ -156,7 +156,13 @@ class SuperAdminPlatformController extends Controller
 
             // Auto-sync status with the end date
             $status = $data['subscription_status'];
-            if ($endsAt && $endsAt->isPast()) {
+            if ($tenant->subscription_status === 'trial'
+                && $tenant->trial_ends_at
+                && $tenant->trial_ends_at->isFuture()) {
+                // A running trial must survive edits to unrelated fields; to end it,
+                // set trial_ends_at to a past date rather than flipping status here.
+                $status = 'trial';
+            } elseif ($endsAt && $endsAt->isPast()) {
                 // End date is in the past → force suspended regardless of what was selected
                 $status = 'suspended';
             } elseif ($endsAt && $endsAt->isFuture() && $tenant->subscription_status === 'suspended') {
@@ -598,7 +604,7 @@ class SuperAdminPlatformController extends Controller
                 Rule::unique('tenants', 'slug')->ignore($tenant?->id),
             ],
             'plan_id'             => 'nullable|exists:plans,id',
-            'subscription_status'    => 'required|in:active,suspended,cancelled',
+            'subscription_status'    => 'required|in:active,trial,suspended,cancelled',
             'subscription_starts_at' => 'nullable|date',
             'subscription_ends_at'   => 'nullable|date|after_or_equal:subscription_starts_at',
             'stripe_id'              => 'nullable|string|max:255',
