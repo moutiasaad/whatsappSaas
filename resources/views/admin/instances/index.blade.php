@@ -39,9 +39,9 @@
         </div>
         @if($canCreateInstance ?? true)
         <div class="page-header-actions">
-            <a href="{{ route($panelPrefix . '.instances.create') }}" class="btn btn-primary">
+            <button type="button" class="btn btn-primary" @click="openCreate()">
                 <i class="ri-add-line"></i> {{ __('ui.instances_page.new_instance') }}
-            </a>
+            </button>
         </div>
         @endif
     </div>
@@ -81,7 +81,7 @@
             <h4>{{ __('ui.instances_page.no_instances_yet') }}</h4>
             <p>{{ __('ui.instances_page.no_instances_desc') }}</p>
             @if($canCreateInstance ?? true)
-            <a href="{{ route($panelPrefix . '.instances.create') }}" class="btn btn-primary">{{ __('ui.instances_page.add_instance') }}</a>
+            <button type="button" class="btn btn-primary" @click="openCreate()">{{ __('ui.instances_page.add_instance') }}</button>
             @endif
         </div>
     </div>
@@ -103,10 +103,14 @@
                         @if($isSuperAdmin ?? false)
                         <th>{{ __('ui.platform_tenants_page.tenant') }}</th>
                         @endif
+                        @if($showGatewayInternals ?? false)
                         <th>{{ __('ui.instances_page.gateway') }}</th>
+                        @endif
                         <th>{{ __('ui.instances_page.phone') }}</th>
                         <th>{{ __('ui.instances_page.activity') }}</th>
+                        @if($showGatewayInternals ?? false)
                         <th>Webhook</th>
+                        @endif
                         <th>{{ __('ui.instances_page.status') }}</th>
                         <th style="text-align:right">{{ __('ui.instances_page.actions') }}</th>
                     </tr>
@@ -128,9 +132,12 @@
                             @if($isSuperAdmin ?? false)
                             <td style="font-size:.8125rem;color:var(--text-muted);" x-text="inst.tenant?.name ?? '—'"></td>
                             @endif
+                            @if($showGatewayInternals ?? false)
                             <td x-text="inst.gateway ? inst.gateway.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '—'"></td>
+                            @endif
                             <td x-text="inst.phone_number || '—'"></td>
                             <td x-text="inst.last_message_at ? timeAgo(inst.last_message_at) : i18n.never"></td>
+                            @if($showGatewayInternals ?? false)
                             <td>
                                 <span x-show="inst.webhook_enabled" style="display:flex;flex-direction:column;gap:.2rem">
                                     <span style="display:inline-flex;align-items:center;gap:.4rem">
@@ -147,6 +154,7 @@
                                     <span style="font-size:.8rem;color:#ef4444">Non enregistré</span>
                                 </span>
                             </td>
+                            @endif
                             <td>
                                 <span :class="statusBadge(inst.status)" style="display:inline-flex;align-items:center;gap:.35rem">
                                     <span class="status-dot" :class="statusDot(inst.status)" style="width:.4rem;height:.4rem"></span>
@@ -176,9 +184,11 @@
                                         </button>
                                     </template>
 
-                                    <a :href="webhookEventsUrl(inst.id)" class="btn btn-ghost btn-icon" title="Webhook Events" style="color:#6366f1">
+                                    @if($showGatewayInternals ?? false)
+                                    <a :href="webhookEventsUrl(inst.id)" class="btn btn-ghost btn-icon" title="Webhook Events" style="color:#0f7e7a">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                     </a>
+                                    @endif
 
                                     <a :href="editUrl(inst.id)" class="btn btn-ghost btn-icon" title="Edit">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -191,6 +201,57 @@
             </table>
         </div>
     </div>
+
+    {{-- Create Modal --}}
+    @if($canCreateInstance ?? true)
+    <div class="modal-overlay" :class="create.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="closeCreate()" @keydown.escape.window="closeCreate()">
+        <div class="modal-box" style="width:min(430px,calc(100vw - 32px));max-width:430px;text-align:start">
+            <div class="modal-icon info" style="margin-inline:auto"><i class="ri-add-line"></i></div>
+            <h3 style="text-align:center">{{ __('ui.instance_create_page.card_title') }}</h3>
+            <p style="text-align:center">{{ __('ui.instance_create_page.card_subtitle') }}</p>
+
+            <form method="POST" action="{{ route($panelPrefix . '.instances.store') }}"
+                  style="margin-top:1.25rem;display:flex;flex-direction:column;gap:1rem"
+                  @submit="create.saving = true">
+                @csrf
+
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" for="create_name">{{ __('ui.instance_create_page.instance_name') }}</label>
+                    <input type="text" id="create_name" name="name" x-ref="createName"
+                           value="{{ old('name', $defaultInstanceName ?? '') }}"
+                           placeholder="{{ __('ui.instance_create_page.instance_name_placeholder') }}"
+                           class="form-control @error('name') error @enderror"
+                           maxlength="100" required>
+                    @error('name') <div class="form-error">{{ $message }}</div> @enderror
+                    <div class="form-hint">{{ __('ui.instance_create_page.instance_name_hint') }}</div>
+                </div>
+
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" for="create_team_id">{{ __('ui.instance_create_page.assigned_team') }}</label>
+                    <select id="create_team_id" name="team_id" class="form-control @error('team_id') error @enderror">
+                        <option value="">{{ __('ui.instance_create_page.no_team') }}</option>
+                        @foreach($teams ?? [] as $team)
+                        <option value="{{ $team->id }}" {{ old('team_id') == $team->id ? 'selected' : '' }}>{{ $team->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('team_id') <div class="form-error">{{ $message }}</div> @enderror
+                    <div class="form-hint">{{ __('ui.instance_create_page.assigned_team_hint') }}</div>
+                </div>
+
+                <div class="modal-actions" style="margin-top:.25rem">
+                    <button type="button" class="btn btn-outline" @click="closeCreate()">
+                        {{ __('ui.cancel') }}
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="create.saving">
+                        <i class="ri-add-line" :class="{ 'ri-loader-4-line ri-spin': create.saving }"></i>
+                        {{ __('ui.instances_page.add_instance') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 
     {{-- QR Modal --}}
     <div class="modal-overlay" :class="qr.show ? 'show' : ''" role="dialog" aria-modal="true"
@@ -235,9 +296,10 @@ function instancesPage() {
         indexUrl:    @json(route($panelPrefix . '.instances.index')),
         showUrlTpl:  @json(route($panelPrefix . '.instances.show',           ['instance' => '__ID__'])),
         editUrlTpl:  @json(route($panelPrefix . '.instances.edit',           ['instance' => '__ID__'])),
-        webhookEventsUrlTpl: @json(route($panelPrefix . '.instances.webhook-events', ['instance' => '__ID__'])),
+        webhookEventsUrlTpl: @json(($showGatewayInternals ?? false) ? route($panelPrefix . '.instances.webhook-events', ['instance' => '__ID__']) : ''),
 
         instances: [],
+        create: { show: false, saving: false },
         stats:     { connected: 0, connecting: 0, offline: 0 },
         loading:   true,
 
@@ -249,6 +311,26 @@ function instancesPage() {
             window.addEventListener('pageshow', (e) => {
                 if (e.persisted) this.loadData();
             });
+
+            // A failed create bounces back here — reopen the modal on the errors.
+            if (@json($errors->hasAny(['name', 'team_id']))) this.openCreate(false);
+        },
+
+        openCreate(reset = true) {
+            this.create.show = true;
+            this.create.saving = false;
+            this.$nextTick(() => {
+                const el = this.$refs.createName;
+                if (!el) return;
+                el.focus();
+                // Pre-selected so the suggested name is one keystroke to replace.
+                if (reset) el.select();
+            });
+        },
+
+        closeCreate() {
+            this.create.show = false;
+            this.create.saving = false;
         },
 
         async loadData() {

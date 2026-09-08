@@ -44,6 +44,15 @@ class InstanceWebController extends Controller
 
             $instances = $query->get()->makeHidden(['gateway_api_key', 'webhook_token']);
 
+            if (!$this->seesGatewayInternals()) {
+                $instances->each->makeHidden([
+                    'gateway', 'gateway_url', 'gateway_instance_id',
+                    'webhook_url', 'webhook_enabled', 'webhook_last_set',
+                    'webhook_events_count', 'webhook_pending_count',
+                    'webhook_events_max_created_at',
+                ]);
+            }
+
             $stats = [
                 'connected'  => $instances->where('status', 'connected')->count(),
                 'connecting' => $instances->whereIn('status', ['connecting', 'qr_pending'])->count(),
@@ -57,7 +66,57 @@ class InstanceWebController extends Controller
         $tenantId    = auth()->user()->tenant_id;
         $canCreateInstance = app(\App\Services\Billing\TenantQuota::class)->canCreateInstance(auth()->user());
 
-        return view('admin.instances.index', compact('canCreateInstance', 'isSuperAdmin'));
+        // Fed to the inline "new instance" modal on this page.
+        $teams               = Team::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $defaultInstanceName = $this->defaultInstanceName();
+
+        $showGatewayInternals = $this->seesGatewayInternals();
+
+        return view('admin.instances.index', compact(
+            'canCreateInstance', 'isSuperAdmin', 'teams', 'defaultInstanceName', 'showGatewayInternals'
+        ));
+    }
+
+    /**
+     * Gateway plumbing — provider URL, API key, webhook endpoint/token and the
+     * raw event log — is platform infrastructure, not tenant data. Only the
+     * platform owner may see it.
+     */
+    private function seesGatewayInternals(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    private function ensureGatewayInternalsAccess(): void
+    {
+        abort_unless($this->seesGatewayInternals(), 403);
+    }
+
+    /**
+     * A ready-to-accept instance name so the create modal is one click for most
+     * tenants: the workspace name, numbered only if that one is already taken.
+     */
+    private function defaultInstanceName(): string
+    {
+        $base = trim((string) (auth()->user()->tenant->name ?? '')) ?: 'WhatsApp';
+        $base = mb_substr($base, 0, 90);
+
+        $taken = WhatsAppInstance::where('tenant_id', auth()->user()->tenant_id)
+            ->pluck('name')
+            ->map(fn ($n) => mb_strtolower(trim((string) $n)))
+            ->all();
+
+        if (!in_array(mb_strtolower($base), $taken, true)) {
+            return $base;
+        }
+
+        for ($i = 2; $i < 100; $i++) {
+            if (!in_array(mb_strtolower($base . ' ' . $i), $taken, true)) {
+                return $base . ' ' . $i;
+            }
+        }
+
+        return $base;
     }
 
     public function create()
@@ -104,7 +163,7 @@ class InstanceWebController extends Controller
 
         AuditLog::record('instance.created', $instance);
 
-        return redirect()->route('admin.instances.index')
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
             ->with('success', __('ui.controller_messages.instance_created', ['name' => $instance->name]));
     }
 
@@ -114,16 +173,21 @@ class InstanceWebController extends Controller
 
         $instance->load(['tenant:id,name', 'team:id,name']);
 
-        $recentEvents = $instance->webhookEvents()
-            ->latest()
-            ->limit(10)
-            ->get(['id', 'event_type', 'processed_at', 'error', 'created_at']);
+        $showGatewayInternals = $this->seesGatewayInternals();
 
-        return view('admin.instances.show', compact('instance', 'recentEvents'));
+        $recentEvents = $showGatewayInternals
+            ? $instance->webhookEvents()
+                ->latest()
+                ->limit(10)
+                ->get(['id', 'event_type', 'processed_at', 'error', 'created_at'])
+            : collect();
+
+        return view('admin.instances.show', compact('instance', 'recentEvents', 'showGatewayInternals'));
     }
 
     public function webhookEvents(WhatsAppInstance $instance)
     {
+        $this->ensureGatewayInternalsAccess();
         $this->ensureInstanceAccess($instance);
 
         $events = $instance->webhookEvents()
@@ -136,6 +200,7 @@ class InstanceWebController extends Controller
 
     public function reprocessWebhookEvent(WhatsAppInstance $instance, int $eventId)
     {
+        $this->ensureGatewayInternalsAccess();
         $this->ensureInstanceAccess($instance);
 
         $event = WebhookEvent::where('instance_id', $instance->id)->findOrFail($eventId);

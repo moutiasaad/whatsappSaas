@@ -50,9 +50,11 @@
             <a href="{{ route($panelPrefix . '.instances.index') }}" class="btn btn-outline">
                 <i class="ri-arrow-left-line"></i> {{ __('ui.back') }}
             </a>
+            @if($showGatewayInternals ?? false)
             <a href="{{ route($panelPrefix . '.instances.webhook-events', $instance) }}" class="btn btn-outline">
                 <i class="ri-flashlight-line"></i> Webhook Events
             </a>
+            @endif
             <a href="{{ route($panelPrefix . '.instances.edit', $instance) }}" class="btn btn-primary">
                 <i class="ri-pencil-line"></i> {{ __('ui.edit') }}
             </a>
@@ -89,11 +91,13 @@
                     <dd style="margin:0">{{ $instance->team->name }}</dd>
                     @endif
 
+                    @if($showGatewayInternals ?? false)
                     <dt style="color:var(--text-muted)">{{ __('ui.instances_page.gateway') }}</dt>
                     <dd style="margin:0">{{ ucwords(str_replace('_', ' ', $instance->gateway ?? '—')) }}</dd>
 
                     <dt style="color:var(--text-muted)">Instance ID</dt>
                     <dd style="margin:0;font-family:monospace;font-size:.8125rem">{{ $instance->gateway_instance_id ?: '—' }}</dd>
+                    @endif
 
                     <dt style="color:var(--text-muted)">{{ __('ui.instances_page.activity') }}</dt>
                     <dd style="margin:0">
@@ -116,10 +120,11 @@
             </div>
         </div>
 
+        @if($showGatewayInternals ?? false)
         {{-- Webhook Config --}}
         <div class="card">
             <div class="card-header">
-                <div class="card-title"><i class="ri-flashlight-line" style="margin-right:.5rem;color:#6366f1"></i>Webhook</div>
+                <div class="card-title"><i class="ri-flashlight-line" style="margin-right:.5rem;color:#0f7e7a"></i>Webhook</div>
             </div>
             <div class="card-body">
                 <dl style="display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.5rem;font-size:.875rem;margin:0">
@@ -170,9 +175,11 @@
                 </dl>
             </div>
         </div>
+        @endif
 
     </div>
 
+    @if($showGatewayInternals ?? false)
     {{-- Gateway Config --}}
     <div class="card" style="margin-bottom:1.5rem">
         <div class="card-header">
@@ -248,6 +255,8 @@
             @endif
         </div>
     </div>
+    @endif
 
 </div>
+
 @endsection
