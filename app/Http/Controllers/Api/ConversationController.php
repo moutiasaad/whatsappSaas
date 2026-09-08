@@ -359,6 +359,12 @@ class ConversationController extends Controller
 
     public function updatePresence(Conversation $conversation, Request $request): JsonResponse
     {
+        // Presence both broadcasts on the conversation channel and drives a
+        // WhatsApp typing indicator on the customer's phone, so it needs the
+        // same tenancy/team check every sibling handler in this controller
+        // already runs. view() is the same gate markRead() uses.
+        $this->authorize('view', $conversation);
+
         $data = $request->validate([
             'presence' => ['required', \Illuminate\Validation\Rule::in(['unavailable', 'available', 'composing', 'recording', 'paused'])],
         ]);
