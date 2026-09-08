@@ -35,6 +35,10 @@ return [
     'unsaved_changes_warning' => 'Vos modifications non enregistrées seront perdues.',
     'inbox' => 'Boîte de réception',
     'notifications' => 'Notifications',
+    'notification_messages' => [
+        'ai_quota_exhausted_title' => 'Auto-réponse IA suspendue',
+        'ai_quota_exhausted_body'  => 'Votre quota mensuel de jetons IA est atteint. L’auto-réponse est suspendue jusqu’à la prochaine période de facturation.',
+    ],
     'return_to_account' => 'Retour à mon compte',
     'impersonating' => 'Vous vous faites passer pour :name',
     'dashboard_page' => [

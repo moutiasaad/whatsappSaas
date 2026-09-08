@@ -136,7 +136,32 @@ class AutoReplyService
 
     private function disableAndNotify($tenant): void
     {
+        $quota = (int) ($tenant->aiSettings?->monthly_token_quota ?? 0);
+
         $tenant->aiSettings()->update(['mode' => 'off']);
+
+        // Previously this only wrote a log line, so the tenant was never told the
+        // AI had stopped answering their customers.
+        $tenant->users()
+            ->where('role', 'admin')
+            ->where('is_active', true)
+            ->get()
+            ->each(function ($admin) use ($tenant, $quota) {
+                \App\Models\AppNotification::create([
+                    'tenant_id' => $tenant->id,
+                    'user_id'   => $admin->id,
+                    // app_notifications.type is enum('manual','renewal','system');
+                    // the specific event lives in data.event.
+                    'type'      => 'system',
+                    'title'     => __('ui.notification_messages.ai_quota_exhausted_title'),
+                    'body'      => __('ui.notification_messages.ai_quota_exhausted_body'),
+                    'data'      => [
+                        'event' => 'ai.quota_exhausted',
+                        'quota' => $quota,
+                    ],
+                ]);
+            });
+
         Log::warning("AI disabled for tenant {$tenant->id}: quota exhausted");
     }
 }

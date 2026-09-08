@@ -31,7 +31,45 @@ class AiSettings extends Model
     {
         // 0 means unlimited
         if ($this->monthly_token_quota === 0) return true;
+
+        $this->rolloverIfDue();
+
         return $this->tokens_used_this_period < $this->monthly_token_quota;
+    }
+
+    /**
+     * Start a new quota period once quota_reset_at has passed.
+     *
+     * Without this the "monthly" quota was a lifetime allowance: the counter was
+     * only ever incremented, so an exhausted tenant stayed exhausted forever.
+     */
+    protected function rolloverIfDue(): void
+    {
+        if (!$this->quota_reset_at || $this->quota_reset_at->isFuture()) {
+            return;
+        }
+
+        // A tenant idle across several boundaries needs more than one month added.
+        $next = $this->quota_reset_at->copy();
+        while ($next->isPast()) {
+            $next = $next->addMonthNoOverflow();
+        }
+
+        // Guarding on the old quota_reset_at means only one of two concurrent
+        // workers can win the reset; the loser refreshes instead of double-resetting.
+        $affected = static::where('tenant_id', $this->tenant_id)
+            ->where('quota_reset_at', $this->quota_reset_at)
+            ->update([
+                'tokens_used_this_period' => 0,
+                'quota_reset_at'          => $next,
+            ]);
+
+        if ($affected) {
+            $this->tokens_used_this_period = 0;
+            $this->quota_reset_at          = $next;
+        } else {
+            $this->refresh();
+        }
     }
 
     public function remainingQuota(): int

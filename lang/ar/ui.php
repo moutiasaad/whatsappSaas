@@ -33,6 +33,10 @@ return [
     'unsaved_changes_warning' => 'ستفقد التغييرات غير المحفوظة.',
     'inbox' => 'الوارد',
     'notifications' => 'الإشعارات',
+    'notification_messages' => [
+        'ai_quota_exhausted_title' => 'تم إيقاف الرد الآلي بالذكاء الاصطناعي',
+        'ai_quota_exhausted_body'  => 'تم استهلاك حصة الرموز الشهرية للذكاء الاصطناعي. سيُستأنف الرد الآلي مع بداية الفترة الفوترية التالية.',
+    ],
     'return_to_account' => 'العودة إلى حسابي',
     'impersonating' => 'تسجيل الدخول باسم :name',
     'dashboard_page' => [

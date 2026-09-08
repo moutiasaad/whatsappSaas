@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\ExpireSubscriptions;
+use App\Console\Commands\RolloverAiQuotas;
 use App\Console\Commands\SendRenewalReminders;
 use App\Console\Commands\WebChatReleaseStale;
 use App\Jobs\PollInstanceHealth;
@@ -23,3 +24,6 @@ Schedule::command(SendRenewalReminders::class)->dailyAt('08:00');
 
 // Web-chat: release conversations left claimed but idle every minute
 Schedule::command(WebChatReleaseStale::class)->everyMinute()->withoutOverlapping();
+
+// Roll over AI monthly token quotas for idle tenants
+Schedule::command(RolloverAiQuotas::class)->dailyAt('00:10');

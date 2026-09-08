@@ -34,6 +34,10 @@ return [
     'unsaved_changes_warning' => 'Your unsaved changes will be lost.',
     'inbox' => 'Inbox',
     'notifications' => 'Notifications',
+    'notification_messages' => [
+        'ai_quota_exhausted_title' => 'AI auto-reply paused',
+        'ai_quota_exhausted_body'  => 'Your AI monthly token quota has been reached. Auto-reply is paused until the next billing period.',
+    ],
     'return_to_account' => 'Return to my account',
     'impersonating' => 'Impersonating :name',
     'dashboard_page' => [
