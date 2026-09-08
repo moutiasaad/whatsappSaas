@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# wavadesk — post-merge git hook
+# Fires after `git pull` / `git merge` so a deploy can never land new code
+# without running its migrations. Enable once per clone with:
+#
+#   git config core.hooksPath deploy/githooks
+#
+# Set WAVADESK_SKIP_DEPLOY=1 to skip (e.g. when pulling on a dev machine).
+# ─────────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+if [ "${WAVADESK_SKIP_DEPLOY:-0}" = "1" ]; then
+    echo "post-merge: WAVADESK_SKIP_DEPLOY=1 — skipping deploy steps"
+    exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Only auto-deploy on the production checkout. Elsewhere the pull is just a pull.
+if [ "$REPO_ROOT" != "/www/wwwroot/public/wavadesk.com" ]; then
+    exit 0
+fi
+
+echo ""
+echo "── post-merge: running deploy/after-pull.sh ─────────────────────────────"
+exec bash "$REPO_ROOT/deploy/after-pull.sh"
