@@ -152,11 +152,7 @@ class PaymentController extends Controller
         if ($payment?->isCompleted()) {
             if (!Auth::check()) {
                 $userId = session()->pull('_pending_register_user');
-                $user   = $userId
-                    ? User::find($userId)
-                    : $payment->tenant?->users()->where('role', 'admin')->where('is_active', true)->first();
-
-                if ($user) {
+                if ($userId && ($user = User::find($userId))) {
                     Auth::login($user);
                 }
             }
@@ -484,10 +480,7 @@ class PaymentController extends Controller
                 // Log the buyer in if this was a fresh registration.
                 if (!Auth::check()) {
                     $userId = session()->pull('_pending_register_user');
-                    $user   = $userId
-                        ? User::find($userId)
-                        : $payment->tenant?->users()->where('role', 'admin')->where('is_active', true)->first();
-                    if ($user) {
+                    if ($userId && ($user = User::find($userId))) {
                         Auth::login($user);
                     }
                 }
