@@ -222,7 +222,7 @@
                                     </td>
                                     <td>
                                         <div style="display:flex;align-items:center;gap:.625rem;">
-                                            <div style="width:2rem;height:2rem;border-radius:50%;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(79,70,229,.25));display:flex;align-items:center;justify-content:center;color:#6366f1;flex-shrink:0;font-size:.75rem;font-weight:700;"
+                                            <div style="width:2rem;height:2rem;border-radius:50%;background:linear-gradient(135deg,rgba(15,126,122,.15),rgba(10,94,91,.25));display:flex;align-items:center;justify-content:center;color:#0f7e7a;flex-shrink:0;font-size:.75rem;font-weight:700;"
                                                  x-text="row.name.charAt(0).toUpperCase()"></div>
                                             <span style="font-weight:600;" x-text="row.name"></span>
                                         </div>
@@ -426,7 +426,7 @@ function reportsPage() {
                     datasets: [{
                         label: '{{ __('ui.reports_page.kpi_inbound') }}',
                         data,
-                        backgroundColor: 'rgba(99,102,241,.7)',
+                        backgroundColor: 'rgba(15,126,122,.7)',
                         borderRadius: 3,
                         borderSkipped: false,
                     }]
@@ -458,7 +458,7 @@ function reportsPage() {
                     ],
                     datasets: [{
                         data: [av.agent ?? 0, av.ai ?? 0, av.system ?? 0],
-                        backgroundColor: ['#6366f1', '#10b981', '#94a3b8'],
+                        backgroundColor: ['#0f7e7a', '#10b981', '#94a3b8'],
                         borderWidth: 0,
                         hoverOffset: 4,
                     }]

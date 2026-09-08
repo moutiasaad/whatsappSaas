@@ -8,12 +8,211 @@
 
 @push('styles')
 <style>
-    /* Full-bleed chat workspace — mirrors the WhatsApp conversations show page */
-    main.page-content { padding: 0 !important; }
+/* ════════════════════════════════════════════════════════════════
+   LIVE CHAT INBOX — wavadesk inbox design
+   Everything is scoped under .wcx so the shared admin styles
+   (.row, .list, .btn, .search …) are never touched.
+════════════════════════════════════════════════════════════════ */
+main.page-content { padding: 0 !important; }
+
+.wcx{
+  --teal:#0f7e7a;--teal-l:#15b6a8;--teal-d:#0a5e5b;--teal-50:#ecf7f6;--teal-100:#d6efed;
+  --ink:#0d1417;--txt:#0f172a;--mut:#64748b;--mut-2:#94a3b8;
+  --bd:#e6ebf0;--bd-2:#cbd5e1;--soft:#f7f9fa;--soft-2:#eef2f5;
+  --lc:#4f6bed;--lc-50:#eef1fe;--amber:#d97706;--amber-50:#fef3e2;
+  --list:340px;--info:300px;
+  display:grid;grid-template-columns:var(--list) minmax(0,1fr) var(--info);
+  height:calc(100vh - var(--topbar-height, 64px));
+  background:var(--soft);color:var(--txt);font-size:14px;line-height:1.5;overflow:hidden;
+}
+.wcx button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.wcx ::-webkit-scrollbar{width:9px;height:9px}
+.wcx ::-webkit-scrollbar-thumb{background:#cfd8de;border-radius:9px;border:2px solid transparent;background-clip:content-box}
+.wcx ::-webkit-scrollbar-thumb:hover{background:#b6c2cb;background-clip:content-box}
+.wcx ::-webkit-scrollbar-track{background:transparent}
+
+/* ─────────── LIST ─────────── */
+.wcx .list{background:#fff;border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wcx .lh{padding:16px 16px 0;flex-shrink:0}
+.wcx .lh .t{display:flex;align-items:center;gap:9px;margin-bottom:13px}
+.wcx .lh h1{font-size:19px;font-weight:700;letter-spacing:-.02em;margin:0}
+.wcx .lh .badge{font-size:11px;font-weight:700;background:var(--teal-50);color:var(--teal);padding:3px 8px;border-radius:999px}
+.wcx .lh .grow{margin-inline-start:auto;display:flex;gap:4px;align-items:center}
+.wcx .wsdot{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--mut)}
+.wcx .wsdot i{width:6px;height:6px;border-radius:50%;background:var(--teal-l)}
+.wcx .wsdot.off i{background:var(--mut-2)}
+.wcx .iconbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--mut);transition:.12s;flex-shrink:0}
+.wcx .iconbtn:hover{background:var(--soft-2);color:var(--txt)}
+.wcx .search{position:relative;margin-bottom:12px}
+.wcx .search svg{position:absolute;inset-inline-start:11px;top:50%;transform:translateY(-50%);color:var(--mut-2);pointer-events:none}
+.wcx .search input{width:100%;height:38px;border-radius:10px;border:1px solid var(--bd);background:var(--soft);padding:0 12px 0 34px;font-size:13.5px;outline:none;transition:.15s;color:var(--txt);font-family:inherit}
+html[dir="rtl"] .wcx .search input{padding:0 34px 0 12px}
+.wcx .search input::placeholder{color:var(--mut-2)}
+.wcx .search input:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(15,126,122,.1)}
+.wcx .tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin:0 -16px;padding:0 16px}
+.wcx .tab{padding:9px 11px;font-size:13px;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.wcx .tab:hover{color:var(--txt)}
+.wcx .tab.on{color:var(--teal);border-bottom-color:var(--teal)}
+.wcx .tab .n{font-size:10.5px;font-weight:700;background:var(--teal-50);color:var(--teal);padding:1px 6px;border-radius:999px}
+.wcx .rows{flex:1;overflow-y:auto;min-height:0}
+.wcx .row{display:flex;gap:11px;padding:13px 16px;border-bottom:1px solid #f1f5f7;cursor:pointer;transition:.1s;position:relative;width:100%;text-align:start;align-items:flex-start}
+.wcx .row:hover{background:var(--soft)}
+.wcx .row.on{background:var(--teal-50)}
+.wcx .row.on::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:3px;background:var(--teal)}
+.wcx .row .avw{display:block;position:relative;flex-shrink:0}
+.wcx .row .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;background:var(--teal)}
+.wcx .row .ch{position:absolute;inset-inline-end:-2px;bottom:-2px;width:17px;height:17px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;background:var(--lc)}
+.wcx .row.on .ch{border-color:var(--teal-50)}
+.wcx .row .m{display:block;flex:1;min-width:0}
+.wcx .row .l1{display:flex;align-items:baseline;gap:8px}
+.wcx .row .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.wcx .row .tm{font-size:11px;color:var(--mut-2);flex-shrink:0;font-variant-numeric:tabular-nums}
+.wcx .row .pv{display:block;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.wcx .row .l3{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
+.wcx .st{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2.5px 7px;border-radius:5px;text-transform:uppercase}
+.wcx .st.pending{background:var(--amber-50);color:var(--amber)}
+.wcx .st.assigned{background:var(--teal-50);color:var(--teal)}
+.wcx .st.bot{background:var(--lc-50);color:var(--lc)}
+.wcx .st.closed{background:var(--soft-2);color:var(--mut)}
+.wcx .asg{font-size:11px;color:var(--mut);display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto}
+.wcx .asg .a{width:17px;height:17px;border-radius:50%;background:var(--teal-d);color:#fff;font-size:8.5px;font-weight:700;display:grid;place-items:center}
+.wcx .empty{padding:46px 22px;text-align:center;color:var(--mut-2);font-size:13.5px;display:flex;flex-direction:column;align-items:center;gap:11px}
+
+/* ─────────── THREAD ─────────── */
+.wcx .thread{background:var(--soft);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wcx .th{background:#fff;border-bottom:1px solid var(--bd);padding:11px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.wcx .th .back{display:none}
+.wcx .th .avw{position:relative;flex-shrink:0}
+.wcx .th .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;background:var(--teal)}
+.wcx .th .ch{position:absolute;inset-inline-end:-2px;bottom:-2px;width:17px;height:17px;border-radius:50%;border:2px solid #fff;display:grid;place-items:center;background:var(--lc)}
+.wcx .th .m{flex:1;min-width:0}
+.wcx .th .n{font-size:15px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wcx .th .s{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px;margin-top:1px}
+.wcx .th .acts{display:flex;gap:6px;align-items:center}
+.wcx .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:35px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;transition:.13s;white-space:nowrap}
+.wcx .btn.p{background:var(--teal);color:#fff}
+.wcx .btn.p:hover{background:var(--teal-d)}
+.wcx .btn.g{background:#fff;color:var(--txt);border:1px solid var(--bd)}
+.wcx .btn.g:hover{border-color:var(--bd-2);background:var(--soft)}
+.wcx .btn.dgr{background:#fff;color:#dc2626;border:1px solid #fecaca}
+.wcx .btn.dgr:hover{background:#fef2f2}
+.wcx .btn:disabled{opacity:.55;cursor:not-allowed}
+
+.wcx .msgs{flex:1;overflow-y:auto;padding:22px 24px;display:flex;flex-direction:column;min-height:0}
+/* few messages shouldn't leave a hole above the composer — sit them on the bottom */
+.wcx .msgs > *:first-child{margin-top:auto}
+.wcx .grp{display:flex;gap:9px;margin-top:11px;max-width:74%}
+.wcx .grp.out{margin-inline-start:auto;flex-direction:row-reverse}
+.wcx .grp .gav{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;flex-shrink:0;align-self:flex-end;margin-bottom:2px;background:var(--teal)}
+.wcx .grp.out .gav{background:var(--teal-d)}
+.wcx .grp .bubs{display:flex;flex-direction:column;gap:3px;min-width:0}
+.wcx .grp.out .bubs{align-items:flex-end}
+.wcx .who{font-size:11px;font-weight:600;color:var(--mut);margin-bottom:3px;padding:0 3px}
+.wcx .grp.out .who{text-align:end}
+.wcx .bub{padding:9px 13px;border-radius:15px;font-size:14px;line-height:1.48;position:relative;overflow-wrap:anywhere;white-space:pre-wrap;width:fit-content;max-width:100%}
+.wcx .bub.in{background:#fff;border:1px solid var(--bd);border-end-start-radius:5px}
+.wcx .bub.out{background:var(--teal);color:#fff;border-end-end-radius:5px}
+.wcx .bub.in + .bub.in{border-end-start-radius:15px;border-start-start-radius:5px}
+.wcx .bub.out + .bub.out{border-end-end-radius:15px;border-start-end-radius:5px}
+.wcx .bub .tm{font-size:10.5px;opacity:.6;margin-top:2px;display:flex;align-items:center;gap:4px;justify-content:flex-end;font-variant-numeric:tabular-nums;line-height:1.2}
+.wcx .bub.in .tm{color:var(--mut-2);opacity:1}
+.wcx .sys{background:#fff;border:1px solid var(--bd);color:var(--mut);font-size:12px;font-weight:500;padding:6px 14px;border-radius:999px;margin:12px auto;display:flex;width:fit-content;max-width:100%;align-items:center;gap:7px;text-align:center}
+.wcx .nothread{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--mut-2);font-size:14px;padding:24px;text-align:center}
+.wcx .nothread .ic{width:58px;height:58px;border-radius:50%;background:#fff;border:1px solid var(--bd);display:grid;place-items:center;color:var(--teal)}
+
+/* composer */
+.wcx .comp{background:#fff;border-top:1px solid var(--bd);padding:12px 18px 14px;flex-shrink:0}
+.wcx .cbox{border:1px solid var(--bd);border-radius:12px;transition:.15s;background:#fff}
+.wcx .cbox:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,126,122,.1)}
+.wcx .cbox textarea{width:100%;border:none;background:none;outline:none;resize:none;padding:11px 13px 4px;font-size:14px;line-height:1.5;color:var(--txt);max-height:130px;min-height:42px;display:block;font-family:inherit}
+.wcx .cbox textarea::placeholder{color:var(--mut-2)}
+.wcx .crow{display:flex;align-items:center;gap:3px;padding:5px 8px 7px}
+.wcx .crow .sp{flex:1;font-size:11.5px;color:var(--mut-2)}
+.wcx .send{width:34px;height:34px;border-radius:9px;background:var(--teal);color:#fff;display:grid;place-items:center;transition:.13s;flex-shrink:0}
+.wcx .send:hover{background:var(--teal-d)}
+.wcx .send:disabled{background:var(--bd-2);cursor:default}
+html[dir="rtl"] .wcx .send svg{transform:scaleX(-1)}
+.wcx .closed-bar{background:var(--soft-2);border:1px solid var(--bd);border-radius:12px;padding:13px;display:flex;align-items:center;justify-content:center;gap:9px;font-size:13.5px;color:var(--mut);font-weight:500;text-align:center}
+.wcx .claim-bar{background:linear-gradient(180deg,var(--amber-50),#fff);border:1px solid #fcd9a4;border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wcx .claim-bar .m{flex:1;min-width:0}
+.wcx .claim-bar .h{font-size:13.5px;font-weight:700;color:#92400e}
+.wcx .claim-bar .s{font-size:12.5px;color:var(--amber);margin-top:1px}
+
+/* ─────────── INFO ─────────── */
+.wcx .info{background:#fff;border-inline-start:1px solid var(--bd);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wcx .infoscroll{flex:1;overflow-y:auto;min-height:0}
+.wcx .ihero{position:relative;padding:24px 20px 20px;text-align:center;border-bottom:1px solid var(--bd)}
+.wcx .ihero .av{width:64px;height:64px;border-radius:50%;margin:0 auto;display:grid;place-items:center;font-size:21px;font-weight:700;color:#fff;background:var(--teal)}
+.wcx .ihero .n{font-size:16.5px;font-weight:700;letter-spacing:-.01em;margin-top:11px}
+.wcx .ihero .sub{font-size:12.5px;color:var(--mut);margin-top:2px;word-break:break-all}
+.wcx .ihero .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-top:10px;background:var(--lc-50);color:var(--lc)}
+.wcx .isec{padding:16px 20px;border-bottom:1px solid var(--bd)}
+.wcx .isec:last-child{border-bottom:none}
+.wcx .isec h4{font-size:10.5px;font-weight:700;letter-spacing:.13em;color:var(--mut-2);text-transform:uppercase;margin:0 0 11px}
+.wcx .kv{display:flex;gap:10px;font-size:12.5px;padding:5px 0;align-items:flex-start}
+.wcx .kv .k{color:var(--mut);flex-shrink:0;width:74px}
+.wcx .kv .v{color:var(--txt);font-weight:500;flex:1;min-width:0;text-align:end;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wcx .infoclose{display:none}
+
+/* ─────────── close modal ─────────── */
+.wcx-modal{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(13,20,23,.5)}
+.wcx-modal .box{background:#fff;border-radius:16px;width:100%;max-width:440px;padding:24px;box-shadow:0 30px 70px -30px rgba(13,20,23,.5)}
+.wcx-modal h3{font-size:18px;font-weight:700;margin:0 0 6px;letter-spacing:-.02em;color:#0f172a}
+.wcx-modal p{font-size:13.5px;color:#64748b;margin:0 0 16px;line-height:1.5}
+.wcx-modal label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#0f172a}
+.wcx-modal input{width:100%;height:44px;border:1px solid #e6ebf0;border-radius:10px;padding:0 13px;font-size:14px;outline:none;font-family:inherit;color:#0f172a}
+.wcx-modal input:focus{border-color:#0f7e7a;box-shadow:0 0 0 3px rgba(15,126,122,.1)}
+.wcx-modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.wcx-modal .regen{font-size:12.5px;font-weight:600;color:#0f7e7a;margin-top:8px;display:inline-flex;align-items:center;gap:6px}
+
+/* ─────────── skeletons ─────────── */
+.wcx .sk{background:linear-gradient(90deg,var(--soft-2) 25%,#f7f9fa 37%,var(--soft-2) 63%);background-size:400% 100%;animation:wcxsk 1.4s ease infinite;border-radius:6px;flex-shrink:0}
+@keyframes wcxsk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.wcx .skrow{display:flex;gap:11px;padding:13px 16px;border-bottom:1px solid #f1f5f7;align-items:flex-start}
+.wcx .skrow .skav{width:40px;height:40px;border-radius:50%}
+.wcx .skrow .skm{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:3px}
+.wcx .skth{display:flex;align-items:center;gap:12px;padding:11px 18px;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0}
+.wcx .skth .skav{width:40px;height:40px;border-radius:50%}
+.wcx .skth .skm{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.wcx .skmsgs{flex:1;padding:22px 24px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.wcx .skbub{height:44px;border-radius:15px;max-width:62%}
+.wcx .skbub.out{margin-inline-start:auto}
+.wcx .skcomp{background:#fff;border-top:1px solid var(--bd);padding:12px 18px 14px;flex-shrink:0}
+.wcx .skcomp .skbox{height:74px;border-radius:12px}
+@media (prefers-reduced-motion:reduce){.wcx .sk{animation:none}}
+
+/* ─────────── responsive ─────────── */
+@media (max-width:1180px){
+  .wcx{--list:300px;--info:270px}
+  .wcx .msgs{padding:18px 16px}
+}
+@media (max-width:1024px){
+  .wcx{grid-template-columns:var(--list) minmax(0,1fr)}
+  .wcx .info{position:fixed;top:0;inset-inline-end:0;bottom:0;width:min(320px,90vw);z-index:1100;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);box-shadow:-20px 0 50px -20px rgba(13,20,23,.25)}
+  html[dir="rtl"] .wcx .info{transform:translateX(-100%)}
+  .wcx .info.open{transform:translateX(0)}
+  .wcx .infoclose{display:grid}
+}
+@media (max-width:820px){
+  .wcx{grid-template-columns:1fr;height:calc(100vh - var(--topbar-height, 64px))}
+  .wcx .list,.wcx .thread{grid-column:1;grid-row:1}
+  .wcx .list{border-right:none}
+  .wcx .thread{display:none}
+  .wcx.v-thread .list{display:none}
+  .wcx.v-thread .thread{display:flex}
+  .wcx .th .back{display:grid}
+  .wcx .msgs{padding:16px 14px}
+  .wcx .grp{max-width:86%}
+  .wcx .comp{padding:10px 12px 12px}
+  .wcx .lh{padding:14px 14px 0}
+  .wcx .tabs{margin:0 -14px;padding:0 14px;overflow-x:auto}
+  .wcx .row{padding:12px 14px}
+}
 </style>
 @endpush
 
 @section('content')
+
 @php
     $panelPrefix = auth()->user()->routeNamePrefix();
     $i18n = [
@@ -76,150 +275,197 @@
     ];
 @endphp
 
-<div x-data="webchatInbox()" x-init="init()" x-cloak class="cw-root">
+<div x-data="webchatInbox()" x-init="init()" x-cloak class="wcx" :class="{ 'v-thread': mobileThread }">
 
-    {{-- =========================================================
-         LEFT RAIL — Conversation list
-    ========================================================== --}}
-    <aside class="cw-rail">
-        <div class="cw-rail-head">
-            <div class="cw-rail-title">
-                <span>{{ __('ui.webchat_page.title') }}</span>
-                <span class="cw-rail-count" x-text="conversations.length"></span>
+    {{-- ═══════════ LIST ═══════════ --}}
+    <section class="list">
+        <div class="lh">
+            <div class="t">
+                <h1>{{ __('ui.webchat_page.title') }}</h1>
+                <span class="badge" x-text="visible.length"></span>
+                <div class="grow">
+                    <span class="wsdot" :class="{ 'off': !wsConnected }">
+                        <i></i><span x-text="wsConnected ? i18n.online : i18n.offline"></span>
+                    </span>
+                    <button type="button" class="iconbtn" @click="loadList()" :title="i18n.title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
             </div>
 
-            <div class="cw-tabs">
-                <template x-for="tab in tabs" :key="tab">
-                    <button type="button" @click="setFilter(tab)" :class="filter === tab ? 'active' : ''">
-                        <span x-text="i18n['tab_' + tab]"></span>
-                        <template x-if="tab === 'pending' && pendingCount > 0">
-                            <span class="cw-tab-dot" x-text="pendingCount"></span>
-                        </template>
+            <div class="search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input type="text" x-model="q" placeholder="{{ __('ui.webchat_page.search_placeholder') }}">
+            </div>
+
+            <div class="tabs">
+                <template x-for="t in tabs" :key="t">
+                    <button type="button" class="tab" :class="{ 'on': filter === t }" @click="setFilter(t)">
+                        <span x-text="i18n['tab_' + t]"></span>
+                        <span class="n" x-show="filter === t" x-text="visible.length"></span>
                     </button>
                 </template>
             </div>
         </div>
 
-        <div class="cw-rail-body">
-            <template x-if="loading && conversations.length === 0">
-                <div class="cw-empty">
-                    <div class="spinner"></div>
+        <div class="rows">
+            <template x-if="loading">
+                <div>
+                    <template x-for="i in 7" :key="'sk' + i">
+                        <div class="skrow">
+                            <div class="sk skav"></div>
+                            <div class="skm">
+                                <div class="sk" style="width:54%;height:11px"></div>
+                                <div class="sk" style="width:84%;height:10px"></div>
+                                <div class="sk" style="width:32%;height:9px"></div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </template>
 
-            <template x-if="!loading && conversations.length === 0">
-                <div class="cw-empty">
-                    <i class="ri-chat-off-line"></i>
-                    <div x-text="i18n.no_conversations"></div>
+            <template x-if="!loading && visible.length === 0">
+                <div class="empty">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 013.6 11.5a8.4 8.4 0 018.4-8.4 8.4 8.4 0 019 8.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    <span x-text="i18n.no_conversations"></span>
                 </div>
             </template>
 
-            <template x-for="conv in conversations" :key="conv.uuid">
-                <div
-                    class="cw-row"
-                    :class="{
-                        'active': activeUuid === conv.uuid,
-                    }"
-                    @click="openRow(conv)">
-                    <div class="cw-row-avatar" x-text="visitorInitials(conv)"></div>
-                    <div class="cw-row-body">
-                        <div class="cw-row-top">
-                            <div class="cw-row-name" x-text="displayName(conv)"></div>
-                            <div class="cw-row-time" x-text="timeAgo(conv.last_activity_at || conv.created_at)"></div>
-                        </div>
-                        <div class="cw-row-bottom">
-                            <div class="cw-row-preview" x-text="conv.title || conv.last_message_preview || i18n.no_messages_yet"></div>
-                        </div>
-                        <div class="cw-row-meta">
-                            <span class="cw-pill" :class="statePillClass(conv.status)" x-text="i18n['status_' + conv.status]"></span>
+            <template x-for="conv in (loading ? [] : visible)" :key="conv.uuid">
+                <button type="button" class="row" :class="{ 'on': activeUuid === conv.uuid }" @click="openRow(conv)">
+                    <span class="avw">
+                        <span class="av" x-text="visitorInitials(conv)"></span>
+                        <span class="ch">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="#fff"/><path d="M8 20l3-3h2l-5 3z" fill="#fff"/><path d="M7 9h10M7 12.5h6" stroke="#4f6bed" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        </span>
+                    </span>
+                    <span class="m">
+                        <span class="l1">
+                            <span class="nm" x-text="displayName(conv)"></span>
+                            <span class="tm" x-text="timeAgo(conv.last_activity_at || conv.created_at)"></span>
+                        </span>
+                        <span class="pv" x-text="conv.title || conv.last_message_preview || i18n.no_messages_yet"></span>
+                        <span class="l3">
+                            <span class="st" :class="conv.status" x-text="i18n['status_' + conv.status]"></span>
                             <template x-if="conv.status === 'assigned' && conv.claimer">
-                                <span class="cw-row-instance" x-text="conv.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + conv.claimer.name)"></span>
+                                <span class="asg">
+                                    <span class="a" x-text="visitorInitials({ name: conv.claimer.name })"></span>
+                                    <span x-text="conv.claimer.id === myId ? i18n.claimed_by_you : conv.claimer.name"></span>
+                                </span>
                             </template>
-                        </div>
-                    </div>
-                </div>
+                        </span>
+                    </span>
+                </button>
             </template>
         </div>
-    </aside>
+    </section>
 
-    {{-- =========================================================
-         MIDDLE THREAD
-    ========================================================== --}}
-    <section class="cw-thread">
-
-        <template x-if="!activeUuid">
-            <div class="cw-empty" style="flex:1;">
-                <i class="ri-chat-3-line"></i>
-                <div x-text="i18n.select_conversation"></div>
+    {{-- ═══════════ THREAD ═══════════ --}}
+    <section class="thread">
+        <template x-if="threadLoading">
+            <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+                <div class="skth">
+                    <div class="sk skav"></div>
+                    <div class="skm">
+                        <div class="sk" style="width:150px;height:13px"></div>
+                        <div class="sk" style="width:96px;height:10px"></div>
+                    </div>
+                </div>
+                <div class="skmsgs">
+                    <div class="sk skbub" style="width:52%"></div>
+                    <div class="sk skbub out" style="width:44%"></div>
+                    <div class="sk skbub" style="width:60%;height:62px"></div>
+                    <div class="sk skbub out" style="width:38%"></div>
+                    <div class="sk skbub" style="width:46%"></div>
+                </div>
+                <div class="skcomp"><div class="sk skbox"></div></div>
             </div>
         </template>
 
-        <template x-if="activeUuid">
-            <div style="display:flex; flex-direction:column; min-height:0; flex:1;">
+        <template x-if="!activeUuid && !threadLoading">
+            <div class="nothread">
+                <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 013.6 11.5a8.4 8.4 0 018.4-8.4 8.4 8.4 0 019 8.4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+                <span x-text="i18n.select_conversation"></span>
+            </div>
+        </template>
 
-                <header class="cw-thread-head">
-                    <div class="cw-thread-contact">
-                        <div class="cw-avatar cw-avatar-lg" x-text="visitorInitials(active.conversation || active.visitor)"></div>
-                        <div class="cw-thread-copy">
-                            <div class="cw-thread-name" x-text="active.visitor?.name || i18n.anonymous"></div>
-                            <div x-show="active.conversation?.title" x-cloak class="cw-thread-title"
-                                 :title="active.conversation?.title" x-text="active.conversation?.title"></div>
-                            <div class="cw-thread-meta">
-                                <span class="cw-state-badge" :class="stateBadgeClass(active.conversation?.status)" x-text="i18n['status_' + (active.conversation?.status || 'bot')]"></span>
-                                <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
-                                    <span class="cw-dot-sep"></span>
-                                </template>
-                                <template x-if="active.conversation?.claimer && active.conversation?.status === 'assigned'">
-                                    <span x-text="active.conversation.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + active.conversation.claimer.name)"></span>
-                                </template>
-                            </div>
+        <template x-if="activeUuid && !threadLoading">
+            <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+                {{-- header --}}
+                <div class="th">
+                    <button type="button" class="iconbtn back" @click="backToList()">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <span class="avw">
+                        <span class="av" x-text="visitorInitials(active.conversation || active.visitor)"></span>
+                        <span class="ch">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="#fff"/><path d="M8 20l3-3h2l-5 3z" fill="#fff"/><path d="M7 9h10M7 12.5h6" stroke="#4f6bed" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        </span>
+                    </span>
+                    <div class="m">
+                        <div class="n" x-text="active.conversation ? displayName(active.conversation) : ''"></div>
+                        <div class="s">
+                            <span class="st" :class="active.conversation?.status" x-text="active.conversation ? i18n['status_' + active.conversation.status] : ''"></span>
+                            <template x-if="active.conversation?.status === 'assigned' && active.conversation?.claimer">
+                                <span x-text="active.conversation.claimer.id === myId ? i18n.claimed_by_you : (i18n.claimed_by_prefix + ' ' + active.conversation.claimer.name)"></span>
+                            </template>
                         </div>
                     </div>
-
-                    <div class="cw-thread-actions">
-                        <span class="cw-conn-badge" :class="wsConnected ? 'is-on' : 'is-off'">
-                            <span class="cw-conn-dot"></span>
-                            <span x-text="wsConnected ? i18n.online : i18n.offline"></span>
-                        </span>
+                    <div class="acts">
+                        <template x-if="canManageLock() && isMyClaim()">
+                            <button type="button" class="btn g" @click="release()">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M15 7h2a5 5 0 010 10h-2M9 17H7A5 5 0 017 7h2M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                <span x-text="i18n.release_chat"></span>
+                            </button>
+                        </template>
                         <template x-if="canManageLock()">
-                            <button type="button" @click="close()" class="cw-close-btn">
-                                <i class="ri-close-circle-line"></i>
+                            <button type="button" class="btn dgr" @click="close()">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
                                 <span x-text="i18n.close_chat"></span>
                             </button>
                         </template>
+                        <button type="button" class="iconbtn" @click="infoOpen = !infoOpen" :title="i18n.visitor_info">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.5M12 7.6h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
                     </div>
-                </header>
+                </div>
 
-                <div class="cw-stage" x-ref="thread">
-                    <template x-for="msg in messages" :key="msg.id">
+                {{-- messages --}}
+                <div class="msgs" x-ref="thread">
+                    <template x-for="g in groups" :key="g.id">
                         <div>
-                            <template x-if="msg.sender_type === 'system'">
-                                <div class="cw-date-sep"><span x-text="msg.body"></span></div>
+                            <template x-if="g.type === 'sys'">
+                                <div class="sys" x-text="g.body"></div>
                             </template>
-                            <template x-if="msg.sender_type !== 'system'">
-                                <div class="cw-msg" :class="msg.sender_type === 'visitor' ? 'cw-msg-in' : 'cw-msg-out'">
-                                    <template x-if="msg.sender_type === 'visitor'">
-                                        <div class="cw-msg-avatar" x-text="visitorInitials(active.conversation || active.visitor)"></div>
-                                    </template>
-                                    <div class="cw-msg-stack">
-                                        <div class="cw-bubble" :class="msg.sender_type === 'visitor' ? 'cw-bubble-in' : 'cw-bubble-out'">
-                                            <div class="cw-msg-body" x-text="msg.body"></div>
-                                            <div class="cw-msg-foot">
-                                                <span x-text="formatTime(msg.created_at)"></span>
+                            <template x-if="g.type === 'msg'">
+                                <div class="grp" :class="g.side === 'out' ? 'out' : ''">
+                                    <div class="gav" x-text="g.initials"></div>
+                                    <div class="bubs">
+                                        <div class="who" x-text="g.who"></div>
+                                        <template x-for="(m, mi) in g.items" :key="m.id">
+                                            <div class="bub" :class="g.side">
+                                                <span x-text="(m.body || '').trim()"></span>
+                                                <template x-if="mi === g.items.length - 1">
+                                                    <div class="tm" x-text="formatTime(m.created_at)"></div>
+                                                </template>
                                             </div>
-                                        </div>
+                                        </template>
                                     </div>
                                 </div>
                             </template>
                         </div>
                     </template>
+
+                    <template x-if="messages.length === 0">
+                        <div class="sys" x-text="i18n.no_messages_yet"></div>
+                    </template>
                 </div>
 
-                {{-- Composer / claim CTA / closed banner --}}
-                <div class="cw-composer-wrap">
+                {{-- composer --}}
+                <div class="comp">
                     <template x-if="active.conversation?.status === 'closed'">
-                        <div class="cw-closed-banner">
-                            <i class="ri-lock-line"></i>
+                        <div class="closed-bar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.8"/></svg>
                             <span x-text="i18n.chat_closed"></span>
                         </div>
                     </template>
@@ -227,14 +473,20 @@
                     <template x-if="active.conversation?.status !== 'closed' && !isMyClaim()">
                         <div>
                             <template x-if="active.conversation?.status === 'pending' || active.conversation?.status === 'bot'">
-                                <button type="button" @click="claim(active.conversation.uuid)" class="cw-claim-btn">
-                                    <i class="ri-hand-heart-line"></i>
-                                    <span x-text="i18n.claim_to_reply"></span>
-                                </button>
+                                <div class="claim-bar">
+                                    <div class="m">
+                                        <div class="h" x-text="i18n.claim_to_reply"></div>
+                                        <div class="s" x-text="i18n.status_pending"></div>
+                                    </div>
+                                    <button type="button" class="btn p" @click="claim(active.conversation.uuid)">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        <span x-text="i18n.claim_btn"></span>
+                                    </button>
+                                </div>
                             </template>
                             <template x-if="active.conversation?.status === 'assigned'">
-                                <div class="cw-closed-banner">
-                                    <i class="ri-lock-line"></i>
+                                <div class="closed-bar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.8"/></svg>
                                     <span x-text="i18n.locked_by_agent"></span>
                                 </div>
                             </template>
@@ -242,113 +494,88 @@
                     </template>
 
                     <template x-if="active.conversation?.status !== 'closed' && isMyClaim()">
-                        <div class="cw-composer">
+                        <div class="cbox">
                             <textarea
                                 x-model="composer"
-                                @keydown.enter.prevent="sendMessage()"
-                                :placeholder="i18n.composer_placeholder"
+                                @keydown.enter.exact.prevent="sendMessage()"
                                 rows="1"
-                                class="cw-textarea"></textarea>
-                            <button type="button" @click="sendMessage()" :disabled="!composer.trim() || sending" class="cw-send">
-                                <i class="ri-send-plane-2-line"></i>
-                            </button>
+                                :placeholder="i18n.composer_placeholder"></textarea>
+                            <div class="crow">
+                                <span class="sp">↵ {{ __('ui.webchat_page.enter_to_send') }}</span>
+                                <button type="button" class="send" @click="sendMessage()" :disabled="!composer.trim() || sending">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </div>
             </div>
         </template>
-
     </section>
 
-    {{-- =========================================================
-         RIGHT RAIL — Visitor info
-    ========================================================== --}}
-    <aside class="cw-side" x-show="activeUuid" x-cloak>
-        <div class="cw-profile">
-            <div class="cw-profile-avatar" x-text="visitorInitials(active.conversation || active.visitor)"></div>
-            <div class="cw-profile-name" x-text="active.visitor?.name || i18n.anonymous"></div>
-            <template x-if="active.visitor?.email">
-                <div class="cw-profile-company" x-text="active.visitor.email"></div>
-            </template>
-        </div>
+    {{-- ═══════════ INFO ═══════════ --}}
+    <aside class="info" :class="{ 'open': infoOpen }" x-show="activeUuid && !threadLoading" x-cloak>
+        <div class="infoscroll">
+            <div class="ihero">
+                <button type="button" class="iconbtn infoclose" style="position:absolute;top:12px;inset-inline-end:12px" @click="infoOpen = false">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+                <div class="av" x-text="visitorInitials(active.conversation || active.visitor)"></div>
+                <div class="n" x-text="active.visitor?.name || (active.conversation ? displayName(active.conversation) : i18n.anonymous)"></div>
+                <div class="sub" x-text="active.visitor?.email || ''"></div>
+                <div class="chip">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="13" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M8 20l3-3h2l-5 3z" fill="currentColor"/></svg>
+                    {{ __('ui.webchat_page.channel_live_chat') }}
+                </div>
+            </div>
 
-        <div class="cw-side-card">
-            <div class="cw-side-panel">
-                <div style="font-size:.75rem; font-weight:800; color:#0f172a; margin-bottom:8px; letter-spacing:.03em; text-transform:uppercase;" x-text="i18n.visitor_info"></div>
-
+            <div class="isec">
+                <h4 x-text="i18n.visitor_info"></h4>
+                <template x-if="active.visitor?.name">
+                    <div class="kv"><span class="k" x-text="i18n.name"></span><span class="v" x-text="active.visitor.name"></span></div>
+                </template>
+                <template x-if="active.visitor?.email">
+                    <div class="kv"><span class="k" x-text="i18n.email"></span><span class="v" :title="active.visitor.email" x-text="active.visitor.email"></span></div>
+                </template>
                 <template x-if="active.meta?.page_url">
-                    <div class="cw-meta-row">
-                        <span x-text="i18n.page"></span>
-                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.page_url" :title="active.meta.page_url"></strong>
-                    </div>
+                    <div class="kv"><span class="k" x-text="i18n.page"></span><span class="v" :title="active.meta.page_url" x-text="active.meta.page_url"></span></div>
                 </template>
                 <template x-if="active.meta?.referrer">
-                    <div class="cw-meta-row">
-                        <span x-text="i18n.referrer"></span>
-                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.referrer" :title="active.meta.referrer"></strong>
-                    </div>
+                    <div class="kv"><span class="k" x-text="i18n.referrer"></span><span class="v" :title="active.meta.referrer" x-text="active.meta.referrer"></span></div>
                 </template>
                 <template x-if="active.meta?.user_agent">
-                    <div class="cw-meta-row">
-                        <span x-text="i18n.browser"></span>
-                        <strong style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" x-text="active.meta.user_agent" :title="active.meta.user_agent"></strong>
-                    </div>
+                    <div class="kv"><span class="k" x-text="i18n.browser"></span><span class="v" :title="active.meta.user_agent" x-text="active.meta.user_agent"></span></div>
                 </template>
                 <template x-if="active.meta?.ip">
-                    <div class="cw-meta-row">
-                        <span x-text="i18n.ip"></span>
-                        <strong x-text="active.meta.ip"></strong>
-                    </div>
+                    <div class="kv"><span class="k" x-text="i18n.ip"></span><span class="v" x-text="active.meta.ip"></span></div>
                 </template>
-                <template x-if="active.conversation?.created_at">
-                    <div class="cw-meta-row">
-                        <span x-text="i18n.started_at"></span>
-                        <strong x-text="formatDateTime(active.conversation.created_at)"></strong>
-                    </div>
-                </template>
+                <div class="kv">
+                    <span class="k" x-text="i18n.started_at"></span>
+                    <span class="v" x-text="formatDateTime(active.conversation?.created_at)"></span>
+                </div>
             </div>
         </div>
     </aside>
 
-    {{-- Close-with-title modal --}}
-    <template x-teleport="body">
-        <div x-show="showCloseModal" x-cloak class="modal-overlay show wc-close-modal-overlay"
-             @click.self="cancelCloseModal()">
-            <div class="modal-box wc-close-modal-box" @click.stop>
-                <div class="modal-send-icon"><i class="ri-close-circle-line"></i></div>
+    {{-- ═══════════ close modal ═══════════ --}}
+    <template x-if="showCloseModal">
+        <div class="wcx-modal" @click.self="cancelCloseModal()">
+            <div class="box">
                 <h3 x-text="i18n.close_modal_title"></h3>
                 <p x-text="i18n.close_modal_intro"></p>
-
-                <label class="form-label wc-close-modal-label" x-text="i18n.close_modal_title_label"></label>
-                <div class="wc-close-modal-input-wrap">
-                    <input type="text" class="form-control" maxlength="180"
-                           x-model="closeTitle"
-                           :placeholder="i18n.close_modal_title_placeholder"
-                           :disabled="closeTitleLoading">
-                    <div class="wc-close-modal-generating" x-show="closeTitleLoading" x-cloak>
-                        <i class="ri-loader-4-line wc-spin"></i>
-                        <span x-text="i18n.close_modal_generating"></span>
-                    </div>
-                </div>
-                <div class="wc-close-modal-regen">
-                    <button type="button" class="btn btn-outline btn-sm"
-                            @click="suggestCloseTitle()" :disabled="closeTitleLoading">
-                        <i class="ri-magic-line"></i>
-                        <span x-text="i18n.close_modal_regenerate"></span>
-                    </button>
-                </div>
-
-                <div class="modal-actions wc-close-modal-actions">
-                    <button type="button" class="btn btn-outline"
-                            @click="cancelCloseModal()" x-text="i18n.close_modal_cancel"></button>
-                    <button type="button" class="btn btn-danger"
-                            :disabled="closing" @click="submitCloseWithTitle()"
-                            x-text="i18n.close_modal_close_btn"></button>
+                <label x-text="i18n.close_modal_title_label"></label>
+                <input type="text" x-model="closeTitle" :placeholder="i18n.close_modal_title_placeholder" :disabled="closeTitleLoading">
+                <button type="button" class="regen" @click="suggestCloseTitle()" :disabled="closeTitleLoading">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor"/></svg>
+                    <span x-text="closeTitleLoading ? i18n.close_modal_generating : i18n.close_modal_regenerate"></span>
+                </button>
+                <div class="acts">
+                    <button type="button" class="btn g" @click="cancelCloseModal()" x-text="i18n.close_modal_cancel"></button>
+                    <button type="button" class="btn dgr" @click="submitCloseWithTitle()" :disabled="closing" x-text="i18n.close_modal_close_btn"></button>
                 </div>
             </div>
         </div>
     </template>
-
 </div>
 
 <script>
@@ -372,6 +599,10 @@ function webchatInbox() {
         filter:         'pending',
         conversations:  [],
         loading:        false,
+        q:              '',
+        infoOpen:       false,
+        mobileThread:   false,
+        threadLoading:  false,
 
         activeUuid:     null,
         active:         { conversation: null, visitor: null, widget: null, meta: null },
@@ -390,6 +621,66 @@ function webchatInbox() {
 
         get pendingCount() {
             return this.conversations.filter(c => c.status === 'pending').length;
+        },
+
+        // Client-side search over the rows already loaded for the active tab.
+        get visible() {
+            const q = this.q.trim().toLowerCase();
+            if (!q) return this.conversations;
+            return this.conversations.filter(c =>
+                (this.displayName(c) || '').toLowerCase().includes(q)
+                || (c.visitor_email || '').toLowerCase().includes(q)
+                || (c.title || '').toLowerCase().includes(q)
+                || (c.last_message_preview || '').toLowerCase().includes(q)
+            );
+        },
+
+        // Consecutive messages from the same sender collapse into one group so a
+        // short "hello" doesn't drag an avatar and a name row along with it.
+        get groups() {
+            const GAP_MS = 5 * 60 * 1000;
+            const out = [];
+
+            for (const m of this.messages) {
+                if (m.sender_type === 'system') {
+                    out.push({ type: 'sys', id: 's' + m.id, body: (m.body || '').trim() });
+                    continue;
+                }
+
+                const side = m.sender_type === 'visitor' ? 'in' : 'out';
+                const who  = side === 'in'
+                    ? this.displayName(this.active.conversation || {})
+                    : (m.sender?.name || this.myName);
+
+                const prev = out[out.length - 1];
+                const near = prev && prev.type === 'msg'
+                    && prev.side === side
+                    && prev.who === who
+                    && Math.abs(new Date(m.created_at) - new Date(prev.items[prev.items.length - 1].created_at)) < GAP_MS;
+
+                if (near) {
+                    prev.items.push(m);
+                } else {
+                    out.push({
+                        type: 'msg',
+                        id: 'g' + m.id,
+                        side,
+                        who,
+                        initials: side === 'in'
+                            ? this.visitorInitials(this.active.conversation || this.active.visitor)
+                            : this.visitorInitials({ name: who }),
+                        items: [m],
+                    });
+                }
+            }
+
+            return out;
+        },
+
+        // On narrow screens list and thread share one column.
+        backToList() {
+            this.mobileThread = false;
+            this.infoOpen = false;
         },
 
         init() {
@@ -454,6 +745,7 @@ function webchatInbox() {
             this.activeUuid = null;
             this.active = { conversation: null, visitor: null, widget: null, meta: null };
             this.messages = [];
+            this.mobileThread = false;
             this.loadList();
         },
 
@@ -474,10 +766,12 @@ function webchatInbox() {
         },
 
         async openRow(conv) {
+            this.mobileThread = true;
             if (this.activeUuid === conv.uuid) return;
             this.activeUuid = conv.uuid;
             this.messages = [];
             this.active = { conversation: null, visitor: null, widget: null, meta: null };
+            this.threadLoading = true;
 
             try {
                 const r = await fetch(this.showUrlTpl.replace('__UUID__', conv.uuid), {
@@ -498,12 +792,17 @@ function webchatInbox() {
 
                 if (this.isMyClaim()) this.markRead(conv.uuid);
 
+                // Drop the skeleton first so the thread exists to scroll.
+                this.threadLoading = false;
                 await this.$nextTick();
                 this.scrollThreadBottom();
             } catch (e) {
                 console.error('[webchat] openRow failed', e);
                 this.activeUuid = null;
+                this.mobileThread = false;
                 window.showToast?.('error', 'Could not open conversation');
+            } finally {
+                this.threadLoading = false;
             }
         },
 
@@ -913,567 +1212,4 @@ function webchatInbox() {
 }
 </script>
 
-@push('styles')
-<style>
-/* ============================================================
-   CHAT WORKSPACE — mirrors admin/conversations/show.blade.php
-   (kept inline here so the WhatsApp show page stays untouched)
-============================================================ */
-.cw-root {
-    display: grid;
-    grid-template-columns: 320px minmax(0, 1fr) 340px;
-    height: calc(100vh - var(--topbar-height, 64px));
-    background: #f6f7fb;
-    overflow: hidden;
-}
-
-/* ---- LEFT RAIL ---- */
-.cw-rail {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: #ffffff;
-    border-right: 1px solid #e6e8ee;
-}
-.cw-rail-head {
-    padding: 14px 14px 10px;
-    border-bottom: 1px solid #eef0f4;
-    background: #fff;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-.cw-rail-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-.cw-rail-title span:first-child {
-    font-weight: 700;
-    font-size: .95rem;
-    color: #0f172a;
-}
-.cw-rail-count {
-    background: #eef2ff;
-    color: #4338ca;
-    font-size: .7rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 999px;
-}
-.cw-tabs {
-    display: flex;
-    gap: 4px;
-    background: #f1f5f9;
-    padding: 3px;
-    border-radius: 8px;
-}
-.cw-tabs button {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: .75rem;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    transition: all .15s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-}
-.cw-tabs button:hover { color: #0f172a; }
-.cw-tabs button.active {
-    background: #fff;
-    color: #4338ca;
-    box-shadow: 0 1px 3px rgba(15,23,42,.06);
-}
-.cw-tab-dot {
-    background: #ef4444; color: #fff;
-    font-size: .6rem; font-weight: 800;
-    padding: 1px 6px; border-radius: 999px;
-    line-height: 1;
-}
-.cw-rail-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px 0;
-}
-.cw-row {
-    display: flex;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 1px solid #f4f5f8;
-    cursor: pointer;
-    transition: background .12s;
-    position: relative;
-}
-.cw-row:hover { background: #f8fafc; }
-.cw-row.active {
-    background: linear-gradient(90deg, #eef2ff, #f5f7ff);
-}
-.cw-row.active::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: #6366f1;
-}
-.cw-row-avatar {
-    width: 40px; height: 40px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #14b8a6, #0ea5e9);
-    color: #fff;
-    font-weight: 700;
-    font-size: .8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    overflow: hidden;
-}
-.cw-row-body { flex: 1; min-width: 0; }
-.cw-row-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-}
-.cw-row-name {
-    font-size: .88rem;
-    font-weight: 600;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cw-row-time {
-    font-size: .7rem;
-    color: #94a3b8;
-    flex-shrink: 0;
-    font-weight: 500;
-}
-.cw-row-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-    margin-top: 2px;
-}
-.cw-row-preview {
-    font-size: .78rem;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-}
-.cw-row-meta {
-    display: flex;
-    gap: 6px;
-    margin-top: 6px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-.cw-pill {
-    font-size: .62rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-}
-.cw-pill-pool    { background: rgba(245,158,11,.12); color: #b45309; }
-.cw-pill-claimed { background: rgba(59,130,246,.12); color: #1d4ed8; }
-.cw-pill-closed  { background: rgba(100,116,139,.12); color: #475569; }
-.cw-row-instance {
-    font-size: .68rem;
-    color: #94a3b8;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cw-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 40px 12px;
-    color: #94a3b8;
-    text-align: center;
-    font-size: .82rem;
-}
-.cw-empty i { font-size: 2.2rem; opacity: .5; }
-
-/* ---- MIDDLE THREAD ---- */
-.cw-thread {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: #ffffff;
-    border-right: 1px solid #e6e8ee;
-}
-.cw-thread-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    border-bottom: 1px solid #eef0f4;
-    background: #fff;
-    flex-wrap: wrap;
-}
-.cw-thread-contact {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-    flex: 1;
-}
-.cw-avatar {
-    width: 44px; height: 44px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #14b8a6, #059669);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: .85rem;
-    flex-shrink: 0;
-}
-.cw-avatar-lg { width: 46px; height: 46px; }
-.cw-thread-copy { min-width: 0; }
-.cw-thread-name {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.cw-thread-title {
-    font-size: .82rem;
-    color: #475569;
-    font-weight: 500;
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-.wc-close-modal-overlay { z-index: 10000 !important; }
-.wc-close-modal-box     { max-width: 480px !important; text-align: left !important; }
-.wc-close-modal-label   { margin-top: 12px; display: block; font-weight: 600; font-size: 13px; }
-.wc-close-modal-input-wrap { position: relative; }
-.wc-close-modal-generating {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-    color: #64748b; font-size: 12px; display: flex; align-items: center; gap: 6px;
-}
-.wc-close-modal-regen    { margin-top: 8px; }
-.wc-close-modal-actions  { margin-top: 18px; }
-.wc-spin                 { display: inline-block; animation: wcSpin 1s linear infinite; }
-@keyframes wcSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-.cw-thread-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: .76rem;
-    color: #64748b;
-    margin-top: 2px;
-    flex-wrap: wrap;
-}
-.cw-dot-sep {
-    width: 3px; height: 3px; border-radius: 999px; background: #cbd5e1; flex-shrink: 0;
-}
-.cw-thread-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-.cw-state-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: .7rem;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-}
-.cw-state-pool    { background: rgba(245,158,11,.14); color: #b45309; }
-.cw-state-claimed { background: rgba(59,130,246,.14); color: #1d4ed8; }
-.cw-state-closed  { background: rgba(100,116,139,.14); color: #475569; }
-.cw-state-neutral { background: rgba(100,116,139,.10); color: #64748b; }
-
-.cw-conn-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: 999px;
-    font-size: .7rem; font-weight: 700;
-}
-.cw-conn-badge .cw-conn-dot {
-    width: 7px; height: 7px; border-radius: 999px;
-}
-.cw-conn-badge.is-on  { background: rgba(34,197,94,.14);  color: #15803d; }
-.cw-conn-badge.is-on  .cw-conn-dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
-.cw-conn-badge.is-off { background: rgba(148,163,184,.16); color: #475569; }
-.cw-conn-badge.is-off .cw-conn-dot { background: #94a3b8; }
-
-.cw-close-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;
-    padding: 6px 12px; border-radius: 8px;
-    font-size: .78rem; font-weight: 600;
-    cursor: pointer; transition: all .12s;
-}
-.cw-close-btn:hover { background: #fee2e2; }
-.cw-close-btn i { font-size: 1rem; }
-
-/* ---- MESSAGES ---- */
-.cw-stage {
-    flex: 1;
-    overflow-y: auto;
-    padding: 18px 24px 14px;
-    background:
-        radial-gradient(circle at 30% 10%, rgba(99,102,241,.05), transparent 30%),
-        radial-gradient(circle at 80% 90%, rgba(16,185,129,.05), transparent 30%),
-        #fafbfc;
-}
-.cw-date-sep {
-    display: flex;
-    justify-content: center;
-    margin: 16px 0;
-}
-.cw-date-sep span {
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.92);
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    font-size: .7rem;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(15,23,42,.04);
-}
-.cw-msg {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-.cw-msg-out { justify-content: flex-end; }
-.cw-msg-out .cw-msg-stack { align-items: flex-end; }
-.cw-msg-avatar {
-    width: 28px; height: 28px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #14b8a6, #059669);
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .62rem; font-weight: 700;
-    flex-shrink: 0;
-    margin-bottom: 4px;
-}
-.cw-msg-stack {
-    max-width: 70%;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-.cw-bubble {
-    padding: 9px 13px;
-    border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15,23,42,.04);
-    font-size: .88rem;
-    line-height: 1.5;
-    word-break: break-word;
-}
-.cw-bubble-in {
-    background: #fff;
-    color: #0f172a;
-    border: 1px solid #e6e8ee;
-    border-bottom-left-radius: 4px;
-}
-.cw-bubble-out {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #fff;
-    border-bottom-right-radius: 4px;
-}
-.cw-msg-body { white-space: pre-wrap; }
-.cw-msg-foot {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 4px;
-    margin-top: 4px;
-    font-size: .65rem;
-    opacity: .75;
-}
-
-/* ---- COMPOSER ---- */
-.cw-composer-wrap {
-    border-top: 1px solid #eef0f4;
-    background: #fff;
-    padding: 12px 18px 16px;
-}
-.cw-composer {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 6px 6px 6px 8px;
-    transition: all .15s;
-}
-.cw-composer:focus-within {
-    border-color: #6366f1;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
-}
-.cw-textarea {
-    flex: 1;
-    border: none;
-    background: transparent;
-    resize: none;
-    padding: 10px 6px;
-    font-size: .88rem;
-    line-height: 1.5;
-    max-height: 160px;
-    outline: none;
-    color: #0f172a;
-    font-family: inherit;
-}
-.cw-textarea::placeholder { color: #94a3b8; }
-.cw-send {
-    width: 40px; height: 40px;
-    border: none;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #fff;
-    border-radius: 10px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.05rem;
-    box-shadow: 0 4px 10px rgba(99,102,241,.3);
-    transition: all .15s;
-}
-.cw-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(99,102,241,.4); }
-.cw-send:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
-
-.cw-closed-banner {
-    padding: 14px;
-    text-align: center;
-    background: #f1f5f9;
-    color: #475569;
-    font-size: .82rem;
-    font-weight: 600;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-.cw-claim-btn {
-    width: 100%;
-    padding: 12px 16px;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #fff;
-    font-size: .9rem;
-    font-weight: 700;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    box-shadow: 0 6px 16px rgba(99,102,241,.28);
-    transition: all .15s;
-}
-.cw-claim-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,.35); }
-
-/* ---- RIGHT RAIL ---- */
-.cw-side {
-    background: #fff;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    min-height: 0;
-}
-.cw-profile {
-    background: linear-gradient(160deg, #4338ca 0%, #6366f1 50%, #0ea5e9 100%);
-    color: #fff;
-    padding: 22px 18px 18px;
-    border-radius: 18px;
-    text-align: center;
-    box-shadow: 0 12px 30px rgba(67,56,202,.22);
-}
-.cw-profile-avatar {
-    width: 72px; height: 72px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.18);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem; font-weight: 700;
-    margin: 0 auto 10px;
-    border: 2px solid rgba(255,255,255,.3);
-}
-.cw-profile-name {
-    font-size: 1.15rem; font-weight: 800;
-    margin-bottom: 2px;
-}
-.cw-profile-company {
-    font-size: .82rem; font-weight: 600;
-    opacity: .9;
-    margin-bottom: 4px;
-    word-break: break-word;
-}
-
-.cw-side-card {
-    background: #fff;
-    border: 1px solid #e6e8ee;
-    border-radius: 14px;
-    overflow: hidden;
-}
-.cw-side-panel { padding: 14px 16px; }
-.cw-meta-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: .8rem;
-}
-.cw-meta-row:last-child { border-bottom: 0; }
-.cw-meta-row span { color: #64748b; }
-.cw-meta-row strong { color: #0f172a; text-align: right; font-weight: 600; }
-
-/* Spinner (matches the app's utility) */
-.spinner {
-    width: 22px; height: 22px;
-    border: 2.5px solid #e2e8f0;
-    border-top-color: #6366f1;
-    border-radius: 999px;
-    animation: cw-spin .8s linear infinite;
-}
-@keyframes cw-spin { to { transform: rotate(360deg); } }
-
-/* ---- RESPONSIVE ---- */
-@media (max-width: 1280px) {
-    .cw-root { grid-template-columns: 280px minmax(0, 1fr) 300px; }
-}
-@media (max-width: 1100px) {
-    .cw-root { grid-template-columns: 260px minmax(0, 1fr); }
-    .cw-side { display: none; }
-}
-@media (max-width: 820px) {
-    .cw-root { grid-template-columns: 1fr; }
-    .cw-rail { display: none; }
-}
-</style>
-@endpush
 @endsection

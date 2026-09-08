@@ -2,6 +2,8 @@
 
 return [
     'login' => [
+        'placeholder_password' => 'Votre mot de passe',
+        'toggle_password'      => 'Afficher ou masquer le mot de passe',
         'sign_in' => 'Connexion',
         'welcome_back' => 'Bon retour',
         'sign_in_workspace' => 'Connectez-vous à votre espace',
@@ -42,6 +44,23 @@ return [
         ],
     ],
     'register' => [
+        'trial_badge_title'    => ':days jours offerts, puis vous choisissez une offre',
+        'trial_badge_sub'      => 'Pas de carte maintenant. Rien n\'est débité avant votre choix.',
+        'password_placeholder' => '8 caractères minimum',
+        'email_hint'           => 'Nous nous en servirons pour nommer votre espace de travail. Renommable ensuite.',
+        'email_hint_named'     => 'L\'espace de travail s\'appellera « :name ». Vous pourrez le renommer.',
+        'pw_match'             => 'Les mots de passe correspondent',
+        'pw_mismatch'          => 'Les mots de passe ne correspondent pas',
+        'legal'                => 'En continuant, vous acceptez les :terms et la :privacy.',
+        'otp_eyebrow'          => 'Une dernière étape',
+        'otp_side_title'       => 'Confirmez que c\'est bien vous, et <em>votre desk est prêt</em>.',
+        'otp_side_desc'        => 'Nous avons envoyé un code à 6 chiffres dans votre boîte mail. Saisissez-le et votre espace de travail est créé.',
+        'otp_step_1'           => 'Informations du compte',
+        'otp_step_2'           => 'Vérification de l\'e-mail',
+        'otp_step_3'           => 'Espace de travail prêt',
+        'otp_digit'            => 'Chiffre :n',
+        'otp_resend_question'  => 'Vous n\'avez pas reçu le code ?',
+        'otp_resend_now'       => 'Renvoyer le code',
         'page_title'               => 'Créer un compte — :app',
         'badge'                    => 'Plateforme Support WhatsApp',
         'side_title'               => 'Commencez',
@@ -135,5 +154,26 @@ return [
         'use_supervisor_login' => 'Utilisez la page de connexion Superviseur.',
         'use_agent_login' => 'Utilisez la page de connexion Agent Support.',
     ],
+
+    // ── shared auth shell (left proof panel) ──
+    'shell' => [
+        'trial_pill'       => ':days jours offerts · sans carte bancaire',
+        'title'            => 'Votre support WhatsApp, géré comme un <em>vrai service client</em>.',
+        'lede'             => 'Chaque message arrive dans un pool partagé. L\'agent prend la main, l\'IA rédige, personne ne répond deux fois.',
+        'before_tag'       => 'Aujourd\'hui',
+        'before_1'         => 'Un téléphone qui passe d\'un agent à l\'autre',
+        'before_2'         => 'Deux personnes répondent au même client',
+        'before_3'         => 'L\'historique part avec la personne',
+        'after_tag'        => 'Avec wavadesk',
+        'after_1'          => 'Un pool partagé, l\'agent prend le chat en charge',
+        'after_2'          => 'La prise en charge verrouille — pas de double réponse',
+        'after_3'          => 'L\'historique complet reste dans l\'espace de travail',
+        'stat_1'           => 'Connectez votre numéro par QR en moins d\'une minute',
+        'stat_2'           => 'Gardez le numéro que vos clients contactent déjà',
+        'stat_3'           => 'Annulable pendant l\'essai, rien n\'est débité',
+        'avatars_caption'  => 'Les équipes support se lancent en une seule séance',
+        'start_free_trial' => 'Démarrer un essai gratuit',
+    ],
+
 ];
 

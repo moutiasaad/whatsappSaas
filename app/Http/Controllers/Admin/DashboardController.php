@@ -4,93 +4,124 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
-use App\Models\ConversationEvent;
-use App\Models\Message;
-use App\Models\Team;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsAppInstance;
+use App\Services\Dashboard\DashboardMetrics;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    private const RANGES = [7, 14, 30];
+
+    public function index(Request $request)
     {
         $user   = auth()->user();
         $tenant = $user->tenant;
 
-        // Super admins with no tenant get a bare platform overview
+        // Super admins have no tenant of their own — they get a platform roll-up.
         if (!$tenant) {
             return $this->superAdminDashboard();
         }
 
-        $tenantId = $tenant->id;
+        $days = (int) $request->query('range', 14);
+        if (!in_array($days, self::RANGES, true)) {
+            $days = 14;
+        }
 
-        $stats = [
-            'total_conversations' => Conversation::where('tenant_id', $tenantId)->count(),
-            'conversations_today' => Conversation::where('tenant_id', $tenantId)->whereDate('created_at', today())->count(),
-            'pool_count'          => Conversation::where('tenant_id', $tenantId)->pool()->count(),
-            'agents_online'       => User::where('tenant_id', $tenantId)->where('role', 'agent')->where('is_active', true)->count(),
-            'total_agents'        => User::where('tenant_id', $tenantId)->where('role', 'agent')->count(),
-            'messages_today'      => Message::whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId))->whereDate('created_at', today())->count(),
-            'messages_growth'     => $this->messagesGrowth($tenantId),
+        $m = new DashboardMetrics($tenant->id, $days);
+
+        $series = $m->series();
+        $ai     = $m->aiBreakdown();
+        $reply  = $m->firstReply();
+        $pool   = $m->pool();
+
+        $waTotal = array_sum(array_column($series, 'wa'));
+        $lcTotal = array_sum(array_column($series, 'lc'));
+
+        // Delta = second half of the window against the first.
+        $half   = (int) floor($days / 2);
+        $prev   = array_sum(array_map(fn ($d) => $d['wa'] + $d['lc'], array_slice($series, 0, $half)));
+        $cur    = array_sum(array_map(fn ($d) => $d['wa'] + $d['lc'], array_slice($series, $half)));
+        $delta  = $prev > 0 ? (int) round(($cur - $prev) / $prev * 100) : null;
+
+        $replyDelta = ($reply['previous'] && $reply['current'])
+            ? (int) round(($reply['current'] - $reply['previous']) / $reply['previous'] * 100)
+            : null;
+
+        return view('admin.dashboard.index', [
+            'days'         => $days,
+            'ranges'       => self::RANGES,
+            'tenant'       => $tenant,
+            'trial'        => $this->trial($tenant),
+            'series'       => $series,
+            'waTotal'      => $waTotal,
+            'lcTotal'      => $lcTotal,
+            'convTotal'    => $waTotal + $lcTotal,
+            'convDelta'    => $delta,
+            'reply'        => $reply,
+            'replyDelta'   => $replyDelta,
+            'ai'           => $ai,
+            'aiSettings'   => $tenant->aiSettings,
+            'pool'         => $pool,
+            'agents'       => $m->agents(),
+            'heat'         => $m->heatmap(),
+            'needs'        => $m->needsAttention(),
+            'repeatPct'    => $m->repeatCustomerPct(),
+            'instanceCount'=> WhatsAppInstance::where('tenant_id', $tenant->id)->count(),
+        ]);
+    }
+
+    /** Trial / subscription state for the banner. */
+    private function trial(Tenant $tenant): ?array
+    {
+        if ($tenant->subscription_status !== 'trial' || !$tenant->trial_ends_at) {
+            return null;
+        }
+
+        $total = (int) config('app.trial_days', 14);
+        $left  = max(0, (int) ceil(now()->floatDiffInDays($tenant->trial_ends_at, false)));
+        $used  = max(0, $total - $left);
+
+        return [
+            'days_left' => $left,
+            'total'     => $total,
+            'used'      => $used,
+            'percent'   => $total > 0 ? min(100, (int) round($used / $total * 100)) : 0,
+            'ends_at'   => $tenant->trial_ends_at,
+            'level'     => $left <= 2 ? 'crit' : ($left <= 4 ? 'warn' : 'ok'),
+            'plan'      => $tenant->plan?->name,
         ];
-
-        $activeConversations = Conversation::with(['customer', 'instance', 'ownerAgent'])
-            ->where('tenant_id', $tenantId)
-            ->whereIn('state', ['pool', 'claimed'])
-            ->orderByDesc('last_message_at')
-            ->limit(8)
-            ->get();
-
-        $instances = WhatsAppInstance::where('tenant_id', $tenantId)->orderBy('name')->get();
-
-        $teamLoad = Team::where('tenant_id', $tenantId)->withCount([
-            'conversations as active_count' => fn ($q) => $q->whereIn('state', ['pool', 'claimed']),
-        ])->get()->map(function ($t) {
-            $t->capacity = max(1, $t->users()->where('role', 'agent')->count() * 5);
-            return $t;
-        });
-
-        $recentEvents = ConversationEvent::with('actor')
-            ->whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId))
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
-
-        $aiSettings = $tenant->aiSettings;
-
-        return view('admin.dashboard.index', compact(
-            'stats', 'activeConversations', 'instances', 'teamLoad', 'recentEvents', 'aiSettings'
-        ));
     }
 
     private function superAdminDashboard()
     {
-        $stats = [
-            'total_conversations' => 0,
-            'conversations_today' => 0,
-            'pool_count'          => 0,
-            'agents_online'       => 0,
-            'total_agents'        => 0,
-            'messages_today'      => 0,
-            'messages_growth'     => 0,
-        ];
+        $days = 14;
 
         return view('admin.dashboard.index', [
-            'stats'               => $stats,
-            'activeConversations' => collect(),
-            'instances'           => collect(),
-            'teamLoad'            => collect(),
-            'recentEvents'        => collect(),
-            'aiSettings'          => null,
+            'days'          => $days,
+            'ranges'        => self::RANGES,
+            'tenant'        => null,
+            'trial'         => null,
+            'series'        => [],
+            'waTotal'       => 0,
+            'lcTotal'       => 0,
+            'convTotal'     => Conversation::count(),
+            'convDelta'     => null,
+            'reply'         => ['median' => null, 'previous' => null, 'current' => null],
+            'replyDelta'    => null,
+            'ai'            => ['ai_only' => 0, 'both' => 0, 'agent_only' => 0, 'total' => 0, 'ai_pct' => 0, 'ai_median_seconds' => null],
+            'aiSettings'    => null,
+            'pool'          => ['count' => Conversation::where('state', 'pool')->count(), 'oldest' => null],
+            'agents'        => collect(),
+            'heat'          => ['grid' => [], 'max' => 0, 'peak' => ['hour' => null, 'n' => 0]],
+            'needs'         => collect(),
+            'repeatPct'     => 0,
+            'instanceCount' => WhatsAppInstance::count(),
+            'platform'      => [
+                'tenants' => Tenant::count(),
+                'users'   => User::count(),
+            ],
         ]);
-    }
-
-    private function messagesGrowth(int $tenantId): int
-    {
-        $base      = Message::whereHas('conversation', fn ($q) => $q->where('tenant_id', $tenantId));
-        $today     = (clone $base)->whereDate('created_at', today())->count();
-        $yesterday = (clone $base)->whereDate('created_at', today()->subDay())->count();
-        if ($yesterday === 0) return 0;
-        return (int) round((($today - $yesterday) / $yesterday) * 100);
     }
 }

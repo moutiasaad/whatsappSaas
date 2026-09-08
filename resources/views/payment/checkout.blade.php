@@ -38,7 +38,7 @@
         .order-total .order-label { font-size:16px; font-weight:700; color:var(--text); }
         .order-total .order-value { font-size:22px; font-weight:900; color:var(--brand); }
 
-        .stripe-info { background:#f0f4ff; border:1px solid #c7d2fe; border-radius:12px; padding:14px 16px; margin:20px 0; display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#4f46e5; }
+        .stripe-info { background:#f0f4ff; border:1px solid #a7dedb; border-radius:12px; padding:14px 16px; margin:20px 0; display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#0a5e5b; }
         .stripe-badge { display:inline-flex; align-items:center; gap:5px; background:#635bff; color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.3px; }
 
         .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; font-size:13px; color:#dc2626; margin-bottom:18px; display:flex; align-items:flex-start; gap:8px; }
@@ -61,9 +61,9 @@
 <nav>
     <a href="{{ route('login') }}" class="nav-logo">
         <div class="nav-logo-icon">
-            <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="30" height="30" onerror="this.style.display='none'">
+            <img src="{{ asset('images/logo.svg') }}?v={{ @filemtime(public_path('images/logo.svg')) ?: 1 }}" alt="{{ config('app.name') }}" width="30" height="30" onerror="this.style.display='none'">
         </div>
-        {{ config('app.name', 'TshlBot') }}
+        {{ config('app.name', 'wavadesk') }}
     </a>
 </nav>
 

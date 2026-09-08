@@ -99,7 +99,7 @@
                                 </td>
                                 <td>
                                     <template x-if="reply.shortcut">
-                                        <span style="display:inline-flex;align-items:center;padding:.2rem .55rem;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:.375rem;font-size:.8rem;font-weight:600;color:#8b5cf6;font-family:monospace;"
+                                        <span style="display:inline-flex;align-items:center;padding:.2rem .55rem;background:rgba(21,182,168,.1);border:1px solid rgba(21,182,168,.2);border-radius:.375rem;font-size:.8rem;font-weight:600;color:#15b6a8;font-family:monospace;"
                                               x-text="reply.shortcut"></span>
                                     </template>
                                     <template x-if="!reply.shortcut">

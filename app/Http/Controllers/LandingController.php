@@ -10,13 +10,15 @@ class LandingController extends Controller
 {
     public function index()
     {
-        if (Auth::check()) {
-            return redirect()->route(auth()->user()->homeRouteName());
-        }
-
+        // The marketing site stays reachable while signed in — the page swaps its
+        // signup CTAs for a link back to the user's own panel instead.
         $plans = Plan::where('is_active', true)->orderBy('id')->get();
 
-        return view('landing', compact('plans'));
+        $homeRoute = Auth::check()
+            ? route(Auth::user()->homeRouteName())
+            : null;
+
+        return view('landing', compact('plans', 'homeRoute'));
     }
 
     public function terms()

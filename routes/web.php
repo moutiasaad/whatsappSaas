@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\ConversationWebController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\InstanceWebController;
 use App\Http\Controllers\Admin\KnowledgeController;
 use App\Http\Controllers\Admin\OtpServiceController;
@@ -45,9 +46,6 @@ Route::get('/legal/cookies', [LandingController::class, 'cookies'])->name('legal
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:5,1')->name('register.store');
-    Route::get('/register/verify-otp', [RegisterController::class, 'showOtp'])->name('register.otp');
-    Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.otp.verify');
-    Route::post('/register/resend-otp', [RegisterController::class, 'resendOtp'])->middleware('throttle:3,1')->name('register.otp.resend');
 });
 
 // Payment (Stripe + PayPal)
@@ -95,6 +93,13 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
         ->name($namePrefix . '.')
         ->group(function () use ($includeManagement, $roles) {
             Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+            // Unified inbox — WhatsApp + Live Chat in one list
+            Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
+            Route::get('/inbox/list', [InboxController::class, 'list'])->name('inbox.list');
+            Route::get('/inbox/thread/{channel}/{ref}', [InboxController::class, 'thread'])
+                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->name('inbox.thread');
 
             // Conversations - all system users
             Route::get('/conversations', [ConversationWebController::class, 'index'])->name('conversations.index');

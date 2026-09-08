@@ -47,7 +47,7 @@
     $topicTints = ['blue', 'orange', 'green', 'purple', 'red', 'gray', 'teal'];
     $topicTintHex = [
         'blue' => '#3b82f6', 'orange' => '#f97316', 'green' => '#10b981',
-        'purple' => '#8b5cf6', 'red' => '#ef4444', 'gray' => '#6b7280', 'teal' => '#14b8a6',
+        'purple' => '#15b6a8', 'red' => '#ef4444', 'gray' => '#6b7280', 'teal' => '#14b8a6',
     ];
 
     $i18n = [
@@ -492,7 +492,7 @@
                                 </div>
                                 <div class="wcs-preview-branding" x-show="form.show_branding">
                                     <i class="ri-flashlight-line"></i>
-                                    <span>Powered by <b>TshlBot</b></span>
+                                    <span>Powered by <b>{{ config('app.name', 'wavadesk') }}</b></span>
                                 </div>
                             </div>
 
@@ -844,7 +844,7 @@ function webchatSettings() {
     }
     .wcs-topic-index {
         width: 24px; height: 24px; border-radius: 999px;
-        background: var(--brand-soft, #eef2ff); color: var(--brand, #6366f1);
+        background: var(--brand-soft, #ecf7f6); color: var(--brand, #0f7e7a);
         display: inline-flex; align-items: center; justify-content: center;
         font-size: .8125rem; font-weight: 700;
     }
@@ -862,7 +862,7 @@ function webchatSettings() {
     .wcs-tint-dot-blue   { background: #3b82f6; }
     .wcs-tint-dot-orange { background: #f97316; }
     .wcs-tint-dot-green  { background: #10b981; }
-    .wcs-tint-dot-purple { background: #8b5cf6; }
+    .wcs-tint-dot-purple { background: #15b6a8; }
     .wcs-tint-dot-red    { background: #ef4444; }
     .wcs-tint-dot-gray   { background: #6b7280; }
     .wcs-tint-dot-teal   { background: #14b8a6; }
@@ -872,7 +872,7 @@ function webchatSettings() {
         display: inline-flex; align-items: center; gap: .375rem;
         color: var(--text-primary, #0f172a); cursor: pointer;
     }
-    .wcs-topic-action-opt input { accent-color: var(--brand, #6366f1); }
+    .wcs-topic-action-opt input { accent-color: var(--brand, #0f7e7a); }
 
     .wcs-topic-labels { display: flex; flex-direction: column; gap: .375rem; }
     .wcs-topic-label-group {

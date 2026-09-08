@@ -126,7 +126,7 @@
                     <div class="card-title">{{ __('ui.profile_page.change_email') }}</div>
                     <div class="card-subtitle">{{ __('ui.profile_page.change_email_hint') }}</div>
                 </div>
-                <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(99,102,241,.1);display:flex;align-items:center;justify-content:center;color:#6366f1;flex-shrink:0;">
+                <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(15,126,122,.1);display:flex;align-items:center;justify-content:center;color:#0f7e7a;flex-shrink:0;">
                     <i class="ri-mail-settings-line"></i>
                 </div>
             </div>
@@ -170,7 +170,7 @@
     <div class="modal-overlay" x-show="showOtp" x-transition.opacity :class="showOtp ? 'show' : ''"
          style="display:none;" @click.self="showOtp = false">
         <div class="modal-box" style="max-width:400px;" @click.stop>
-            <div class="modal-icon" style="background:rgba(99,102,241,.1);color:#6366f1;">
+            <div class="modal-icon" style="background:rgba(15,126,122,.1);color:#0f7e7a;">
                 <i class="ri-mail-check-line" style="font-size:1.25rem;"></i>
             </div>
             <h3>{{ __('auth.register.otp_heading') }}</h3>

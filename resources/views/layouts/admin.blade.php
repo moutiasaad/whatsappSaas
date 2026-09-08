@@ -84,24 +84,25 @@
 
     <style>
         /* ============================================================
-           DESIGN TOKENS — TshlBot (indigo/violet)
-           Concept: Dark slate sidebar + Indigo brand + Violet accent + Clean white content
+           DESIGN TOKENS — wavadesk (teal)
+           Concept: Dark ink sidebar + teal brand + teal accent + clean white content
         ============================================================ */
         :root {
-            --brand:          #6366f1;
-            --brand-dark:     #4f46e5;
-            --brand-light:    #e0e7ff;
-            --brand-xlight:   #eef2ff;
-            --accent:         #8b5cf6;
-            --accent-dark:    #7c3aed;
+            --brand:          #0f7e7a;
+            --brand-dark:     #0a5e5b;
+            --brand-light:    #d6efed;
+            --brand-xlight:   #ecf7f6;
+            --accent:         #15b6a8;
+            --accent-dark:    #0d9488;
 
-            --sidebar-bg:     #0d1117;
-            --sidebar-border: rgba(255,255,255,0.06);
-            --sidebar-text:   #8b949e;
-            --sidebar-hover:  rgba(99,102,241,0.12);
-            --sidebar-active: rgba(99,102,241,0.20);
-            --sidebar-active-text: #a5b4fc;
-            --sidebar-width:  268px;
+            --sidebar-bg:     #0d1417;
+            --sidebar-border: #1e262c;
+            --sidebar-text:   #a6b3bd;
+            --sidebar-muted:  #5d6b76;
+            --sidebar-hover:  rgba(255,255,255,0.05);
+            --sidebar-active: #0f7e7a;
+            --sidebar-active-text: #ffffff;
+            --sidebar-width:  264px;
 
             --topbar-height:  60px;
             --topbar-bg:      #ffffff;
@@ -122,7 +123,7 @@
             --red:     #dc2626; --red-bg:     #fee2e2;
             --orange:  #d97706; --orange-bg:  #fef3c7;
             --blue:    #2563eb; --blue-bg:    #dbeafe;
-            --purple:  #7c3aed; --purple-bg:  #ede9fe;
+            --purple:  #0d9488; --purple-bg:  #e3f4f2;
             --teal:    #0891b2; --teal-bg:    #cffafe;
             --gray:    #6b7280; --gray-bg:    #f3f4f6;
 
@@ -176,14 +177,13 @@
 
         /* Logo zone */
         .sidebar-logo-zone {
-            padding: 24px 20px 20px;
-            border-bottom: 1px solid var(--sidebar-border);
+            padding: 18px 18px 16px;
         }
 
         .sidebar-logo {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 11px;
             text-decoration: none;
         }
 
@@ -198,43 +198,50 @@
         }
 
         .sidebar-logo-text { display: flex; flex-direction: column; }
-        .sidebar-logo-name { font-size: 15px; font-weight: 700; color: #f0f6fc; letter-spacing: -.3px; }
-        .sidebar-logo-sub  { font-size: 11px; color: var(--sidebar-text); letter-spacing: .3px; text-transform: uppercase; }
+        .sidebar-logo-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -.03em; line-height: 1.1; }
+        .sidebar-logo-sub  { font-size: 9.5px; font-weight: 600; color: var(--sidebar-muted); letter-spacing: .16em; text-transform: uppercase; margin-top: 1px; }
 
         /* Tenant badge */
         .sidebar-tenant {
-            margin: 14px 12px 0;
-            background: rgba(99,102,241,.08);
-            border: 1px solid rgba(99,102,241,.2);
-            border-radius: var(--radius);
-            padding: 10px 12px;
+            margin: 0 12px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 12px;
+            padding: 11px 13px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .sidebar-tenant-avatar {
-            width: 30px; height: 30px;
+            width: 32px; height: 32px;
             background: var(--brand);
-            border-radius: var(--radius-sm);
+            border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
             font-size: 13px; font-weight: 700; color: #fff;
             flex-shrink: 0;
         }
 
         .sidebar-tenant-name {
-            font-size: 12px; font-weight: 600; color: #cdd9e5;
+            font-size: 13.5px; font-weight: 600; color: #fff;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
         .sidebar-tenant-plan {
-            font-size: 10px; color: var(--brand); font-weight: 500;
+            font-size: 11px; color: var(--accent); font-weight: 500;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .sidebar-tenant-plan::before {
+            content: ''; width: 5px; height: 5px; border-radius: 50%;
+            background: var(--accent); flex-shrink: 0;
         }
 
         /* Nav */
         .sidebar-nav {
             flex: 1;
-            padding: 12px 0;
+            display: flex;
+            flex-direction: column;
+            padding: 0 12px 12px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(139,148,158,.45) transparent;
@@ -249,55 +256,56 @@
         }
 
         .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(139,148,158,.35);
+            background: #2b353d;
             border-radius: 999px;
             border: 2px solid transparent;
             background-clip: content-box;
         }
 
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(99,102,241,.35);
+            background: rgba(15,126,122,.35);
             background-clip: content-box;
         }
 
         .sidebar-section-label {
-            font-size: 10px; font-weight: 600; color: rgba(139,148,158,.5);
-            letter-spacing: 1px; text-transform: uppercase;
-            padding: 16px 20px 6px;
+            font-size: 9.5px; font-weight: 700; color: #4e5c67;
+            letter-spacing: .16em; text-transform: uppercase;
+            padding: 15px 8px 7px;
         }
 
         .sidebar-nav a {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 9px 14px;
-            margin: 1px 8px;
-            border-radius: var(--radius);
+            gap: 11px;
+            padding: 9px 11px;
+            margin: 1px 0;
+            border-radius: 9px;
             color: var(--sidebar-text);
             text-decoration: none;
             font-size: 13.5px;
             font-weight: 500;
-            transition: var(--transition);
+            transition: .12s;
             position: relative;
         }
 
         .sidebar-nav a i {
-            font-size: 16px;
-            width: 20px;
+            font-size: 17px;
+            width: 19px;
             text-align: center;
             flex-shrink: 0;
+            opacity: .85;
         }
+        .sidebar-nav a.active i { opacity: 1; }
 
         .sidebar-nav a:hover {
             background: var(--sidebar-hover);
-            color: #cdd9e5;
+            color: #fff;
         }
 
         .sidebar-nav a.active {
             background: var(--sidebar-active);
             color: var(--sidebar-active-text);
             font-weight: 600;
-            box-shadow: inset 3px 0 0 var(--sidebar-active-text);
         }
 
         .sidebar-nav a.active,
@@ -305,49 +313,44 @@
             scroll-margin-block: 140px;
         }
 
-        .sidebar-nav a.active::before {
-            content: '';
-            position: absolute;
-            inset-block: 8px;
-            left: 0;
-            width: 3px;
-            border-radius: 0 999px 999px 0;
-            background: var(--sidebar-active-text);
-        }
-
         .sidebar-nav a:focus-visible {
-            outline: 2px solid rgba(99,102,241,.55);
+            outline: 2px solid rgba(15,126,122,.55);
             outline-offset: 2px;
         }
 
-        html[dir="rtl"] .sidebar-nav a.active::before {
-            left: auto;
-            right: 0;
-            border-radius: 999px 0 0 999px;
-        }
-
         .sidebar-nav a .nav-badge {
-            margin-left: auto;
-            background: var(--brand);
+            margin-inline-start: auto;
+            background: rgba(255,255,255,.12);
             color: #fff;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             min-width: 18px;
             height: 18px;
-            padding: 0 5px;
+            padding: 0 7px;
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        .sidebar-nav a.active .nav-badge { background: rgba(255,255,255,.22); }
 
         .sidebar-nav a .nav-badge.red { background: var(--red); }
+
+        /* Pinned bottom block (Settings / API Docs) */
+        .sidebar-nav-bottom {
+            margin-top: auto;
+            padding-top: 10px;
+            margin-inline: -12px;
+            padding-inline: 12px;
+            border-top: 1px solid var(--sidebar-border);
+        }
+        .sidebar-nav-bottom > a:first-of-type { margin-top: 2px; }
 
         /* Status dot */
         .nav-status-dot {
             width: 7px; height: 7px;
             border-radius: 50%;
-            margin-left: auto;
+            margin-inline-start: auto;
             flex-shrink: 0;
         }
 
@@ -374,9 +377,9 @@
         .sidebar-user:hover { background: var(--sidebar-hover); }
 
         .sidebar-user-avatar {
-            width: 32px; height: 32px;
+            width: 33px; height: 33px;
             border-radius: var(--radius-full);
-            background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+            background: var(--brand-dark);
             display: flex; align-items: center; justify-content: center;
             font-size: 12px; font-weight: 700; color: #fff;
             flex-shrink: 0;
@@ -386,8 +389,8 @@
         .sidebar-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         .sidebar-user-info { flex: 1; overflow: hidden; }
-        .sidebar-user-name { font-size: 12.5px; font-weight: 600; color: #cdd9e5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sidebar-user-role { font-size: 11px; color: var(--sidebar-text); text-transform: capitalize; }
+        .sidebar-user-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sidebar-user-role { font-size: 11px; color: var(--sidebar-muted); text-transform: capitalize; }
 
         .sidebar-user-actions { display: flex; gap: 4px; }
         .sidebar-user-btn {
@@ -702,7 +705,7 @@
             color: #fff;
             border-color: var(--brand);
         }
-        .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,.35); }
+        .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,126,122,.35); }
         .btn-primary:active { transform: translateY(0); box-shadow: none; }
 
         .btn-outline {
@@ -904,7 +907,7 @@
             transition: var(--transition);
             min-width: 220px;
         }
-        .filter-input:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .filter-input:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(15,126,122,.12); }
 
         .filter-input-wrap {
             position: relative;
@@ -929,7 +932,7 @@
             outline: none; cursor: pointer;
             min-width: 120px;
         }
-        .toolbar-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .toolbar-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(15,126,122,.12); }
 
         /* Toolbar date inputs */
         .table-toolbar input[type="date"] {
@@ -940,7 +943,7 @@
             background: var(--page-bg); color: var(--text-primary);
             outline: none; transition: var(--transition);
         }
-        .table-toolbar input[type="date"]:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .table-toolbar input[type="date"]:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(15,126,122,.12); }
 
         /* ss-wrap inside .table-toolbar — height/border match the 36px toolbar row */
         .table-toolbar .ss-wrap { min-width: 130px; }
@@ -1116,7 +1119,7 @@
             transition: var(--transition);
             width: 100%;
         }
-        .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(15,126,122,.12); }
         .form-control.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
 
         textarea.form-control { height: auto; padding: 10px 12px; resize: vertical; min-height: 90px; }
@@ -1357,7 +1360,7 @@
             flex-shrink: 0;
         }
 
-        .toast .toast-icon { background: rgba(99,102,241,.2); color: var(--brand); }
+        .toast .toast-icon { background: rgba(15,126,122,.2); color: var(--brand); }
         .toast.error .toast-icon { background: rgba(220,38,38,.2); color: var(--red); }
         .toast.warning .toast-icon { background: rgba(217,119,6,.2); color: var(--orange); }
 
@@ -1481,8 +1484,8 @@
         }
         .ss-item:last-child { border-bottom: none; }
         .ss-item:hover, .ss-item.active { background: #f4f6ff; color: #111827; }
-        .ss-item.ss-selected { background: #eef2ff; color: #1f2937; font-weight: 500; }
-        .ss-item.ss-selected::after { content: '\EB80'; font-family: "remixicon"; margin-left: auto; font-size: 14px; color: #6366f1; font-weight: 400; }
+        .ss-item.ss-selected { background: #ecf7f6; color: #1f2937; font-weight: 500; }
+        .ss-item.ss-selected::after { content: '\EB80'; font-family: "remixicon"; margin-left: auto; font-size: 14px; color: #0f7e7a; font-weight: 400; }
         .ss-empty { padding: 12px 14px; font-size: 13px; color: var(--text-muted); text-align: center; }
 
         /* ============================================================
@@ -1704,13 +1707,11 @@
         <div class="sidebar-logo-zone">
             <a href="{{ route($panelPrefix . '.dashboard') }}" class="sidebar-logo">
                 <div class="sidebar-logo-icon">
-                    {{-- Drop your logo at public/images/logo.svg (36×36 or square, will scale). --}}
-                    <img src="{{ asset('images/logo.svg') }}" alt="{{ config('app.name') }}" width="36" height="36"
-                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                    <span class="sidebar-logo-fallback" style="display:none;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--accent));align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;letter-spacing:-.5px">T</span>
+                    {{-- wavadesk mark, inlined so no cached asset can shadow it --}}
+                    <svg width="36" height="36" viewBox="0 0 512 512" fill="none" role="img" aria-label="{{ config('app.name', 'wavadesk') }}"><rect x="7" y="7" width="498" height="498" rx="118" fill="#0f7e7a"/><g transform="translate(256,256) scale(.8) translate(-284,-267)"><path d="M 96 326 C 162 326, 162 184, 240 184 C 320 184, 320 350, 388 350 C 432 350, 432 226, 472 226" stroke="#fff" stroke-width="46" stroke-linecap="round" fill="none"/><circle cx="96" cy="326" r="34" fill="#fff"/><circle cx="472" cy="226" r="34" fill="#d6efed"/></g></svg>
                 </div>
                 <div class="sidebar-logo-text">
-                    <span class="sidebar-logo-name">{{ config('app.name', 'TshlBot') }}</span>
+                    <span class="sidebar-logo-name">{{ config('app.name', 'wavadesk') }}</span>
                     <span class="sidebar-logo-sub">Platform</span>
                 </div>
             </a>
@@ -1730,244 +1731,153 @@
 
         <nav class="sidebar-nav">
             @php
-                $sp = fn(string $p) => Auth::user()->hasSuperAdminPermission($p);
+                $u    = Auth::user();
+                $isSA = $u->isSuperAdmin();
+                $sp   = fn (string $p) => $u->hasSuperAdminPermission($p);
+
+                // ── badge counts ──
+                $poolCountQuery = \App\Models\Conversation::pool();
+                if ($u->isSupervisor() || $u->isAgent()) {
+                    $poolCountQuery->whereIn('team_id', $u->teams->pluck('id'));
+                }
+                $poolCount = $poolCountQuery->count();
+
+                try {
+                    $webchatPending = \App\Models\WebChat\Conversation::pending()->count();
+                } catch (\Throwable $e) {
+                    $webchatPending = 0;
+                }
+
+                // ── nav definition: groups of items, each gated by `show` ──
+                $navGroups = [
+                    [
+                        'label' => __('ui.sidebar.platform_owner'),
+                        'show'  => $isSA,
+                        'items' => [
+                            ['route' => 'platform.tenants',           'match' => ['platform.tenants*'],       'icon' => 'ri-building-2-line',    'label' => __('ui.sidebar.tenants'),            'show' => $sp('platform_tenants')],
+                            ['route' => 'platform.plans',             'match' => ['platform.plans*'],         'icon' => 'ri-price-tag-3-line',   'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
+                            ['route' => 'platform.system-health',     'match' => ['platform.system-health*'], 'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),      'show' => $sp('platform_system_health')],
+                            ['route' => 'platform.legal-pages.index', 'match' => ['platform.legal-pages*'],   'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),        'show' => $sp('platform_legal_pages')],
+                            ['route' => 'super-admins.index',         'match' => ['super-admins.*'],          'icon' => 'ri-shield-user-line',   'label' => __('ui.sidebar.super_admins'),       'show' => $u->isMasterSuperAdmin()],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.workspace'),
+                        'items' => [
+                            ['route' => 'dashboard',           'match' => ['dashboard'],        'icon' => 'ri-dashboard-3-line',  'label' => __('ui.dashboard')],
+                            ['route' => 'inbox.index',         'match' => ['inbox.*', 'conversations.*'], 'icon' => 'ri-message-3-line', 'label' => __('ui.sidebar.inbox'), 'badge' => $poolCount, 'show' => !$isSA || $sp('conversations')],
+                            // Customers stays for the roles that work cases day to day.
+                            ['route' => 'customers.index',     'match' => ['customers.*'],      'icon' => 'ri-contacts-line',     'label' => __('ui.sidebar.customers'), 'show' => $isSA ? $sp('customers') : !$u->isAdmin()],
+                            ['route' => 'archive.index',       'match' => ['archive.*'],        'icon' => 'ri-inbox-archive-line','label' => __('ui.sidebar.archive'),   'show' => !$isSA || $sp('conversations')],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.management'),
+                        'show'  => $u->hasAnyRole(['admin', 'super_admin']),
+                        'items' => [
+                            ['route' => 'instances.index', 'match' => ['instances.*'], 'icon' => 'ri-smartphone-line',    'label' => __('ui.sidebar.whatsapp_instances'), 'show' => !$isSA || $sp('instances')],
+                            ['route' => 'teams.index',     'match' => ['teams.*'],     'icon' => 'ri-team-line',          'label' => __('ui.sidebar.teams'),              'show' => !$isSA || $sp('teams')],
+                            ['route' => 'users.index',     'match' => ['users.*'],     'icon' => 'ri-user-settings-line', 'label' => __('ui.sidebar.agents_users'),       'show' => !$isSA || $sp('users')],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.management'),
+                        'show'  => $u->isSupervisor(),
+                        'items' => [
+                            ['route' => 'teams.index', 'match' => ['teams.*'], 'icon' => 'ri-team-line', 'label' => __('ui.sidebar.teams')],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.automation'),
+                        'show'  => $u->isAdmin(),
+                        'items' => [
+                            ['route' => 'ai-settings.index',   'match' => ['ai-settings.*'],   'icon' => 'ri-sparkling-2-line', 'label' => __('ui.sidebar.ai_agent')],
+                            ['route' => 'knowledge.index',     'match' => ['knowledge.*'],     'icon' => 'ri-book-2-line',      'label' => __('ui.sidebar.knowledge_base')],
+                            ['route' => 'saved-replies.index', 'match' => ['saved-replies.*'], 'icon' => 'ri-chat-3-line',      'label' => __('ui.sidebar.saved_replies')],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.modules'),
+                        'items' => [
+                            ['route' => 'otp-service.show',            'match' => ['otp-service.*'],            'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),   'show' => $u->isAdmin()],
+                            ['route' => 'reservations.index',          'match' => ['reservations.*'],           'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),  'show' => $u->isAdmin() && $u->tenant?->plan?->reservations_enabled],
+                            ['route' => 'webchat.settings.show', 'match' => ['webchat.*'], 'icon' => 'ri-chat-smile-2-line', 'label' => __('ui.sidebar.live_chat'), 'show' => $u->isAdmin()],
+                        ],
+                    ],
+
+                    [
+                        'label' => __('ui.sidebar.insights'),
+                        'show'  => $u->hasAnyRole(['admin', 'super_admin']),
+                        'items' => [
+                            ['route' => 'reports.index',       'match' => ['reports.*'],       'icon' => 'ri-bar-chart-2-line',    'label' => __('ui.sidebar.reports'),       'show' => $u->isAdmin() || ($isSA && $sp('reports'))],
+                            ['route' => 'notifications.index', 'match' => ['notifications.*'], 'icon' => 'ri-notification-3-line', 'label' => __('ui.sidebar.notifications'), 'show' => $isSA && $sp('notifications')],
+                            ['route' => 'billing.index',       'match' => ['billing.index'],   'icon' => 'ri-bank-card-line',      'label' => __('ui.sidebar.billing'),       'show' => $isSA && $sp('billing')],
+                            ['route' => 'billing.payments',    'match' => ['billing.payments', 'billing.payment.show'], 'icon' => 'ri-receipt-line', 'label' => __('ui.sidebar.payments'), 'show' => $isSA && $sp('billing')],
+                        ],
+                    ],
+
+                    // Pinned to the bottom of the rail.
+                    [
+                        'pinned' => true,
+                        'items'  => [
+                            $isSA
+                                ? ['route' => 'profile.show',   'match' => ['profile.*'],  'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings')]
+                                : ['route' => 'settings.index', 'match' => ['settings.*'], 'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings'), 'show' => $u->isAdmin()],
+                            ['url' => '/docs/api', 'icon' => 'ri-code-s-slash-line', 'label' => __('ui.sidebar.api_docs'), 'external' => true],
+                        ],
+                    ],
+                ];
             @endphp
-            @if(Auth::user()->isSuperAdmin())
-                <div class="sidebar-section-label">{{ __('ui.sidebar.platform_owner') }}</div>
+
+            @if($isSA)
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
                     {{ __('ui.sidebar.platform_owner_desc') }}
                 </div>
-            {{-- @elseif(Auth::user()->isAdmin())
-                <div class="sidebar-section-label">{{ __('ui.sidebar.tenant_admin') }}</div>
-                <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
-                    {{ __('ui.sidebar.tenant_admin_desc') }}
-                </div> --}}
-            @elseif(Auth::user()->isSupervisor())
+            @elseif($u->isSupervisor())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.supervisor') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
                     {{ __('ui.sidebar.supervisor_desc') }}
                 </div>
-            @elseif(Auth::user()->isAgent())
+            @elseif($u->isAgent())
                 <div class="sidebar-section-label">{{ __('ui.sidebar.support_agent') }}</div>
                 <div style="font-size:.6875rem;color:var(--sidebar-text);opacity:.85;line-height:1.35;padding:.125rem .75rem .625rem">
                     {{ __('ui.sidebar.support_agent_desc') }}
                 </div>
-            @else
-                <div class="sidebar-section-label">{{ __('ui.sidebar.workspace') }}</div>
             @endif
 
-            <a href="{{ route($panelPrefix . '.dashboard') }}" class="{{ $navActive([$panelPrefix . '.dashboard']) }}">
-                <i class="ri-dashboard-3-line"></i>
-                <span>{{ __('ui.dashboard') }}</span>
-            </a>
-
-            @if(Auth::user()->isSuperAdmin())
-            @if($sp('platform_tenants'))
-            <a href="{{ route($panelPrefix . '.platform.tenants') }}" class="{{ $navActive([$panelPrefix . '.platform.tenants*']) }}">
-                <i class="ri-building-2-line"></i>
-                <span>{{ __('ui.sidebar.tenants') }}</span>
-            </a>
-            @endif
-
-            @if($sp('platform_plans'))
-            <a href="{{ route($panelPrefix . '.platform.plans') }}" class="{{ $navActive([$panelPrefix . '.platform.plans*']) }}">
-                <i class="ri-price-tag-3-line"></i>
-                <span>{{ __('ui.sidebar.subscription_plans') }}</span>
-            </a>
-            @endif
-
-            @if($sp('platform_system_health'))
-            <a href="{{ route($panelPrefix . '.platform.system-health') }}" class="{{ $navActive([$panelPrefix . '.platform.system-health*']) }}">
-                <i class="ri-pulse-line"></i>
-                <span>{{ __('ui.sidebar.system_health') }}</span>
-            </a>
-            @endif
-
-            @if($sp('platform_legal_pages'))
-            <a href="{{ route($panelPrefix . '.platform.legal-pages.index') }}" class="{{ $navActive([$panelPrefix . '.platform.legal-pages*']) }}">
-                <i class="ri-file-shield-2-line"></i>
-                <span>{{ __('ui.sidebar.legal_pages') }}</span>
-            </a>
-            @endif
-
-            @if(Auth::user()->isMasterSuperAdmin())
-            <a href="{{ route($panelPrefix . '.super-admins.index') }}" class="{{ $navActive([$panelPrefix . '.super-admins.*']) }}">
-                <i class="ri-shield-user-line"></i>
-                <span>{{ __('ui.sidebar.super_admins') }}</span>
-            </a>
-            @endif
-            @endif
-
-            @if(!Auth::user()->isSuperAdmin() || $sp('conversations'))
-            <a href="{{ route($panelPrefix . '.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.conversations.*']) }}">
-                <i class="ri-message-3-line"></i>
-                <span>{{ __('ui.sidebar.conversations') }}</span>
+            @foreach($navGroups as $group)
                 @php
-                    $poolCountQuery = \App\Models\Conversation::pool();
-                    if(Auth::user()->isSupervisor() || Auth::user()->isAgent()) {
-                        $poolCountQuery->whereIn('team_id', Auth::user()->teams->pluck('id'));
-                    }
-                    $poolCount = $poolCountQuery->count();
+                    $items = array_values(array_filter($group['items'], fn ($i) => ($i['show'] ?? true)));
                 @endphp
-                @if($poolCount > 0)
-                    <span class="nav-badge">{{ $poolCount }}</span>
-                @endif
-            </a>
+                @continue(!($group['show'] ?? true) || empty($items))
 
-            @if(!Auth::user()->isSuperAdmin() || $sp('customers'))
-            <a href="{{ route($panelPrefix . '.customers.index') }}" class="{{ $navActive([$panelPrefix . '.customers.*']) }}">
-                <i class="ri-contacts-line"></i>
-                <span>{{ __('ui.sidebar.customers') }}</span>
-            </a>
-            @endif
-            @endif {{-- end conversations/customers block --}}
+                @if(!empty($group['pinned']))<div class="sidebar-nav-bottom">@endif
 
-            @if(Auth::user()->hasAnyRole(['admin', 'supervisor', 'agent']))
-            <a href="{{ route($panelPrefix . '.webchat.conversations.index') }}" class="{{ $navActive([$panelPrefix . '.webchat.*']) }}">
-                <i class="ri-chat-smile-2-line"></i>
-                <span>{{ __('ui.sidebar.live_chat') }}</span>
-                @php
-                    try {
-                        $webchatPending = \App\Models\WebChat\Conversation::pending()->count();
-                    } catch (\Throwable $e) {
-                        $webchatPending = 0;
-                    }
-                @endphp
-                @if($webchatPending > 0)
-                    <span class="nav-badge">{{ $webchatPending }}</span>
-                @endif
-            </a>
-            @endif
-
-            @if(!Auth::user()->isSuperAdmin() || $sp('conversations'))
-            <a href="{{ route($panelPrefix . '.archive.index') }}" class="{{ $navActive([$panelPrefix . '.archive.*']) }}">
-                <i class="ri-inbox-archive-line"></i>
-                <span>{{ __('ui.sidebar.archive') }}</span>
-            </a>
-            @endif
-
-            @if(Auth::user()->isSupervisor())
-            <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
-                <i class="ri-team-line"></i>
-                <span>{{ __('ui.sidebar.teams') }}</span>
-            </a>
-            @endif
-
-            @if(Auth::user()->hasAnyRole(['admin', 'super_admin']))
-                @php $showMgmt = !Auth::user()->isSuperAdmin() || $sp('instances') || $sp('teams') || $sp('users'); @endphp
-                @if($showMgmt)
-                <div class="sidebar-section-label">{{ __('ui.sidebar.management') }}</div>
+                @if(!empty($group['label']))
+                    <div class="sidebar-section-label">{{ $group['label'] }}</div>
                 @endif
 
-            @if(!Auth::user()->isSuperAdmin() || $sp('instances'))
-            <a href="{{ route($panelPrefix . '.instances.index') }}" class="{{ $navActive([$panelPrefix . '.instances.*']) }}">
-                <i class="ri-smartphone-line"></i>
-                <span>{{ __('ui.sidebar.whatsapp_instances') }}</span>
-            </a>
-            @endif
+                @foreach($items as $item)
+                    <a href="{{ $item['url'] ?? route($panelPrefix . '.' . $item['route']) }}"
+                       class="{{ isset($item['route']) ? $navActive(array_map(fn ($m) => $panelPrefix . '.' . $m, $item['match'] ?? [$item['route']])) : '' }}"
+                       @if(!empty($item['external'])) target="_blank" rel="noopener" @endif>
+                        <i class="{{ $item['icon'] }}"></i>
+                        <span>{{ $item['label'] }}</span>
+                        @if(!empty($item['badge']))
+                            <span class="nav-badge">{{ $item['badge'] }}</span>
+                        @elseif(!empty($item['external']))
+                            <i class="ri-external-link-line" style="margin-inline-start:auto;font-size:11px;opacity:.5"></i>
+                        @endif
+                    </a>
+                @endforeach
 
-            @if(!Auth::user()->isSuperAdmin() || $sp('teams'))
-            <a href="{{ route($panelPrefix . '.teams.index') }}" class="{{ $navActive([$panelPrefix . '.teams.*']) }}">
-                <i class="ri-team-line"></i>
-                <span>{{ __('ui.sidebar.teams') }}</span>
-            </a>
-            @endif
-
-            @if(!Auth::user()->isSuperAdmin() || $sp('users'))
-            <a href="{{ route($panelPrefix . '.users.index') }}" class="{{ $navActive([$panelPrefix . '.users.*']) }}">
-                <i class="ri-user-settings-line"></i>
-                <span>{{ __('ui.sidebar.agents_users') }}</span>
-            </a>
-            @endif
-
-            @if(Auth::user()->isAdmin())
-                <div class="sidebar-section-label">{{ __('ui.sidebar.ai_knowledge') }}</div>
-
-                <a href="{{ route($panelPrefix . '.knowledge.index') }}" class="{{ $navActive([$panelPrefix . '.knowledge.*']) }}">
-                    <i class="ri-book-2-line"></i>
-                    <span>{{ __('ui.sidebar.knowledge_base') }}</span>
-                </a>
-
-                <a href="{{ route($panelPrefix . '.ai-settings.index') }}" class="{{ $navActive([$panelPrefix . '.ai-settings.*']) }}">
-                    <i class="ri-sparkling-2-line"></i>
-                    <span>{{ __('ui.sidebar.ai_settings') }}</span>
-                </a>
-
-                <a href="{{ route($panelPrefix . '.saved-replies.index') }}" class="{{ $navActive([$panelPrefix . '.saved-replies.*']) }}">
-                    <i class="ri-chat-3-line"></i>
-                    <span>{{ __('ui.sidebar.saved_replies') }}</span>
-                </a>
-
-                <a href="{{ route($panelPrefix . '.webchat.settings.show') }}" class="{{ $navActive([$panelPrefix . '.webchat.settings.*']) }}">
-                    <i class="ri-settings-4-line"></i>
-                    <span>{{ __('ui.sidebar.live_chat_settings') }}</span>
-                </a>
-
-                <a href="{{ route($panelPrefix . '.otp-service.show') }}" class="{{ $navActive([$panelPrefix . '.otp-service.*']) }}">
-                    <i class="ri-shield-keyhole-line"></i>
-                    <span>{{ __('ui.sidebar.otp_service') }}</span>
-                </a>
-
-                @if(Auth::user()->tenant?->plan?->reservations_enabled)
-                <a href="{{ route($panelPrefix . '.reservations.index') }}" class="{{ $navActive([$panelPrefix . '.reservations.*']) }}">
-                    <i class="ri-calendar-check-line"></i>
-                    <span>{{ __('ui.sidebar.reservations') }}</span>
-                </a>
-                @endif
-            @endif
-
-            @if(!Auth::user()->isSuperAdmin() || $sp('notifications'))
-            <a href="{{ route($panelPrefix . '.notifications.index') }}" class="{{ $navActive([$panelPrefix . '.notifications.*']) }}">
-                <i class="ri-notification-3-line"></i>
-                <span>{{ __('ui.sidebar.notifications') }}</span>
-            </a>
-            @endif
-
-            <div class="sidebar-section-label">{{ __('ui.sidebar.account') }}</div>
-
-            @if(Auth::user()->isAdmin() || (Auth::user()->isSuperAdmin() && $sp('reports')))
-            <a href="{{ route($panelPrefix . '.reports.index') }}" class="{{ $navActive([$panelPrefix . '.reports.*']) }}">
-                <i class="ri-bar-chart-2-line"></i>
-                <span>{{ __('ui.sidebar.reports') }}</span>
-            </a>
-            @endif
-
-            @if(!Auth::user()->isSuperAdmin() || $sp('audit_log'))
-            <a href="{{ route($panelPrefix . '.audit-log.index') }}" class="{{ $navActive([$panelPrefix . '.audit-log.*']) }}">
-                <i class="ri-file-list-3-line"></i>
-                <span>{{ __('ui.sidebar.audit_log') }}</span>
-            </a>
-            @endif
-
-            @if(Auth::user()->isSuperAdmin() && $sp('billing'))
-                <a href="{{ route($panelPrefix . '.billing.index') }}" class="{{ $navActive([$panelPrefix . '.billing.index']) }}">
-                    <i class="ri-bank-card-line"></i>
-                    <span>{{ __('ui.sidebar.billing') }}</span>
-                </a>
-                <a href="{{ route($panelPrefix . '.billing.payments') }}" class="{{ $navActive([$panelPrefix . '.billing.payments', $panelPrefix . '.billing.payment.show']) }}">
-                    <i class="ri-receipt-line"></i>
-                    <span>{{ __('ui.sidebar.payments') }}</span>
-                </a>
-            @endif
-
-            @if(Auth::user()->isSuperAdmin())
-            <a href="{{ route($panelPrefix . '.profile.show') }}" class="{{ $navActive([$panelPrefix . '.profile.*']) }}">
-                <i class="ri-settings-3-line"></i>
-                <span>{{ __('ui.sidebar.settings') }}</span>
-            </a>
-            @else
-            <a href="{{ route($panelPrefix . '.settings.index') }}" class="{{ $navActive([$panelPrefix . '.settings.*']) }}">
-                <i class="ri-settings-3-line"></i>
-                <span>{{ __('ui.sidebar.settings') }}</span>
-            </a>
-            @endif
-            @endif
-
-            <a href="/docs/api" target="_blank" rel="noopener" style="margin-top:4px;">
-                <i class="ri-code-s-slash-line"></i>
-                <span>{{ __('ui.sidebar.api_docs') }}</span>
-                <i class="ri-external-link-line" style="margin-left:auto;font-size:11px;opacity:.5;"></i>
-            </a>
+                @if(!empty($group['pinned']))</div>@endif
+            @endforeach
         </nav>
 
         @auth

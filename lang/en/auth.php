@@ -2,6 +2,8 @@
 
 return [
     'login' => [
+        'placeholder_password' => 'Your password',
+        'toggle_password'      => 'Show or hide the password',
         'sign_in' => 'Sign In',
         'welcome_back' => 'Welcome back',
         'sign_in_workspace' => 'Sign in to your workspace',
@@ -42,6 +44,23 @@ return [
         ],
     ],
     'register' => [
+        'trial_badge_title'    => ':days days free, then choose a plan',
+        'trial_badge_sub'      => 'No card now. Nothing charged until you pick one.',
+        'password_placeholder' => 'At least 8 characters',
+        'email_hint'           => 'We\'ll use this to name your workspace. You can rename it later.',
+        'email_hint_named'     => 'Workspace will be named “:name”. You can rename it later.',
+        'pw_match'             => 'Passwords match',
+        'pw_mismatch'          => 'Passwords do not match',
+        'legal'                => 'By continuing you agree to the :terms and :privacy.',
+        'otp_eyebrow'          => 'One last step',
+        'otp_side_title'       => 'Confirm it\'s you, then your <em>desk is live</em>.',
+        'otp_side_desc'        => 'We sent a 6-digit code to your inbox. Enter it and your workspace is created.',
+        'otp_step_1'           => 'Account details',
+        'otp_step_2'           => 'Email verification',
+        'otp_step_3'           => 'Workspace ready',
+        'otp_digit'            => 'Digit :n',
+        'otp_resend_question'  => 'Didn\'t get the code?',
+        'otp_resend_now'       => 'Resend code',
         'page_title'               => 'Create an account — :app',
         'badge'                    => 'WhatsApp Support Platform',
         'side_title'               => 'Get started',
@@ -132,5 +151,26 @@ return [
         'use_supervisor_login' => 'Use the Supervisor login page.',
         'use_agent_login' => 'Use the Support Agent login page.',
     ],
+
+    // ── shared auth shell (left proof panel) ──
+    'shell' => [
+        'trial_pill'       => ':days days free · no card required',
+        'title'            => 'Your WhatsApp support, running like a <em>real desk</em>.',
+        'lede'             => 'Every message lands in one shared pool. Agents claim, AI drafts, nothing gets answered twice.',
+        'before_tag'       => 'Today',
+        'before_1'         => 'One phone passed between agents',
+        'before_2'         => 'Two people answer the same customer',
+        'before_3'         => 'History leaves when they do',
+        'after_tag'        => 'With wavadesk',
+        'after_1'          => 'One shared pool, agents claim a chat',
+        'after_2'          => 'Claiming locks it — no double replies',
+        'after_3'          => 'Full history stays with the workspace',
+        'stat_1'           => 'Connect your number by QR in under a minute',
+        'stat_2'           => 'Keep the number your customers already message',
+        'stat_3'           => 'Cancel any time during the trial, nothing charged',
+        'avatars_caption'  => 'Support teams onboard in a single sitting',
+        'start_free_trial' => 'Start a free trial',
+    ],
+
 ];
 

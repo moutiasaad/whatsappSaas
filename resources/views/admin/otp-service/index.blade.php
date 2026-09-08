@@ -211,7 +211,7 @@
                     <div class="card-title">{{ __('otp.integration_title') }}</div>
                     <div class="card-subtitle">{{ __('otp.integration_subtitle') }}</div>
                 </div>
-                <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(139,92,246,.1);display:flex;align-items:center;justify-content:center;color:#8b5cf6;flex-shrink:0;">
+                <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(21,182,168,.1);display:flex;align-items:center;justify-content:center;color:#15b6a8;flex-shrink:0;">
                     <i class="ri-code-s-slash-line"></i>
                 </div>
             </div>

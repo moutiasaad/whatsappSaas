@@ -81,7 +81,7 @@
     .kb-import-filename { font-size: .75rem; color: var(--text-muted, #64748b); }
     .kb-import-template-link {
         font-size: .8125rem;
-        color: var(--brand, #6366f1);
+        color: var(--brand, #0f7e7a);
         text-decoration: none;
         display: inline-flex;
         align-items: center;

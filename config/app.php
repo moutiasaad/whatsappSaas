@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Free Trial Length
+    |--------------------------------------------------------------------------
+    |
+    | How many days a new workspace gets on a free plan. Used both when the
+    | tenant is created and by the public marketing / signup copy, so the two
+    | can never drift apart.
+    |
+    */
+
+    'trial_days' => (int) env('TRIAL_DAYS', 7),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
