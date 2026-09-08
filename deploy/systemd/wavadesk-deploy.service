@@ -1,0 +1,10 @@
+[Unit]
+Description=wavadesk — deploy if the GitHub webhook left a trigger
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /www/wwwroot/public/wavadesk.com/deploy/deploy-watcher.sh
+# Root is needed only for the git pull credentials; after-pull.sh drops every
+# composer/artisan command back to www.
+User=root

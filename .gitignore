@@ -30,3 +30,8 @@ Thumbs.db
 
 # Certbot / ACME HTTP-01 validation tokens (transient, server-local)
 /public/.well-known/acme-challenge/
+
+# deploy pipeline runtime artifacts
+/storage/framework/deploy.lock
+/storage/framework/deploy.trigger
+/storage/logs/deploy.log

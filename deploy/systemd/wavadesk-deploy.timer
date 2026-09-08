@@ -1,0 +1,11 @@
+[Unit]
+Description=wavadesk — poll for GitHub deploy triggers
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=20s
+AccuracySec=1s
+Unit=wavadesk-deploy.service
+
+[Install]
+WantedBy=timers.target
