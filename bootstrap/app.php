@@ -22,6 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
 
+        // PROC-008: resolve the tenant BEFORE route-model binding. SubstituteBindings
+        // is in Laravel's priority list and ResolveTenant is not, so by default bindings
+        // resolve while current_tenant_id is unbound and the tenant scope silently no-ops.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \App\Http\Middleware\ResolveTenant::class,
+        );
+
         // All /api/* routes are protected by auth:sanctum — no CSRF needed
         $middleware->validateCsrfTokens(except: ['api/*']);
 
