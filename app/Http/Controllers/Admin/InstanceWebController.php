@@ -13,6 +13,19 @@ use Illuminate\Http\Request;
 
 class InstanceWebController extends Controller
 {
+    private function ensureInstanceAccess(WhatsAppInstance $instance): void
+    {
+        $actor = auth()->user();
+
+        if ($actor->isSuperAdmin()) {
+            return;
+        }
+
+        if ((int) $instance->tenant_id !== (int) $actor->tenant_id) {
+            abort(403, __('ui.controller_messages.unauthorized'));
+        }
+    }
+
     public function index(Request $request)
     {
         $isSuperAdmin = auth()->user()->role === 'super_admin';
@@ -95,6 +108,8 @@ class InstanceWebController extends Controller
 
     public function show(WhatsAppInstance $instance)
     {
+        $this->ensureInstanceAccess($instance);
+
         $instance->load(['tenant:id,name', 'team:id,name']);
 
         $recentEvents = $instance->webhookEvents()
@@ -107,6 +122,8 @@ class InstanceWebController extends Controller
 
     public function webhookEvents(WhatsAppInstance $instance)
     {
+        $this->ensureInstanceAccess($instance);
+
         $events = $instance->webhookEvents()
             ->latest()
             ->limit(30)
@@ -117,6 +134,8 @@ class InstanceWebController extends Controller
 
     public function reprocessWebhookEvent(WhatsAppInstance $instance, int $eventId)
     {
+        $this->ensureInstanceAccess($instance);
+
         $event = WebhookEvent::where('instance_id', $instance->id)->findOrFail($eventId);
 
         // Reset so the job re-runs fully
@@ -138,12 +157,16 @@ class InstanceWebController extends Controller
 
     public function edit(WhatsAppInstance $instance)
     {
+        $this->ensureInstanceAccess($instance);
+
         $teams = Team::where('is_active', true)->orderBy('name')->get();
         return view('admin.instances.edit', compact('instance', 'teams'));
     }
 
     public function update(Request $request, WhatsAppInstance $instance)
     {
+        $this->ensureInstanceAccess($instance);
+
         $data = $request->validate([
             'name'    => 'required|string|max:100',
             'team_id' => 'nullable|exists:teams,id',
@@ -159,6 +182,8 @@ class InstanceWebController extends Controller
 
     public function destroy(Request $request, WhatsAppInstance $instance)
     {
+        $this->ensureInstanceAccess($instance);
+
         try {
             if ($instance->gateway_instance_id && $instance->hasGatewayCredentials()) {
                 $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
