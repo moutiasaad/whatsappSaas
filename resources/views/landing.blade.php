@@ -455,7 +455,7 @@
                 @else
                     <div class="plan-price" id="price-{{ $plan->id }}">
                         <span class="plan-curr">$</span>
-                        <span class="plan-amount" data-monthly="{{ number_format((float)$plan->price_monthly, 0) }}" data-annual="{{ $plan->price_annual ? number_format((float)$plan->price_annual/12, 0) : number_format((float)$plan->price_monthly * 0.8, 0) }}">
+                        <span class="plan-amount" data-monthly="{{ number_format((float)$plan->price_monthly, 0) }}" data-annual="{{ number_format((float)($plan->price_annual ?: $plan->price_monthly), 0) }}">
                             {{ number_format((float)$plan->price_monthly, 0) }}
                         </span>
                         <span class="plan-period monthly-label">{{ __('landing.plan_per_month') }}</span>
