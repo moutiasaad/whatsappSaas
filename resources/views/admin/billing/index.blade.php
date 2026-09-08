@@ -90,20 +90,25 @@
                     </div>
                     @endif
                 </div>
-                @if(!$isCurrent)
-                <form method="POST" action="{{ route('payment.upgrade') }}">
-                    @csrf
-                    <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
-                    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                    <button type="submit" class="btn btn-outline btn-sm" style="width:100%">
-                        <i class="{{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'ri-arrow-up-circle-line' : 'ri-refresh-line' }}"></i>
-                        {{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'Upgrade' : 'Switch' }}
-                    </button>
-                </form>
+                @php $tenantActive = $tenant->isActive(); @endphp
+                @if($isCurrent && $tenantActive)
+                    <div style="text-align:center;font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">
+                        <i class="ri-checkbox-circle-line" style="color:var(--brand)"></i> Active plan
+                    </div>
                 @else
-                <div style="text-align:center;font-size:.8125rem;color:var(--text-muted);padding:.5rem 0">
-                    <i class="ri-checkbox-circle-line" style="color:var(--brand)"></i> Active plan
-                </div>
+                    <form method="POST" action="{{ route('payment.upgrade') }}">
+                        @csrf
+                        <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                        <button type="submit" class="btn {{ $isCurrent ? 'btn-primary' : 'btn-outline' }} btn-sm" style="width:100%">
+                            @if($isCurrent)
+                                <i class="ri-refresh-line"></i> Reactivate
+                            @else
+                                <i class="{{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'ri-arrow-up-circle-line' : 'ri-refresh-line' }}"></i>
+                                {{ $tenant->plan && $plan->price_monthly > $tenant->plan->price_monthly ? 'Upgrade' : 'Switch' }}
+                            @endif
+                        </button>
+                    </form>
                 @endif
             </div>
             @endforeach
