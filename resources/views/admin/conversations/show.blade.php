@@ -2462,19 +2462,28 @@ function conversationPro() {
                 message: this.i18n.release_desc,
                 callback: async () => {
                     this.actionLoading = true;
-                    await fetch(`/api/conversations/${this.conversationId}/release`, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    try {
+                        const res = await fetch(`/api/conversations/${this.conversationId}/release`, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            }
+                        });
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            window.showToast?.('error', data.message || this.i18n.release_error);
+                            return;
                         }
-                    });
-                    this.state = 'pool';
-                    this.agentId = null;
-                    this.agentName = null;
-                    this.aiSuspended = false;
-                    this.actionLoading = false;
+                        this.state = 'pool';
+                        this.agentId = null;
+                        this.agentName = null;
+                        this.aiSuspended = false;
+                        window.showToast?.('success', this.i18n.release_success);
+                    } finally {
+                        this.actionLoading = false;
+                    }
                 }
             });
         },
@@ -2516,7 +2525,7 @@ function conversationPro() {
         async submitCloseWithTitle() {
             this.actionLoading = true;
             try {
-                await fetch(`/api/conversations/${this.conversationId}/close`, {
+                const res = await fetch(`/api/conversations/${this.conversationId}/close`, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -2526,6 +2535,11 @@ function conversationPro() {
                     },
                     body: JSON.stringify({ title: (this.closeTitle || '').trim() })
                 });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    window.showToast?.('error', data.message || this.i18n.close_error);
+                    return;
+                }
                 this.state = 'closed';
                 this.conversationTitle = (this.closeTitle || '').trim() || this.conversationTitle;
                 window.showToast?.('success', this.i18n.close_success);
@@ -2541,20 +2555,28 @@ function conversationPro() {
                 message: this.i18n.reopen_desc,
                 callback: async () => {
                     this.actionLoading = true;
-                    await fetch(`/api/conversations/${this.conversationId}/reopen`, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    try {
+                        const res = await fetch(`/api/conversations/${this.conversationId}/reopen`, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            }
+                        });
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            window.showToast?.('error', data.message || this.i18n.reopen_error);
+                            return;
                         }
-                    });
-                    this.state = 'pool';
-                    this.agentId = null;
-                    this.agentName = null;
-                    this.aiSuspended = false;
-                    this.actionLoading = false;
-                    window.showToast?.('success', this.i18n.reopen_success);
+                        this.state = 'pool';
+                        this.agentId = null;
+                        this.agentName = null;
+                        this.aiSuspended = false;
+                        window.showToast?.('success', this.i18n.reopen_success);
+                    } finally {
+                        this.actionLoading = false;
+                    }
                 }
             });
         },

@@ -59,7 +59,10 @@ class ConversationPolicy
         if (!$this->inSameTenant($user, $conversation)) return false;
         if (!$conversation->isClaimed()) return false;
         if ($user->isAdmin()) return true;
-        return $user->isSupervisor() && $this->canAccessTeam($user, $conversation);
+        // Owning agents may return their own claim to the pool (matches reply()
+        // and the UI that renders the Release button for the claiming agent).
+        return ($user->isSupervisor() && $this->canAccessTeam($user, $conversation))
+            || $conversation->owner_agent_id === $user->id;
     }
 
     public function close(User $user, Conversation $conversation): bool
