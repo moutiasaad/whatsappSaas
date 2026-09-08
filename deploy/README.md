@@ -40,6 +40,11 @@ which never parses the request body.
 | Deploy by hand | `bash deploy/webhook-deploy.sh` |
 | Pause auto-deploy | `systemctl stop wavadesk-deploy.timer` |
 
+The deploy pulls as root, since that is where the git credentials live, so
+`webhook-deploy.sh` chowns everything the merge touched back to `www` before it
+finishes. A root-owned file under `storage/` would otherwise make php-fpm and
+the queue workers fail on write.
+
 Only `refs/heads/main` deploys. Pushes to other branches return 202 and are
 ignored. A push arriving mid-deploy re-arms the trigger instead of being lost,
 and `flock` keeps two deploys from interleaving.
