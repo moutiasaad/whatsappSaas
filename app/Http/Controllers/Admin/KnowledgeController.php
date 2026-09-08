@@ -14,6 +14,19 @@ class KnowledgeController extends Controller
 {
     private const ALLOWED_TYPES = ['faq', 'product', 'policy', 'company_profile', 'custom_instruction'];
 
+    private function ensureEntryAccess(KnowledgeEntry $entry): void
+    {
+        $actor = auth()->user();
+
+        if ($actor->isSuperAdmin()) {
+            return;
+        }
+
+        if ((int) $entry->tenant_id !== (int) $actor->tenant_id) {
+            abort(403, __('ui.controller_messages.unauthorized'));
+        }
+    }
+
     public function index(Request $request)
     {
         $entries = KnowledgeEntry::when($request->type, fn ($q, $t) => $q->ofType($t))
@@ -51,11 +64,15 @@ class KnowledgeController extends Controller
 
     public function edit(KnowledgeEntry $entry)
     {
+        $this->ensureEntryAccess($entry);
+
         return view('admin.knowledge.edit', compact('entry'));
     }
 
     public function update(Request $request, KnowledgeEntry $entry)
     {
+        $this->ensureEntryAccess($entry);
+
         $data = $request->validate([
             'type'      => 'required|in:faq,product,policy,company_profile,custom_instruction',
             'title'     => 'required|string|max:200',
@@ -73,6 +90,8 @@ class KnowledgeController extends Controller
 
     public function destroy(KnowledgeEntry $entry)
     {
+        $this->ensureEntryAccess($entry);
+
         AuditLog::record('knowledge.deleted', $entry, ['title' => $entry->title]);
         $entry->delete();
         $prefix = auth()->user()->routeNamePrefix();
