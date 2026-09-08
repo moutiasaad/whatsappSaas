@@ -43,6 +43,21 @@ class SendOutgoingMessage implements ShouldQueue
             return;
         }
 
+        // Idempotency guard: skip any row that is already terminal (sent /
+        // delivered / cancelled) or currently mid-flight (sending). A retry
+        // firing while status is 'sending' means the previous attempt crashed
+        // between the gateway call and the status write — the gateway may
+        // already have delivered the message, so re-sending would put a
+        // duplicate on the customer's WhatsApp. Manual reconciliation
+        // (out of scope) can later promote a stuck 'sending' to sent/failed.
+        if (in_array($message->status, ['sent', 'delivered', 'cancelled', 'sending'], true)) {
+            Log::channel('whatsapp')->info('SendOutgoingMessage: skipped — already handled', [
+                'message_id' => $message->id,
+                'status'     => $message->status,
+            ]);
+            return;
+        }
+
         // Cancel AI replies whose conversation was taken over (claimed / ai_suspended) or closed
         // between message creation and this job running. Prevents the AI from stealing the last
         // word after an agent grabs the chat.
@@ -67,6 +82,11 @@ class SendOutgoingMessage implements ShouldQueue
             'type'                => $message->type,
             'body_preview'        => mb_substr((string) $message->body, 0, 80),
         ]);
+
+        // Reserve the row before the network call. A crash between here and
+        // the 'sent' write leaves the row at 'sending', which the guard above
+        // skips on retry — no duplicate on the customer's phone.
+        $message->update(['status' => 'sending']);
 
         try {
             $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
@@ -115,12 +135,17 @@ class SendOutgoingMessage implements ShouldQueue
             } catch (\Throwable) {}
 
         } catch (\Exception $e) {
-            $message->update(['status' => 'failed']);
-            Log::channel('whatsapp')->error('SendOutgoingMessage: failed', [
+            // Do NOT flip the row back to 'failed' and re-throw — an exception
+            // can fire AFTER the gateway accepted the message (e.g. read
+            // timeout on the response body), and the Laravel retry would
+            // then re-send. Leave the row at 'sending' so the guard above
+            // makes any retry a no-op. Operators can requeue by resetting
+            // the row to 'pending' after confirming non-delivery with the
+            // gateway.
+            Log::channel('whatsapp')->error('SendOutgoingMessage: send exception — row left as sending for reconciliation', [
                 'message_id' => $message->id,
                 'error'      => $e->getMessage(),
             ]);
-            throw $e;
         }
     }
 }
