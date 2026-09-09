@@ -443,12 +443,10 @@ html[dir="rtl"] .wcx .send svg{transform:scaleX(-1)}
                                     <div class="bubs">
                                         <div class="who" x-text="g.who"></div>
                                         <template x-for="(m, mi) in g.items" :key="m.id">
-                                            <div class="bub" :class="g.side">
-                                                <span x-text="(m.body || '').trim()"></span>
-                                                <template x-if="mi === g.items.length - 1">
-                                                    <div class="tm" x-text="formatTime(m.created_at)"></div>
-                                                </template>
-                                            </div>
+                                            {{-- Keep this element on one line: .bub is white-space:pre-wrap, so any
+                                                 source indentation between these tags renders as literal spaces
+                                                 inside the bubble. --}}
+                                            <div class="bub" :class="g.side"><span x-text="(m.body || '').trim()"></span><template x-if="mi === g.items.length - 1"><div class="tm" x-text="formatTime(m.created_at)"></div></template></div>
                                         </template>
                                     </div>
                                 </div>
