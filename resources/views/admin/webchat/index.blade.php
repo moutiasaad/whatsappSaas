@@ -109,8 +109,7 @@ html[dir="rtl"] .wcx .search input{padding:0 34px 0 12px}
 .wcx .grp.out .bubs{align-items:flex-end}
 .wcx .who{font-size:11px;font-weight:600;color:var(--mut);margin-bottom:3px;padding:0 3px}
 .wcx .grp.out .who{text-align:end}
-.wcx .bub{padding:9px 13px;border-radius:15px;font-size:14px;line-height:1.48;position:relative;overflow-wrap:anywhere;white-space:normal;width:fit-content;max-width:100%}
-.wcx .bub > span{white-space:pre-wrap}
+.wcx .bub{padding:9px 13px;border-radius:15px;font-size:14px;line-height:1.48;position:relative;overflow-wrap:anywhere;white-space:pre-wrap;width:fit-content;max-width:100%}
 .wcx .bub.in{background:#fff;border:1px solid var(--bd);border-end-start-radius:5px}
 .wcx .bub.out{background:var(--teal);color:#fff;border-end-end-radius:5px}
 .wcx .bub.in + .bub.in{border-end-start-radius:15px;border-start-start-radius:5px}
