@@ -404,9 +404,33 @@ class PaymentController extends Controller
             return response('OK');
         }
 
-        $paidAmount = (float) ($data['mc_gross'] ?? 0);
-        if ($paidAmount + 0.001 < (float) $payment->amount) {
-            Log::warning('PayPal IPN: underpayment', ['expected' => $payment->amount, 'received' => $paidAmount]);
+        // CALC-004: the comment above claimed a currency check that did not
+        // exist. Without it, a $30/month plan could be settled by paying 30
+        // units of a weak currency (~$1.50). Compare currency codes first,
+        // then amounts as integer minor units so floating-point drift can
+        // never mask underpayment. The 0.001 epsilon was a legacy TND
+        // (three-decimal) workaround; no PayPal Standard flow charges in
+        // three-decimal currencies today.
+        $paidCurrency     = strtoupper((string) ($data['mc_currency'] ?? ''));
+        $expectedCurrency = strtoupper((string) $payment->currency);
+        if ($paidCurrency !== $expectedCurrency) {
+            Log::warning('PayPal IPN: currency mismatch', [
+                'expected' => $expectedCurrency,
+                'received' => $paidCurrency,
+                'txn_id'   => $data['txn_id'] ?? null,
+            ]);
+            return response('OK');
+        }
+
+        $paidCents     = (int) round(((float) ($data['mc_gross'] ?? 0)) * 100);
+        $expectedCents = (int) round(((float) $payment->amount) * 100);
+        if ($paidCents < $expectedCents) {
+            Log::warning('PayPal IPN: underpayment', [
+                'expected_cents' => $expectedCents,
+                'received_cents' => $paidCents,
+                'currency'       => $expectedCurrency,
+                'txn_id'         => $data['txn_id'] ?? null,
+            ]);
             return response('OK');
         }
 
