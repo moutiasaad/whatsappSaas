@@ -94,7 +94,13 @@ class RegisterController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('verification.notice')
+        // With the gate off (no working mail provider) the notice page has no
+        // link coming to it, so send the new admin straight into the panel.
+        $destination = config('auth.require_email_verification')
+            ? 'verification.notice'
+            : $user->homeRouteName();
+
+        return redirect()->route($destination)
             ->with('success', __('auth.register.welcome_trial'));
     }
 

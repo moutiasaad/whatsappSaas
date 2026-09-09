@@ -89,7 +89,9 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 // stamp email_verified_at on creation.
 Route::middleware('auth')->group(function () {
     Route::get('/email/verify', function () {
-        return auth()->user()->hasVerifiedEmail()
+        // Nothing to wait for when the gate is off and no mail can be sent —
+        // showing "check your inbox" would strand the user on a dead end.
+        return auth()->user()->hasVerifiedEmail() || ! config('auth.require_email_verification')
             ? redirect()->route(auth()->user()->homeRouteName())
             : view('auth.verify-email');
     })->name('verification.notice');
@@ -119,7 +121,15 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
     // creation, so this only bites the public /register path. Billing and
     // profile stay exempt so an unverified admin can still pay or correct a
     // wrong email address.
-    $middleware = ['auth', ResolveTenant::class, 'subscription', 'verified', 'role:' . implode(',', $roles)];
+    //
+    // Dropped entirely when auth.require_email_verification is false: with no
+    // working mail provider the gate locks every new signup out of a panel
+    // they can never reach, since the link that opens it cannot be delivered.
+    $middleware = ['auth', ResolveTenant::class, 'subscription'];
+    if (config('auth.require_email_verification')) {
+        $middleware[] = 'verified';
+    }
+    $middleware[] = 'role:' . implode(',', $roles);
     if ($legacy) {
         $middleware[] = 'role_path';
     }

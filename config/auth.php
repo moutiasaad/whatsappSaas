@@ -114,4 +114,23 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Require Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Master switch for the PROC-024 signup verification gate. When false the
+    | 'verified' middleware is left off the panel routes and /register goes
+    | straight to the dashboard, so signups keep working while outbound mail
+    | is down.
+    |
+    | This is a temporary escape hatch, not a feature toggle: the verification
+    | routes, the notification and the User's MustVerifyEmail contract all stay
+    | in place, so flipping it back to true restores the gate with no code
+    | change. Turn it back on as soon as a mail provider can deliver.
+    |
+    */
+
+    'require_email_verification' => (bool) env('REQUIRE_EMAIL_VERIFICATION', true),
+
 ];
