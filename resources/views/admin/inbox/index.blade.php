@@ -133,7 +133,8 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
    names/tenant locale can't drag outbound text to the wrong edge. Padding
    bumped so the copy has breathing room and the timestamp doesn't crowd
    the last word. */
-.ubx .bub{display:block;padding:11px 15px;border-radius:15px;font-size:14px;line-height:1.5;text-align:start;position:relative;overflow-wrap:anywhere;white-space:pre-wrap;width:fit-content;max-width:100%}
+.ubx .bub{display:block;padding:11px 15px;border-radius:15px;font-size:14px;line-height:1.5;text-align:start;position:relative;overflow-wrap:anywhere;white-space:normal;width:fit-content;max-width:100%}
+.ubx .bub > span{white-space:pre-wrap}
 .ubx .bub.in{background:#fff;border:1px solid var(--bd);border-end-start-radius:5px}
 .ubx .bub.out{background:var(--teal);color:#fff;border-end-end-radius:5px}
 .ubx .bub.in + .bub.in{border-end-start-radius:15px;border-start-start-radius:5px}
