@@ -41,11 +41,11 @@
     </div>
 
     {{-- Content: always in DOM after first load so canvas dimensions are preserved.
-         Transition only when refreshing — an always-on `transition: opacity` fires
-         ResizeObserver events that Chart.js's responsive mode reacts to, which was
-         re-rendering the freshly drawn charts at 0×0 (blank canvas). --}}
-    <div x-show="hasData"
-         :style="refreshing ? 'opacity:.45;pointer-events:none;transition:opacity .15s' : ''">
+         Refreshing state uses :class not :style — a reactive :style="''" still
+         writes an empty style attribute on every Alpine tick, which fires
+         ResizeObserver events that Chart.js's responsive mode reacts to and
+         re-renders the freshly drawn charts at 0×0. --}}
+    <div x-show="hasData" :class="{ 'reports-refreshing': refreshing }">
 
         {{-- KPI stat cards --}}
         <div class="stats-grid" style="margin-bottom:1.5rem;grid-template-columns:repeat(3,1fr)">
@@ -268,6 +268,10 @@
 .rank-badge.rank-1 { background: #fbbf24; color: #78350f; }
 .rank-badge.rank-2 { background: #9ca3af; color: #1f2937; }
 .rank-badge.rank-3 { background: #cd7f32; color: #fff; }
+
+/* Refreshing state — replaces the previous reactive :style binding that
+   was forcing a style-attribute rewrite on every Alpine tick. */
+.reports-refreshing { opacity: .45; pointer-events: none; transition: opacity .15s; }
 </style>
 @endpush
 
@@ -381,6 +385,14 @@ function reportsPage() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // Debounce ResizeObserver — Alpine reactive ticks can
+                    // fire micro-resize events that would otherwise catch
+                    // Chart.js mid-layout and render at 0×0 (blank canvas).
+                    resizeDelay: 200,
+                    // No grow-from-zero animation — if any resize event lands
+                    // during the animation frame, Chart.js redraws the
+                    // partial state which looks like a blank chart.
+                    animation: false,
                     interaction: { intersect: false, mode: 'index' },
                     plugins: { legend: { display: false } },
                     scales: {
@@ -414,6 +426,8 @@ function reportsPage() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    resizeDelay: 200,
+                    animation: false,
                     cutout: '68%',
                     plugins: {
                         legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 12 } } }
@@ -443,6 +457,8 @@ function reportsPage() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    resizeDelay: 200,
+                    animation: false,
                     plugins: { legend: { display: false } },
                     scales: {
                         y: { beginAtZero: true, ticks: { precision: 0 } },
@@ -475,6 +491,8 @@ function reportsPage() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    resizeDelay: 200,
+                    animation: false,
                     cutout: '68%',
                     plugins: {
                         legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 12 } } }
