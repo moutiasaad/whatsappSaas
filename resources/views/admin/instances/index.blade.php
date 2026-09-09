@@ -303,7 +303,7 @@ function instancesPage() {
         stats:     { connected: 0, connecting: 0, offline: 0 },
         loading:   true,
 
-        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false, validating: false },
+        qr: { show: false, data: null, instanceId: null, instanceName: '', loading: false, validating: false, poll: null, polls: 0 },
 
         init() {
             this.loadData();
@@ -417,6 +417,55 @@ function instancesPage() {
             this.qr.instanceName = name;
             this.qr.data         = data;
             this.qr.show         = true;
+            this.startQrPoll();
+        },
+
+        // The gateway does not return the QR in the /connect response: it arrives
+        // a second or two later on the qrcode.updated webhook, which stores it on
+        // the instance row. /status echoes that column back, so poll it until the
+        // QR appears. Without this the modal sat on "Generating QR code..."
+        // forever and only a full page reload ever showed the code.
+        startQrPoll() {
+            this.stopQrPoll();
+            this.qr.polls = 0;
+            this.qr.poll  = setInterval(() => this.pollQrOnce(), 3000);
+        },
+
+        stopQrPoll() {
+            if (this.qr.poll) clearInterval(this.qr.poll);
+            this.qr.poll = null;
+        },
+
+        async pollQrOnce() {
+            if (!this.qr.show || !this.qr.instanceId) return this.stopQrPoll();
+            if (++this.qr.polls > 40) return this.stopQrPoll();   // give up after ~2 min
+
+            try {
+                const res = await fetch(`/api/instances/${this.qr.instanceId}/status`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!this.qr.show) return this.stopQrPoll();
+
+                const inst = this.getInst(this.qr.instanceId);
+                if (inst) {
+                    inst.status = data.status;
+                    if (data.phone_number) inst.phone_number = data.phone_number;
+                    this.recalcStats();
+                }
+
+                if (data.qr_code && !this.qr.data) this.qr.data = data.qr_code;
+
+                // Scan finished: same close-and-toast the Reverb listener does, for
+                // when the broadcast does not reach this tab.
+                if (data.status === 'connected') {
+                    const name = this.qr.instanceName || (inst ? inst.name : '');
+                    this.closeQr();
+                    window.showToast?.('success', this.i18n.qr_connected.replace(':name', name).trim());
+                }
+            } catch { /* transient — the next tick retries */ }
         },
 
         async refreshQr(silent = false) {
@@ -436,6 +485,7 @@ function instancesPage() {
         },
 
         closeQr() {
+            this.stopQrPoll();
             this.qr.show = false;
             this.qr.data = null;
             this.qr.loading = false;

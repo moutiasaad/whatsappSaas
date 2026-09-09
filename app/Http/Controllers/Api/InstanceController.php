@@ -108,36 +108,53 @@ class InstanceController extends Controller
                     return response()->json(['status' => 'connected', 'qr_code' => null]);
                 }
 
-                // Genuinely stuck — delete gateway instance and recreate for a fresh QR
-                $oldGatewayId = $instance->gateway_instance_id;
-                try {
-                    $gateway->deleteInstance($oldGatewayId);
-                } catch (\Throwable) {}
+                // Recycle only an instance we did NOT just create. The gateway
+                // never returns the QR inline, so before this guard the very
+                // first connect always landed here and tore down the instance it
+                // had created moments earlier — killing the pairing session that
+                // was about to emit qrcode.updated. The instance then flapped
+                // close(405)/connecting and no QR was ever produced. A freshly
+                // created instance is left alone to finish pairing.
+                if ($createResult === null) {
+                    $oldGatewayId = $instance->gateway_instance_id;
+                    try {
+                        $gateway->deleteInstance($oldGatewayId);
+                    } catch (\Throwable) {}
 
-                sleep(1);
+                    sleep(1);
 
-                $result = $this->createOrReuseGatewayInstance($gateway, $oldGatewayId);
-                $newGatewayId = $result['name']
-                    ?? $result['instance']['instanceId']
-                    ?? $result['instanceName']
-                    ?? $oldGatewayId;
+                    $result = $this->createOrReuseGatewayInstance($gateway, $oldGatewayId);
+                    $newGatewayId = $result['name']
+                        ?? $result['instance']['instanceId']
+                        ?? $result['instanceName']
+                        ?? $oldGatewayId;
 
-                $instance->update([
-                    'gateway_instance_id' => $newGatewayId,
-                    'status'              => 'disconnected',
-                    'qr_code'             => null,
-                ]);
-                $instance->refresh();
+                    $instance->update([
+                        'gateway_instance_id' => $newGatewayId,
+                        'status'              => 'disconnected',
+                        'qr_code'             => null,
+                    ]);
+                    $instance->refresh();
 
-                $this->ensureWebhookRegistered($gateway, $instance);
+                    $this->ensureWebhookRegistered($gateway, $instance);
 
-                $qr = $gateway->getQrCode($newGatewayId)
-                    ?? $this->qrFromCreateResult($result);
+                    $qr = $gateway->getQrCode($newGatewayId)
+                        ?? $this->qrFromCreateResult($result);
+                }
             }
 
-            $instance->update(['qr_code' => $qr, 'status' => 'connecting', 'last_status_at' => now()]);
+            // Never clobber a QR the qrcode.updated webhook has already stored —
+            // it normally wins the race against this response.
+            $updates = ['status' => 'connecting', 'last_status_at' => now()];
+            if ($qr !== null) {
+                $updates['qr_code'] = $qr;
+            }
+            $instance->update($updates);
 
-            return response()->json(['qr_code' => $qr, 'status' => 'connecting']);
+            return response()->json([
+                'qr_code' => $qr ?? $instance->fresh()->qr_code,
+                'status'  => 'connecting',
+            ]);
 
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);

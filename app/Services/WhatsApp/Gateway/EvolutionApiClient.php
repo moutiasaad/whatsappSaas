@@ -6,6 +6,13 @@ use Illuminate\Support\Facades\Http;
 
 class EvolutionApiClient implements GatewayClientInterface
 {
+    /**
+     * /instance/connect long-polls on the iStoreBox build. Cap it so a pairing
+     * session that is still warming up cannot hold a PHP-FPM worker for the
+     * HTTP client's 30s default.
+     */
+    private const QR_REQUEST_TIMEOUT = 8;
+
     public function __construct(
         private string $baseUrl,
         private string $apiKey
@@ -16,10 +23,24 @@ class EvolutionApiClient implements GatewayClientInterface
         return $this->post('/instance/create', ['instanceName' => $name]);
     }
 
+    /**
+     * Ask the gateway to start (or resume) pairing, returning the QR when the
+     * response happens to carry it.
+     *
+     * On the production iStoreBox build /instance/connect does not reliably
+     * return the QR: for a fresh instance it long-polls past 30s, and for an
+     * existing one it answers {"count":0}. The QR is always delivered
+     * out-of-band by the qrcode.updated webhook instead. This call is therefore
+     * made mostly for its side effect — it is what triggers QR generation — so a
+     * timeout means "no QR in the body yet", not a failure.
+     */
     public function getQrCode(string $instanceId): ?string
     {
         try {
-            $res = $this->get("/instance/connect/{$instanceId}");
+            $res = Http::withHeaders(['apikey' => $this->apiKey])
+                ->timeout(self::QR_REQUEST_TIMEOUT)
+                ->get(rtrim($this->baseUrl, '/') . "/instance/connect/{$instanceId}")
+                ->throw()->json();
             $code = data_get($res, 'base64')
                 ?? data_get($res, 'data.base64')
                 ?? data_get($res, 'qr_code')
