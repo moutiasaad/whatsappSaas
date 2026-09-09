@@ -159,6 +159,9 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
 .plan .pn{font-size:19px;font-weight:700}
 .plan .pp{font-size:42px;font-weight:700;letter-spacing:-.04em;margin-top:10px;line-height:1.1}
 .plan .pp span{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0}
+/* The .plan-amount span holds the number itself — it must inherit the big
+   .pp typography, not the small muted default for cycle-suffix spans. */
+.plan .pp .plan-amount{font-size:inherit;font-weight:inherit;color:inherit;letter-spacing:inherit}
 .plan .pd{font-size:14.5px;color:var(--muted);margin-top:6px}
 .plan ul{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:11px}
 .plan li{font-size:14.5px;display:flex;gap:10px;align-items:flex-start;line-height:1.45}
