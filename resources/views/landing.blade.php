@@ -418,12 +418,11 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
     </div>
 
     @if($planCount)
-    <div class="billing" id="billing">
-      <span class="lbl on" id="lblMonthly">{{ __('landing.billing_monthly') }}</span>
-      <button class="track" id="track" type="button" aria-label="{{ __('landing.billing_annual') }}"><i></i></button>
-      <span class="lbl" id="lblAnnual">{{ __('landing.billing_annual') }}</span>
-      <span class="save">{{ __('landing.billing_save') }}</span>
-    </div>
+    {{-- CALC-003: annual toggle removed. Annual billing was advertised on the
+         landing page but no purchase path honoured it — every checkout charged
+         and granted one month. Restore this block only when the billing_cycle
+         hand-off from register through checkout to activateTenantSubscription
+         actually ships. --}}
 
     <div class="plans">
       @foreach($plans as $i => $plan)
@@ -431,7 +430,6 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
         $isPopular = $i === 1 && $planCount >= 2;
         $isFree    = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
         $features  = is_array($plan->features) ? $plan->features : [];
-        $annual    = (float) ($plan->price_annual ?: $plan->price_monthly);
       @endphp
       <div class="plan {{ $isPopular ? 'hot' : '' }}">
         @if($isPopular)<span class="badge">{{ __('landing.popular_short') }}</span>@endif
@@ -440,7 +438,7 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
           <div class="pp">{{ __('landing.plan_free_label') }}</div>
         @else
           <div class="pp">
-            $<span class="plan-amount" data-monthly="{{ number_format((float) $plan->price_monthly, 0) }}" data-annual="{{ number_format($annual, 0) }}">{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span><span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>
+            $<span class="plan-amount">{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span>
           </div>
         @endif
         <div class="pd">{{ __('landing.plan_tagline_' . ($isPopular ? 'growth' : 'starter')) }}</div>
@@ -563,24 +561,7 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
     document.addEventListener('click', () => { langDD.classList.remove('open'); langBtn.setAttribute('aria-expanded', 'false'); });
   }
 
-  // ── billing toggle ──
-  const track = document.getElementById('track');
-  if (track) {
-    let annual = false;
-    const lblM = document.getElementById('lblMonthly');
-    const lblA = document.getElementById('lblAnnual');
-    const apply = () => {
-      track.classList.toggle('on', annual);
-      lblM.classList.toggle('on', !annual);
-      lblA.classList.toggle('on', annual);
-      document.querySelectorAll('.plan-amount').forEach(el => { el.textContent = annual ? el.dataset.annual : el.dataset.monthly; });
-      document.querySelectorAll('.monthly-label').forEach(el => el.style.display = annual ? 'none' : '');
-      document.querySelectorAll('.annual-label').forEach(el => el.style.display = annual ? '' : 'none');
-    };
-    track.addEventListener('click', () => { annual = !annual; apply(); });
-    lblM.addEventListener('click', () => { annual = false; apply(); });
-    lblA.addEventListener('click', () => { annual = true;  apply(); });
-  }
+  // CALC-003: billing toggle JS removed alongside its markup.
 
   // ── sticky mobile CTA: show once the hero form is out of view, hide over the final form ──
   const mob    = document.getElementById('mobcta');
