@@ -136,7 +136,7 @@ class SingleInstanceController extends Controller
 
         $instance->update(['status' => 'disconnected', 'qr_code' => null]);
 
-        return response()->json(['status' => 'disconnected', 'message' => 'Disconnected.']);
+        return response()->json(['status' => 'disconnected', 'message' => __('ui.controller_messages.instance_disconnected')]);
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

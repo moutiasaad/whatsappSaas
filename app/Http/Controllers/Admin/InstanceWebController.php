@@ -219,7 +219,7 @@ class InstanceWebController extends Controller
             $event->refresh();
             $result = $event->error
                 ? ['status' => 'error', 'message' => $event->error]
-                : ['status' => 'ok', 'message' => 'Traité avec succès'];
+                : ['status' => 'ok', 'message' => __('ui.controller_messages.webhook_reprocessed')];
         } catch (\Throwable $e) {
             $event->update(['error' => $e->getMessage()]);
             $result = ['status' => 'error', 'message' => $e->getMessage()];
@@ -282,7 +282,7 @@ class InstanceWebController extends Controller
         $instance->delete();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Instance deleted.']);
+            return response()->json(['message' => __('ui.controller_messages.instance_deleted', ['name' => $instance->name])]);
         }
 
         return redirect()->route('admin.instances.index')

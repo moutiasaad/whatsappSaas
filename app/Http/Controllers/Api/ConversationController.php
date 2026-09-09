@@ -241,17 +241,17 @@ class ConversationController extends Controller
         $this->authorize('claim', $conversation);
 
         if (!$this->service->claim($conversation, $request->user())) {
-            return response()->json(['message' => 'Already claimed by someone else.'], 409);
+            return response()->json(['message' => __('ui.controller_messages.already_claimed')], 409);
         }
 
-        return response()->json(['message' => 'Claimed.', 'conversation' => $conversation->fresh()]);
+        return response()->json(['message' => __('ui.controller_messages.conversation_claimed'), 'conversation' => $conversation->fresh()]);
     }
 
     public function release(Conversation $conversation, Request $request): JsonResponse
     {
         $this->authorize('release', $conversation);
         $this->service->release($conversation, $request->user());
-        return response()->json(['message' => 'Released to pool.']);
+        return response()->json(['message' => __('ui.controller_messages.conversation_released')]);
     }
 
     public function close(Conversation $conversation, Request $request): JsonResponse
@@ -266,7 +266,7 @@ class ConversationController extends Controller
         $this->service->close($conversation, $request->user(), $title !== '' ? $title : null);
 
         return response()->json([
-            'message'      => 'Closed.',
+            'message'      => __('ui.controller_messages.conversation_closed'),
             'conversation' => [
                 'id'    => $conversation->id,
                 'title' => $conversation->fresh()->title,
@@ -291,18 +291,18 @@ class ConversationController extends Controller
             || (string) $newAgent->tenant_id !== (string) $conversation->tenant_id
             || ($conversation->team_id !== null && !$newAgent->teams->contains('id', $conversation->team_id))
         ) {
-            return response()->json(['message' => 'Selected assignee is not eligible for this conversation.'], 422);
+            return response()->json(['message' => __('ui.controller_messages.assignee_not_eligible')], 422);
         }
 
         $this->service->reassign($conversation, $newAgent, $request->user());
-        return response()->json(['message' => 'Reassigned.']);
+        return response()->json(['message' => __('ui.controller_messages.conversation_reassigned')]);
     }
 
     public function reopen(Conversation $conversation, Request $request): JsonResponse
     {
         $this->authorize('reopen', $conversation);
         $this->service->reopen($conversation, $request->user());
-        return response()->json(['message' => 'Reopened.']);
+        return response()->json(['message' => __('ui.controller_messages.conversation_reopened')]);
     }
 
     public function markRead(Conversation $conversation): JsonResponse
@@ -311,7 +311,7 @@ class ConversationController extends Controller
 
         $conversation->update(['unread_count' => 0]);
 
-        return response()->json(['message' => 'Read.']);
+        return response()->json(['message' => __('ui.controller_messages.conversation_read')]);
     }
 
     public function toggleAi(Conversation $conversation, Request $request): JsonResponse

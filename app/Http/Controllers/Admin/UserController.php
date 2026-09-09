@@ -234,7 +234,7 @@ class UserController extends Controller
         $user->delete();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'User deleted.']);
+            return response()->json(['message' => __('ui.controller_messages.user_deleted', ['name' => $user->name])]);
         }
 
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')

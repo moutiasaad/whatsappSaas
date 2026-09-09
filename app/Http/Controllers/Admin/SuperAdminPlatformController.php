@@ -237,7 +237,7 @@ class SuperAdminPlatformController extends Controller
         $tenant->delete();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Tenant deleted.']);
+            return response()->json(['message' => __('ui.controller_messages.tenant_deleted', ['name' => $tenantName])]);
         }
 
         return redirect()

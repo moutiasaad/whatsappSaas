@@ -199,7 +199,7 @@ class InstanceController extends Controller
 
         broadcast(new InstanceStatusChanged($instance->fresh()));
 
-        return response()->json(['message' => 'Instance disconnected.']);
+        return response()->json(['message' => __('ui.controller_messages.instance_disconnected')]);
     }
 
     public function destroy(WhatsAppInstance $instance): JsonResponse
@@ -216,7 +216,7 @@ class InstanceController extends Controller
 
         $instance->delete();
 
-        return response()->json(['message' => 'Instance deleted.']);
+        return response()->json(['message' => __('ui.controller_messages.instance_deleted', ['name' => $instance->name])]);
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

@@ -119,7 +119,7 @@ class ReservationController extends Controller
         $current = $reservation->status;
 
         if ($current === $target) {
-            return response()->json(['message' => 'Status unchanged.', 'reservation' => $reservation]);
+            return response()->json(['message' => __('ui.controller_messages.reservation_status_unchanged'), 'reservation' => $reservation]);
         }
 
         // PROC-021: enforce the transition table. Blocks completed -> anything
@@ -128,7 +128,7 @@ class ReservationController extends Controller
         $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
         if (!in_array($target, $allowed, true)) {
             return response()->json([
-                'message' => "Cannot move a {$current} reservation to {$target}.",
+                'message' => __('ui.controller_messages.reservation_invalid_transition', ['from' => $current, 'to' => $target]),
                 'allowed_next_states' => $allowed,
             ], 422);
         }
@@ -166,15 +166,15 @@ class ReservationController extends Controller
 
             if (!$updated) {
                 return response()->json([
-                    'message' => 'Slot is at capacity — cannot reinstate this reservation.',
+                    'message' => __('ui.controller_messages.reservation_slot_full'),
                 ], 422);
             }
 
-            return response()->json(['message' => 'Status updated.', 'reservation' => $updated]);
+            return response()->json(['message' => __('ui.controller_messages.reservation_status_updated'), 'reservation' => $updated]);
         }
 
         $reservation->update(['status' => $target]);
-        return response()->json(['message' => 'Status updated.', 'reservation' => $reservation->fresh()]);
+        return response()->json(['message' => __('ui.controller_messages.reservation_status_updated'), 'reservation' => $reservation->fresh()]);
     }
 
     public function destroy(Reservation $reservation)
@@ -182,7 +182,7 @@ class ReservationController extends Controller
         $this->assertEnabled();
         abort_unless($reservation->tenant_id === auth()->user()->tenant_id, 403);
         $reservation->delete();
-        return response()->json(['message' => 'Deleted.']);
+        return response()->json(['message' => __('ui.controller_messages.reservation_deleted')]);
     }
 
     // ── Availability Slots ────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ class ReservationController extends Controller
 
         $slot = AvailabilitySlot::create(array_merge($data, ['tenant_id' => $tenantId]));
 
-        return response()->json(['message' => 'Slot added.', 'slot' => $slot], 201);
+        return response()->json(['message' => __('ui.controller_messages.slot_added'), 'slot' => $slot], 201);
     }
 
     public function updateSlot(Request $request, AvailabilitySlot $slot)
@@ -248,7 +248,7 @@ class ReservationController extends Controller
 
         $slot->update($data);
 
-        return response()->json(['message' => 'Slot updated.', 'slot' => $slot->fresh()]);
+        return response()->json(['message' => __('ui.controller_messages.slot_updated'), 'slot' => $slot->fresh()]);
     }
 
     public function destroySlot(AvailabilitySlot $slot)
@@ -256,7 +256,7 @@ class ReservationController extends Controller
         $this->assertEnabled();
         abort_unless($slot->tenant_id === auth()->user()->tenant_id, 403);
         $slot->delete();
-        return response()->json(['message' => 'Deleted.']);
+        return response()->json(['message' => __('ui.controller_messages.slot_deleted')]);
     }
 
     // ── Settings ──────────────────────────────────────────────────────────────
@@ -318,9 +318,9 @@ class ReservationController extends Controller
         );
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Settings saved.']);
+            return response()->json(['message' => __('ui.controller_messages.settings_saved')]);
         }
 
-        return back()->with('success', 'Settings saved.');
+        return back()->with('success', __('ui.controller_messages.settings_saved'));
     }
 }

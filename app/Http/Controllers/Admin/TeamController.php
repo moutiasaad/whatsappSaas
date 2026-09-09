@@ -197,7 +197,7 @@ class TeamController extends Controller
         $team->delete();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Team deleted.']);
+            return response()->json(['message' => __('ui.controller_messages.team_deleted', ['name' => $team->name])]);
         }
 
         return redirect()->route(auth()->user()->routeNamePrefix() . '.teams.index')
