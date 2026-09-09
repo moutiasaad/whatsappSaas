@@ -121,7 +121,7 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .msgs{flex:1;overflow-y:auto;padding:22px 24px;display:flex;flex-direction:column;min-height:0}
 /* few messages shouldn't leave a hole above the composer — sit them on the bottom */
 .ubx .msgs > *:first-child{margin-top:auto}
-.ubx .grp{display:flex;gap:9px;margin-top:11px;max-width:74%}
+.ubx .grp{display:flex;gap:9px;margin-top:11px;max-width:66%}
 .ubx .grp.out{margin-inline-start:auto;flex-direction:row-reverse}
 .ubx .grp .gav{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;flex-shrink:0;align-self:flex-end;margin-bottom:2px;background:var(--teal)}
 .ubx .grp.out .gav{background:var(--teal-d)}
@@ -129,12 +129,16 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .grp.out .bubs{align-items:flex-end}
 .ubx .who{font-size:11px;font-weight:600;color:var(--mut);margin-bottom:3px;padding:0 3px}
 .ubx .grp.out .who{text-align:end}
-.ubx .bub{padding:9px 13px;border-radius:15px;font-size:14px;line-height:1.48;position:relative;overflow-wrap:anywhere;white-space:pre-wrap;width:fit-content;max-width:100%}
+/* Bubbles: block-level, text-align start explicitly so BiDi from customer
+   names/tenant locale can't drag outbound text to the wrong edge. Padding
+   bumped so the copy has breathing room and the timestamp doesn't crowd
+   the last word. */
+.ubx .bub{display:block;padding:11px 15px;border-radius:15px;font-size:14px;line-height:1.5;text-align:start;position:relative;overflow-wrap:anywhere;white-space:pre-wrap;width:fit-content;max-width:100%}
 .ubx .bub.in{background:#fff;border:1px solid var(--bd);border-end-start-radius:5px}
 .ubx .bub.out{background:var(--teal);color:#fff;border-end-end-radius:5px}
 .ubx .bub.in + .bub.in{border-end-start-radius:15px;border-start-start-radius:5px}
 .ubx .bub.out + .bub.out{border-end-end-radius:15px;border-start-end-radius:5px}
-.ubx .bub .tm{font-size:10.5px;opacity:.6;margin-top:2px;display:flex;align-items:center;gap:4px;justify-content:flex-end;font-variant-numeric:tabular-nums;line-height:1.2}
+.ubx .bub .tm{font-size:10.5px;opacity:.7;margin-top:4px;display:flex;align-items:center;gap:4px;justify-content:flex-end;font-variant-numeric:tabular-nums;line-height:1.2}
 .ubx .bub.in .tm{color:var(--mut-2);opacity:1}
 .ubx .sys{background:#fff;border:1px solid var(--bd);color:var(--mut);font-size:12px;font-weight:500;padding:6px 14px;border-radius:999px;margin:12px auto;display:flex;width:fit-content;max-width:100%;align-items:center;gap:7px;text-align:center}
 .ubx .nothread{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--mut-2);font-size:14px;padding:24px;text-align:center}
