@@ -51,8 +51,14 @@ class Widget extends Model
 
     public function isDomainAllowed(?string $origin): bool
     {
+        // UI-007: an empty allowlist used to permit every origin, which meant
+        // anyone holding the (publicly embeddable) wck_ key could open real
+        // conversations on any site and consume the tenant's agents + AI spend.
+        // Fail-closed now: an unconfigured list stops embed attempts. The
+        // settings page enforces "at least one domain when enabled=true" so
+        // tenants can't accidentally leave themselves open.
         $list = $this->allowed_domains ?? [];
-        if (empty($list)) return true;
+        if (empty($list)) return false;
         if (!$origin) return false;
 
         $originHost = parse_url($origin, PHP_URL_HOST) ?: $origin;

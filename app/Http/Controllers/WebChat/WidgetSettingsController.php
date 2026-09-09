@@ -66,12 +66,15 @@ class WidgetSettingsController extends Controller
 
         // BelongsToTenant global scope + creating hook (auto-generates the
         // `wck_` public_key) handle both branches consistently.
+        // UI-007: provision new widgets as disabled + empty allowlist so a
+        // tenant cannot walk away from the settings page with a wildcard-open
+        // widget by accident. They enable it after adding at least one domain.
         return Widget::withoutGlobalScope('tenant')
             ->firstOrCreate(
                 ['tenant_id' => $tenantId],
                 [
                     'name'               => 'Live Chat',
-                    'enabled'            => true,
+                    'enabled'            => false,
                     'welcome_message'    => __('ui.webchat_settings.default_welcome'),
                     'suggestions'        => [
                         __('ui.webchat_settings.default_chip_pricing'),
@@ -150,6 +153,13 @@ class WidgetSettingsController extends Controller
             ->all();
         $request->merge(['topics' => $topics]);
 
+        // UI-007: when the widget is being enabled, at least one allowed
+        // domain must be present. isDomainAllowed now fails closed, so an
+        // enabled widget with no domains would just 403 every visitor.
+        $requireDomains = $request->boolean('enabled')
+            ? ['required', 'array', 'min:1', 'max:32']
+            : ['array', 'max:32'];
+
         $validator = Validator::make($request->all(), [
             'name'               => ['required', 'string', 'max:120'],
             'enabled'            => ['sometimes', 'boolean'],
@@ -168,7 +178,7 @@ class WidgetSettingsController extends Controller
             'default_lang'         => ['required', 'in:ar,en,fr'],
             'available_languages'  => ['required', 'array', 'min:1', 'max:3'],
             'available_languages.*'=> ['in:ar,en,fr'],
-            'allowed_domains'    => ['array', 'max:32'],
+            'allowed_domains'    => $requireDomains,
             'allowed_domains.*'  => ['string', 'regex:/^https?:\/\/[a-zA-Z0-9.\-]+(:[0-9]{1,5})?$/', 'max:255'],
             'topics'              => ['array', 'max:6'],
             'topics.*.tint'       => ['required', 'in:' . implode(',', $allowedTints)],
@@ -178,8 +188,10 @@ class WidgetSettingsController extends Controller
             'topics.*.labels.en'  => ['nullable', 'string', 'max:60'],
             'topics.*.labels.fr'  => ['nullable', 'string', 'max:60'],
         ], [
-            'theme_color.regex'       => __('ui.webchat_settings.err_theme_color'),
-            'allowed_domains.*.regex' => __('ui.webchat_settings.err_domain_format'),
+            'theme_color.regex'         => __('ui.webchat_settings.err_theme_color'),
+            'allowed_domains.*.regex'   => __('ui.webchat_settings.err_domain_format'),
+            'allowed_domains.required'  => __('ui.webchat_settings.err_domains_required'),
+            'allowed_domains.min'       => __('ui.webchat_settings.err_domains_required'),
         ]);
 
         return $validator->validate();

@@ -1932,6 +1932,8 @@ Always:
 
         'err_theme_color'        => 'Please enter a valid hex color like #2563eb.',
         'err_domain_format'      => 'Each origin must look like https://example.com — no path or trailing slash.',
+        'err_domains_required'   => 'Add at least one allowed domain before enabling the widget. An empty list rejects every visitor.',
+        'warn_enabled_without_domains' => 'This widget is enabled but no domain is allowed. Add at least one origin below or every visitor will be rejected.',
     ],
 
     // ── unified inbox ──

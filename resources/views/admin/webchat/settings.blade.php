@@ -394,6 +394,17 @@
                             <label class="form-label">{{ __('ui.webchat_settings.label_allowed_domains') }}</label>
                             <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_allowed_domains') }}</div>
 
+                            {{-- UI-007: warn when the widget is enabled but no
+                                 domain is configured. isDomainAllowed fails
+                                 closed on empty, so this state 403s every
+                                 visitor — the tenant needs to know before they
+                                 walk away from the page. --}}
+                            <div class="alert alert-warning" style="margin:8px 0;padding:10px 12px;border-radius:8px;background:#fef3c7;color:#92400e;font-size:13.5px"
+                                 x-show="form.enabled && form.allowed_domains.length === 0">
+                                <i class="ri-error-warning-line"></i>
+                                {{ __('ui.webchat_settings.warn_enabled_without_domains') }}
+                            </div>
+
                             <div class="wcs-domains" x-show="form.allowed_domains.length > 0">
                                 <template x-for="(dom, idx) in form.allowed_domains" :key="idx">
                                     <div class="wcs-domain">

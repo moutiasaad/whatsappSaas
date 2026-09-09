@@ -1929,6 +1929,8 @@ Toujours :
 
         'err_theme_color'        => 'Veuillez saisir une couleur hexadécimale valide comme #2563eb.',
         'err_domain_format'      => 'Chaque origine doit ressembler à https://exemple.com — sans chemin ni slash final.',
+        'err_domains_required'   => 'Ajoutez au moins un domaine autorisé avant d\'activer le widget. Une liste vide rejette tous les visiteurs.',
+        'warn_enabled_without_domains' => 'Ce widget est activé mais aucun domaine n\'est autorisé. Ajoutez au moins une origine ci-dessous, sinon tout visiteur sera rejeté.',
     ],
 
     // ── unified inbox ──
