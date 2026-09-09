@@ -418,6 +418,16 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
     </div>
 
     @if($planCount)
+    @php
+        // CALC-013: only show the Monthly/Annual toggle when at least one
+        // active plan actually has an annual price. Otherwise the toggle
+        // implies a cycle no plan offers, and per-plan fallbacks would render
+        // the monthly price under a yearly label — the twelve-fold error
+        // CALC-002 corrected, reintroduced through the fallback rather than
+        // the division.
+        $anyPlanHasAnnual = $plans->contains(fn ($p) => (float) $p->price_annual > 0);
+    @endphp
+    @if($anyPlanHasAnnual)
     {{-- CALC-012: the "Save 20%" badge was a hardcoded literal, not derived
          from any plan's price_annual vs price_monthly × 12. Combined with
          CALC-003 (annual billing is not wired end-to-end), the page was
@@ -429,14 +439,17 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
       <button class="track" id="track" type="button" aria-label="{{ __('landing.billing_annual') }}"><i></i></button>
       <span class="lbl" id="lblAnnual">{{ __('landing.billing_annual') }}</span>
     </div>
+    @endif
 
     <div class="plans">
       @foreach($plans as $i => $plan)
       @php
-        $isPopular = $i === 1 && $planCount >= 2;
-        $isFree    = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
-        $features  = is_array($plan->features) ? $plan->features : [];
-        $annual    = (float) ($plan->price_annual ?: $plan->price_monthly);
+        $isPopular  = $i === 1 && $planCount >= 2;
+        $isFree     = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
+        $features   = is_array($plan->features) ? $plan->features : [];
+        // CALC-013: 0 and null both mean "no annual price offered". Do not
+        // substitute one cycle's price for the other.
+        $hasAnnual  = (float) $plan->price_annual > 0;
       @endphp
       <div class="plan {{ $isPopular ? 'hot' : '' }}">
         @if($isPopular)<span class="badge">{{ __('landing.popular_short') }}</span>@endif
@@ -445,7 +458,7 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
           <div class="pp">{{ __('landing.plan_free_label') }}</div>
         @else
           <div class="pp">
-            $<span class="plan-amount" data-monthly="{{ number_format((float) $plan->price_monthly, 0) }}" data-annual="{{ number_format($annual, 0) }}">{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span><span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>
+            $<span class="plan-amount" data-monthly="{{ number_format((float) $plan->price_monthly, 0) }}"@if($hasAnnual) data-annual="{{ number_format((float) $plan->price_annual, 0) }}"@endif>{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span>@if($hasAnnual)<span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>@endif
           </div>
         @endif
         <div class="pd">{{ __('landing.plan_tagline_' . ($isPopular ? 'growth' : 'starter')) }}</div>
@@ -569,6 +582,10 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
   }
 
   // ── billing toggle ──
+  // Toggle is rendered only when at least one plan has price_annual > 0
+  // (CALC-013). Individual plans without an annual price keep their monthly
+  // display when Annual is selected — no `data-annual` on their .plan-amount,
+  // no `.annual-label` span, so the swaps below are no-ops for them.
   const track = document.getElementById('track');
   if (track) {
     let annual = false;
@@ -578,9 +595,19 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
       track.classList.toggle('on', annual);
       lblM.classList.toggle('on', !annual);
       lblA.classList.toggle('on', annual);
-      document.querySelectorAll('.plan-amount').forEach(el => { el.textContent = annual ? el.dataset.annual : el.dataset.monthly; });
-      document.querySelectorAll('.monthly-label').forEach(el => el.style.display = annual ? 'none' : '');
-      document.querySelectorAll('.annual-label').forEach(el => el.style.display = annual ? '' : 'none');
+      document.querySelectorAll('.plan-amount').forEach(el => {
+        // Guard: if this plan has no annual price, stay on monthly (do not
+        // render "undefined") — a plan without annual pricing keeps showing
+        // its monthly figure in both toggle states.
+        el.textContent = (annual && el.dataset.annual) ? el.dataset.annual : el.dataset.monthly;
+      });
+      document.querySelectorAll('.plan').forEach(card => {
+        const hasAnnual = !!card.querySelector('.plan-amount[data-annual]');
+        const monthly = card.querySelector('.monthly-label');
+        const annualL = card.querySelector('.annual-label');
+        if (monthly) monthly.style.display = (annual && hasAnnual) ? 'none' : '';
+        if (annualL) annualL.style.display = (annual && hasAnnual) ? '' : 'none';
+      });
     };
     track.addEventListener('click', () => { annual = !annual; apply(); });
     lblM.addEventListener('click', () => { annual = false; apply(); });

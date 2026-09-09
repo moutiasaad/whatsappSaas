@@ -354,7 +354,7 @@ class SuperAdminPlatformController extends Controller
             'stripe_price_id_monthly'     => $data['stripe_price_id_monthly'] ?? null,
             'stripe_price_id_annual'      => $data['stripe_price_id_annual'] ?? null,
             'price_monthly'               => $data['price_monthly'],
-            'price_annual'                => $data['price_annual'],
+            'price_annual'                => $data['price_annual'] ?? null,
             'max_users'                   => $data['max_users'],
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
@@ -392,7 +392,7 @@ class SuperAdminPlatformController extends Controller
             'stripe_price_id_monthly'     => $data['stripe_price_id_monthly'] ?? null,
             'stripe_price_id_annual'      => $data['stripe_price_id_annual'] ?? null,
             'price_monthly'               => $data['price_monthly'],
-            'price_annual'                => $data['price_annual'],
+            'price_annual'                => $data['price_annual'] ?? null,
             'max_users'                   => $data['max_users'],
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
@@ -662,7 +662,11 @@ class SuperAdminPlatformController extends Controller
             'stripe_price_id_monthly'     => 'nullable|string|max:255',
             'stripe_price_id_annual'      => 'nullable|string|max:255',
             'price_monthly'               => 'required|numeric|min:0',
-            'price_annual'                => 'required|numeric|min:0',
+            // CALC-013: nullable so "not offered" is expressible as null. The
+            // landing page treats 0 and null the same ("no annual") and hides
+            // the annual cycle for plans in that state instead of falling back
+            // to the monthly price under a yearly label.
+            'price_annual'                => 'nullable|numeric|min:0',
             'max_users'                   => 'required|integer|min:1',
             'max_conversations_per_month' => 'required|integer|min:0',
             'ai_included'                 => 'nullable|boolean',
