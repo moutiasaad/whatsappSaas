@@ -124,9 +124,11 @@ class PaymentController extends Controller
             return redirect($session->url);
         } catch (\Throwable $e) {
             Log::error('Stripe initiate failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $msg = config('app.debug') ? $e->getMessage() : __('auth.register.payment_init_failed');
+            // UI-003: never surface raw gateway exception text to the visitor,
+            // even under APP_DEBUG. The failure is already in Log::error above
+            // with full context for operators.
             return redirect()->route('payment.checkout', $tenant->id)
-                ->withErrors(['payment' => $msg]);
+                ->withErrors(['payment' => __('auth.register.payment_init_failed')]);
         }
     }
 
@@ -319,9 +321,11 @@ class PaymentController extends Controller
             return redirect($approveUrl);
         } catch (\Throwable $e) {
             Log::error('PayPal REST initiate failed', ['error' => $e->getMessage()]);
-            $msg = config('app.debug') ? $e->getMessage() : __('auth.register.payment_init_failed');
+            // UI-003: never surface raw gateway exception text to the visitor,
+            // even under APP_DEBUG. The failure is already in Log::error above
+            // with full context for operators.
             return redirect()->route('payment.checkout', $tenant->id)
-                ->withErrors(['payment' => $msg]);
+                ->withErrors(['payment' => __('auth.register.payment_init_failed')]);
         }
     }
 
@@ -471,8 +475,9 @@ class PaymentController extends Controller
 
             return response()->json(['id' => $order['id']]);
         } catch (\Throwable $e) {
+            // UI-003: opaque error to the visitor; full detail is in the log.
             Log::error('PayPal SDK create-order failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => 'create_order_failed'], 500);
         }
     }
 
@@ -504,8 +509,9 @@ class PaymentController extends Controller
 
             return response()->json(['success' => false, 'error' => 'not_completed'], 402);
         } catch (\Throwable $e) {
+            // UI-003: opaque error to the visitor; full detail is in the log.
             Log::error('PayPal SDK capture failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'error' => 'capture_failed'], 500);
         }
     }
 

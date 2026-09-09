@@ -53,17 +53,10 @@ class OtpService
         $ttl  = (int) $settings['ttl_minutes'];
         $body = $this->renderTemplate($settings['template'], $code, $ttl);
 
-        // DEV ONLY: log the plaintext OTP when APP_DEBUG=true. Never enable this in production —
-        // the code is one-time and short-lived but still sensitive. Gate is on APP_DEBUG so it
-        // follows the same visibility rules as Laravel's exception stack traces.
-        if (config('app.debug')) {
-            Log::info('[OTP DEBUG] api code generated', [
-                'tenant_id'  => $tenant->id,
-                'identifier' => $identifier,
-                'code'       => $code,
-                'expires_at' => now()->addMinutes($ttl)->toIso8601String(),
-            ]);
-        }
+        // UI-003: never log the plaintext OTP. A misconfigured APP_DEBUG=true in
+        // production used to expose every code in real time to anyone with log
+        // read access. The code lives on OtpCode.plaintext_code below anyway,
+        // scoped to the tenant, if operators genuinely need to inspect it.
 
         try {
             $gateway = new EvolutionApiClient(
