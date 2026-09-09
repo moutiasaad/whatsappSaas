@@ -111,6 +111,18 @@ class ReportController extends Controller
 
     private function agentLeaderboard(?int $tenantId, $from, $to): array
     {
+        // CALC-009: derive avg_response_min from the same conversation_events
+        // stream as claimed/closed so reassignment doesn't credit the wrong
+        // agent. Previously the response time was pulled from a separate query
+        // keyed on conversations.owner_agent_id — a mutable column that
+        // ConversationController::reassign rewrites — and then joined back by
+        // event actor id. On any conversation reassigned after the claim, the
+        // latency of the original claim was attributed to the new owner.
+        //
+        // The CASE below only samples rows where ce.type = "claimed", so
+        // "closed" events don't dilute the average with time-to-close, and
+        // any agent who claimed something in the period gets counted even
+        // if the conversation has since moved on.
         $events = DB::table('conversation_events as ce')
             ->join('conversations as c', 'ce.conversation_id', '=', 'c.id')
             ->join('users', 'ce.actor_id', '=', 'users.id')
@@ -122,7 +134,10 @@ class ReportController extends Controller
                 users.id,
                 users.name,
                 SUM(CASE WHEN ce.type = "claimed" THEN 1 ELSE 0 END) AS claimed,
-                SUM(CASE WHEN ce.type = "closed"  THEN 1 ELSE 0 END) AS closed
+                SUM(CASE WHEN ce.type = "closed"  THEN 1 ELSE 0 END) AS closed,
+                ROUND(AVG(CASE WHEN ce.type = "claimed"
+                    THEN TIMESTAMPDIFF(MINUTE, c.created_at, ce.created_at)
+                    END), 0) AS avg_response_min
             ')
             ->groupBy('users.id', 'users.name')
             ->orderByDesc('claimed')
@@ -138,21 +153,12 @@ class ReportController extends Controller
             ->groupBy('author_id')
             ->pluck('cnt', 'author_id');
 
-        $responseTimes = DB::table('conversations')
-            ->whereBetween('created_at', [$from, $to])
-            ->whereNotNull('owner_agent_id')
-            ->whereNotNull('claimed_at')
-            ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-            ->selectRaw('owner_agent_id, ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, claimed_at)), 0) as avg_min')
-            ->groupBy('owner_agent_id')
-            ->pluck('avg_min', 'owner_agent_id');
-
         return $events->map(fn($r) => [
             'name'             => $r->name,
             'claimed'          => (int) $r->claimed,
             'closed'           => (int) $r->closed,
             'messages_sent'    => (int) ($msgCounts[$r->id] ?? 0),
-            'avg_response_min' => isset($responseTimes[$r->id]) ? (int) $responseTimes[$r->id] : null,
+            'avg_response_min' => is_null($r->avg_response_min) ? null : (int) $r->avg_response_min,
         ])->toArray();
     }
 
