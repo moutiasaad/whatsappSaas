@@ -1008,6 +1008,7 @@ Always:
         'status' => 'Status',
         'assigned_tenants_card' => 'Assigned Tenants',
         'no_assigned_tenants' => 'No tenants currently assigned.',
+        'users' => 'users',
     ],
     'platform_tenants_show_page' => [
         'breadcrumb_root' => 'Platform',

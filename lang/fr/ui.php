@@ -1008,6 +1008,7 @@ Toujours :
         'status' => 'Statut',
         'assigned_tenants_card' => 'Locataires attribués',
         'no_assigned_tenants' => 'Aucun locataire attribué pour le moment.',
+        'users' => 'utilisateurs',
     ],
     'platform_tenants_show_page' => [
         'breadcrumb_root' => 'Plateforme',

@@ -1005,6 +1005,7 @@ return [
         'status' => 'الحالة',
         'assigned_tenants_card' => 'المستأجرون المعينون',
         'no_assigned_tenants' => 'لا يوجد مستأجرون معينون حالياً.',
+        'users' => 'مستخدم',
     ],
     'platform_tenants_show_page' => [
         'breadcrumb_root' => 'المنصة',
