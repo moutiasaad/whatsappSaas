@@ -307,7 +307,16 @@ class InstanceController extends Controller
         }
 
         try {
-            $result = $gateway->setWebhook($instance->gateway_instance_id, $url, $this->defaultWebhookEvents());
+            // PROC-018: pass the instance's HMAC secret so the gateway signs
+            // its posts. The admin UI path already did this; the API path did
+            // not, so instances configured through /api/instance/... never got
+            // the verifier armed for them.
+            $result = $gateway->setWebhook(
+                $instance->gateway_instance_id,
+                $url,
+                $this->defaultWebhookEvents(),
+                $instance->webhook_secret,
+            );
             \Illuminate\Support\Facades\Log::channel('whatsapp')->info('Webhook registered', [
                 'instance_id' => $instance->id,
                 'url'         => $url,

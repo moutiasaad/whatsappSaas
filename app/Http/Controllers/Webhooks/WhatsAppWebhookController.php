@@ -58,7 +58,16 @@ class WhatsAppWebhookController extends Controller
 
     private function verifySignature(Request $request, WhatsAppInstance $instance): bool
     {
-        if (!$instance->webhook_secret) return true;
+        // PROC-018 phase 2: fail-closed only for instances whose gateway has
+        // been told about the secret (webhook_last_set stamped). A backfilled
+        // secret with a null webhook_last_set means the operator has not yet
+        // reconfigured this instance's gateway — keeping the fail-open branch
+        // for those rows avoids dropping every inbound event mid-deploy.
+        // Run `php artisan whatsapp:reconfigure-webhooks` after the backfill
+        // migration to close this branch for legacy instances.
+        if (!$instance->webhook_secret || !$instance->webhook_last_set) {
+            return true;
+        }
 
         $signature = $request->header('X-Gateway-Signature', '');
         $expected  = hash_hmac('sha256', $request->getContent(), $instance->webhook_secret);

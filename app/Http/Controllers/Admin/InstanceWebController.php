@@ -328,6 +328,9 @@ class InstanceWebController extends Controller
                 // fail-open branch keeps things working — PROC-018 phase 1.
                 $instance->webhook_secret
             );
+            // Stamp last-set so WhatsAppWebhookController::verifySignature can
+            // flip to fail-closed for this instance (PROC-018 phase 2).
+            $instance->update(['webhook_last_set' => now()]);
         } catch (\Throwable) {
             // Webhook setup is best-effort; user can retry from the instance page.
         }
