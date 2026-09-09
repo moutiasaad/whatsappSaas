@@ -677,6 +677,8 @@ class PaymentController extends Controller
         // existing end date when it is still in the future, otherwise from today.
         $base = $hasLivePeriod ? $currentEnd : now();
 
+        $previousPlanId = $tenant->plan_id;
+
         $tenant->update([
             'plan_id'                => $payment->plan_id,
             'subscription_status'    => 'active',
@@ -689,5 +691,16 @@ class PaymentController extends Controller
             'subscription_ends_at'   => $base->copy()->addMonthNoOverflow(),
             'is_active'              => true,
         ]);
+
+        // Sync AI quota from the newly-assigned plan whenever the plan
+        // actually changed. Same "Overwrite every tenant" rule that fires
+        // on SuperAdmin plan edits — a fresh subscription starts with the
+        // plan's current quota, not whatever the tenant had on the old plan.
+        if ($previousPlanId !== $payment->plan_id && $tenant->aiSettings) {
+            $newPlan = $tenant->plan()->first();
+            $tenant->aiSettings->update([
+                'monthly_token_quota' => $newPlan?->ai_token_quota,
+            ]);
+        }
     }
 }

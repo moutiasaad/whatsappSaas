@@ -553,6 +553,11 @@ return [
         'knowledge_base' => 'قاعدة المعرفة',
         'knowledge_base_hint' => 'محتوى المعرفة المتاح للمساعد الذكي',
         'entries' => 'إدخالاً',
+        'usage_card_title' => 'استهلاك الرموز الشهري',
+        'usage_card_hint'  => 'يتم تحديده على خطتك من قبل المنصة. اتصل بالدعم لرفع الحد الأقصى.',
+        'usage_unlimited'  => 'غير محدود',
+        'usage_ai_off'     => 'الذكاء الاصطناعي معطّل على هذه الخطة',
+        'usage_resets_on'  => 'إعادة التعيين في :date',
         'save_settings' => 'حفظ الإعدادات',
         // UI-004: added for locale parity — the AI-settings page was the
         // primary Arabic gap.
@@ -943,6 +948,8 @@ return [
         'features_placeholder' => '["دعم أولوية","فرق غير محدودة"]',
         'ai_included' => 'الذكاء الاصطناعي مضمن في الخطة',
         'ai_token_quota' => 'حصة رموز الذكاء الاصطناعي',
+        'ai_token_quota_placeholder' => 'اتركه فارغاً للاستخدام غير المحدود',
+        'ai_token_quota_hint' => 'فارغ = غير محدود · 0 = الذكاء الاصطناعي معطّل للمستأجرين على هذه الخطة · موجب = حد أقصى شهري. التغييرات تُطبَّق فوراً على كل المستأجرين.',
         'reservations_enabled' => 'تفعيل وحدة الحجوزات',
         'reservations_enabled_hint' => 'يسمح للمستأجرين على هذه الخطة باستخدام نظام حجز المواعيد عبر واتساب.',
         'is_active' => 'الخطة نشطة',
@@ -1006,6 +1013,8 @@ return [
         'assigned_tenants_card' => 'المستأجرون المعينون',
         'no_assigned_tenants' => 'لا يوجد مستأجرون معينون حالياً.',
         'users' => 'مستخدم',
+        'unlimited' => 'غير محدود',
+        'ai_off'    => 'الذكاء الاصطناعي معطّل',
     ],
     'platform_tenants_show_page' => [
         'breadcrumb_root' => 'المنصة',

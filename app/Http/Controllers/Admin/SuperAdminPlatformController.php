@@ -358,7 +358,11 @@ class SuperAdminPlatformController extends Controller
             'max_users'                   => $data['max_users'],
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
-            'ai_token_quota'              => (int) ($data['ai_token_quota'] ?? 0),
+            // Preserve NULL rather than coercing to 0 — 0 now means AI OFF,
+            // NULL means unlimited. See migration 2026_09_09_210000.
+            'ai_token_quota'              => array_key_exists('ai_token_quota', $data)
+                ? (is_null($data['ai_token_quota']) ? null : (int) $data['ai_token_quota'])
+                : null,
             'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
             'features'                    => $this->parseFeatures($data['features'] ?? null),
             'is_active'                   => (bool) ($data['is_active'] ?? true),
@@ -396,11 +400,27 @@ class SuperAdminPlatformController extends Controller
             'max_users'                   => $data['max_users'],
             'max_conversations_per_month' => $data['max_conversations_per_month'],
             'ai_included'                 => (bool) ($data['ai_included'] ?? false),
-            'ai_token_quota'              => (int) ($data['ai_token_quota'] ?? 0),
+            // Preserve NULL rather than coercing to 0 — 0 now means AI OFF,
+            // NULL means unlimited. See migration 2026_09_09_210000.
+            'ai_token_quota'              => array_key_exists('ai_token_quota', $data)
+                ? (is_null($data['ai_token_quota']) ? null : (int) $data['ai_token_quota'])
+                : null,
             'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
             'features'                    => $this->parseFeatures($data['features'] ?? null),
             'is_active'                   => $nextStatus,
         ]);
+
+        // Sync AI quota to every tenant on this plan when it changed. Matches
+        // the "Overwrite every tenant" behaviour the operator picked when this
+        // feature landed — a per-tenant override is expected to be re-applied
+        // by the super admin if they want it back.
+        if ($plan->wasChanged('ai_token_quota')) {
+            $tenantIds = \App\Models\Tenant::where('plan_id', $plan->id)->pluck('id');
+            if ($tenantIds->isNotEmpty()) {
+                \App\Models\AiSettings::whereIn('tenant_id', $tenantIds)
+                    ->update(['monthly_token_quota' => $plan->ai_token_quota]);
+            }
+        }
 
         return redirect()
             ->route('super_admin.platform.plans.show', $plan)
@@ -670,6 +690,9 @@ class SuperAdminPlatformController extends Controller
             'max_users'                   => 'required|integer|min:1',
             'max_conversations_per_month' => 'required|integer|min:0',
             'ai_included'                 => 'nullable|boolean',
+            // null (blank) = unlimited, 0 = AI off, positive = hard cap.
+            // Same convention flows to ai_settings.monthly_token_quota via the
+            // sync in updatePlan below.
             'ai_token_quota'              => 'nullable|integer|min:0',
             'reservations_enabled'        => 'nullable|boolean',
             'features'                    => 'nullable|json',

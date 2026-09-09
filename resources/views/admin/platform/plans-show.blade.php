@@ -80,7 +80,15 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ __('ui.platform_plans_show_page.ai_token_quota') }}</label>
-                        <div class="form-control" style="display:flex;align-items:center;">{{ number_format($plan->ai_token_quota) }}</div>
+                        <div class="form-control" style="display:flex;align-items:center;">
+                            @if(is_null($plan->ai_token_quota))
+                                {{ __('ui.platform_plans_show_page.unlimited') }}
+                            @elseif($plan->ai_token_quota === 0)
+                                {{ __('ui.platform_plans_show_page.ai_off') }}
+                            @else
+                                {{ number_format($plan->ai_token_quota) }}
+                            @endif
+                        </div>
                     </div>
                 </div>
 

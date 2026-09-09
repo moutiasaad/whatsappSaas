@@ -426,6 +426,48 @@ $modes = [
                     </div>
                 </div>
 
+                {{-- Token usage — plan-driven, read-only. Tenants see what
+                     their current plan gives them and how much is left this
+                     period. null = unlimited, 0 = AI off, positive = cap. --}}
+                @php
+                    $q     = $settings->monthly_token_quota;
+                    $used  = (int) $settings->tokens_used_this_period;
+                    $pct   = $settings->quotaPercentage();
+                    $reset = $settings->quota_reset_at;
+                @endphp
+                <div style="padding:1rem 1.25rem;background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.14);border-radius:.875rem;margin-bottom:1rem;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.5rem;">
+                        <div style="display:flex;gap:.75rem;align-items:center;">
+                            <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(37,99,235,.14);display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;">
+                                <i class="ri-coins-line"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);">{{ __('ui.ai_settings_page.usage_card_title') }}</div>
+                                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem;">{{ __('ui.ai_settings_page.usage_card_hint') }}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:end;font-size:.875rem;font-weight:600;color:var(--text-primary);white-space:nowrap;">
+                            @if(is_null($q))
+                                {{ __('ui.ai_settings_page.usage_unlimited') }}
+                            @elseif($q === 0)
+                                <span style="color:#dc2626">{{ __('ui.ai_settings_page.usage_ai_off') }}</span>
+                            @else
+                                {{ number_format($used) }} / {{ number_format($q) }}
+                            @endif
+                        </div>
+                    </div>
+                    @if(!is_null($q) && $q > 0)
+                        <div style="height:6px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden;">
+                            <div style="height:100%;background:@if($pct >= 90) #dc2626 @elseif($pct >= 70) #f59e0b @else #2563eb @endif;width:{{ min(100, max(0, $pct)) }}%;transition:width .3s"></div>
+                        </div>
+                    @endif
+                    @if($reset && !is_null($q) && $q !== 0)
+                        <div style="font-size:.7rem;color:var(--text-muted);margin-top:.5rem;text-align:end;">
+                            {{ __('ui.ai_settings_page.usage_resets_on', ['date' => $reset->format('Y-m-d')]) }}
+                        </div>
+                    @endif
+                </div>
+
                 {{-- Knowledge Base link --}}
                 <div style="padding:1rem 1.25rem;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:.875rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
                     <div style="display:flex;gap:.75rem;align-items:center;">

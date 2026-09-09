@@ -23,15 +23,15 @@ class RolloverAiQuotas extends Command
 
                 $settings->hasQuota();   // triggers rolloverIfDue()
 
-                // hasQuota() short-circuits for unlimited plans (quota 0) and never
-                // rolls those over, so only count rows whose period actually moved.
+                // hasQuota() short-circuits when the quota is NULL (unlimited)
+                // or 0 (AI off), so only count rows whose period actually moved.
                 $settings->quota_reset_at != $before ? $rolled++ : $skipped++;
             });
 
         $this->info("Rolled over {$rolled} AI quota row(s).");
 
         if ($skipped) {
-            $this->line("Skipped {$skipped} row(s) still past due (unlimited quota — hasQuota() short-circuits).");
+            $this->line("Skipped {$skipped} row(s) still past due (unlimited or off — hasQuota() short-circuits).");
         }
 
         return self::SUCCESS;

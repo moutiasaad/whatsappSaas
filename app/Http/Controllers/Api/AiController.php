@@ -13,11 +13,14 @@ class AiController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
+        $tenant = $request->user()->tenant;
         $settings = AiSettings::firstOrCreate(
             ['tenant_id' => $request->user()->tenant_id],
             [
                 'mode'                => 'off',
-                'monthly_token_quota' => 100000,
+                // Inherit from the tenant's plan — null (unlimited), 0 (off),
+                // or the configured cap. Same convention flows everywhere.
+                'monthly_token_quota' => $tenant?->plan?->ai_token_quota,
                 // CALC-011: seed alongside the quota so this creation path
                 // doesn't leave the row in the "lifetime quota" state that
                 // exhausts once and never rolls over.

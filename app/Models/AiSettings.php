@@ -47,8 +47,12 @@ class AiSettings extends Model
 
     public function hasQuota(): bool
     {
-        // 0 means unlimited
-        if ($this->monthly_token_quota === 0) return true;
+        // Unified semantics (see migration 2026_09_09_210000):
+        //   null       = unlimited  → always has quota
+        //   0          = AI off      → never has quota
+        //   positive N = hard cap of N tokens per period
+        if ($this->monthly_token_quota === null) return true;
+        if ($this->monthly_token_quota === 0)    return false;
 
         $this->rolloverIfDue();
 
@@ -109,14 +113,19 @@ class AiSettings extends Model
         }
     }
 
-    public function remainingQuota(): int
+    public function remainingQuota(): ?int
     {
+        // null = unlimited → no remainder to report; caller renders "∞".
+        if ($this->monthly_token_quota === null) return null;
         return max(0, $this->monthly_token_quota - $this->tokens_used_this_period);
     }
 
     public function quotaPercentage(): int
     {
-        if ($this->monthly_token_quota === 0) return 100;
+        // Unlimited → nothing consumed relative to infinity → 0%.
+        // OFF       → the bar is by definition full (all "N of 0" used).
+        if ($this->monthly_token_quota === null) return 0;
+        if ($this->monthly_token_quota === 0)    return 100;
         return (int) round(($this->tokens_used_this_period / $this->monthly_token_quota) * 100);
     }
 }

@@ -68,7 +68,9 @@ class Tenant extends Model
 
     public function hasAiQuotaRemaining(): bool
     {
-        $settings = $this->aiSettings;
-        return $settings && $settings->tokens_used_this_period < $settings->monthly_token_quota;
+        // Delegate to AiSettings::hasQuota() so the tenant-level check honours
+        // the unified null=unlimited / 0=off semantic instead of doing a raw
+        // numeric compare that treats null as 0.
+        return (bool) $this->aiSettings?->hasQuota();
     }
 }

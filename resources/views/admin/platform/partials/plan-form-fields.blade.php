@@ -65,7 +65,8 @@
     </div>
     <div class="form-group">
         <label class="form-label" for="ai_token_quota">{{ __('ui.plan_form_fields.ai_token_quota') }}</label>
-        <input id="ai_token_quota" type="number" min="0" step="1" name="ai_token_quota" value="{{ old('ai_token_quota', $plan?->ai_token_quota ?? 0) }}" class="form-control @error('ai_token_quota') error @enderror">
+        <input id="ai_token_quota" type="number" min="0" step="1" name="ai_token_quota" value="{{ old('ai_token_quota', $plan?->ai_token_quota) }}" placeholder="{{ __('ui.plan_form_fields.ai_token_quota_placeholder') }}" class="form-control @error('ai_token_quota') error @enderror">
+        <small class="form-help">{{ __('ui.plan_form_fields.ai_token_quota_hint') }}</small>
         @error('ai_token_quota') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 </div>
