@@ -3,7 +3,7 @@
 return [
     // Meta
     'page_title' => 'Support WhatsApp IA — Gérez chaque conversation plus vite',
-    'page_desc'  => 'Plateforme SaaS de support client WhatsApp avec IA Support, routage multi-équipes, instances illimitées et analytics. Essai gratuit inclus.',
+    'page_desc'  => 'WhatsApp et Live Chat dans une seule boîte de réception, avec des réponses IA issues de votre propre base de connaissances. Routage multi-équipes, collaboration en temps réel, historique complet. Essai gratuit inclus.',
 
     // Navbar
     'nav_features' => 'Fonctionnalités',
@@ -28,7 +28,6 @@ return [
 
     // Hero stats
     'stat_instances'       => 'Multi-instances',
-    'stat_instances_label' => 'Numéros WhatsApp illimités',
     'stat_ai'              => 'IA Support',
     'stat_ai_label'        => 'Réponses automatiques',
     'stat_teams'           => 'Multi-équipes',
@@ -40,7 +39,6 @@ return [
     'marquee_ai'          => 'IA Support intégrée',
     'marquee_routing'     => 'Routage intelligent',
     'marquee_multiagent'  => 'Multi-agents',
-    'marquee_instances'   => 'Instances illimitées',
     'marquee_realtime'    => 'Temps réel',
     'marquee_knowledge'   => 'Base de connaissances',
     'marquee_analytics'   => 'Analytiques',
@@ -80,7 +78,6 @@ return [
     'limit_instances'    => ':n instance WhatsApp',
     'limit_instances_pl' => ':n instances WhatsApp',
     'limit_convos'       => ':n conversations/mois',
-    'limit_unlimited'    => 'Illimité',
     'feat_ai_included'   => 'IA Support incluse',
     'feat_ai_not'        => 'Sans IA',
     'feat_knowledge'     => 'Base de connaissances',

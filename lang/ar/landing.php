@@ -3,7 +3,7 @@
 return [
     // Meta
     'page_title' => 'دعم واتساب بالذكاء الاصطناعي — أدر كل محادثة بذكاء',
-    'page_desc'  => 'منصة SaaS لدعم عملاء واتساب مع ذكاء اصطناعي متقدم، توجيه متعدد الفرق، وإنستانسات غير محدودة.',
+    'page_desc'  => 'واتساب والدردشة المباشرة في صندوق وارد واحد، مع ردود بالذكاء الاصطناعي من قاعدة معرفتك. توجيه متعدد الفرق، تعاون فوري، وسجل محادثات كامل. تجربة مجانية مضمنة.',
 
     // Navbar
     'nav_features' => 'الميزات',
@@ -28,7 +28,6 @@ return [
 
     // Hero stats
     'stat_instances'       => 'متعدد الأرقام',
-    'stat_instances_label' => 'أرقام واتساب غير محدودة',
     'stat_ai'              => 'ذكاء اصطناعي',
     'stat_ai_label'        => 'ردود تلقائية',
     'stat_teams'           => 'متعدد الفرق',
@@ -40,7 +39,6 @@ return [
     'marquee_ai'         => 'ذكاء اصطناعي مدمج',
     'marquee_routing'    => 'توجيه ذكي',
     'marquee_multiagent' => 'متعدد الوكلاء',
-    'marquee_instances'  => 'أرقام غير محدودة',
     'marquee_realtime'   => 'وقت فعلي',
     'marquee_knowledge'  => 'قاعدة معرفة',
     'marquee_analytics'  => 'تحليلات',
@@ -80,7 +78,6 @@ return [
     'limit_instances'    => ':n رقم واتساب',
     'limit_instances_pl' => ':n أرقام واتساب',
     'limit_convos'       => ':n محادثة/شهر',
-    'limit_unlimited'    => 'غير محدود',
     'feat_ai_included'   => 'ذكاء اصطناعي مضمّن',
     'feat_ai_not'        => 'بدون ذكاء اصطناعي',
     'feat_knowledge'     => 'قاعدة معرفة',

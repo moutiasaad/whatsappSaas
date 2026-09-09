@@ -3,7 +3,7 @@
 return [
     // Meta
     'page_title' => 'AI WhatsApp Support — Handle Every Conversation Smarter',
-    'page_desc'  => 'SaaS platform for WhatsApp customer support with AI Support, multi-team routing, unlimited instances and analytics. Free trial included.',
+    'page_desc'  => 'WhatsApp and Live Chat in one inbox, with AI replies drawn from your own knowledge base. Multi-team routing, real-time collaboration, and full conversation history. Free trial included.',
 
     // Navbar
     'nav_features' => 'Features',
@@ -28,7 +28,6 @@ return [
 
     // Hero stats
     'stat_instances'       => 'Multi-instance',
-    'stat_instances_label' => 'Unlimited WhatsApp numbers',
     'stat_ai'              => 'AI Support',
     'stat_ai_label'        => 'Automated replies',
     'stat_teams'           => 'Multi-team',
@@ -40,7 +39,6 @@ return [
     'marquee_ai'         => 'Built-in AI Support',
     'marquee_routing'    => 'Smart routing',
     'marquee_multiagent' => 'Multi-agent',
-    'marquee_instances'  => 'Unlimited instances',
     'marquee_realtime'   => 'Real-time',
     'marquee_knowledge'  => 'Knowledge base',
     'marquee_analytics'  => 'Analytics',
@@ -80,7 +78,6 @@ return [
     'limit_instances'    => ':n WhatsApp instance',
     'limit_instances_pl' => ':n WhatsApp instances',
     'limit_convos'       => ':n conversations/month',
-    'limit_unlimited'    => 'Unlimited',
     'feat_ai_included'   => 'AI Support included',
     'feat_ai_not'        => 'No AI',
     'feat_knowledge'     => 'Knowledge base',
