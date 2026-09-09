@@ -60,27 +60,46 @@ class AiSettings extends Model
      *
      * Without this the "monthly" quota was a lifetime allowance: the counter was
      * only ever incremented, so an exhausted tenant stayed exhausted forever.
+     *
+     * CALC-011: rows created by AiController::show or by
+     * AiSettingsController::update leave quota_reset_at NULL because they
+     * fell through to the column default. The old guard treated NULL as a
+     * reason to bail, so those tenants exhausted their 100k tokens once and
+     * their AI stayed off forever. Treat NULL as "never rolled" — anchor
+     * from updated_at (or now) at the start of that month so the loop below
+     * can advance to the current period on the very first pass, then run
+     * the same guarded update as the seeded case.
      */
     protected function rolloverIfDue(): void
     {
-        if (!$this->quota_reset_at || $this->quota_reset_at->isFuture()) {
+        $current = $this->quota_reset_at
+            ?: ($this->updated_at ?? now())->copy()->startOfMonth();
+
+        if ($current->isFuture()) {
             return;
         }
 
         // A tenant idle across several boundaries needs more than one month added.
-        $next = $this->quota_reset_at->copy();
+        $next = $current->copy();
         while ($next->isPast()) {
             $next = $next->addMonthNoOverflow();
         }
 
         // Guarding on the old quota_reset_at means only one of two concurrent
         // workers can win the reset; the loser refreshes instead of double-resetting.
-        $affected = static::where('tenant_id', $this->tenant_id)
-            ->where('quota_reset_at', $this->quota_reset_at)
-            ->update([
-                'tokens_used_this_period' => 0,
-                'quota_reset_at'          => $next,
-            ]);
+        // The WHERE has to match the DB state — which may be NULL on legacy rows —
+        // rather than the value we hydrated from updated_at/now above.
+        $query = static::where('tenant_id', $this->tenant_id);
+        if ($this->quota_reset_at) {
+            $query->where('quota_reset_at', $this->quota_reset_at);
+        } else {
+            $query->whereNull('quota_reset_at');
+        }
+
+        $affected = $query->update([
+            'tokens_used_this_period' => 0,
+            'quota_reset_at'          => $next,
+        ]);
 
         if ($affected) {
             $this->tokens_used_this_period = 0;

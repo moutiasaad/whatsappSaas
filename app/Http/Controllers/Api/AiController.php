@@ -15,7 +15,14 @@ class AiController extends Controller
     {
         $settings = AiSettings::firstOrCreate(
             ['tenant_id' => $request->user()->tenant_id],
-            ['mode' => 'off', 'monthly_token_quota' => 100000]
+            [
+                'mode'                => 'off',
+                'monthly_token_quota' => 100000,
+                // CALC-011: seed alongside the quota so this creation path
+                // doesn't leave the row in the "lifetime quota" state that
+                // exhausts once and never rolls over.
+                'quota_reset_at'      => now()->startOfMonth()->addMonthNoOverflow(),
+            ]
         );
         return response()->json($settings);
     }

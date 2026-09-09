@@ -19,7 +19,9 @@ class AiSettingsController extends Controller
                 'whatsapp_enabled'     => true,
                 'webchat_enabled'      => true,
                 'monthly_token_quota'  => 100000,
-                'quota_reset_at'       => now()->startOfMonth()->addMonth(),
+                // addMonthNoOverflow so a settings row seeded on the 31st
+                // doesn't overshoot to the next-next month (CALC-011 note).
+                'quota_reset_at'       => now()->startOfMonth()->addMonthNoOverflow(),
                 'escalation_keywords'  => ['human', 'agent', 'supervisor'],
             ]
         );
@@ -43,8 +45,14 @@ class AiSettingsController extends Controller
             'escalation_keywords' => 'nullable|string',
         ]);
 
-        $tenant   = auth()->user()->tenant ?? abort(403, __('ui.controller_messages.no_tenant_assigned'));
-        $settings = $tenant->aiSettings()->firstOrCreate(['tenant_id' => $tenant->id]);
+        $tenant = auth()->user()->tenant ?? abort(403, __('ui.controller_messages.no_tenant_assigned'));
+        // CALC-011: if this is the row's first materialisation (index() didn't
+        // hit first), still seed quota_reset_at so the rollover has a
+        // reference to advance from. Existing rows are unchanged.
+        $settings = $tenant->aiSettings()->firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            ['quota_reset_at' => now()->startOfMonth()->addMonthNoOverflow()],
+        );
 
         $settings->update([
             'mode'                => $data['mode'],
