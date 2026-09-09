@@ -68,7 +68,6 @@ return [
     'popular_badge'      => '⭐ الأكثر شعبية',
     'billing_monthly'    => 'شهري',
     'billing_annual'     => 'سنوي',
-    'billing_save'       => 'وفّر 20%',
     'plan_per_month'     => '/ شهر',
     'plan_per_year'      => '/ سنة',
     'plan_free_label'    => 'مجاني',

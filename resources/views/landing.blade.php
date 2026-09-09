@@ -418,11 +418,16 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
     </div>
 
     @if($planCount)
+    {{-- CALC-012: the "Save 20%" badge was a hardcoded literal, not derived
+         from any plan's price_annual vs price_monthly × 12. Combined with
+         CALC-003 (annual billing is not wired end-to-end), the page was
+         advertising a quantified discount on a cycle the platform cannot
+         actually sell. Restore only when CALC-003 ships AND the badge is
+         computed per plan (e.g. round((1 - annual / (monthly * 12)) * 100)). --}}
     <div class="billing" id="billing">
       <span class="lbl on" id="lblMonthly">{{ __('landing.billing_monthly') }}</span>
       <button class="track" id="track" type="button" aria-label="{{ __('landing.billing_annual') }}"><i></i></button>
       <span class="lbl" id="lblAnnual">{{ __('landing.billing_annual') }}</span>
-      <span class="save">{{ __('landing.billing_save') }}</span>
     </div>
 
     <div class="plans">

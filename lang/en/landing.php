@@ -68,7 +68,6 @@ return [
     'popular_badge'      => '⭐ Most popular',
     'billing_monthly'    => 'Monthly',
     'billing_annual'     => 'Annual',
-    'billing_save'       => 'Save 20%',
     'plan_per_month'     => '/ month',
     'plan_per_year'      => '/ year',
     'plan_free_label'    => 'Free',
