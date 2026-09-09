@@ -237,8 +237,7 @@ class InboxController extends Controller
                 'created_at' => optional($m->sent_at ?? $m->created_at)->toISOString(),
             ]);
 
-        $isMine = $c->state === 'claimed' && (int) $c->owner_agent_id === (int) $user->id;
-        $name   = $c->customer?->display_name ?: ($c->customer?->phone_e164 ?: __('ui.inbox_page.unknown_contact'));
+        $name = $c->customer?->display_name ?: ($c->customer?->phone_e164 ?: __('ui.inbox_page.unknown_contact'));
 
         // Why the AI is or isn't answering this particular thread. `mode` and the
         // WhatsApp switch are tenant-wide; a claim or a manual suspend stops the
@@ -260,11 +259,16 @@ class InboxController extends Controller
                 'status'   => $this->whatsappStatus($c->state),
                 'assignee' => $c->ownerAgent ? ['id' => $c->ownerAgent->id, 'name' => $c->ownerAgent->name] : null,
             ],
+            // PROC-023: derive from ConversationPolicy so the buttons match what
+            // the endpoints actually authorize. Restating the rules here drifted
+            // — Release was granted to the owning agent but the policy denied
+            // it, and Close was granted on pooled threads but the policy required
+            // isClaimed(). Any future policy change is picked up here for free.
             'can' => [
-                'claim'   => $c->state === 'pool',
-                'reply'   => $isMine,
-                'release' => $isMine,
-                'close'   => $c->state !== 'closed' && ($isMine || $user->isAdmin() || $user->isSupervisor()),
+                'claim'   => $user->can('claim', $c),
+                'reply'   => $user->can('reply', $c),
+                'release' => $user->can('release', $c),
+                'close'   => $user->can('close', $c),
             ],
             'ai' => [
                 'applies'   => $aiOnHere,
