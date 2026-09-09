@@ -249,7 +249,10 @@ class InstanceWebController extends Controller
         $this->configureGatewayWebhook($instance);
         AuditLog::record('instance.updated', $instance);
 
-        return redirect()->route('admin.instances.index')
+        // UI-006: redirect to the actor's own panel prefix, otherwise
+        // role_path bounces /admin/instances → /tenant-admin/instances and
+        // the flash gets aged out between the two GETs.
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
             ->with('success', __('ui.controller_messages.instance_updated'));
     }
 
@@ -285,7 +288,7 @@ class InstanceWebController extends Controller
             return response()->json(['message' => __('ui.controller_messages.instance_deleted', ['name' => $instance->name])]);
         }
 
-        return redirect()->route('admin.instances.index')
+        return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
             ->with('success', __('ui.controller_messages.instance_deleted', ['name' => $instance->name]));
     }
 
