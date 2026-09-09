@@ -669,6 +669,7 @@ Always:
         ],
         'targets' => [
             'ai_settings' => 'AI Settings',
+            'saved_replies' => 'Saved replies',
             'whatsapp_instance' => 'WhatsApp Instance',
             'knowledge_entry' => 'Knowledge Entry',
             'team' => 'Team',

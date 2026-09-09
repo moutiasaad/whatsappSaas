@@ -6,6 +6,7 @@ return [
     'logout' => 'Déconnexion',
     'processing' => 'Traitement...',
     'page' => 'Page',
+    'manage' => 'Gérer',
     'total_records' => 'entrées',
     'confirm_action' => 'Confirmer l\'action',
     'confirm_deletion' => 'Confirmer la suppression',
