@@ -75,8 +75,6 @@ return [
     'plan_start_btn'     => 'Commencer gratuitement',
     'plan_subscribe_btn' => 'Choisir ce forfait',
     'limit_users'        => ':n utilisateurs',
-    'limit_instances'    => ':n instance WhatsApp',
-    'limit_instances_pl' => ':n instances WhatsApp',
     'limit_convos'       => ':n conversations/mois',
     'feat_ai_included'   => 'IA Support incluse',
     'feat_ai_not'        => 'Sans IA',

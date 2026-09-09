@@ -75,8 +75,6 @@ return [
     'plan_start_btn'     => 'ابدأ مجانًا',
     'plan_subscribe_btn' => 'اختر هذه الخطة',
     'limit_users'        => ':n مستخدم',
-    'limit_instances'    => ':n رقم واتساب',
-    'limit_instances_pl' => ':n أرقام واتساب',
     'limit_convos'       => ':n محادثة/شهر',
     'feat_ai_included'   => 'ذكاء اصطناعي مضمّن',
     'feat_ai_not'        => 'بدون ذكاء اصطناعي',

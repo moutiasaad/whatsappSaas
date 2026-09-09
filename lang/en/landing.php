@@ -75,8 +75,6 @@ return [
     'plan_start_btn'     => 'Start for free',
     'plan_subscribe_btn' => 'Choose this plan',
     'limit_users'        => ':n users',
-    'limit_instances'    => ':n WhatsApp instance',
-    'limit_instances_pl' => ':n WhatsApp instances',
     'limit_convos'       => ':n conversations/month',
     'feat_ai_included'   => 'AI Support included',
     'feat_ai_not'        => 'No AI',
