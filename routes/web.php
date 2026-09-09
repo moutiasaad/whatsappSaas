@@ -84,6 +84,28 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
+// Email verification (PROC-024) — Laravel's signed-link flow. Verified admins
+// created by other admins skip this because UserController + super-admin flows
+// stamp email_verified_at on creation.
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', function () {
+        return auth()->user()->hasVerifiedEmail()
+            ? redirect()->route(auth()->user()->homeRouteName())
+            : view('auth.verify-email');
+    })->name('verification.notice');
+
+    Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Foundation\Auth\EmailVerificationRequest $request) {
+        $request->fulfill();
+        return redirect()->route(auth()->user()->homeRouteName())
+            ->with('success', __('auth.verify_email.verified'));
+    })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+
+    Route::post('/email/verification-notification', function (\Illuminate\Http\Request $request) {
+        $request->user()->sendEmailVerificationNotification();
+        return back()->with('success', __('auth.verify_email.link_sent'));
+    })->middleware('throttle:6,1')->name('verification.send');
+});
+
 $registerPanelRoutes = function (string $prefix, string $namePrefix, array $roles, bool $includeManagement, bool $legacy = false): void {
     // 'subscription' gates the whole panel so a suspended tenant loses access
     // to server-rendered pages (conversations, customers, archive, reports)
@@ -91,7 +113,13 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
     // middleware itself. Billing and profile routes clear the middleware
     // individually so a lapsed tenant can still pay to reactivate and
     // manage credentials.
-    $middleware = ['auth', ResolveTenant::class, 'subscription', 'role:' . implode(',', $roles)];
+    //
+    // 'verified' (PROC-024) blocks the panel until the signup email has been
+    // confirmed. Users created by an admin get email_verified_at set on
+    // creation, so this only bites the public /register path. Billing and
+    // profile stay exempt so an unverified admin can still pay or correct a
+    // wrong email address.
+    $middleware = ['auth', ResolveTenant::class, 'subscription', 'verified', 'role:' . implode(',', $roles)];
     if ($legacy) {
         $middleware[] = 'role_path';
     }
@@ -151,7 +179,9 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
             // Profile — all roles. Exempted from the subscription gate so a
             // lapsed tenant's users can still see and manage their own account.
-            Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class])->group(function () {
+            // Also exempted from 'verified' (PROC-024) so an unverified admin
+            // can correct a mistyped signup email without being locked out.
+            Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class, \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class])->group(function () {
                 Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
                 Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
                 Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
@@ -211,8 +241,9 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
 
                 // Billing — accessible to both admin and super_admin (controller gates by role).
                 // Exempted from the subscription gate so a lapsed tenant can still reach the
-                // page that lets them pay to reactivate.
-                Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class])->group(function () {
+                // page that lets them pay to reactivate. Also exempted from 'verified'
+                // (PROC-024) so an unverified new signup can still pay if they want.
+                Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class, \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class])->group(function () {
                     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
                     Route::get('/billing/payments', [BillingController::class, 'payments'])->name('billing.payments');
                     Route::get('/billing/payments/{payment}', [BillingController::class, 'showPayment'])->name('billing.payment.show');

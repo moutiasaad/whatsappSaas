@@ -87,6 +87,8 @@ class SuperAdminPlatformController extends Controller
                     'password'  => Hash::make($data['admin_password']),
                     'role'      => 'admin',
                     'is_active' => true,
+                    // Super-admin-created admin skips verification (PROC-024).
+                    'email_verified_at' => now(),
                 ]);
             }
         });
@@ -201,6 +203,8 @@ class SuperAdminPlatformController extends Controller
                             'password'  => Hash::make($data['admin_password']),
                             'role'      => 'admin',
                             'is_active' => true,
+                            // Super-admin-created admin skips verification (PROC-024).
+                            'email_verified_at' => now(),
                         ]);
                     }
                     return;

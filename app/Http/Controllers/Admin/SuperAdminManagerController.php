@@ -63,6 +63,8 @@ class SuperAdminManagerController extends Controller
             'role'                => 'super_admin',
             'is_active'           => true,
             'sidebar_permissions' => $isAll ? null : (empty($selected) ? [] : $selected),
+            // Master-created super admin skips verification (PROC-024).
+            'email_verified_at'   => now(),
         ]);
 
         return redirect()->route('super_admin.super-admins.index')

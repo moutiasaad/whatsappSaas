@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -81,9 +82,16 @@ class RegisterController extends Controller
                 ->withErrors(['general' => __('auth.register.server_error')]);
         }
 
+        // Sends Laravel's signed verification link to the address the user
+        // typed — proves ownership before the workspace, trial and billing
+        // correspondence attached to it can be used. Panel routes are gated
+        // by the 'verified' middleware; billing/profile stay reachable so a
+        // lapsed or unverified admin can still pay or fix a wrong email.
+        rescue(fn () => event(new Registered($user)));
+
         Auth::login($user);
 
-        return redirect()->route('tenant_admin.dashboard')
+        return redirect()->route('verification.notice')
             ->with('success', __('auth.register.welcome_trial'));
     }
 

@@ -140,6 +140,17 @@ return [
         'retry_payment'            => 'Retry payment',
     ],
 
+    'verify_email' => [
+        'title'        => 'Verify your email address',
+        'body'         => 'We sent a verification link to :email. Click it to activate your workspace.',
+        'resend'       => 'Resend verification email',
+        'change_email' => 'Change email address',
+        'sign_out'     => 'Sign out',
+        'hint'         => 'Check your spam folder if you did not receive the email within a minute.',
+        'link_sent'    => 'A new verification link has been sent to your email address.',
+        'verified'     => 'Your email is verified. Welcome to your workspace!',
+    ],
+
     'errors' => [
         'credentials_mismatch' => 'These credentials do not match our records.',
         'super_admin_only' => 'This portal is only for super admins.',

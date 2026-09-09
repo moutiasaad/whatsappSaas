@@ -124,6 +124,7 @@ class WebChatPhase3Verify extends Command
             'password'  => bcrypt('phase3'),
             'role'      => 'agent',
             'is_active' => true,
+            'email_verified_at' => now(),
         ]);
         $userB = User::create([
             'tenant_id' => $tenantId,
@@ -132,6 +133,7 @@ class WebChatPhase3Verify extends Command
             'password'  => bcrypt('phase3'),
             'role'      => 'agent',
             'is_active' => true,
+            'email_verified_at' => now(),
         ]);
         return [$userA, $userB];
     }

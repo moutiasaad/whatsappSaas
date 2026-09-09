@@ -143,6 +143,17 @@ return [
         'retry_payment'            => 'Réessayer le paiement',
     ],
 
+    'verify_email' => [
+        'title'        => 'Vérifiez votre adresse e-mail',
+        'body'         => 'Nous avons envoyé un lien de vérification à :email. Cliquez dessus pour activer votre espace de travail.',
+        'resend'       => 'Renvoyer l\'e-mail de vérification',
+        'change_email' => 'Modifier l\'adresse e-mail',
+        'sign_out'     => 'Se déconnecter',
+        'hint'         => 'Vérifiez votre dossier spam si vous n\'avez rien reçu dans la minute.',
+        'link_sent'    => 'Un nouveau lien de vérification a été envoyé à votre adresse e-mail.',
+        'verified'     => 'Votre e-mail est vérifié. Bienvenue dans votre espace de travail !',
+    ],
+
     'errors' => [
         'credentials_mismatch' => 'Ces identifiants ne correspondent pas à nos enregistrements.',
         'super_admin_only' => 'Ce portail est réservé aux super admins.',

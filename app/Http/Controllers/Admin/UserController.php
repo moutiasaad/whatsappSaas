@@ -151,6 +151,9 @@ class UserController extends Controller
             'tenant_id' => $tenantId,
             'password'  => Hash::make($data['password'] ?? str()->random(16)),
             'is_active' => true,
+            // Admin-created users skip verification: the admin vouches for the
+            // address by inviting them. PROC-024 only applies to public /register.
+            'email_verified_at' => now(),
         ]);
 
         if (!$user->isSuperAdmin() && !empty($data['teams'])) {
