@@ -235,6 +235,9 @@ class InboxController extends Controller
                                     : ($m->author_type === 'agent' ? ($c->ownerAgent?->name ?? __('ui.inbox_page.agent')) : __('ui.inbox_page.ai')),
                 'body'       => $m->body,
                 'created_at' => optional($m->sent_at ?? $m->created_at)->toISOString(),
+                // Without this the UI cannot tell a delivered message from one
+                // still sitting in the queue, so a failed send looks like a sent one.
+                'status'     => $m->status,
             ]);
 
         $name = $c->customer?->display_name ?: ($c->customer?->phone_e164 ?: __('ui.inbox_page.unknown_contact'));
@@ -315,6 +318,7 @@ class InboxController extends Controller
                                     : ($m->sender?->name ?? ($m->sender_type === 'bot' ? __('ui.inbox_page.ai') : __('ui.inbox_page.agent'))),
                 'body'       => $m->body,
                 'created_at' => $m->created_at?->toISOString(),
+                'status'     => 'sent',
             ]);
 
         $isMine = $c->status === WebChatConversation::STATUS_ASSIGNED && (int) $c->claimed_by === (int) $user->id;

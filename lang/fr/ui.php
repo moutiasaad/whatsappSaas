@@ -1947,6 +1947,8 @@ Toujours :
 
     // ── unified inbox ──
     'inbox_page' => [
+        'msg_undelivered'  => 'Non remis',
+        'msg_failed'       => 'Échec de l\'envoi',
         'status_ai'              => 'IA',
         'ai_active'              => 'IA active',
         'ai_paused'              => 'IA en pause',

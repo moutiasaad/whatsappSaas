@@ -136,6 +136,8 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .bub.out + .bub.out{border-end-end-radius:15px;border-start-end-radius:5px}
 .ubx .bub .tm{font-size:10.5px;opacity:.6;margin-top:2px;display:flex;align-items:center;gap:4px;justify-content:flex-end;font-variant-numeric:tabular-nums;line-height:1.2}
 .ubx .bub.in .tm{color:var(--mut-2);opacity:1}
+.ubx .bub .undeliv{display:inline-flex;align-items:center;gap:4px;margin-inline-start:6px;font-size:11px;font-weight:700;color:#ffd8d8;vertical-align:baseline}
+.ubx .bub.in .undeliv{color:#b4232a}
 .ubx .sys{background:#fff;border:1px solid var(--bd);color:var(--mut);font-size:12px;font-weight:500;padding:6px 14px;border-radius:999px;margin:12px auto;display:flex;width:fit-content;max-width:100%;align-items:center;gap:7px;text-align:center}
 .ubx .nothread{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--mut-2);font-size:14px;padding:24px;text-align:center}
 .ubx .nothread .ic{width:58px;height:58px;border-radius:50%;background:#fff;border:1px solid var(--bd);display:grid;place-items:center;color:var(--teal)}
@@ -243,6 +245,8 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
         'tab_all'         => __('ui.webchat_page.tab_all'),
         'tab_closed'      => __('ui.webchat_page.tab_closed'),
         'status_pending'  => $i18n['status_pending'],
+        'msg_undelivered' => $i18n['msg_undelivered'],
+        'msg_failed'      => $i18n['msg_failed'],
         'status_assigned' => $i18n['status_assigned'],
         'status_closed'   => $i18n['status_closed'],
         'status_bot'      => $i18n['status_bot'],
@@ -448,7 +452,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                                             {{-- Keep this element on one line: .bub is white-space:pre-wrap, so any
                                                  source indentation between these tags renders as literal spaces
                                                  inside the bubble. --}}
-                                            <div class="bub" :class="g.side"><span x-text="(m.body || '').trim()"></span><template x-if="mi === g.items.length - 1"><div class="tm" x-text="formatTime(m.created_at)"></div></template></div>
+                                            <div class="bub" :class="g.side"><span x-text="(m.body || '').trim()"></span><template x-if="isUndelivered(m, g)"><span class="undeliv" :title="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"><i class="ri-error-warning-line"></i><span x-text="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"></span></span></template><template x-if="mi === g.items.length - 1"><div class="tm" x-text="formatTime(m.created_at)"></div></template></div>
                                         </template>
                                     </div>
                                 </div>
@@ -645,6 +649,19 @@ function unifiedInbox() {
             if (url) this.post(url).catch(() => {});
         },
 
+        // A freshly sent message sits at 'pending' for the second or two the
+        // queue takes to hand it to WhatsApp. The thread does not live-refresh,
+        // so flagging that window as "Not delivered" left the warning stuck on
+        // messages the customer had already received. Only flag a send that has
+        // genuinely stalled, or one the gateway rejected outright.
+        isUndelivered(m, g) {
+            if (g.side !== 'out') return false;
+            if (m.status === 'failed') return true;
+            if (m.status !== 'pending') return false;
+
+            const age = Date.now() - new Date(m.created_at).getTime();
+            return Number.isFinite(age) && age > 30000;
+        },
         async reloadThread() {
             if (!this.thread) return;
             await this.loadThread(this.thread.channel, this.thread.ref);
@@ -757,6 +774,12 @@ function unifiedInbox() {
                 this.composer = '';
                 await this.reloadThread();
                 await this.loadList(true);
+
+                // The send is queued, so the row is still 'pending' on the
+                // reload above. Settle the delivery state once the job has had
+                // time to run — nothing else refreshes an open thread.
+                clearTimeout(this._sendSettle);
+                this._sendSettle = setTimeout(() => this.reloadThread().catch(() => {}), 4000);
             } catch (e) {
                 console.error('[inbox] send failed', e);
                 window.showToast?.('error', this.labels.send_error);

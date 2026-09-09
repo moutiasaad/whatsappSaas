@@ -1950,6 +1950,8 @@ Always:
 
     // ── unified inbox ──
     'inbox_page' => [
+        'msg_undelivered'  => 'Not delivered',
+        'msg_failed'       => 'Failed to send',
         'status_ai'              => 'AI',
         'ai_active'              => 'AI active',
         'ai_paused'              => 'AI paused',

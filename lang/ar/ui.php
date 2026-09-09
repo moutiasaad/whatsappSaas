@@ -1941,6 +1941,8 @@ return [
 
     // ── unified inbox ──
     'inbox_page' => [
+        'msg_undelivered'  => 'لم يتم التسليم',
+        'msg_failed'       => 'فشل الإرسال',
         'status_ai'              => 'ذكاء اصطناعي',
         'ai_active'              => 'الذكاء الاصطناعي نشط',
         'ai_paused'              => 'الذكاء الاصطناعي متوقّف',
