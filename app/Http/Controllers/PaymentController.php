@@ -12,6 +12,7 @@ use App\Services\StripeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -24,7 +25,10 @@ class PaymentController extends Controller
     public function upgrade(Request $request)
     {
         $request->validate([
-            'plan_id' => 'required|exists:plans,id',
+            // PROC-025: reject retired plans on the upgrade path — same defence
+            // as RegisterController::store, so a deactivated plan cannot be
+            // reached by posting its id.
+            'plan_id' => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
         ]);
 
         // Resolve the tenant from the authenticated admin, never from a body
@@ -616,7 +620,11 @@ class PaymentController extends Controller
     {
         $requested = (int) $request->input('plan_id', 0);
         if ($requested > 0) {
-            $plan = Plan::find($requested);
+            // PROC-025: /payment/checkout/{tenant}?plan_id=X is reachable
+            // without auth, so scope the lookup to active plans. A retired id
+            // falls through to the tenant's current plan (the normal renewal
+            // case) instead of silently subscribing them to a withdrawn plan.
+            $plan = Plan::where('id', $requested)->where('is_active', true)->first();
             if ($plan) {
                 return $plan;
             }

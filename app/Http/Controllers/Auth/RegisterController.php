@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class RegisterController extends Controller
 {
@@ -41,7 +42,9 @@ class RegisterController extends Controller
             'company_name' => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
             'password'     => 'required|string|min:8',
-            'plan_id'      => 'required|exists:plans,id',
+            // PROC-025: retired plans (is_active=false) must not be selectable at
+            // signup even if their id is guessed or reused from an old link.
+            'plan_id'      => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
         ]);
 
         $plan = Plan::findOrFail($request->plan_id);
