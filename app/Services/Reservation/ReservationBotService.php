@@ -10,6 +10,7 @@ use App\Models\WhatsAppInstance;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReservationBotService
@@ -297,17 +298,8 @@ class ReservationBotService
         ReservationSetting $settings, WhatsAppInstance $instance,
         string $phone, string $name, ?string $notes, array $state
     ): void {
-        $slot         = $state['selected_slot'];
-        $date         = Carbon::parse($state['selected_date']);
-
-        // Guard: slot may have filled up between listing and selection
-        $slotModel = AvailabilitySlot::find($slot['id']);
-        if (!$slotModel || !$slotModel->hasCapacityOn($date)) {
-            $this->clearState($settings->tenant_id, $phone);
-            $this->send($instance, $phone, 'عذراً، تم حجز هذا الموعد للتو. يرجى الاختيار من جديد.');
-            $this->startFlow($settings, $instance, $phone, $state['conversation_id'] ?? 0);
-            return;
-        }
+        $slot = $state['selected_slot'];
+        $date = Carbon::parse($state['selected_date']);
 
         // The cached state can carry a conversation_id that no longer exists (e.g. the WhatsApp
         // instance was re-created, which rotated conversation rows). Null it out if missing,
@@ -318,21 +310,52 @@ class ReservationBotService
             $conversationId = null;
         }
 
-        $reservation = Reservation::create([
-            'tenant_id'        => $settings->tenant_id,
-            'slot_id'          => $slot['id'],
-            'conversation_id'  => $conversationId,
-            'customer_phone'   => $phone,
-            'customer_name'    => $name,
-            'customer_notes'   => $notes,
-            'reservation_date' => $date->toDateString(),
-            'start_time'       => $slot['start'],
-            'end_time'         => $slot['end'],
-            'status'           => 'confirmed',
-            'booked_at'        => now(),
-        ]);
+        // PROC-020: serialise concurrent bookings on the same slot. Two
+        // customers landing on the last seat inside the same second used to
+        // both pass the unlocked count-then-insert and both get confirmed.
+        // Locking the slot row forces the second to wait for the first to
+        // commit; the follow-up lockForUpdate count then sees the freshly
+        // inserted row and bails.
+        $reservation = DB::transaction(function () use ($slot, $date, $settings, $phone, $name, $notes, $conversationId) {
+            $slotModel = AvailabilitySlot::whereKey($slot['id'])->lockForUpdate()->first();
+            if (!$slotModel) {
+                return null;
+            }
 
+            $confirmed = Reservation::where('slot_id', $slot['id'])
+                ->whereDate('reservation_date', $date)
+                ->whereIn('status', ['confirmed', 'pending'])
+                ->lockForUpdate()
+                ->count();
+
+            if ($confirmed >= $slotModel->max_bookings) {
+                return null;
+            }
+
+            return Reservation::create([
+                'tenant_id'        => $settings->tenant_id,
+                'slot_id'          => $slot['id'],
+                'conversation_id'  => $conversationId,
+                'customer_phone'   => $phone,
+                'customer_name'    => $name,
+                'customer_notes'   => $notes,
+                'reservation_date' => $date->toDateString(),
+                'start_time'       => $slot['start'],
+                'end_time'         => $slot['end'],
+                'status'           => 'confirmed',
+                'booked_at'        => now(),
+            ]);
+        });
+
+        // State cleared either way — the customer restarts the flow if the
+        // slot filled up between listing and completing the booking.
         $this->clearState($settings->tenant_id, $phone);
+
+        if (!$reservation) {
+            $this->send($instance, $phone, 'عذراً، تم حجز هذا الموعد للتو. يرجى الاختيار من جديد.');
+            $this->startFlow($settings, $instance, $phone, $state['conversation_id'] ?? 0);
+            return;
+        }
 
         $confirmMsg = $settings->confirmation_message
             ?: "✅ *تم تأكيد حجزك!*\n\n📅 التاريخ: {date}\n⏰ الوقت: {start} - {end}\n👤 الاسم: {name}\n🔖 رقم الحجز: #{id}";
