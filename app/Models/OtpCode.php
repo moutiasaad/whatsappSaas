@@ -11,7 +11,7 @@ class OtpCode extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'identifier', 'code', 'code_hash',
+        'tenant_id', 'identifier', 'code_hash',
         'attempts', 'resend_count',
         'expires_at', 'last_sent_at', 'verified_at',
     ];
@@ -25,9 +25,9 @@ class OtpCode extends Model
         'verified_at'  => 'datetime',
     ];
 
-    // Never expose the plaintext or hash in JSON responses (API returns).
-    // The plaintext still lives in the DB row for admin/debug lookups.
-    protected $hidden = ['code', 'code_hash'];
+    // Never expose the hash in JSON responses. The plaintext column was
+    // dropped in UI-002 — verification uses code_hash only.
+    protected $hidden = ['code_hash'];
 
     public function tenant(): BelongsTo
     {

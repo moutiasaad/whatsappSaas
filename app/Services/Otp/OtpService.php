@@ -53,10 +53,9 @@ class OtpService
         $ttl  = (int) $settings['ttl_minutes'];
         $body = $this->renderTemplate($settings['template'], $code, $ttl);
 
-        // UI-003: never log the plaintext OTP. A misconfigured APP_DEBUG=true in
-        // production used to expose every code in real time to anyone with log
-        // read access. The code lives on OtpCode.plaintext_code below anyway,
-        // scoped to the tenant, if operators genuinely need to inspect it.
+        // UI-002/UI-003: no plaintext logging, and no plaintext row column.
+        // The code exists only in memory on this request and as a bcrypt hash
+        // in code_hash — nobody with DB or log read access can recover it.
 
         try {
             $gateway = new EvolutionApiClient(
@@ -71,7 +70,6 @@ class OtpService
         OtpCode::updateOrCreate(
             ['tenant_id' => $tenant->id, 'identifier' => $identifier],
             [
-                'code'         => $code,
                 'code_hash'    => Hash::make($code),
                 'attempts'     => 0,
                 'resend_count' => $existing ? $existing->resend_count + 1 : 0,
