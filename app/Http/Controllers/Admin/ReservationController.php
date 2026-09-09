@@ -9,9 +9,24 @@ use App\Models\ReservationSetting;
 use App\Models\WhatsAppInstance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ReservationController extends Controller
 {
+    // PROC-021: legal status transitions. Any status can only move to the ones
+    // listed here; 'completed' is terminal. Moves back into a consuming state
+    // (pending/confirmed) also require capacity to still be free — capacity is
+    // defined as the count of pending + confirmed rows, so reinstating a
+    // cancelled row can silently push a full slot to max_bookings + 1.
+    private const ALLOWED_TRANSITIONS = [
+        'pending'   => ['confirmed', 'cancelled'],
+        'confirmed' => ['completed', 'cancelled'],
+        'cancelled' => ['pending', 'confirmed'],
+        'completed' => [],
+    ];
+
+    private const CONSUMING_STATES = ['pending', 'confirmed'];
+
     private function assertEnabled(): void
     {
         $tenant = auth()->user()->tenant;
@@ -100,8 +115,65 @@ class ReservationController extends Controller
         abort_unless($reservation->tenant_id === auth()->user()->tenant_id, 403);
 
         $request->validate(['status' => 'required|in:confirmed,cancelled,completed,pending']);
-        $reservation->update(['status' => $request->status]);
+        $target  = $request->status;
+        $current = $reservation->status;
 
+        if ($current === $target) {
+            return response()->json(['message' => 'Status unchanged.', 'reservation' => $reservation]);
+        }
+
+        // PROC-021: enforce the transition table. Blocks completed -> anything
+        // (a past appointment cannot become pending again) and refuses any
+        // unlisted move rather than accepting the vocabulary alone.
+        $allowed = self::ALLOWED_TRANSITIONS[$current] ?? [];
+        if (!in_array($target, $allowed, true)) {
+            return response()->json([
+                'message' => "Cannot move a {$current} reservation to {$target}.",
+                'allowed_next_states' => $allowed,
+            ], 422);
+        }
+
+        $wasConsuming = in_array($current, self::CONSUMING_STATES, true);
+        $willConsume  = in_array($target, self::CONSUMING_STATES, true);
+
+        // Only check capacity when the move ADDS to it (cancelled/completed
+        // -> pending/confirmed). pending<->confirmed doesn't change count.
+        if (!$wasConsuming && $willConsume) {
+            $updated = DB::transaction(function () use ($reservation, $target) {
+                // Lock the slot row + the reservations on that date so a
+                // concurrent PATCH from another admin browser cannot both
+                // push past max_bookings. Same shape as ReservationBotService
+                // completeBooking (PROC-020).
+                $slot = AvailabilitySlot::whereKey($reservation->slot_id)->lockForUpdate()->first();
+                if (!$slot) {
+                    return null;
+                }
+
+                $consuming = Reservation::where('slot_id', $slot->id)
+                    ->whereDate('reservation_date', $reservation->reservation_date)
+                    ->whereIn('status', self::CONSUMING_STATES)
+                    ->where('id', '!=', $reservation->id)
+                    ->lockForUpdate()
+                    ->count();
+
+                if ($consuming >= $slot->max_bookings) {
+                    return null;
+                }
+
+                $reservation->update(['status' => $target]);
+                return $reservation->fresh();
+            });
+
+            if (!$updated) {
+                return response()->json([
+                    'message' => 'Slot is at capacity — cannot reinstate this reservation.',
+                ], 422);
+            }
+
+            return response()->json(['message' => 'Status updated.', 'reservation' => $updated]);
+        }
+
+        $reservation->update(['status' => $target]);
         return response()->json(['message' => 'Status updated.', 'reservation' => $reservation->fresh()]);
     }
 
