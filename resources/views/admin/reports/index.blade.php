@@ -40,9 +40,12 @@
         </div>
     </div>
 
-    {{-- Content: always in DOM after first load so canvas dimensions are preserved --}}
+    {{-- Content: always in DOM after first load so canvas dimensions are preserved.
+         Transition only when refreshing — an always-on `transition: opacity` fires
+         ResizeObserver events that Chart.js's responsive mode reacts to, which was
+         re-rendering the freshly drawn charts at 0×0 (blank canvas). --}}
     <div x-show="hasData"
-         :style="refreshing ? 'opacity:.45;pointer-events:none;transition:opacity .15s' : 'transition:opacity .15s'">
+         :style="refreshing ? 'opacity:.45;pointer-events:none;transition:opacity .15s' : ''">
 
         {{-- KPI stat cards --}}
         <div class="stats-grid" style="margin-bottom:1.5rem;grid-template-columns:repeat(3,1fr)">
@@ -320,14 +323,20 @@ function reportsPage() {
                 this.ai_vs_agent       = data.ai_vs_agent;
 
                 if (this.hasData) {
-                    // Canvases are visible — re-render directly, no timeout needed
+                    // Canvases are visible — re-render directly, no wait needed
                     this._renderCharts();
                     this.refreshing = false;
                 } else {
-                    // First load: canvases just became visible, wait one frame
+                    // First load: wait for Alpine to flush the x-show DOM change
+                    // AND for the browser to paint the new layout before drawing.
+                    // setTimeout(80) was flaky on slower machines/dev tools open;
+                    // $nextTick + rAF guarantees the canvas has real dimensions
+                    // by the time Chart.js reads them, so it doesn't render at 0×0.
                     this.loading = false;
                     this.hasData = true;
-                    setTimeout(() => this._renderCharts(), 80);
+                    this.$nextTick(() => {
+                        requestAnimationFrame(() => this._renderCharts());
+                    });
                 }
             })
             .catch(() => { this.loading = false; this.refreshing = false; });
