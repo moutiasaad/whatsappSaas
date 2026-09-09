@@ -1473,6 +1473,28 @@ Always:
     ],
 
     'reservations' => [
+        // ── bulk date-range slot generation ──
+        'bulk_add'                 => 'Add Date Range',
+        'bulk_title'               => 'Add availability across a date range',
+        'bulk_hint'                => 'Set your opening hours once and they are applied to every date in the range.',
+        'bulk_start_date'          => 'From',
+        'bulk_end_date'            => 'To',
+        'bulk_days'                => 'Days of the week',
+        'bulk_days_hint'           => 'Keep every day selected to cover the whole range, or pick only the days you open.',
+        'bulk_all_days'            => 'All days',
+        'bulk_weekdays'            => 'Weekdays',
+        'bulk_windows'             => 'Time windows',
+        'bulk_add_window'          => 'Add another window',
+        'bulk_remove_window'       => 'Remove window',
+        'bulk_generate'            => 'Generate slots',
+        'bulk_summary'             => ':count slots will be created across :days days.',
+        'bulk_created'             => ':count slots created.',
+        'bulk_skipped'             => ':count already existed and were skipped.',
+        'bulk_err_window_order'    => 'Time window :n ends before it starts.',
+        'bulk_err_range_too_long'  => 'That range is longer than :max days. Split it into shorter periods.',
+        'bulk_err_too_many'        => 'That would create :count slots, over the limit of :max. Narrow the range or use fewer windows.',
+        'bulk_err_nothing'         => 'Nothing to create — every one of those dates and times already exists.',
+
         'title'    => 'Reservations',
         'subtitle' => 'View and manage appointment bookings received via WhatsApp',
         'settings_title'   => 'Reservation Settings',

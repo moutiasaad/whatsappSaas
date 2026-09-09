@@ -1471,6 +1471,28 @@ Toujours :
     ],
 
     'reservations' => [
+        // ── bulk date-range slot generation ──
+        'bulk_add'                 => 'Ajouter une période',
+        'bulk_title'               => 'Ajouter des disponibilités sur une période',
+        'bulk_hint'                => 'Définissez vos horaires une seule fois : ils sont appliqués à chaque date de la période.',
+        'bulk_start_date'          => 'Du',
+        'bulk_end_date'            => 'Au',
+        'bulk_days'                => 'Jours de la semaine',
+        'bulk_days_hint'           => 'Gardez tous les jours sélectionnés pour couvrir toute la période, ou choisissez uniquement vos jours d\'ouverture.',
+        'bulk_all_days'            => 'Tous les jours',
+        'bulk_weekdays'            => 'Jours ouvrés',
+        'bulk_windows'             => 'Plages horaires',
+        'bulk_add_window'          => 'Ajouter une plage',
+        'bulk_remove_window'       => 'Supprimer la plage',
+        'bulk_generate'            => 'Générer les créneaux',
+        'bulk_summary'             => ':count créneaux seront créés sur :days jours.',
+        'bulk_created'             => ':count créneaux créés.',
+        'bulk_skipped'             => ':count existaient déjà et ont été ignorés.',
+        'bulk_err_window_order'    => 'La plage horaire :n se termine avant de commencer.',
+        'bulk_err_range_too_long'  => 'Cette période dépasse :max jours. Découpez-la en périodes plus courtes.',
+        'bulk_err_too_many'        => 'Cela créerait :count créneaux, au-delà de la limite de :max. Réduisez la période ou le nombre de plages.',
+        'bulk_err_nothing'         => 'Rien à créer — toutes ces dates et heures existent déjà.',
+
         'title'    => 'Réservations',
         'subtitle' => 'Consultez et gérez les réservations reçues via WhatsApp',
         'settings_title'   => 'Paramètres des réservations',

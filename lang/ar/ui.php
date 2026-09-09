@@ -1468,6 +1468,28 @@ return [
     ],
 
     'reservations' => [
+        // ── bulk date-range slot generation ──
+        'bulk_add'                 => 'إضافة فترة زمنية',
+        'bulk_title'               => 'إضافة أوقات متاحة عبر فترة زمنية',
+        'bulk_hint'                => 'حدّد أوقات العمل مرة واحدة وتُطبَّق على كل تاريخ ضمن الفترة.',
+        'bulk_start_date'          => 'من',
+        'bulk_end_date'            => 'إلى',
+        'bulk_days'                => 'أيام الأسبوع',
+        'bulk_days_hint'           => 'اترك كل الأيام محدّدة لتغطية الفترة كاملة، أو اختر أيام العمل فقط.',
+        'bulk_all_days'            => 'كل الأيام',
+        'bulk_weekdays'            => 'أيام العمل',
+        'bulk_windows'             => 'الفترات الزمنية',
+        'bulk_add_window'          => 'إضافة فترة أخرى',
+        'bulk_remove_window'       => 'حذف الفترة',
+        'bulk_generate'            => 'إنشاء المواعيد',
+        'bulk_summary'             => 'سيتم إنشاء :count موعداً عبر :days يوماً.',
+        'bulk_created'             => 'تم إنشاء :count موعداً.',
+        'bulk_skipped'             => ':count كانت موجودة مسبقاً وتم تجاهلها.',
+        'bulk_err_window_order'    => 'الفترة الزمنية :n تنتهي قبل أن تبدأ.',
+        'bulk_err_range_too_long'  => 'هذه الفترة أطول من :max يوماً. قسّمها إلى فترات أقصر.',
+        'bulk_err_too_many'        => 'سيؤدي هذا إلى إنشاء :count موعداً، وهو يتجاوز الحد :max. قلّص الفترة أو عدد الفترات الزمنية.',
+        'bulk_err_nothing'         => 'لا شيء لإنشائه — كل هذه التواريخ والأوقات موجودة بالفعل.',
+
         'title'    => 'الحجوزات',
         'subtitle' => 'عرض وإدارة المواعيد المستلمة عبر واتساب',
         'settings_title'   => 'إعدادات الحجوزات',

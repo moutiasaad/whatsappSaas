@@ -27,6 +27,13 @@ class ReservationController extends Controller
 
     private const CONSUMING_STATES = ['pending', 'confirmed'];
 
+    // Bulk-generation caps. A year of daily windows is a normal season;
+    // past that an operator has almost certainly mis-picked a year, and
+    // the row cap keeps one careless submit from writing tens of
+    // thousands of slots.
+    private const BULK_MAX_DAYS = 366;
+    private const BULK_MAX_ROWS = 2000;
+
     private function assertEnabled(): void
     {
         $tenant = auth()->user()->tenant;
@@ -239,6 +246,139 @@ class ReservationController extends Controller
         $slot = AvailabilitySlot::create(array_merge($data, ['tenant_id' => $tenantId]));
 
         return response()->json(['message' => __('ui.controller_messages.slot_added'), 'slot' => $slot], 201);
+    }
+
+    /**
+     * Generate one-off ("specific") slots across a date range.
+     *
+     * The single-slot form makes an operator re-enter the same opening hours
+     * once per day, which stops being usable past about a week. Here they
+     * describe the shape of the period once — a date range, optionally which
+     * weekdays inside it, and one or more time windows — and every matching
+     * date is materialised as its own row.
+     *
+     * Concrete rows (rather than a stored range) keep booking, capacity and
+     * per-day edits working exactly as they already do: ReservationBotService
+     * resolves availability through AvailabilitySlot::appliesToDate(), so it
+     * needs no knowledge of ranges, and an operator can still amend or delete
+     * one awkward day without unpicking the whole period.
+     */
+    public function bulkStoreSlots(Request $request)
+    {
+        $this->assertEnabled();
+        $tenantId = auth()->user()->tenant_id;
+
+        $data = $request->validate([
+            'start_date'           => 'required|date|after_or_equal:today',
+            'end_date'             => 'required|date|after_or_equal:start_date',
+            'days_of_week'         => 'nullable|array',
+            'days_of_week.*'       => 'integer|between:0,6',
+            'windows'              => 'required|array|min:1|max:12',
+            'windows.*.period'     => 'required|in:morning,afternoon',
+            'windows.*.start_time' => 'required|date_format:H:i',
+            'windows.*.end_time'   => 'required|date_format:H:i',
+            'max_bookings'         => 'required|integer|min:1|max:999',
+            'is_active'            => 'boolean',
+        ]);
+
+        // The validator cannot compare two fields inside an array entry, so the
+        // ordering check lives here. Zero-padded H:i compares correctly as text.
+        foreach ($data['windows'] as $i => $w) {
+            if ($w['end_time'] <= $w['start_time']) {
+                return response()->json([
+                    'message' => __('ui.reservations.bulk_err_window_order', ['n' => $i + 1]),
+                ], 422);
+            }
+        }
+
+        $start = Carbon::parse($data['start_date'])->startOfDay();
+        $end   = Carbon::parse($data['end_date'])->startOfDay();
+
+        if ($start->diffInDays($end) + 1 > self::BULK_MAX_DAYS) {
+            return response()->json([
+                'message' => __('ui.reservations.bulk_err_range_too_long', ['max' => self::BULK_MAX_DAYS]),
+            ], 422);
+        }
+
+        // No weekday selection means "every day in the range", which is the
+        // plain reading of picking a range and giving it opening hours.
+        $dows = collect($data['days_of_week'] ?? [])->map(fn ($d) => (int) $d)->unique();
+
+        // One query for the whole window. Re-running a generate must not
+        // duplicate days it already created — operators extend a season by
+        // resubmitting the same range with a later end date.
+        $existing = AvailabilitySlot::where('tenant_id', $tenantId)
+            ->where('type', 'specific')
+            ->whereBetween('specific_date', [$start->toDateString(), $end->toDateString()])
+            ->get(['specific_date', 'start_time', 'end_time'])
+            ->mapWithKeys(fn ($s) => [
+                $s->specific_date->toDateString()
+                    . '|' . substr($s->start_time, 0, 5)
+                    . '|' . substr($s->end_time, 0, 5) => true,
+            ]);
+
+        $now     = now();
+        $rows    = [];
+        $seen    = [];
+        $skipped = 0;
+
+        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+            if ($dows->isNotEmpty() && !$dows->contains($d->dayOfWeek)) {
+                continue;
+            }
+
+            foreach ($data['windows'] as $w) {
+                $key = $d->toDateString() . '|' . $w['start_time'] . '|' . $w['end_time'];
+
+                // $seen also absorbs a caller sending the same window twice.
+                if (isset($existing[$key]) || isset($seen[$key])) {
+                    $skipped++;
+                    continue;
+                }
+                $seen[$key] = true;
+
+                $rows[] = [
+                    'tenant_id'     => $tenantId,
+                    'type'          => 'specific',
+                    'period'        => $w['period'],
+                    'day_of_week'   => null,
+                    'specific_date' => $d->toDateString(),
+                    'start_time'    => $w['start_time'],
+                    'end_time'      => $w['end_time'],
+                    'max_bookings'  => $data['max_bookings'],
+                    'is_active'     => $data['is_active'] ?? true,
+                    'created_at'    => $now,
+                    'updated_at'    => $now,
+                ];
+            }
+        }
+
+        if (count($rows) > self::BULK_MAX_ROWS) {
+            return response()->json([
+                'message' => __('ui.reservations.bulk_err_too_many', [
+                    'count' => count($rows),
+                    'max'   => self::BULK_MAX_ROWS,
+                ]),
+            ], 422);
+        }
+
+        if ($rows === []) {
+            return response()->json([
+                'message' => __('ui.reservations.bulk_err_nothing'),
+            ], 422);
+        }
+
+        DB::transaction(function () use ($rows) {
+            foreach (array_chunk($rows, 500) as $chunk) {
+                AvailabilitySlot::insert($chunk);
+            }
+        });
+
+        return response()->json([
+            'message' => __('ui.reservations.bulk_created', ['count' => count($rows)]),
+            'created' => count($rows),
+            'skipped' => $skipped,
+        ], 201);
     }
 
     public function updateSlot(Request $request, AvailabilitySlot $slot)

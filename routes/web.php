@@ -275,6 +275,7 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->name('reservations.destroy');
                 Route::get('/reservations/slots', [ReservationController::class, 'slots'])->name('reservations.slots');
                 Route::post('/reservations/slots', [ReservationController::class, 'storeSlot'])->name('reservations.slots.store');
+                Route::post('/reservations/slots/bulk', [ReservationController::class, 'bulkStoreSlots'])->name('reservations.slots.bulk');
                 Route::put('/reservations/slots/{slot}', [ReservationController::class, 'updateSlot'])->name('reservations.slots.update');
                 Route::delete('/reservations/slots/{slot}', [ReservationController::class, 'destroySlot'])->name('reservations.slots.destroy');
                 Route::get('/reservations/settings', [ReservationController::class, 'settings'])->name('reservations.settings');
