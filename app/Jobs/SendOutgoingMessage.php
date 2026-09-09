@@ -20,6 +20,29 @@ class SendOutgoingMessage implements ShouldQueue
     public int $tries = 3;
     public int $messageId;
 
+    /**
+     * Persist the send lifecycle marker.
+     *
+     * messages.status is an ENUM with no 'sending' or 'cancelled' member, and
+     * MySQL runs STRICT_TRANS_TABLES here, so writing either raised
+     * "1265 Data truncated for column 'status'". That write sits one line
+     * before the gateway call, so every AI and agent reply died before it
+     * reached WhatsApp while OTP — which calls the gateway directly and never
+     * touches this column — kept working.
+     *
+     * Keep status inside its enum and carry the extra lifecycle state in
+     * ai_metadata, a JSON column with no such constraint. The duplicate-send
+     * protection PROC-016 added is unchanged; only where the marker lives has
+     * moved. Migration 2026_09_09_220000 adds the enum members properly — once
+     * it has run, this can move back onto the column.
+     */
+    private function markSendState(Message $message, string $state): void
+    {
+        $meta = (array) ($message->ai_metadata ?? []);
+        $meta['send_state'] = $state;
+
+        $message->update(['ai_metadata' => $meta]);
+    }
     public function __construct(Message $message)
     {
         $this->messageId = $message->id;
@@ -44,16 +67,21 @@ class SendOutgoingMessage implements ShouldQueue
         }
 
         // Idempotency guard: skip any row that is already terminal (sent /
-        // delivered / cancelled) or currently mid-flight (sending). A retry
-        // firing while status is 'sending' means the previous attempt crashed
+        // delivered / read) or currently mid-flight / cancelled. A retry firing
+        // while the marker reads 'sending' means the previous attempt crashed
         // between the gateway call and the status write — the gateway may
         // already have delivered the message, so re-sending would put a
         // duplicate on the customer's WhatsApp. Manual reconciliation
         // (out of scope) can later promote a stuck 'sending' to sent/failed.
-        if (in_array($message->status, ['sent', 'delivered', 'cancelled', 'sending'], true)) {
+        $sendState = $message->ai_metadata['send_state'] ?? null;
+
+        if (in_array($message->status, ['sent', 'delivered', 'read'], true)
+            || in_array($sendState, ['sending', 'cancelled'], true)
+        ) {
             Log::channel('whatsapp')->info('SendOutgoingMessage: skipped — already handled', [
                 'message_id' => $message->id,
                 'status'     => $message->status,
+                'send_state' => $sendState,
             ]);
             return;
         }
@@ -64,7 +92,7 @@ class SendOutgoingMessage implements ShouldQueue
         if ($message->author_type === 'ai'
             && ($conversation->ai_suspended || $conversation->state === 'claimed' || $conversation->state === 'closed')
         ) {
-            $message->update(['status' => 'cancelled']);
+            $this->markSendState($message, 'cancelled');
             Log::channel('whatsapp')->info('SendOutgoingMessage: AI reply cancelled — conversation taken over', [
                 'message_id'     => $message->id,
                 'conversation'   => $conversation->id,
@@ -84,9 +112,9 @@ class SendOutgoingMessage implements ShouldQueue
         ]);
 
         // Reserve the row before the network call. A crash between here and
-        // the 'sent' write leaves the row at 'sending', which the guard above
-        // skips on retry — no duplicate on the customer's phone.
-        $message->update(['status' => 'sending']);
+        // the 'sent' write leaves the marker at 'sending', which the guard
+        // above skips on retry — no duplicate on the customer's phone.
+        $this->markSendState($message, 'sending');
 
         try {
             $gateway = new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
@@ -124,10 +152,14 @@ class SendOutgoingMessage implements ShouldQueue
                 'result'     => $result,
             ]);
 
+            $meta = (array) ($message->ai_metadata ?? []);
+            $meta['send_state'] = 'sent';
+
             $message->update([
                 'status'              => 'sent',
                 'external_message_id' => $result['keyId'] ?? $result['id'] ?? data_get($result, 'key.id'),
                 'sent_at'             => now(),
+                'ai_metadata'         => $meta,
             ]);
 
             try {

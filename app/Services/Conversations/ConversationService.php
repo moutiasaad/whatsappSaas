@@ -168,13 +168,40 @@ class ConversationService
         $this->logEvent($conversation->fresh(), $suspended ? 'ai_suspended' : 'ai_resumed', $actor->id);
     }
 
+    /**
+     * Stop queued AI replies once an agent takes the conversation over.
+     *
+     * This used to bulk-write status = 'cancelled', but messages.status is an
+     * ENUM without that member and MySQL runs STRICT_TRANS_TABLES, so the
+     * update raised "1265 Data truncated" — and because it runs after the claim
+     * has already been written, the request 500'd on a claim that had in fact
+     * succeeded. That surfaced as "Could not claim this conversation" on a
+     * conversation the agent had just claimed.
+     *
+     * The marker now lives in ai_metadata alongside the one SendOutgoingMessage
+     * sets, which is the field its idempotency guard reads. Row-by-row rather
+     * than a bulk update because the value is JSON and the set is small — only
+     * AI replies still pending on one conversation.
+     */
     private function cancelPendingAiMessages(int $conversationId): void
     {
-        Message::withoutGlobalScopes()
+        $pending = Message::withoutGlobalScopes()
             ->where('conversation_id', $conversationId)
             ->where('author_type', 'ai')
             ->where('status', 'pending')
-            ->update(['status' => 'cancelled']);
+            ->get();
+
+        foreach ($pending as $message) {
+            $meta = (array) ($message->ai_metadata ?? []);
+
+            // Already sending, sent or cancelled — leave it to the job.
+            if (in_array($meta['send_state'] ?? null, ['sending', 'sent', 'cancelled'], true)) {
+                continue;
+            }
+
+            $meta['send_state'] = 'cancelled';
+            $message->update(['ai_metadata' => $meta]);
+        }
     }
 
     private function logEvent(Conversation $conversation, string $type, ?int $actorId = null, array $payload = []): void
