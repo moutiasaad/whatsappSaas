@@ -85,12 +85,20 @@ class ReservationController extends Controller
 
     private function stats(int $tenantId): array
     {
+        // CALC-010: "today" must be the tenant's local calendar day, not UTC.
+        // Between 00:00 and 01:00 in a UTC+1 tenant's clock, today() in UTC
+        // was still yesterday, so bookings dated for that day fell out of
+        // the counter until an hour into the day.
+        $tenant = \App\Models\Tenant::find($tenantId);
+        $tz     = $tenant?->effectiveTimezone() ?? config('app.timezone', 'UTC');
+        $today  = now($tz)->toDateString();
+
         $base = Reservation::where('tenant_id', $tenantId);
         return [
             'total'     => (clone $base)->count(),
-            'today'     => (clone $base)->whereDate('reservation_date', today())->count(),
+            'today'     => (clone $base)->whereDate('reservation_date', $today)->count(),
             'upcoming'  => (clone $base)->whereIn('status', ['confirmed', 'pending'])
-                                        ->whereDate('reservation_date', '>=', today())->count(),
+                                        ->whereDate('reservation_date', '>=', $today)->count(),
             'confirmed' => (clone $base)->where('status', 'confirmed')->count(),
             'cancelled' => (clone $base)->where('status', 'cancelled')->count(),
             'completed' => (clone $base)->where('status', 'completed')->count(),

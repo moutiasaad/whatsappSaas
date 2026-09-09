@@ -116,6 +116,28 @@ function extendSubscription(days) {
 @endif
 
 <div class="form-group" style="margin-top:16px;">
+    <label class="form-label" for="timezone">{{ __('ui.tenant_form_fields.timezone') }}</label>
+    <select id="timezone" name="timezone" class="form-control @error('timezone') error @enderror">
+        @php
+            $currentTz = old('timezone', $tenant?->timezone ?? 'UTC');
+            // Common zones surfaced at the top; full IANA list follows so the
+            // super admin can pick anything without leaving the dropdown.
+            $common = ['UTC','Africa/Tunis','Africa/Casablanca','Africa/Algiers','Africa/Cairo','Europe/Paris','Europe/London','America/New_York','America/Los_Angeles','Asia/Dubai','Asia/Riyadh','Asia/Tokyo'];
+            $rest = array_values(array_diff(timezone_identifiers_list(), $common));
+        @endphp
+        @foreach($common as $tz)
+            <option value="{{ $tz }}" @selected($currentTz === $tz)>{{ $tz }}</option>
+        @endforeach
+        <option disabled>──────────</option>
+        @foreach($rest as $tz)
+            <option value="{{ $tz }}" @selected($currentTz === $tz)>{{ $tz }}</option>
+        @endforeach
+    </select>
+    <small class="form-help">{{ __('ui.tenant_form_fields.timezone_hint') }}</small>
+    @error('timezone') <div class="form-error">{{ $message }}</div> @enderror
+</div>
+
+<div class="form-group" style="margin-top:16px;">
     <label class="form-label" for="settings">{{ __('ui.tenant_form_fields.settings') }}</label>
     <textarea id="settings" name="settings" class="form-control @error('settings') error @enderror" rows="6" placeholder='{{ __('ui.tenant_form_fields.settings_placeholder') }}'>{{ old('settings', $tenant?->settings ? json_encode($tenant->settings, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) : '') }}</textarea>
     @error('settings') <div class="form-error">{{ $message }}</div> @enderror

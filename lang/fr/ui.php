@@ -1183,6 +1183,8 @@ Toujours :
         'stripe_placeholder' => 'cus_xxx',
         'settings' => 'Paramètres (JSON)',
         'settings_placeholder' => '{"timezone":"UTC","locale":"en"}',
+        'timezone' => 'Fuseau horaire',
+        'timezone_hint' => 'Les rapports et les compteurs de réservations regroupent les jours et heures dans ce fuseau pour ce locataire.',
         'active_tenant' => 'Locataire actif',
         'initial_tenant_admin' => 'Administrateur initial du locataire',
         'create_first_admin' => 'Optionnel. Créez maintenant le premier compte administrateur de ce locataire.',

@@ -166,16 +166,21 @@ class ReportController extends Controller
 
     private function dailyVolume(?int $tenantId, $from, $to, int $period): array
     {
+        // CALC-010: bucket by tenant-local calendar day and build the axis in
+        // the same zone, otherwise a UTC+1 tenant sees traffic between 00:00
+        // and 01:00 local time filed on the previous day.
+        [$tz, $offset] = $this->tenantZone($tenantId);
+
         $rows = DB::table('conversations')
             ->whereBetween('created_at', [$from, $to])
             ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-            ->selectRaw('DATE(created_at) as day, COUNT(*) as cnt')
+            ->selectRaw('DATE(CONVERT_TZ(created_at, ?, ?)) as day, COUNT(*) as cnt', ['+00:00', $offset])
             ->groupBy('day')
             ->pluck('cnt', 'day');
 
         $result = [];
         for ($i = $period; $i >= 0; $i--) {
-            $day      = now()->subDays($i)->format('Y-m-d');
+            $day      = now($tz)->subDays($i)->format('Y-m-d');
             $result[] = ['day' => $day, 'count' => (int) ($rows[$day] ?? 0)];
         }
         return $result;
@@ -183,17 +188,44 @@ class ReportController extends Controller
 
     private function hourlyHeatmap(?int $tenantId, $from, $to): array
     {
+        // CALC-010: bucket by tenant-local hour, not UTC. Otherwise the
+        // heat-map is rotated by the tenant's UTC offset and the "busiest
+        // hour" it shows is not the busiest local hour.
+        [, $offset] = $this->tenantZone($tenantId);
+
         $rows = DB::table('messages')
             ->whereBetween('sent_at', [$from, $to])
             ->where('direction', 'in')
             ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-            ->selectRaw('HOUR(sent_at) as hr, COUNT(*) as cnt')
+            ->selectRaw('HOUR(CONVERT_TZ(sent_at, ?, ?)) as hr, COUNT(*) as cnt', ['+00:00', $offset])
             ->groupBy('hr')
             ->pluck('cnt', 'hr');
 
         return collect(range(0, 23))
             ->map(fn($h) => ['hour' => str_pad($h, 2, '0', STR_PAD_LEFT) . 'h', 'count' => (int) ($rows[$h] ?? 0)])
             ->toArray();
+    }
+
+    /**
+     * Resolve the tenant's IANA timezone + its current numeric offset (e.g.
+     * "+01:00") for MySQL CONVERT_TZ. Super-admin cross-tenant view falls
+     * back to the app default. The numeric offset is used rather than the
+     * IANA name because many MySQL installs don't have the timezone tables
+     * loaded and would otherwise return NULL from CONVERT_TZ. Trade-off is
+     * that DST transitions within the report window use the current offset
+     * throughout — acceptable for a Minor report finding.
+     */
+    private function tenantZone(?int $tenantId): array
+    {
+        if ($tenantId) {
+            $tenant = \App\Models\Tenant::find($tenantId);
+            $tz = $tenant?->effectiveTimezone() ?? config('app.timezone', 'UTC');
+        } else {
+            $tz = config('app.timezone', 'UTC');
+        }
+
+        $offset = now($tz)->format('P'); // "+01:00"
+        return [$tz, $offset];
     }
 
     private function stateBreakdown(?int $tenantId, $from, $to): array

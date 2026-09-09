@@ -1185,6 +1185,8 @@ Always:
         'stripe_placeholder' => 'cus_xxx',
         'settings' => 'Settings (JSON)',
         'settings_placeholder' => '{"timezone":"UTC","locale":"en"}',
+        'timezone' => 'Time zone',
+        'timezone_hint' => 'Reports and reservation counters use this zone to bucket calendar days and clock hours for this tenant.',
         'active_tenant' => 'Active tenant',
         'initial_tenant_admin' => 'Initial Tenant Admin',
         'create_first_admin' => 'Optional. Create the first admin account for this tenant now.',

@@ -11,7 +11,7 @@ class Tenant extends Model
 {
     protected $fillable = [
         'name', 'slug', 'subscription_status', 'subscription_starts_at', 'subscription_ends_at',
-        'plan_id', 'trial_ends_at', 'stripe_id', 'settings', 'is_active',
+        'plan_id', 'trial_ends_at', 'stripe_id', 'settings', 'timezone', 'is_active',
     ];
 
     protected $casts = [
@@ -72,5 +72,16 @@ class Tenant extends Model
         // the unified null=unlimited / 0=off semantic instead of doing a raw
         // numeric compare that treats null as 0.
         return (bool) $this->aiSettings?->hasQuota();
+    }
+
+    /**
+     * The IANA timezone identifier reports and reservation counters bucket
+     * dates in for this tenant. Falls back to the app default so an old row
+     * with a null/empty column still renders. CALC-010.
+     */
+    public function effectiveTimezone(): string
+    {
+        $tz = $this->timezone ?: config('app.timezone', 'UTC');
+        return in_array($tz, timezone_identifiers_list(), true) ? $tz : 'UTC';
     }
 }

@@ -76,6 +76,7 @@ class SuperAdminPlatformController extends Controller
                 'subscription_ends_at'   => $data['subscription_ends_at'] ?? null,
                 'stripe_id'              => $data['stripe_id'] ?? null,
                 'settings'               => $this->parseSettings($data['settings'] ?? null),
+                'timezone'               => $data['timezone'] ?: 'UTC',
                 'is_active'              => (bool) ($data['is_active'] ?? true),
             ]);
 
@@ -185,6 +186,7 @@ class SuperAdminPlatformController extends Controller
                 'subscription_ends_at'   => $endsAt,
                 'stripe_id'              => $data['stripe_id'] ?? null,
                 'settings'               => $this->parseSettings($data['settings'] ?? null),
+                'timezone'               => $data['timezone'] ?: $tenant->timezone ?: 'UTC',
                 'is_active'              => in_array($status, ['active', 'trial'], true),
             ]);
 
@@ -637,6 +639,9 @@ class SuperAdminPlatformController extends Controller
             'subscription_ends_at'   => 'nullable|date|after_or_equal:subscription_starts_at',
             'stripe_id'              => 'nullable|string|max:255',
             'settings'            => 'nullable|json',
+            // CALC-010: IANA identifier (e.g. Africa/Tunis). Validated against
+            // PHP's built-in list so a typo can't reach the report queries.
+            'timezone'            => ['nullable', 'string', 'max:64', Rule::in(timezone_identifiers_list())],
             'is_active'           => 'nullable|boolean',
             'admin_name'          => 'nullable|string|max:150',
             'admin_email'         => [

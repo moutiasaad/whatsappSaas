@@ -1180,6 +1180,8 @@ return [
         'stripe_placeholder' => 'cus_xxx',
         'settings' => 'الإعدادات (JSON)',
         'settings_placeholder' => '{"timezone":"UTC","locale":"en"}',
+        'timezone' => 'المنطقة الزمنية',
+        'timezone_hint' => 'التقارير وعدّادات الحجوزات تجمّع الأيام والساعات بهذه المنطقة لهذا المستأجر.',
         'active_tenant' => 'مستأجر نشط',
         'initial_tenant_admin' => 'مدير المستأجر الأول',
         'create_first_admin' => 'اختياري. أنشئ الآن أول حساب مدير لهذا المستأجر.',
