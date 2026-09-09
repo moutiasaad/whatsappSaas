@@ -35,3 +35,7 @@ Thumbs.db
 /storage/framework/deploy.lock
 /storage/framework/deploy.trigger
 /storage/logs/deploy.log
+
+# Pre-migration database dumps. These contain live user data (emails, password
+# hashes) and must never reach the repository.
+/storage/backups/
