@@ -898,7 +898,6 @@ return [
         'name' => 'اسم الخطة',
         'monthly_price' => 'السعر الشهري',
         'annual_price' => 'السعر السنوي',
-        'optional' => 'اختياري',
         'max_users' => 'أقصى عدد مستخدمين',
         'max_instances' => 'أقصى عدد حالات',
         'max_conversations_per_month' => 'أقصى محادثات / شهر',

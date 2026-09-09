@@ -19,7 +19,7 @@
     </div>
 
     <div class="form-group">
-        <label class="form-label" for="price_annual">{{ __('ui.plan_form_fields.annual_price') }} <span style="color:#94a3b8;font-weight:400">({{ __('ui.plan_form_fields.optional') }})</span></label>
+        <label class="form-label" for="price_annual">{{ __('ui.plan_form_fields.annual_price') }}</label>
         <input id="price_annual" type="number" min="0" step="0.01" name="price_annual" value="{{ old('price_annual', $plan?->price_annual) }}" class="form-control @error('price_annual') error @enderror">
         @error('price_annual') <div class="form-error">{{ $message }}</div> @enderror
     </div>

@@ -935,7 +935,6 @@ Always:
         'name' => 'Plan Name',
         'monthly_price' => 'Monthly Price',
         'annual_price' => 'Annual Price',
-        'optional' => 'optional',
         'max_users' => 'Max Users',
         'max_instances' => 'Max Instances',
         'max_conversations_per_month' => 'Max Conversations / Month',

@@ -935,7 +935,6 @@ Toujours :
         'name' => 'Nom du forfait',
         'monthly_price' => 'Prix mensuel',
         'annual_price' => 'Prix annuel',
-        'optional' => 'facultatif',
         'max_users' => 'Utilisateurs max',
         'max_instances' => 'Instances max',
         'max_conversations_per_month' => 'Conversations max / mois',
