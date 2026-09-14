@@ -20,7 +20,7 @@ class AiController extends Controller
                 'mode'                => 'off',
                 // Inherit from the tenant's plan — null (unlimited), 0 (off),
                 // or the configured cap. Same convention flows everywhere.
-                'monthly_token_quota' => $tenant?->plan?->ai_token_quota,
+                'monthly_message_quota' => $tenant?->plan?->ai_message_quota,
                 // CALC-011: seed alongside the quota so this creation path
                 // doesn't leave the row in the "lifetime quota" state that
                 // exhausts once and never rolls over.
@@ -37,7 +37,7 @@ class AiController extends Controller
             'system_prompt'        => 'nullable|string|max:10000',
             'escalation_keywords'  => 'nullable|array',
             'escalation_keywords.*'=> 'string|max:50',
-            'monthly_token_quota'  => 'nullable|integer|min:0',
+            'monthly_message_quota'  => 'nullable|integer|min:0',
         ]);
 
         $settings = AiSettings::updateOrCreate(
@@ -54,6 +54,18 @@ class AiController extends Controller
 
         try {
             $tenant = $request->user()->tenant;
+
+            // The sandbox makes a real API call, so it draws on the same monthly
+            // reply allowance as a customer-facing answer. Leaving it unmetered
+            // would be an open door around the plan's cap.
+            $settings = AiSettings::firstWhere('tenant_id', $request->user()->tenant_id);
+            if ($settings && !$settings->hasQuota()) {
+                return response()->json([
+                    'message' => __('ui.controller_messages.ai_quota_exhausted'),
+                    'code'    => 'ai_quota_exhausted',
+                ], 429);
+            }
+
             $client = new \Anthropic\Client(config('services.anthropic.key'));
 
             // anthropic-ai/sdk v0.23: `messages` is a property, create() takes named args.
@@ -64,9 +76,12 @@ class AiController extends Controller
                 system: $builder->buildSystemPrompt($tenant),
             );
 
+            $settings?->consumeReply();
+
             return response()->json([
-                'answer'      => $response->content[0]->text ?? '',
-                'tokens_used' => ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0),
+                'answer'          => $response->content[0]->text ?? '',
+                'replies_used'    => $settings?->ai_messages_used_this_period,
+                'replies_allowed' => $settings?->monthly_message_quota,
             ]);
 
         } catch (\Throwable $e) {

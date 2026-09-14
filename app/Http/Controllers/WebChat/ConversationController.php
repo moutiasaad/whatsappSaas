@@ -7,6 +7,7 @@ use App\Events\WebChat\WebChatConversationClosed;
 use App\Events\WebChat\WebChatConversationReleased;
 use App\Events\WebChat\WebChatMessageSent;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\WebChat\Conversation;
 use App\Models\WebChat\Message;
 use App\Services\AI\ConversationTitleGenerator;
@@ -227,6 +228,65 @@ class ConversationController extends Controller
             'conversation' => [
                 'uuid'   => $conversation->uuid,
                 'status' => $conversation->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Hand an assigned chat to a different agent.
+     *
+     * Supervisory only: an owning agent releases their own thread back to the
+     * pool rather than pushing it onto a named colleague, which is the same
+     * split ConversationPolicy::reassign() draws on the WhatsApp side. There is
+     * no team check because webchat conversations carry no team_id.
+     */
+    public function reassign(Request $request, string $uuid): JsonResponse
+    {
+        $conversation = $this->findConversationForCurrentTenantOrFail($request, $uuid);
+        $user         = $request->user();
+
+        if (!$user->isAdmin() && !$user->isSupervisor() && !$user->isSuperAdmin()) {
+            abort(403, 'not_allowed');
+        }
+
+        if ($conversation->isClosed()) {
+            return response()->json(['error' => 'conversation_closed'], 409);
+        }
+
+        if ($conversation->status !== Conversation::STATUS_ASSIGNED) {
+            return response()->json(['error' => 'not_assigned'], 409);
+        }
+
+        $data = $request->validate(['agent_id' => 'required|integer']);
+
+        $agent = User::find($data['agent_id']);
+
+        // Same eligibility the picker filters on, restated here because the
+        // endpoint is reachable without it.
+        if (
+            !$agent
+            || !$agent->isAgent()
+            || (string) $agent->tenant_id !== (string) $conversation->tenant_id
+        ) {
+            return response()->json(['message' => __('ui.controller_messages.assignee_not_eligible')], 422);
+        }
+
+        $conversation->claimed_by       = $agent->id;
+        $conversation->claimed_at       = now();
+        $conversation->last_activity_at = now();
+        $conversation->save();
+
+        // The same event a claim fires, so the new owner's inbox and the
+        // visitor's widget both react exactly as they would to a fresh claim.
+        rescue(fn () => event(new WebChatConversationClaimed($conversation->fresh(), $agent)));
+
+        return response()->json([
+            'conversation' => [
+                'uuid'       => $conversation->uuid,
+                'status'     => $conversation->status,
+                'claimed_by' => $conversation->claimed_by,
+                'claimed_at' => $conversation->claimed_at?->toISOString(),
+                'claimer'    => ['id' => $agent->id, 'name' => $agent->name],
             ],
         ]);
     }

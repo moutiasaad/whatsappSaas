@@ -8,524 +8,553 @@
 
 @section('content')
 @php
-$panelPrefix = auth()->user()->routeNamePrefix();
-$languages = [
-    'auto' => ['label' => __('ui.ai_settings_page.lang_auto'),  'flag' => '🌐', 'code' => 'Auto'],
-    'fr'   => ['label' => __('ui.ai_settings_page.lang_fr'),    'flag' => '🇫🇷', 'code' => 'FR'],
-    'en'   => ['label' => __('ui.ai_settings_page.lang_en'),    'flag' => '🇬🇧', 'code' => 'EN'],
-    'ar'   => ['label' => __('ui.ai_settings_page.lang_ar'),    'flag' => '🇸🇦', 'code' => 'AR'],
-    'es'   => ['label' => __('ui.ai_settings_page.lang_es'),    'flag' => '🇪🇸', 'code' => 'ES'],
-    'pt'   => ['label' => __('ui.ai_settings_page.lang_pt'),    'flag' => '🇵🇹', 'code' => 'PT'],
-    'de'   => ['label' => __('ui.ai_settings_page.lang_de'),    'flag' => '🇩🇪', 'code' => 'DE'],
-    'it'   => ['label' => __('ui.ai_settings_page.lang_it'),    'flag' => '🇮🇹', 'code' => 'IT'],
-];
-$modes = [
-    'off' => [
-        'label' => __('ui.ai_settings_page.modes.off.label'),
-        'desc'  => __('ui.ai_settings_page.modes.off.desc'),
-        'color' => '#6b7280',
-        'shadow'=> 'rgba(107,114,128,.18)',
-        'bg'    => 'rgba(107,114,128,.07)',
-        'icon'  => 'ri-close-circle-line',
-    ],
-    'suggestion' => [
-        'label' => __('ui.ai_settings_page.modes.suggestion.label'),
-        'desc'  => __('ui.ai_settings_page.modes.suggestion.desc'),
-        'color' => '#f59e0b',
-        'shadow'=> 'rgba(245,158,11,.22)',
-        'bg'    => 'rgba(245,158,11,.07)',
-        'icon'  => 'ri-lightbulb-flash-line',
-    ],
-    'autonomous' => [
-        'label' => __('ui.ai_settings_page.modes.autonomous.label'),
-        'desc'  => __('ui.ai_settings_page.modes.autonomous.desc'),
-        'color' => '#10b981',
-        'shadow'=> 'rgba(16,185,129,.22)',
-        'bg'    => 'rgba(16,185,129,.07)',
-        'icon'  => 'ri-flashlight-line',
-    ],
-    'hybrid' => [
-        'label' => __('ui.ai_settings_page.modes.hybrid.label'),
-        'desc'  => __('ui.ai_settings_page.modes.hybrid.desc'),
-        'color' => '#15b6a8',
-        'shadow'=> 'rgba(21,182,168,.22)',
-        'bg'    => 'rgba(21,182,168,.07)',
-        'icon'  => 'ri-git-branch-line',
-    ],
-];
+    $panelPrefix = auth()->user()->routeNamePrefix();
+
+    $languages = [
+        'auto' => ['label' => __('ui.ai_settings_page.lang_auto'), 'flag' => '🌐', 'code' => 'Auto'],
+        'fr'   => ['label' => __('ui.ai_settings_page.lang_fr'),   'flag' => '🇫🇷', 'code' => 'FR'],
+        'en'   => ['label' => __('ui.ai_settings_page.lang_en'),   'flag' => '🇬🇧', 'code' => 'EN'],
+        'ar'   => ['label' => __('ui.ai_settings_page.lang_ar'),   'flag' => '🇸🇦', 'code' => 'AR'],
+        'es'   => ['label' => __('ui.ai_settings_page.lang_es'),   'flag' => '🇪🇸', 'code' => 'ES'],
+        'pt'   => ['label' => __('ui.ai_settings_page.lang_pt'),   'flag' => '🇵🇹', 'code' => 'PT'],
+        'de'   => ['label' => __('ui.ai_settings_page.lang_de'),   'flag' => '🇩🇪', 'code' => 'DE'],
+        'it'   => ['label' => __('ui.ai_settings_page.lang_it'),   'flag' => '🇮🇹', 'code' => 'IT'],
+    ];
+
+    $modes = [
+        'off'        => ['color' => '#6b7280', 'icon' => 'ri-close-circle-line'],
+        'suggestion' => ['color' => '#f59e0b', 'icon' => 'ri-lightbulb-flash-line'],
+        'autonomous' => ['color' => '#10b981', 'icon' => 'ri-flashlight-line'],
+        'hybrid'     => ['color' => '#15b6a8', 'icon' => 'ri-git-branch-line'],
+    ];
+
+    $initial = [
+        'mode'                => (string) old('mode', $settings->mode),
+        'whatsapp_enabled'    => (bool)   old('whatsapp_enabled',   $settings->whatsapp_enabled ?? true),
+        'webchat_enabled'     => (bool)   old('webchat_enabled',    $settings->webchat_enabled ?? true),
+        'reply_when_claimed'  => (bool)   old('reply_when_claimed', $settings->reply_when_claimed ?? false),
+        'reply_language'      => (string) old('reply_language',     $settings->reply_language ?? 'auto'),
+        'suggestion_count'    => (int)    old('suggestion_count',   $settings->suggestion_count ?? 3),
+        'system_prompt'       => (string) old('system_prompt',      $settings->system_prompt ?? ''),
+        // The field posts as a JSON string (the controller json_decodes it), so
+        // a failed validation round-trip has to be decoded back into an array.
+        'escalation_keywords' => array_values(
+            is_string(old('escalation_keywords'))
+                ? (array) (json_decode(old('escalation_keywords'), true) ?: [])
+                : (array) ($settings->escalation_keywords ?? [])
+        ),
+    ];
+
+    // A section is display:none unless active, so a validation error inside a
+    // collapsed one would be invisible. Open the section that failed.
+    $sectionOfField = [
+        'mode' => 'mode',
+        'whatsapp_enabled' => 'channels', 'webchat_enabled' => 'channels', 'reply_when_claimed' => 'channels',
+        'reply_language' => 'replies', 'suggestion_count' => 'replies',
+        'system_prompt' => 'prompt',
+        'escalation_keywords' => 'escalation',
+    ];
+    $openSection = 'mode';
+    foreach ($errors->keys() as $key) {
+        $root = explode('.', $key)[0];
+        if (isset($sectionOfField[$root])) { $openSection = $sectionOfField[$root]; break; }
+    }
+
+    // Read-only allowance, in AI replies per month. Set by the plan:
+    // null = unlimited, 0 = AI off on this plan, N = hard cap.
+    $quota      = $settings->monthly_message_quota;
+    $used       = (int) $settings->ai_messages_used_this_period;
+    $quotaPct   = $settings->quotaPercentage();
+    $quotaReset = $settings->quota_reset_at;
+
+    $i18n = [
+        'modeLabels' => [
+            'off'        => __('ui.ai_settings_page.modes.off.label'),
+            'suggestion' => __('ui.ai_settings_page.modes.suggestion.label'),
+            'autonomous' => __('ui.ai_settings_page.modes.autonomous.label'),
+            'hybrid'     => __('ui.ai_settings_page.modes.hybrid.label'),
+        ],
+        'langLabels' => collect($languages)->map(fn ($l) => $l['code'])->all(),
+        'chNone'     => __('ui.ai_settings_page.channels_none'),
+        'chBoth'     => __('ui.ai_settings_page.channels_both'),
+        'chWhatsapp' => __('ui.ai_settings_page.channels_whatsapp'),
+        'chWebchat'  => __('ui.ai_settings_page.channels_webchat'),
+    ];
 @endphp
 
-<style>
-.ai-mode-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: .75rem;
-}
-@media (max-width: 1100px) { .ai-mode-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px)  { .ai-mode-grid { grid-template-columns: 1fr; } }
+{{-- The console fills the viewport and manages its own scroll regions, so the
+     shared .page-content padding/height is neutralised for this route. --}}
+<script>document.body.classList.add('wc-host');</script>
 
-.ai-mode-card {
-    border: 1.5px solid var(--card-border);
-    border-radius: .875rem;
-    padding: 1rem;
-    text-align: start;
-    cursor: pointer;
-    transition: border-color .16s, box-shadow .16s, background .16s;
-    width: 100%;
-    background: var(--card-bg);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: .5rem;
-    min-height: 100%;
-}
-.ai-mode-card:hover { border-color: var(--border-2, #cbd5e1); }
-.ai-mode-card .mode-top { display: flex; align-items: center; gap: .625rem; }
-.ai-mode-card .mode-icon {
-    width: 2rem; height: 2rem; border-radius: .5rem;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; flex-shrink: 0;
-    transition: background .16s, color .16s;
-    background: var(--page-bg); color: var(--text-muted);
-}
-.ai-mode-card .mode-label {
-    font-weight: 700; font-size: .875rem; letter-spacing: -.01em;
-    color: var(--text-primary); transition: color .16s;
-}
-.ai-mode-card .mode-check {
-    margin-inline-start: auto; width: 1.05rem; height: 1.05rem; border-radius: 50%;
-    border: 1.5px solid var(--card-border); display: grid; place-items: center;
-    color: #fff; font-size: .6rem; flex-shrink: 0; transition: .16s;
-}
-.ai-mode-card .mode-desc {
-    font-size: .75rem; color: var(--text-muted); line-height: 1.45;
-}
+<div class="wv-console" x-data="aiSettingsConsole()" x-cloak>
+<form method="POST" action="{{ route($panelPrefix . '.ai-settings.update') }}" class="wc-shell" @submit="onSubmit()">
+    @csrf
+    @method('PUT')
 
-/* channel switches */
-.ai-channel {
-    display: flex; align-items: flex-start; gap: .875rem;
-    padding: 1rem; border: 1.5px solid var(--card-border);
-    border-radius: .875rem; transition: border-color .16s, background .16s;
-}
-.ai-channel.on { border-color: var(--brand); background: var(--brand-xlight); }
-.ai-channel .ch-icon {
-    width: 2.25rem; height: 2.25rem; border-radius: .625rem; flex-shrink: 0;
-    display: grid; place-items: center; font-size: 1.05rem; color: #fff;
-}
-.ai-channel .ch-m { flex: 1; min-width: 0; }
-.ai-channel .ch-name { font-size: .875rem; font-weight: 600; color: var(--text-primary); }
-.ai-channel .ch-desc { font-size: .75rem; color: var(--text-muted); margin-top: .15rem; line-height: 1.45; }
-.ai-switch {
-    width: 2.5rem; height: 1.4rem; border-radius: 999px; background: var(--card-border);
-    position: relative; flex-shrink: 0; transition: background .16s; border: none; cursor: pointer;
-    margin-top: .15rem;
-}
-.ai-switch::after {
-    content: ''; position: absolute; top: .175rem; inset-inline-start: .175rem;
-    width: 1.05rem; height: 1.05rem; border-radius: 50%; background: #fff;
-    transition: inset-inline-start .16s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
-}
-.ai-switch.on { background: var(--brand); }
-.ai-switch.on::after { inset-inline-start: 1.275rem; }
-.ai-switch:disabled { opacity: .45; cursor: not-allowed; }
-
-.lang-btn {
-    border: 1.5px solid var(--card-border); border-radius: .625rem;
-    padding: .5rem .375rem; cursor: pointer; font-size: .8rem;
-    text-align: center; transition: all .15s; background: transparent;
-    color: var(--text-secondary);
-    display: flex; flex-direction: column; align-items: center; gap: .2rem;
-}
-.lang-btn:hover { border-color: var(--brand); color: var(--brand); }
-.lang-btn .lang-flag { font-size: 1.125rem; line-height: 1; }
-.lang-btn .lang-code { font-size: .7rem; font-weight: 700; letter-spacing: .04em; }
-.count-btn {
-    width: 2.5rem; height: 2.5rem; border: 1.5px solid var(--card-border); border-radius: .625rem;
-    cursor: pointer; font-size: .875rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s; flex-shrink: 0;
-    background: transparent; color: var(--text-secondary);
-}
-.count-btn:hover { border-color: var(--brand); color: var(--brand); }
-.info-badge {
-    padding: .75rem 1rem; border-radius: .625rem;
-    display: flex; gap: .625rem; align-items: flex-start;
-    font-size: .8125rem; color: var(--text-secondary);
-}
-</style>
-
-<div x-data="aiSettingsPage()" x-cloak>
-
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-title">{{ __('ui.ai_settings_page.page_title') }}</div>
-            <div class="page-subtitle">{{ __('ui.ai_settings_page.subtitle') }}</div>
+    {{-- ══ PAGE HEAD ═══════════════════════════════════════════════ --}}
+    <div class="wc-phead">
+        <div class="m">
+            <h1>
+                {{ __('ui.ai_settings_page.page_title') }}
+                <span class="wc-pill" :class="form.mode === 'off' ? 'off' : 'on'">
+                    <i></i><span x-text="i18n.modeLabels[form.mode]"></span>
+                </span>
+            </h1>
+            <p>{{ __('ui.ai_settings_page.subtitle') }}</p>
+        </div>
+        <div class="acts">
+            <span class="wc-dirty" :class="dirty ? 'on' : ''">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                {{ __('ui.ai_settings_page.unsaved') }}
+            </span>
+            <button type="button" class="wc-btn g" @click="discard()" :disabled="!dirty">{{ __('ui.ai_settings_page.discard') }}</button>
+            <button type="submit" class="wc-btn p" :disabled="saving">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                {{ __('ui.ai_settings_page.save_settings') }}
+            </button>
         </div>
     </div>
 
-    <form action="{{ route($panelPrefix . '.ai-settings.update') }}" method="POST" data-loading>
-        @csrf @method('PUT')
-        <input type="hidden" name="mode" :value="selectedMode">
+    <div class="wc-body">
 
-        {{-- ── Mode selector ──────────────────────────────────────────────── --}}
-        <div class="card" style="margin-bottom:1.25rem">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">{{ __('ui.ai_settings_page.ai_mode') }}</div>
-                    <div class="card-subtitle">{{ __('ui.ai_settings_page.ai_mode_hint') }}</div>
-                </div>
-            </div>
-            <div style="padding:0 1.5rem 1.5rem">
-                <div class="ai-mode-grid">
-                    @foreach($modes as $value => $mode)
-                    <button type="button"
-                            class="ai-mode-card"
-                            @click="selectedMode = '{{ $value }}'"
-                            :style="selectedMode === '{{ $value }}'
-                                ? 'border-color:{{ $mode['color'] }};background:{{ $mode['bg'] }};box-shadow:0 3px 14px {{ $mode['shadow'] }};'
-                                : ''">
-                        <span class="mode-top">
-                            <span class="mode-icon"
-                                  :style="selectedMode === '{{ $value }}' ? 'background:{{ $mode['color'] }};color:#fff;' : ''">
-                                <i class="{{ $mode['icon'] }}"></i>
-                            </span>
-                            <span class="mode-label"
-                                  :style="selectedMode === '{{ $value }}' ? 'color:{{ $mode['color'] }}' : ''">
-                                {{ $mode['label'] }}
-                            </span>
-                            <span class="mode-check"
-                                  :style="selectedMode === '{{ $value }}'
-                                      ? 'background:{{ $mode['color'] }};border-color:{{ $mode['color'] }}'
-                                      : ''">
-                                <i class="ri-check-line" x-show="selectedMode === '{{ $value }}'"></i>
-                            </span>
-                        </span>
-                        <span class="mode-desc">{{ $mode['desc'] }}</span>
-                    </button>
-                    @endforeach
-                </div>
-            </div>
-        </div>
+        {{-- ══ SECTION NAV ══════════════════════════════════════════ --}}
+        <nav class="wc-snav">
+            <div class="lbl">{{ __('ui.ai_settings_page.nav_settings') }}</div>
 
-        {{-- ── Channels: where the AI is allowed to answer ─────────────────── --}}
-        <div class="card" style="margin-bottom:1.25rem" x-show="selectedMode !== 'off'">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">{{ __('ui.ai_settings_page.channels') }}</div>
-                    <div class="card-subtitle">{{ __('ui.ai_settings_page.channels_hint') }}</div>
-                </div>
-            </div>
-            <div style="padding:0 1.5rem 1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem" class="ai-channels">
-                <div class="ai-channel" :class="{ 'on': whatsappEnabled }">
-                    <div class="ch-icon" style="background:#25a35a">
-                        <i class="ri-whatsapp-line"></i>
-                    </div>
-                    <div class="ch-m">
-                        <div class="ch-name">{{ __('ui.ai_settings_page.channel_whatsapp') }}</div>
-                        <div class="ch-desc">{{ __('ui.ai_settings_page.channel_whatsapp_hint') }}</div>
-                    </div>
-                    <button type="button" class="ai-switch" :class="{ 'on': whatsappEnabled }"
-                            @click="whatsappEnabled = !whatsappEnabled"
-                            :aria-pressed="whatsappEnabled ? 'true' : 'false'"
-                            aria-label="{{ __('ui.ai_settings_page.channel_whatsapp') }}"></button>
-                    <input type="hidden" name="whatsapp_enabled" :value="whatsappEnabled ? 1 : 0">
-                </div>
-
-                <div class="ai-channel" :class="{ 'on': webchatEnabled }">
-                    <div class="ch-icon" style="background:#4f6bed">
-                        <i class="ri-chat-smile-2-line"></i>
-                    </div>
-                    <div class="ch-m">
-                        <div class="ch-name">{{ __('ui.ai_settings_page.channel_live_chat') }}</div>
-                        <div class="ch-desc">{{ __('ui.ai_settings_page.channel_live_chat_hint') }}</div>
-                    </div>
-                    <button type="button" class="ai-switch" :class="{ 'on': webchatEnabled }"
-                            @click="webchatEnabled = !webchatEnabled"
-                            :aria-pressed="webchatEnabled ? 'true' : 'false'"
-                            aria-label="{{ __('ui.ai_settings_page.channel_live_chat') }}"></button>
-                    <input type="hidden" name="webchat_enabled" :value="webchatEnabled ? 1 : 0">
-                </div>
-            </div>
-
-            <div style="padding:0 1.5rem 1.5rem">
-                <div class="ai-channel" :class="{ 'on': replyWhenClaimed }" style="padding:.875rem 1rem">
-                    <div class="ch-m">
-                        <div class="ch-name">{{ __('ui.ai_settings_page.reply_when_claimed') }}</div>
-                        <div class="ch-desc">{{ __('ui.ai_settings_page.reply_when_claimed_hint') }}</div>
-                    </div>
-                    <button type="button" class="ai-switch" :class="{ 'on': replyWhenClaimed }"
-                            @click="replyWhenClaimed = !replyWhenClaimed"
-                            :aria-pressed="replyWhenClaimed ? 'true' : 'false'"
-                            aria-label="{{ __('ui.ai_settings_page.reply_when_claimed') }}"></button>
-                    <input type="hidden" name="reply_when_claimed" :value="replyWhenClaimed ? 1 : 0">
-                </div>
-            </div>
-
-            <div style="padding:0 1.5rem 1.5rem" x-show="!whatsappEnabled && !webchatEnabled">
-                <div class="info-badge" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25)">
-                    <i class="ri-alert-line" style="color:#d97706;font-size:1rem;margin-top:.1rem;flex-shrink:0"></i>
-                    <span>{{ __('ui.ai_settings_page.no_channel_warning') }}</span>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── Two-column layout ───────────────────────────────────────────── --}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;">
-
-            {{-- LEFT COLUMN --}}
-            <div style="display:flex;flex-direction:column;gap:1.5rem;">
-
-                {{-- System Prompt --}}
-                <div class="card" x-show="selectedMode !== 'off'">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">{{ __('ui.ai_settings_page.system_prompt') }}</div>
-                            <div class="card-subtitle">{{ __('ui.ai_settings_page.system_prompt_hint') }}</div>
-                        </div>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;">
-                        <textarea name="system_prompt" rows="8"
-                                  class="form-control @error('system_prompt') error @enderror"
-                                  placeholder="{{ __('ui.ai_settings_page.system_prompt_placeholder', ['tenant' => auth()->user()->tenant->name]) }}">{{ old('system_prompt', $settings->system_prompt) }}</textarea>
-                        @error('system_prompt') <div class="form-error">{{ $message }}</div> @enderror
-                        <div class="form-hint">{{ __('ui.ai_settings_page.system_prompt_footer') }}</div>
-                    </div>
-                </div>
-
-                {{-- Off state placeholder --}}
-                <div class="card" x-show="selectedMode === 'off'" style="padding:2.5rem;text-align:center;">
-                    <div style="width:3.5rem;height:3.5rem;border-radius:50%;background:rgba(107,114,128,.1);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#6b7280;">
-                        <i class="ri-robot-off-line"></i>
-                    </div>
-                    <div style="font-weight:700;font-size:.9375rem;color:var(--text-primary);margin-bottom:.375rem;">
-                        {{ __('ui.ai_settings_page.ai_disabled') }}
-                    </div>
-                    <div style="font-size:.8125rem;color:var(--text-muted);max-width:22rem;margin:0 auto;">
-                        {{ __('ui.ai_settings_page.ai_disabled_desc') }}
-                    </div>
-                </div>
-
-                {{-- Escalation Keywords --}}
-                <div class="card" x-show="selectedMode !== 'off'"
-                     x-data="keywordManager(@json($settings->escalation_keywords ?? []))">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">{{ __('ui.ai_settings_page.escalation_keywords') }}</div>
-                            <div class="card-subtitle">{{ __('ui.ai_settings_page.escalation_keywords_hint') }}</div>
-                        </div>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;">
-                        <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-bottom:.75rem;min-height:2.5rem;padding:.625rem .75rem;background:var(--page-bg);border-radius:.625rem;border:1px solid var(--card-border);">
-                            <template x-if="keywords.length === 0">
-                                <span style="font-size:.75rem;color:var(--text-muted);align-self:center;">
-                                    {{ __('ui.ai_settings_page.no_keywords') }}
-                                </span>
-                            </template>
-                            <template x-for="(kw, i) in keywords" :key="i">
-                                <span style="display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .625rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:999px;font-size:.8125rem;color:#ef4444;">
-                                    <span x-text="kw"></span>
-                                    <button type="button" @click="remove(i)"
-                                            style="background:none;border:none;cursor:pointer;color:#ef4444;padding:0;line-height:1;font-size:.875rem;display:flex;align-items:center;opacity:.7;transition:opacity .1s;"
-                                            onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7">
-                                        <i class="ri-close-line"></i>
-                                    </button>
-                                </span>
-                            </template>
-                        </div>
-                        <div style="display:flex;gap:.5rem;">
-                            <input type="text" x-model="newKw"
-                                   @keydown.enter.prevent="add()"
-                                   @keydown.comma.prevent="add()"
-                                   placeholder="{{ __('ui.ai_settings_page.keyword_placeholder') }}"
-                                   class="form-control" style="flex:1;">
-                            <button type="button" @click="add()" class="btn btn-outline btn-sm">
-                                <i class="ri-add-line"></i> {{ __('ui.add') }}
-                            </button>
-                        </div>
-                        <div class="form-hint" style="margin-top:.5rem;">{{ __('ui.ai_settings_page.keyword_hint') }}</div>
-                        <input type="hidden" name="escalation_keywords" :value="JSON.stringify(keywords)">
-                    </div>
-                </div>
-
-            </div>
-
-            {{-- RIGHT COLUMN --}}
-            <div style="display:flex;flex-direction:column;gap:1.5rem;">
-
-                {{-- Language + Suggestion Settings --}}
-                <div class="card" x-show="selectedMode !== 'off'">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">{{ __('ui.ai_settings_page.reply_settings') }}</div>
-                            <div class="card-subtitle">{{ __('ui.ai_settings_page.reply_settings_hint') }}</div>
-                        </div>
-                    </div>
-                    <div style="padding:0 1.5rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
-
-                        {{-- Reply Language --}}
-                        <div class="form-group"
-                             x-data="{ lang: '{{ old('reply_language', $settings->reply_language ?? 'auto') }}' }">
-                            <label class="form-label">{{ __('ui.ai_settings_page.reply_language') }}</label>
-                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:.375rem;">
-                                @foreach($languages as $code => $lang)
-                                <button type="button"
-                                        class="lang-btn"
-                                        @click="lang = '{{ $code }}'"
-                                        :style="lang === '{{ $code }}'
-                                            ? 'border-color:var(--brand);background:rgba(16,185,129,.08);color:var(--brand);font-weight:600;'
-                                            : ''">
-                                    <span class="lang-flag">{{ $lang['flag'] }}</span>
-                                    <span class="lang-code">{{ $lang['code'] }}</span>
-                                    <span style="font-size:.7rem;">{{ $lang['label'] }}</span>
-                                </button>
-                                @endforeach
-                            </div>
-                            <div class="form-hint" style="margin-top:.375rem;">{{ __('ui.ai_settings_page.reply_language_hint') }}</div>
-                            <input type="hidden" name="reply_language" :value="lang">
-                        </div>
-
-                        {{-- Suggestion count --}}
-                        <div x-show="selectedMode === 'suggestion' || selectedMode === 'hybrid'">
-                            <label class="form-label">{{ __('ui.ai_settings_page.suggestion_count') }}</label>
-                            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.375rem;"
-                                 x-data="{ count: {{ old('suggestion_count', $settings->suggestion_count ?? 3) }} }">
-                                @foreach([1,2,3,4,5] as $n)
-                                <button type="button"
-                                        class="count-btn"
-                                        @click="count = {{ $n }}"
-                                        :style="count === {{ $n }}
-                                            ? 'background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 2px 8px rgba(16,185,129,.3);'
-                                            : ''">
-                                    {{ $n }}
-                                </button>
-                                @endforeach
-                                <span style="font-size:.8125rem;color:var(--text-muted);margin-left:.25rem;">
-                                    {{ __('ui.ai_settings_page.suggestions_per_message') }}
-                                </span>
-                                <input type="hidden" name="suggestion_count" :value="count">
-                            </div>
-                            <div class="form-hint" style="margin-top:.375rem;">
-                                {{ __('ui.ai_settings_page.suggestion_count_hint') }}
-                            </div>
-                        </div>
-
-                        {{-- Autonomous info --}}
-                        <div x-show="selectedMode === 'autonomous'"
-                             class="info-badge" style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);">
-                            <i class="ri-flashlight-line" style="color:#10b981;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
-                            <span>{{ __('ui.ai_settings_page.autonomous_info') }}</span>
-                        </div>
-
-                        {{-- Hybrid info --}}
-                        <div x-show="selectedMode === 'hybrid'"
-                             class="info-badge" style="background:rgba(21,182,168,.06);border:1px solid rgba(21,182,168,.2);">
-                            <i class="ri-git-branch-line" style="color:#15b6a8;font-size:1rem;margin-top:.1rem;flex-shrink:0;"></i>
-                            <span>{{ __('ui.ai_settings_page.hybrid_info') }}</span>
-                        </div>
-
-                    </div>
-                </div>
-
-                {{-- Token usage — plan-driven, read-only. Tenants see what
-                     their current plan gives them and how much is left this
-                     period. null = unlimited, 0 = AI off, positive = cap. --}}
-                @php
-                    $q     = $settings->monthly_token_quota;
-                    $used  = (int) $settings->tokens_used_this_period;
-                    $pct   = $settings->quotaPercentage();
-                    $reset = $settings->quota_reset_at;
-                @endphp
-                <div style="padding:1rem 1.25rem;background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.14);border-radius:.875rem;margin-bottom:1rem;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.5rem;">
-                        <div style="display:flex;gap:.75rem;align-items:center;">
-                            <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(37,99,235,.14);display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;">
-                                <i class="ri-coins-line"></i>
-                            </div>
-                            <div>
-                                <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);">{{ __('ui.ai_settings_page.usage_card_title') }}</div>
-                                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem;">{{ __('ui.ai_settings_page.usage_card_hint') }}</div>
-                            </div>
-                        </div>
-                        <div style="text-align:end;font-size:.875rem;font-weight:600;color:var(--text-primary);white-space:nowrap;">
-                            @if(is_null($q))
-                                {{ __('ui.ai_settings_page.usage_unlimited') }}
-                            @elseif($q === 0)
-                                <span style="color:#dc2626">{{ __('ui.ai_settings_page.usage_ai_off') }}</span>
-                            @else
-                                {{ number_format($used) }} / {{ number_format($q) }}
-                            @endif
-                        </div>
-                    </div>
-                    @if(!is_null($q) && $q > 0)
-                        <div style="height:6px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden;">
-                            <div style="height:100%;background:@if($pct >= 90) #dc2626 @elseif($pct >= 70) #f59e0b @else #2563eb @endif;width:{{ min(100, max(0, $pct)) }}%;transition:width .3s"></div>
-                        </div>
-                    @endif
-                    @if($reset && !is_null($q) && $q !== 0)
-                        <div style="font-size:.7rem;color:var(--text-muted);margin-top:.5rem;text-align:end;">
-                            {{ __('ui.ai_settings_page.usage_resets_on', ['date' => $reset->format('Y-m-d')]) }}
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Knowledge Base link --}}
-                <div style="padding:1rem 1.25rem;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:.875rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-                    <div style="display:flex;gap:.75rem;align-items:center;">
-                        <div style="width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(16,185,129,.15);display:flex;align-items:center;justify-content:center;color:var(--brand);flex-shrink:0;">
-                            <i class="ri-book-2-line"></i>
-                        </div>
-                        <div>
-                            <div style="font-size:.875rem;font-weight:600;color:var(--text-primary);">
-                                {{ __('ui.ai_settings_page.knowledge_base') }}
-                            </div>
-                            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.125rem;">
-                                {{ $knowledgeCount }} {{ __('ui.ai_settings_page.entries') }} · {{ __('ui.ai_settings_page.knowledge_base_hint') }}
-                            </div>
-                        </div>
-                    </div>
-                    <a href="{{ route($panelPrefix . '.knowledge.index') }}" class="btn btn-outline btn-sm" style="flex-shrink:0;">
-                        <i class="ri-external-link-line"></i> {{ __('ui.manage') }}
-                    </a>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- Save / Cancel --}}
-        <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;gap:.5rem;padding-top:1rem;border-top:1px solid var(--card-border);">
-            <a href="{{ route($panelPrefix . '.dashboard') }}" class="btn btn-outline">{{ __('ui.cancel') }}</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="ri-save-3-line"></i> {{ __('ui.ai_settings_page.save_settings') }}
+            <button type="button" class="wc-sn" :class="section === 'mode' ? 'on' : ''" @click="go('mode')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_mode') }}</span>
             </button>
-        </div>
-    </form>
 
+            <button type="button" class="wc-sn" :class="section === 'channels' ? 'on' : ''" @click="go('channels')" x-show="form.mode !== 'off'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 013.6 11.5a8.4 8.4 0 018.4-8.4 8.4 8.4 0 019 8.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_channels') }}</span>
+                <svg class="warn" width="14" height="14" viewBox="0 0 24 24" fill="none" x-show="!form.whatsapp_enabled && !form.webchat_enabled"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'replies' ? 'on' : ''" @click="go('replies')" x-show="form.mode !== 'off'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.4 2.5 15.6 0 18M12 3c-2.5 2.4-2.5 15.6 0 18" stroke="currentColor" stroke-width="2"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_replies') }}</span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'prompt' ? 'on' : ''" @click="go('prompt')" x-show="form.mode !== 'off'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="2"/><path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_prompt') }}</span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'escalation' ? 'on' : ''" @click="go('escalation')" x-show="form.mode !== 'off'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_escalation') }}</span>
+                <span class="n" x-text="form.escalation_keywords.length"></span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'usage' ? 'on' : ''" @click="go('usage')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span>{{ __('ui.ai_settings_page.nav_usage') }}</span>
+            </button>
+        </nav>
+
+        {{-- ══ FORM ═════════════════════════════════════════════════ --}}
+        <div class="wc-form" x-ref="formScroll"><div class="wc-fwrap">
+
+            {{-- ── MODE ────────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'mode'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.ai_mode') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.ai_mode_hint') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-modes">
+                        @foreach ($modes as $key => $mode)
+                            <button type="button" class="wc-mode" style="--acc:{{ $mode['color'] }}"
+                                    :class="form.mode === '{{ $key }}' ? 'on' : ''"
+                                    @click="form.mode = '{{ $key }}'">
+                                <span class="top">
+                                    <span class="ico"><i class="{{ $mode['icon'] }}"></i></span>
+                                    <span class="lbl">{{ __('ui.ai_settings_page.modes.' . $key . '.label') }}</span>
+                                    <span class="tick"><i class="ri-check-line" x-show="form.mode === '{{ $key }}'"></i></span>
+                                </span>
+                                <span class="desc">{{ __('ui.ai_settings_page.modes.' . $key . '.desc') }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="mode" :value="form.mode">
+                    @error('mode') <div class="wc-err">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="wc-fld" x-show="form.mode === 'autonomous'">
+                    <div class="wc-note" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:#10b981"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        <div>{{ __('ui.ai_settings_page.autonomous_info') }}</div>
+                    </div>
+                </div>
+
+                <div class="wc-fld" x-show="form.mode === 'hybrid'">
+                    <div class="wc-note" style="background:var(--wc-teal-50);border-color:var(--wc-teal-100);color:var(--wc-teal-d)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--wc-teal-l)"><path d="M6 3v12a3 3 0 003 3h9M18 3v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="3" r="1.6" fill="currentColor"/><circle cx="18" cy="3" r="1.6" fill="currentColor"/></svg>
+                        <div>{{ __('ui.ai_settings_page.hybrid_info') }}</div>
+                    </div>
+                </div>
+
+                <div class="wc-fld" x-show="form.mode === 'off'">
+                    <div class="wc-blank">
+                        <div class="ico"><i class="ri-robot-2-line" style="font-size:26px"></i></div>
+                        <div class="t">{{ __('ui.ai_settings_page.ai_disabled') }}</div>
+                        <div class="s">{{ __('ui.ai_settings_page.ai_disabled_desc') }}</div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- ── CHANNELS ────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'channels'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.channels') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.channels_hint') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow" :class="form.whatsapp_enabled ? 'hi' : ''">
+                        <span class="ico" style="background:#25a35a"><i class="ri-whatsapp-line"></i></span>
+                        <div class="m">
+                            <div class="n">{{ __('ui.ai_settings_page.channel_whatsapp') }}</div>
+                            <div class="s">{{ __('ui.ai_settings_page.channel_whatsapp_hint') }}</div>
+                        </div>
+                        <button type="button" class="wc-tg" :class="form.whatsapp_enabled ? 'on' : ''"
+                                role="switch" :aria-checked="form.whatsapp_enabled ? 'true' : 'false'"
+                                @click="form.whatsapp_enabled = !form.whatsapp_enabled"></button>
+                        <input type="hidden" name="whatsapp_enabled" :value="form.whatsapp_enabled ? 1 : 0">
+                    </div>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow" :class="form.webchat_enabled ? 'hi' : ''">
+                        <span class="ico" style="background:#4f6bed"><i class="ri-chat-smile-2-line"></i></span>
+                        <div class="m">
+                            <div class="n">{{ __('ui.ai_settings_page.channel_live_chat') }}</div>
+                            <div class="s">{{ __('ui.ai_settings_page.channel_live_chat_hint') }}</div>
+                        </div>
+                        <button type="button" class="wc-tg" :class="form.webchat_enabled ? 'on' : ''"
+                                role="switch" :aria-checked="form.webchat_enabled ? 'true' : 'false'"
+                                @click="form.webchat_enabled = !form.webchat_enabled"></button>
+                        <input type="hidden" name="webchat_enabled" :value="form.webchat_enabled ? 1 : 0">
+                    </div>
+                </div>
+
+                <div class="wc-fld" x-show="!form.whatsapp_enabled && !form.webchat_enabled">
+                    <div class="wc-note">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+                        <div>{{ __('ui.ai_settings_page.no_channel_warning') }}</div>
+                    </div>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow">
+                        <div class="m">
+                            <div class="n">{{ __('ui.ai_settings_page.reply_when_claimed') }}</div>
+                            <div class="s">{{ __('ui.ai_settings_page.reply_when_claimed_hint') }}</div>
+                        </div>
+                        <button type="button" class="wc-tg" :class="form.reply_when_claimed ? 'on' : ''"
+                                role="switch" :aria-checked="form.reply_when_claimed ? 'true' : 'false'"
+                                @click="form.reply_when_claimed = !form.reply_when_claimed"></button>
+                        <input type="hidden" name="reply_when_claimed" :value="form.reply_when_claimed ? 1 : 0">
+                    </div>
+                </div>
+            </section>
+
+            {{-- ── REPLIES ─────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'replies'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.reply_settings') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.reply_settings_hint') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.ai_settings_page.reply_language') }}</span>
+                    <div class="wc-langs four">
+                        @foreach ($languages as $code => $lang)
+                            <button type="button" class="wc-lgc" :class="form.reply_language === '{{ $code }}' ? 'on' : ''"
+                                    @click="form.reply_language = '{{ $code }}'">
+                                <svg class="tick" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div class="flag">{{ $lang['flag'] }}</div>
+                                <div class="c" style="font-size:12px">{{ $lang['code'] }}</div>
+                                <div class="n">{{ $lang['label'] }}</div>
+                            </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="reply_language" :value="form.reply_language">
+                    @error('reply_language') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.ai_settings_page.reply_language_hint') }}</div>
+                </div>
+
+                <div class="wc-fld" x-show="form.mode === 'suggestion' || form.mode === 'hybrid'">
+                    <span class="wc-flabel">{{ __('ui.ai_settings_page.suggestion_count') }}</span>
+                    <div class="wc-nums">
+                        @foreach ([1, 2, 3, 4, 5] as $n)
+                            <button type="button" class="wc-numbtn" :class="form.suggestion_count === {{ $n }} ? 'on' : ''"
+                                    @click="form.suggestion_count = {{ $n }}">{{ $n }}</button>
+                        @endforeach
+                        <span class="suffix">{{ __('ui.ai_settings_page.suggestions_per_message') }}</span>
+                    </div>
+                    <input type="hidden" name="suggestion_count" :value="form.suggestion_count">
+                    @error('suggestion_count') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.ai_settings_page.suggestion_count_hint') }}</div>
+                </div>
+            </section>
+
+            {{-- ── PROMPT ──────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'prompt'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.system_prompt') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.sec_prompt_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <label for="aiPrompt">{{ __('ui.ai_settings_page.system_prompt_hint') }}</label>
+                    <textarea id="aiPrompt" name="system_prompt" maxlength="4000" x-model="form.system_prompt"
+                              class="wc-inp @error('system_prompt') err @enderror" style="min-height:220px"
+                              placeholder="{{ __('ui.ai_settings_page.system_prompt_placeholder', ['tenant' => auth()->user()->tenant->name ?? '']) }}"></textarea>
+                    <div class="wc-cnt"><span x-text="form.system_prompt.length"></span>/4000</div>
+                    @error('system_prompt') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.ai_settings_page.system_prompt_footer') }}</div>
+                </div>
+            </section>
+
+            {{-- ── ESCALATION ──────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'escalation'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.escalation_keywords') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.escalation_keywords_hint') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-tagbox">
+                        <template x-if="form.escalation_keywords.length === 0">
+                            <span class="placeholder">{{ __('ui.ai_settings_page.no_keywords') }}</span>
+                        </template>
+                        <template x-for="(kw, i) in form.escalation_keywords" :key="'kw' + i">
+                            <span class="wc-tag">
+                                <span x-text="kw"></span>
+                                <button type="button" @click="form.escalation_keywords.splice(i, 1)" :aria-label="kw">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
+
+                    <div class="wc-addrow">
+                        <input class="wc-inp" type="text" maxlength="40" x-model="newKeyword"
+                               @keydown.enter.prevent="addKeyword()" @keydown.comma.prevent="addKeyword()"
+                               placeholder="{{ __('ui.ai_settings_page.keyword_placeholder') }}">
+                        <button type="button" class="wc-btn g" @click="addKeyword()" :disabled="!newKeyword.trim()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                            {{ __('ui.ai_settings_page.add') }}
+                        </button>
+                    </div>
+
+                    {{-- The controller json_decodes this field, so it stays a single JSON string. --}}
+                    <input type="hidden" name="escalation_keywords" :value="JSON.stringify(form.escalation_keywords)">
+                    @error('escalation_keywords') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.ai_settings_page.keyword_hint') }}</div>
+                </div>
+            </section>
+
+            {{-- ── USAGE (read-only) ───────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'usage'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.ai_settings_page.usage_limits') }}</h2>
+                    <p>{{ __('ui.ai_settings_page.sec_usage_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-meter">
+                        <div class="hd">
+                            <span class="ico" style="background:#eff6ff;color:#2563eb"><i class="ri-coins-line"></i></span>
+                            <div class="m">
+                                <div class="n">{{ __('ui.ai_settings_page.usage_card_title') }}</div>
+                                <div class="s">{{ __('ui.ai_settings_page.usage_card_hint') }}</div>
+                            </div>
+                            <div class="val">
+                                @if (is_null($quota))
+                                    {{ __('ui.ai_settings_page.usage_unlimited') }}
+                                @elseif ($quota === 0)
+                                    <span style="color:var(--wc-red)">{{ __('ui.ai_settings_page.usage_ai_off') }}</span>
+                                @else
+                                    {{ number_format($used) }} / {{ number_format($quota) }}
+                                @endif
+                            </div>
+                        </div>
+
+                        @if (!is_null($quota) && $quota > 0)
+                            @php
+                                $barColor = $quotaPct >= 90 ? '#dc2626' : ($quotaPct >= 70 ? '#f59e0b' : '#2563eb');
+                            @endphp
+                            <div class="bar"><i style="width:{{ min(100, max(0, $quotaPct)) }}%;background:{{ $barColor }}"></i></div>
+                        @endif
+
+                        @if ($quotaReset && !is_null($quota) && $quota !== 0)
+                            <div class="foot">{{ __('ui.ai_settings_page.usage_resets_on', ['date' => $quotaReset->format('Y-m-d')]) }}</div>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-linkcard">
+                        <span class="ico"><i class="ri-book-2-line"></i></span>
+                        <div class="m">
+                            <div class="n">{{ __('ui.ai_settings_page.knowledge_base') }}</div>
+                            <div class="s">{{ $knowledgeCount }} {{ __('ui.ai_settings_page.entries') }} · {{ __('ui.ai_settings_page.knowledge_base_hint') }}</div>
+                        </div>
+                        <a href="{{ route($panelPrefix . '.knowledge.index') }}" class="wc-btn g sm">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            {{ __('ui.manage') }}
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+        </div></div>
+
+        {{-- ══ PREVIEW ══════════════════════════════════════════════ --}}
+        <aside class="wc-prev" :class="previewOpen ? 'open' : ''">
+            <div class="wc-pvh">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="eye"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                <span class="t">{{ __('ui.ai_settings_page.preview') }}</span>
+                <span class="cl" x-text="form.reply_language.toUpperCase()"></span>
+            </div>
+
+            <div class="wc-pvbody">
+                <div class="wc-blank" style="width:288px" x-show="form.mode === 'off'">
+                    <div class="ico"><i class="ri-robot-2-line" style="font-size:26px"></i></div>
+                    <div class="t">{{ __('ui.ai_settings_page.pv_off_title') }}</div>
+                    <div class="s">{{ __('ui.ai_settings_page.pv_off_hint') }}</div>
+                </div>
+
+                <div class="wc-convo" x-show="form.mode !== 'off'">
+                    <div class="ch">
+                        <span class="av" style="background:var(--wc-teal)">C</span>
+                        <div class="m">
+                            <div class="n">{{ __('ui.ai_settings_page.pv_customer') }}</div>
+                            <div class="s" x-text="channelSummary()"></div>
+                        </div>
+                    </div>
+
+                    <div class="cb">
+                        <div class="wc-bub in">{{ __('ui.ai_settings_page.pv_sample_msg') }}</div>
+
+                        {{-- Autonomous + hybrid: the AI answers on its own. --}}
+                        <template x-if="form.mode === 'autonomous' || form.mode === 'hybrid'">
+                            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+                                <span class="wc-aitag"><i class="ri-flashlight-line"></i> AI</span>
+                                <div class="wc-bub out">{{ __('ui.ai_settings_page.pv_ai_reply') }}</div>
+                            </div>
+                        </template>
+
+                        {{-- Suggestion + hybrid: drafts the agent can send. --}}
+                        <template x-if="form.mode === 'suggestion' || form.mode === 'hybrid'">
+                            <div class="wc-suggwrap">
+                                <div class="cap">{{ __('ui.ai_settings_page.pv_drafts') }}</div>
+                                <div class="wc-sugg">
+                                    <template x-for="(draft, i) in visibleDrafts()" :key="'d' + i">
+                                        <span x-text="draft"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- Hybrid stops at an escalation keyword and hands over. --}}
+                        <template x-if="form.mode === 'hybrid' && form.escalation_keywords.length > 0">
+                            <span class="wc-aitag left" style="background:var(--wc-amber-50);color:var(--wc-amber)">
+                                <i class="ri-user-shared-line"></i> {{ __('ui.ai_settings_page.pv_escalated') }}
+                            </span>
+                        </template>
+                    </div>
+
+                    <div class="cf">
+                        <span class="fi">{{ __('ui.ai_settings_page.pv_composer') }}</span>
+                        <span class="sb"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 12L21 4l-8 17-2-7-8-2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg></span>
+                    </div>
+                </div>
+
+                <div class="wc-pvmeta">
+                    <div class="kv"><span class="k">{{ __('ui.ai_settings_page.meta_mode') }}</span><span class="v" x-text="i18n.modeLabels[form.mode]"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.ai_settings_page.meta_channels') }}</span><span class="v" x-text="channelSummary()"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.ai_settings_page.meta_language') }}</span><span class="v" x-text="i18n.langLabels[form.reply_language] || form.reply_language.toUpperCase()"></span></div>
+                    <div class="kv" x-show="form.mode === 'suggestion' || form.mode === 'hybrid'"><span class="k">{{ __('ui.ai_settings_page.meta_drafts') }}</span><span class="v" x-text="form.suggestion_count"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.ai_settings_page.meta_keywords') }}</span><span class="v" x-text="form.escalation_keywords.length"></span></div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+</form>
+
+    <button type="button" class="wc-pvfab" @click="previewOpen = true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+        {{ __('ui.ai_settings_page.preview') }}
+    </button>
+    <div class="wc-scrim" :class="previewOpen ? 'on' : ''" @click="previewOpen = false"></div>
 </div>
 
-@push('scripts')
 <script>
-function aiSettingsPage() {
+function aiSettingsConsole() {
     return {
-        selectedMode:     '{{ old('mode', $settings->mode) }}',
-        whatsappEnabled:  {{ old('whatsapp_enabled', $settings->whatsapp_enabled ?? true) ? 'true' : 'false' }},
-        webchatEnabled:   {{ old('webchat_enabled', $settings->webchat_enabled ?? true) ? 'true' : 'false' }},
-        replyWhenClaimed: {{ old('reply_when_claimed', $settings->reply_when_claimed ?? false) ? 'true' : 'false' }},
-    }
-}
+        form:        @json($initial),
+        i18n:        @json($i18n),
+        drafts:      @js([__('ui.ai_settings_page.pv_draft_1'), __('ui.ai_settings_page.pv_draft_2'), __('ui.ai_settings_page.pv_draft_3')]),
+        baseline:    '',
+        section:     @js($openSection),
+        previewOpen: false,
+        newKeyword:  '',
+        saving:      false,
+        dirty:       false,
 
-function keywordManager(initial) {
-    return {
-        keywords: initial || [],
-        newKw: '',
-        add() {
-            const k = this.newKw.trim().toLowerCase();
-            if (k && !this.keywords.includes(k)) this.keywords.push(k);
-            this.newKw = '';
+        init() {
+            this.baseline = JSON.stringify(this.form);
+            this.$watch('form', () => { this.dirty = JSON.stringify(this.form) !== this.baseline; }, { deep: true });
+            // Sections after Mode only exist while the AI is on; bounce back to
+            // Mode if the tenant switches it off while standing in one of them.
+            this.$watch('form.mode', v => { if (v === 'off' && this.section !== 'usage') this.go('mode'); });
         },
-        remove(i) { this.keywords.splice(i, 1); }
-    }
-}
 
+        go(s) {
+            this.section = s;
+            if (this.$refs.formScroll) this.$refs.formScroll.scrollTop = 0;
+        },
+
+        addKeyword() {
+            const k = this.newKeyword.trim().toLowerCase().replace(/,+$/, '');
+            if (k && !this.form.escalation_keywords.includes(k)) this.form.escalation_keywords.push(k);
+            this.newKeyword = '';
+        },
+
+        channelSummary() {
+            const w = this.form.whatsapp_enabled, c = this.form.webchat_enabled;
+            if (w && c) return this.i18n.chBoth;
+            if (w) return this.i18n.chWhatsapp;
+            if (c) return this.i18n.chWebchat;
+            return this.i18n.chNone;
+        },
+
+        // The preview shows as many drafts as the tenant asked for, cycling the
+        // three samples so a count of 5 still renders five distinct rows.
+        visibleDrafts() {
+            const n = Math.max(1, Math.min(5, this.form.suggestion_count || 1));
+            return Array.from({ length: n }, (_, i) => this.drafts[i % this.drafts.length]);
+        },
+
+        discard() {
+            this.form = JSON.parse(this.baseline);
+            this.dirty = false;
+        },
+
+        onSubmit() { this.saving = true; },
+    };
+}
 </script>
+
+@push('styles')
+    {{-- Shared Wavadesk console shell — see /webchat/settings and /saved-replies. --}}
+    <link rel="stylesheet" href="{{ asset('css/wavadesk-console.css') }}?v={{ filemtime(public_path('css/wavadesk-console.css')) }}">
 @endpush
 @endsection

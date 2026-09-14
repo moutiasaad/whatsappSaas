@@ -7,410 +7,519 @@
 @endsection
 
 @section('content')
-@php $panelPrefix = auth()->user()->routeNamePrefix(); @endphp
+@php
+    $panelPrefix = auth()->user()->routeNamePrefix();
 
-<div x-data="savedRepliesPage()" x-init="init()" x-cloak>
+    // Agents own their personal replies only. Team replies belong to whoever
+    // runs the workspace, which mirrors what Api\SavedReplyController enforces.
+    $canManageTeam = auth()->user()->isAdmin()
+        || auth()->user()->isSupervisor()
+        || auth()->user()->isSuperAdmin();
 
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-title">{{ __('ui.saved_replies_page.title') }}</div>
-            <div class="page-subtitle">{{ __('ui.saved_replies_page.subtitle') }}</div>
-        </div>
-        <div class="page-header-actions">
-            <button type="button" @click="openCreate()" class="btn btn-primary btn-sm">
-                <i class="ri-add-line"></i> {{ __('ui.saved_replies_page.add_reply') }}
-            </button>
-        </div>
-    </div>
+    $i18n = [
+        'errTitle'   => __('ui.saved_replies_page.error_title_required'),
+        'errBody'    => __('ui.saved_replies_page.error_body_required'),
+        'saveError'  => __('ui.saved_replies_page.save_error'),
+        'addTitle'   => __('ui.saved_replies_page.add_reply'),
+        'editTitle'  => __('ui.saved_replies_page.edit_reply'),
+        'scopeTeam'  => __('ui.saved_replies_page.scope_tenant'),
+        'scopeSelf'  => __('ui.saved_replies_page.scope_personal'),
+        'none'       => __('ui.saved_replies_page.none'),
+        'secAll'      => __('ui.saved_replies_page.sec_all_desc'),
+        'secTeam'     => __('ui.saved_replies_page.sec_team_desc'),
+        'secPersonal' => __('ui.saved_replies_page.sec_personal_desc'),
+        'secShortcut' => __('ui.saved_replies_page.sec_shortcut_desc'),
+        'ttlAll'      => __('ui.saved_replies_page.nav_all'),
+        'ttlTeam'     => __('ui.saved_replies_page.nav_team'),
+        'ttlPersonal' => __('ui.saved_replies_page.nav_personal'),
+        'ttlShortcut' => __('ui.saved_replies_page.nav_shortcuts'),
+    ];
+@endphp
 
-    {{-- Stats --}}
-    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
-        <div class="stat-card">
-            <div class="stat-card-icon"><i class="ri-chat-3-line"></i></div>
-            <div class="stat-card-value" x-text="tenantReplies.length"></div>
-            <div class="stat-card-label">{{ __('ui.saved_replies_page.tenant_replies') }}</div>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-card-icon"><i class="ri-user-line"></i></div>
-            <div class="stat-card-value" x-text="personalReplies.length"></div>
-            <div class="stat-card-label">{{ __('ui.saved_replies_page.personal_replies') }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-icon"><i class="ri-hashtag"></i></div>
-            <div class="stat-card-value" x-text="shortcuts.length"></div>
-            <div class="stat-card-label">{{ __('ui.saved_replies_page.with_shortcuts') }}</div>
-        </div>
-    </div>
+{{-- The console fills the viewport and manages its own scroll regions, so the
+     shared .page-content padding/height is neutralised for this route. --}}
+<script>document.body.classList.add('wc-host');</script>
 
-    {{-- Toolbar --}}
-    <div class="table-toolbar" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem">
-        <div class="filter-input-wrap">
-            <i class="ri-search-line"></i>
-            <input type="text" x-model="search" @input.debounce.200ms="filterReplies()"
-                   placeholder="{{ __('ui.saved_replies_page.search_placeholder') }}" class="filter-input">
-        </div>
-        <select x-model="scopeFilter" @change="filterReplies()" class="toolbar-select">
-            <option value="">{{ __('ui.saved_replies_page.all_scopes') }}</option>
-            <option value="tenant">{{ __('ui.saved_replies_page.scope_tenant') }}</option>
-            <option value="personal">{{ __('ui.saved_replies_page.scope_personal') }}</option>
-        </select>
-        <button type="button" @click="search='';scopeFilter='';filterReplies()" class="btn btn-ghost btn-sm">
-            {{ __('ui.customers_page.clear') }}
-        </button>
-    </div>
+<div class="wv-console" x-data="savedRepliesConsole()" x-cloak>
+    <div class="wc-shell">
 
-    {{-- Table --}}
-    <div class="card" style="padding:0">
-        <div x-show="loading" class="spinner-wrap" style="min-height:160px">
-            <div>
-                <div class="spinner" style="margin:0 auto 1rem"></div>
-                <div style="color:var(--text-muted);font-size:.875rem;text-align:center">{{ __('ui.conversations_page.loading') }}</div>
+        {{-- ══ PAGE HEAD ═══════════════════════════════════════════ --}}
+        <div class="wc-phead">
+            <div class="m">
+                <h1>
+                    {{ __('ui.saved_replies_page.title') }}
+                    <span class="wc-pill" :class="replies.length ? 'on' : 'off'">
+                        <i></i><span x-text="replies.length"></span>
+                    </span>
+                </h1>
+                <p>{{ __('ui.saved_replies_page.subtitle') }}</p>
             </div>
-        </div>
-
-        <div x-show="!loading && filtered.length === 0" class="empty-state" style="padding:3rem">
-            <div class="empty-state-icon"><i class="ri-chat-3-line"></i></div>
-            <h4>{{ __('ui.saved_replies_page.no_replies') }}</h4>
-            <p>{{ __('ui.saved_replies_page.no_replies_hint') }}</p>
-            <button type="button" @click="openCreate()" class="btn btn-primary btn-sm" style="margin-top:.75rem">
-                <i class="ri-add-line"></i> {{ __('ui.saved_replies_page.add_reply') }}
-            </button>
-        </div>
-
-        <div x-show="!loading && filtered.length > 0">
-            <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th style="width:40px;">#</th>
-                            <th>{{ __('ui.saved_replies_page.col_title') }}</th>
-                            <th>{{ __('ui.saved_replies_page.col_shortcut') }}</th>
-                            <th>{{ __('ui.saved_replies_page.col_body') }}</th>
-                            <th>{{ __('ui.saved_replies_page.col_scope') }}</th>
-                            <th style="width:88px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="reply in filtered" :key="reply.id">
-                            <tr>
-                                <td style="color:var(--text-muted);font-size:.8125rem;" x-text="reply.sort_order || '—'"></td>
-                                <td>
-                                    <span style="font-weight:600;font-size:.875rem;color:var(--text-primary);" x-text="reply.title"></span>
-                                </td>
-                                <td>
-                                    <template x-if="reply.shortcut">
-                                        <span style="display:inline-flex;align-items:center;padding:.2rem .55rem;background:rgba(21,182,168,.1);border:1px solid rgba(21,182,168,.2);border-radius:.375rem;font-size:.8rem;font-weight:600;color:#15b6a8;font-family:monospace;"
-                                              x-text="reply.shortcut"></span>
-                                    </template>
-                                    <template x-if="!reply.shortcut">
-                                        <span style="color:var(--text-muted);font-size:.8125rem;">—</span>
-                                    </template>
-                                </td>
-                                <td style="max-width:340px;">
-                                    <span style="font-size:.8125rem;color:var(--text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"
-                                          x-text="reply.body"></span>
-                                </td>
-                                <td>
-                                    <template x-if="reply.scope === 'tenant'">
-                                        <span class="badge badge-green">
-                                            <i class="ri-building-2-line"></i>
-                                            {{ __('ui.saved_replies_page.scope_tenant') }}
-                                        </span>
-                                    </template>
-                                    <template x-if="reply.scope === 'personal'">
-                                        <span class="badge badge-blue">
-                                            <i class="ri-user-line"></i>
-                                            {{ __('ui.saved_replies_page.scope_personal') }}
-                                        </span>
-                                    </template>
-                                </td>
-                                <td>
-                                    <div style="display:flex;gap:.25rem;justify-content:flex-end;">
-                                        <button type="button" @click="openEdit(reply)" class="action-btn" title="{{ __('ui.edit') }}">
-                                            <i class="ri-pencil-line"></i>
-                                        </button>
-                                        <button type="button" @click="confirmDelete(reply)" class="action-btn danger" title="{{ __('ui.delete') }}">
-                                            <i class="ri-delete-bin-line"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {{-- ── Add / Edit Modal ──────────────────────────────────────────────────── --}}
-    <div class="modal-overlay" :class="showModal ? 'show' : ''" @click.self="closeModal()">
-        <div class="modal-card" @click.stop style="max-width:560px">
-
-            {{-- Modal header --}}
-            <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;">
-                <div>
-                    <div style="font-weight:700;font-size:.9375rem;color:var(--text-primary);"
-                         x-text="editId ? '{{ __('ui.saved_replies_page.edit_reply') }}' : '{{ __('ui.saved_replies_page.add_reply') }}'"></div>
-                    <div style="font-size:.8125rem;color:var(--text-muted);margin-top:.125rem;">{{ __('ui.saved_replies_page.modal_subtitle') }}</div>
-                </div>
-                <button type="button" @click="closeModal()"
-                        style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.25rem;padding:.25rem;display:flex;align-items:center;border-radius:.5rem;transition:background .1s;"
-                        onmouseenter="this.style.background='var(--page-bg)'" onmouseleave="this.style.background='none'">
-                    <i class="ri-close-line"></i>
-                </button>
-            </div>
-
-            {{-- Modal body --}}
-            <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
-
-                {{-- Title --}}
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.saved_replies_page.field_title') }} <span style="color:#ef4444">*</span></label>
-                    <input type="text" x-model="form.title" class="form-control"
-                           placeholder="{{ __('ui.saved_replies_page.field_title_placeholder') }}" maxlength="120">
-                </div>
-
-                {{-- Shortcut --}}
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.saved_replies_page.field_shortcut') }}</label>
-                    <div style="position:relative;">
-                        <span style="position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.875rem;pointer-events:none;font-family:monospace;">/</span>
-                        <input type="text" x-model="form.shortcut" class="form-control" style="padding-left:1.75rem;font-family:monospace;"
-                               placeholder="{{ __('ui.saved_replies_page.field_shortcut_placeholder') }}" maxlength="32"
-                               @input="form.shortcut = form.shortcut.replace(/[^a-z0-9_-]/g, '').replace(/^\//, '')">
-                    </div>
-                    <div class="form-hint">{{ __('ui.saved_replies_page.field_shortcut_hint') }}</div>
-                </div>
-
-                {{-- Body --}}
-                <div class="form-group">
-                    <label class="form-label">{{ __('ui.saved_replies_page.field_body') }} <span style="color:#ef4444">*</span></label>
-                    <textarea x-model="form.body" rows="4" class="form-control"
-                              placeholder="{{ __('ui.saved_replies_page.field_body_placeholder') }}" maxlength="4000"
-                              style="resize:vertical;"></textarea>
-                    <div style="display:flex;justify-content:space-between;margin-top:.25rem;">
-                        <div class="form-hint">{{ __('ui.saved_replies_page.field_body_hint') }}</div>
-                        <span style="font-size:.75rem;color:var(--text-muted);" x-text="(form.body || '').length + '/4000'"></span>
-                    </div>
-                </div>
-
-                {{-- Scope + Sort --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-                    <div class="form-group">
-                        <label class="form-label">{{ __('ui.saved_replies_page.field_scope') }}</label>
-                        <select x-model="form.scope" class="form-control">
-                            <option value="tenant">{{ __('ui.saved_replies_page.scope_tenant_label') }}</option>
-                            <option value="personal">{{ __('ui.saved_replies_page.scope_personal_label') }}</option>
-                        </select>
-                        <div class="form-hint" x-show="form.scope === 'tenant'">{{ __('ui.saved_replies_page.scope_tenant_hint') }}</div>
-                        <div class="form-hint" x-show="form.scope === 'personal'">{{ __('ui.saved_replies_page.scope_personal_hint') }}</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">{{ __('ui.saved_replies_page.field_sort') }}</label>
-                        <input type="number" x-model.number="form.sort_order" min="0" max="9999" class="form-control" placeholder="0">
-                        <div class="form-hint">{{ __('ui.saved_replies_page.field_sort_hint') }}</div>
-                    </div>
-                </div>
-
-                {{-- Error --}}
-                <div x-show="modalError"
-                     style="padding:.75rem 1rem;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:.625rem;font-size:.8125rem;color:#ef4444;display:flex;gap:.5rem;align-items:center;">
-                    <i class="ri-error-warning-line"></i>
-                    <span x-text="modalError"></span>
-                </div>
-
-            </div>
-
-            {{-- Modal footer --}}
-            <div style="padding:1rem 1.5rem;border-top:1px solid var(--card-border);display:flex;justify-content:flex-end;gap:.5rem;background:var(--page-bg);">
-                <button type="button" @click="closeModal()" class="btn btn-outline btn-sm">{{ __('ui.cancel') }}</button>
-                <button type="button" @click="saveReply()" :disabled="saving"
-                        class="btn btn-primary btn-sm">
-                    <template x-if="!saving">
-                        <span><i class="ri-save-3-line"></i> {{ __('ui.save') }}</span>
-                    </template>
-                    <template x-if="saving">
-                        <span style="display:flex;align-items:center;gap:.375rem;">
-                            <div class="spinner" style="width:.875rem;height:.875rem;border-width:2px;"></div>
-                            {{ __('ui.processing') }}
-                        </span>
-                    </template>
+            <div class="acts">
+                <button type="button" class="wc-btn p" @click="openCreate()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                    {{ __('ui.saved_replies_page.new_reply') }}
                 </button>
             </div>
         </div>
-    </div>
 
-    {{-- ── Delete Confirm Modal ──────────────────────────────────────────────── --}}
-    <div class="modal-overlay" :class="deleteTarget ? 'show' : ''" @click.self="deleteTarget = null">
-        <div class="modal-card" @click.stop style="max-width:420px">
-            <div style="padding:1.5rem;text-align:center;">
-                <div style="width:3rem;height:3rem;border-radius:50%;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center;margin:0 auto .875rem;font-size:1.375rem;color:#ef4444;">
-                    <i class="ri-delete-bin-line"></i>
+        <div class="wc-body">
+
+            {{-- ══ VIEW NAV ═════════════════════════════════════════ --}}
+            <nav class="wc-snav">
+                <div class="lbl">{{ __('ui.saved_replies_page.nav_views') }}</div>
+
+                <button type="button" class="wc-sn" :class="view === 'all' ? 'on' : ''" @click="go('all')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2.6" stroke="currentColor" stroke-width="2"/><path d="M7 9h10M7 13h10M7 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>{{ __('ui.saved_replies_page.nav_all') }}</span>
+                    <span class="n" x-text="replies.length"></span>
+                </button>
+
+                <button type="button" class="wc-sn" :class="view === 'tenant' ? 'on' : ''" @click="go('tenant')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="7" r="3.4" stroke="currentColor" stroke-width="2"/><path d="M22 20v-2a4 4 0 00-3-3.9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>{{ __('ui.saved_replies_page.nav_team') }}</span>
+                    <span class="n" x-text="countBy('tenant')"></span>
+                </button>
+
+                <button type="button" class="wc-sn" :class="view === 'personal' ? 'on' : ''" @click="go('personal')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="2"/><path d="M5.5 20a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>{{ __('ui.saved_replies_page.nav_personal') }}</span>
+                    <span class="n" x-text="countBy('personal')"></span>
+                </button>
+
+                <button type="button" class="wc-sn" :class="view === 'shortcut' ? 'on' : ''" @click="go('shortcut')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 20l6-16M5 8h14M5 16h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>{{ __('ui.saved_replies_page.nav_shortcuts') }}</span>
+                    <span class="n" x-text="countShortcuts()"></span>
+                </button>
+            </nav>
+
+            {{-- ══ LIST ═════════════════════════════════════════════ --}}
+            <div class="wc-form" x-ref="listScroll"><div class="wc-fwrap">
+
+                <div class="wc-sechead">
+                    <h2 x-text="viewTitle()"></h2>
+                    <p x-text="viewDesc()"></p>
                 </div>
-                <div style="font-weight:700;font-size:.9375rem;color:var(--text-primary);margin-bottom:.375rem;">
-                    {{ __('ui.saved_replies_page.delete_confirm_title') }}
-                </div>
-                <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:1.25rem;">
-                    {{ __('ui.saved_replies_page.delete_confirm_body') }}
-                    <strong style="color:var(--text-primary);" x-text="deleteTarget?.title"></strong>?
-                </div>
-                <div style="display:flex;gap:.5rem;justify-content:center;">
-                    <button type="button" @click="deleteTarget=null" class="btn btn-outline btn-sm">{{ __('ui.cancel') }}</button>
-                    <button type="button" @click="doDelete()" :disabled="saving" class="btn btn-sm"
-                            style="background:#ef4444;color:#fff;border-color:#ef4444;">
-                        <i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}
+
+                <div class="wc-toolbar">
+                    <div class="wc-search">
+                        <i class="ri-search-line"></i>
+                        <input class="wc-inp" type="search" x-model="search"
+                               placeholder="{{ __('ui.saved_replies_page.search_placeholder') }}">
+                    </div>
+                    <button type="button" class="wc-btn g sm" @click="search = ''" x-show="search">
+                        {{ __('ui.saved_replies_page.clear') }}
                     </button>
                 </div>
+
+                {{-- Loading --}}
+                <div class="wc-blank" x-show="loading">
+                    <div class="wc-spin"></div>
+                    <div class="t">{{ __('ui.saved_replies_page.loading') }}</div>
+                </div>
+
+                {{-- Nothing at all --}}
+                <div class="wc-blank" x-show="!loading && replies.length === 0">
+                    <div class="ico"><i class="ri-chat-quote-line" style="font-size:26px"></i></div>
+                    <div class="t">{{ __('ui.saved_replies_page.no_replies') }}</div>
+                    <div class="s">{{ __('ui.saved_replies_page.no_replies_hint') }}</div>
+                    <button type="button" class="wc-btn p sm" style="margin-top:14px" @click="openCreate()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        {{ __('ui.saved_replies_page.new_reply') }}
+                    </button>
+                </div>
+
+                {{-- Filtered to nothing --}}
+                <div class="wc-blank" x-show="!loading && replies.length > 0 && filtered().length === 0">
+                    <div class="ico"><i class="ri-filter-off-line" style="font-size:26px"></i></div>
+                    <div class="t">{{ __('ui.saved_replies_page.no_matches') }}</div>
+                    <div class="s">{{ __('ui.saved_replies_page.no_matches_hint') }}</div>
+                </div>
+
+                {{-- Rows --}}
+                <div class="wc-list" x-show="!loading && filtered().length > 0">
+                    <template x-for="reply in filtered()" :key="reply.id">
+                        <div class="wc-item" :class="selectedId === reply.id ? 'on' : ''" @click="select(reply)">
+                            <div class="m">
+                                <div class="hd">
+                                    <span class="ttl" x-text="reply.title"></span>
+                                    <template x-if="reply.shortcut">
+                                        <span class="wc-code" x-text="reply.shortcut"></span>
+                                    </template>
+                                    <span class="wc-badge" :class="reply.scope === 'tenant' ? 'team' : 'personal'"
+                                          x-text="reply.scope === 'tenant' ? i18n.scopeTeam : i18n.scopeSelf"></span>
+                                </div>
+                                <div class="bd" x-text="reply.body"></div>
+                            </div>
+                            <div class="acts" x-show="canWrite(reply)">
+                                <button type="button" class="wc-ib" @click.stop="openEdit(reply)" title="{{ __('ui.edit') }}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke="currentColor" stroke-width="2"/></svg>
+                                </button>
+                                <button type="button" class="wc-ib del" @click.stop="deleteTarget = reply" title="{{ __('ui.delete') }}">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+            </div></div>
+
+            {{-- ══ PREVIEW ══════════════════════════════════════════ --}}
+            <aside class="wc-prev" :class="previewOpen ? 'open' : ''">
+                <div class="wc-pvh">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="eye"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                    <span class="t">{{ __('ui.saved_replies_page.preview') }}</span>
+                </div>
+
+                <div class="wc-pvbody">
+                    <div class="wc-blank" style="width:288px" x-show="!selected()">
+                        <div class="ico"><i class="ri-cursor-line" style="font-size:26px"></i></div>
+                        <div class="t">{{ __('ui.saved_replies_page.pv_empty_title') }}</div>
+                        <div class="s">{{ __('ui.saved_replies_page.pv_empty_hint') }}</div>
+                    </div>
+
+                    <template x-if="selected()">
+                        <div class="wc-convo">
+                            <div class="ch">
+                                <span class="av" style="background:var(--wc-teal)"><i class="ri-user-3-line"></i></span>
+                                <div class="m">
+                                    <div class="n">{{ __('ui.saved_replies_page.pv_agent') }}</div>
+                                    <div class="s" x-text="selected().title"></div>
+                                </div>
+                            </div>
+                            <div class="cb">
+                                <div class="wc-bub out" x-text="selected().body"></div>
+                            </div>
+                            <div class="cf">
+                                <span class="fi" x-text="selected().shortcut || '{{ __('ui.saved_replies_page.pv_composer') }}'"></span>
+                                <span class="sb"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 12L21 4l-8 17-2-7-8-2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="selected()">
+                        <div class="wc-pvmeta">
+                            <div class="kv"><span class="k">{{ __('ui.saved_replies_page.meta_scope') }}</span><span class="v" x-text="selected().scope === 'tenant' ? i18n.scopeTeam : i18n.scopeSelf"></span></div>
+                            <div class="kv"><span class="k">{{ __('ui.saved_replies_page.meta_shortcut') }}</span><span class="v" x-text="selected().shortcut || i18n.none"></span></div>
+                            <div class="kv"><span class="k">{{ __('ui.saved_replies_page.meta_order') }}</span><span class="v" x-text="selected().sort_order ?? 0"></span></div>
+                            <div class="kv"><span class="k">{{ __('ui.saved_replies_page.meta_length') }}</span><span class="v" x-text="(selected().body || '').length"></span></div>
+                        </div>
+                    </template>
+
+                    <template x-if="selected() && canWrite(selected())">
+                        <div style="display:flex;gap:8px;width:100%;max-width:288px">
+                            <button type="button" class="wc-btn g sm" style="flex:1" @click="openEdit(selected())">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke="currentColor" stroke-width="2"/></svg>
+                                {{ __('ui.edit') }}
+                            </button>
+                            <button type="button" class="wc-btn g sm" style="flex:1;color:var(--wc-red);border-color:#fecaca" @click="deleteTarget = selected()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                {{ __('ui.delete') }}
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <button type="button" class="wc-pvfab" @click="previewOpen = true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+        {{ __('ui.saved_replies_page.preview') }}
+    </button>
+    <div class="wc-scrim" :class="previewOpen ? 'on' : ''" @click="previewOpen = false"></div>
+
+    {{-- ══ ADD / EDIT MODAL ═════════════════════════════════════════ --}}
+    <div class="wc-ovl" :class="showModal ? 'on' : ''" @click.self="closeModal()">
+        <div class="wc-modal">
+            <div class="mh">
+                <div class="m">
+                    <div class="n" x-text="editId ? i18n.editTitle : i18n.addTitle"></div>
+                    <div class="s">{{ __('ui.saved_replies_page.modal_subtitle') }}</div>
+                </div>
+                <button type="button" class="wc-x" @click="closeModal()" aria-label="{{ __('ui.cancel') }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+
+            <div class="mb">
+                <div class="wc-fld">
+                    <label for="srTitle">{{ __('ui.saved_replies_page.field_title') }}</label>
+                    <input id="srTitle" class="wc-inp" type="text" maxlength="120" x-model="form.title"
+                           placeholder="{{ __('ui.saved_replies_page.field_title_placeholder') }}" x-ref="titleInput">
+                </div>
+
+                <div class="wc-fld">
+                    <label for="srShortcut">{{ __('ui.saved_replies_page.field_shortcut') }}</label>
+                    <div class="wc-inp-prefix">
+                        <span class="px">/</span>
+                        <input id="srShortcut" class="wc-inp" type="text" maxlength="32" x-model="form.shortcut"
+                               placeholder="{{ __('ui.saved_replies_page.field_shortcut_placeholder') }}"
+                               @input="form.shortcut = form.shortcut.replace(/[^a-z0-9_-]/g, '')">
+                    </div>
+                    <div class="wc-hint">{{ __('ui.saved_replies_page.field_shortcut_hint') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <label for="srBody">{{ __('ui.saved_replies_page.field_body') }}</label>
+                    <textarea id="srBody" class="wc-inp" maxlength="4000" x-model="form.body"
+                              placeholder="{{ __('ui.saved_replies_page.field_body_placeholder') }}"></textarea>
+                    <div class="wc-cnt"><span x-text="(form.body || '').length"></span>/4000</div>
+                    <div class="wc-hint">{{ __('ui.saved_replies_page.field_body_hint') }}</div>
+                </div>
+
+                {{-- The API's update() does not accept `scope`, so it is only
+                     offered while creating. On edit it is shown read-only
+                     rather than as a control that silently does nothing. --}}
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.saved_replies_page.field_scope') }}</span>
+
+                    <div x-show="editId">
+                        <span class="wc-badge" :class="form.scope === 'tenant' ? 'team' : 'personal'"
+                              x-text="form.scope === 'tenant' ? i18n.scopeTeam : i18n.scopeSelf"></span>
+                        <div class="wc-hint">{{ __('ui.saved_replies_page.scope_locked') }}</div>
+                    </div>
+
+                    <div class="wc-seg" x-show="!editId">
+                        <button type="button" x-show="canManageTeam" :class="form.scope === 'tenant' ? 'on' : ''" @click="form.scope = 'tenant'">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="7" r="3.4" stroke="currentColor" stroke-width="2"/></svg>
+                            {{ __('ui.saved_replies_page.scope_tenant') }}
+                        </button>
+                        <button type="button" :class="form.scope === 'personal' ? 'on' : ''" @click="form.scope = 'personal'">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="2"/><path d="M5.5 20a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            {{ __('ui.saved_replies_page.scope_personal') }}
+                        </button>
+                    </div>
+                    <div class="wc-hint" x-show="!editId && form.scope === 'tenant'">{{ __('ui.saved_replies_page.scope_tenant_hint') }}</div>
+                    <div class="wc-hint" x-show="!editId && form.scope === 'personal'">{{ __('ui.saved_replies_page.scope_personal_hint') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <label for="srSort">{{ __('ui.saved_replies_page.field_sort') }}</label>
+                    <input id="srSort" class="wc-inp" type="number" min="0" max="9999" x-model.number="form.sort_order" placeholder="0">
+                    <div class="wc-hint">{{ __('ui.saved_replies_page.field_sort_hint') }}</div>
+                </div>
+
+                <div class="wc-note danger" x-show="modalError">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                    <div x-text="modalError"></div>
+                </div>
+            </div>
+
+            <div class="mf">
+                <button type="button" class="wc-btn g" @click="closeModal()">{{ __('ui.cancel') }}</button>
+                <button type="button" class="wc-btn p" @click="saveReply()" :disabled="saving">
+                    <template x-if="!saving">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </template>
+                    <span x-text="saving ? '{{ __('ui.processing') }}' : '{{ __('ui.save') }}'"></span>
+                </button>
             </div>
         </div>
     </div>
 
+    {{-- ══ DELETE CONFIRM ═══════════════════════════════════════════ --}}
+    <div class="wc-ovl" :class="deleteTarget ? 'on' : ''" @click.self="deleteTarget = null">
+        <div class="wc-modal sm">
+            <div class="mb" style="text-align:center">
+                <div style="width:46px;height:46px;border-radius:50%;background:var(--wc-red-50);color:var(--wc-red);display:grid;place-items:center;margin:0 auto 12px">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div style="font-size:15px;font-weight:700;letter-spacing:-.02em">{{ __('ui.saved_replies_page.delete_confirm_title') }}</div>
+                <div style="font-size:13px;color:var(--wc-muted);margin-top:5px">
+                    {{ __('ui.saved_replies_page.delete_confirm_body') }}
+                    <strong style="color:var(--wc-text)" x-text="deleteTarget?.title"></strong>?
+                </div>
+            </div>
+            <div class="mf" style="justify-content:center">
+                <button type="button" class="wc-btn g" @click="deleteTarget = null">{{ __('ui.cancel') }}</button>
+                <button type="button" class="wc-btn dgr" @click="doDelete()" :disabled="saving">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {{ __('ui.delete') }}
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-@push('scripts')
 <script>
-function savedRepliesPage() {
+function savedRepliesConsole() {
     return {
-        replies:     [],
-        filtered:    [],
-        loading:     true,
-        search:      '',
-        scopeFilter: '',
-        showModal:   false,
-        editId:      null,
-        saving:      false,
-        modalError:  null,
+        i18n:          @json($i18n),
+        canManageTeam: @json($canManageTeam),
+        replies:      [],
+        loading:      true,
+        view:         'all',
+        search:       '',
+        selectedId:   null,
+        previewOpen:  false,
+        showModal:    false,
+        editId:       null,
+        saving:       false,
+        modalError:   null,
         deleteTarget: null,
 
         form: { title: '', shortcut: '', body: '', scope: 'tenant', sort_order: 0 },
 
-        get tenantReplies()   { return this.replies.filter(r => r.scope === 'tenant'); },
-        get personalReplies() { return this.replies.filter(r => r.scope === 'personal'); },
-        get shortcuts()       { return this.replies.filter(r => r.shortcut); },
+        init() { this.load(); },
 
-        async init() {
-            await this.load();
-        },
-
+        /* ── data ─────────────────────────────────────────────────── */
         async load() {
             this.loading = true;
             try {
-                const res = await fetch('/api/saved-replies', {
-                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                const res  = await fetch('/api/saved-replies', {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
                     credentials: 'same-origin',
                 });
                 const data = await res.json();
                 this.replies = data.data || [];
-                this.filterReplies();
-            } catch(e) {
+                // Drop a stale selection after a delete or a scope change.
+                if (this.selectedId && !this.replies.some(r => r.id === this.selectedId)) this.selectedId = null;
+            } catch (e) {
                 console.error(e);
             } finally {
                 this.loading = false;
             }
         },
 
-        filterReplies() {
+        /* ── views ────────────────────────────────────────────────── */
+        go(v) {
+            this.view = v;
+            if (this.$refs.listScroll) this.$refs.listScroll.scrollTop = 0;
+        },
+        countBy(scope)   { return this.replies.filter(r => r.scope === scope).length; },
+        countShortcuts() { return this.replies.filter(r => r.shortcut).length; },
+        viewTitle() {
+            return { all: this.i18n.ttlAll, tenant: this.i18n.ttlTeam,
+                     personal: this.i18n.ttlPersonal, shortcut: this.i18n.ttlShortcut }[this.view];
+        },
+        viewDesc() {
+            return { all: this.i18n.secAll, tenant: this.i18n.secTeam,
+                     personal: this.i18n.secPersonal, shortcut: this.i18n.secShortcut }[this.view];
+        },
+        filtered() {
             let list = this.replies;
+            if (this.view === 'tenant' || this.view === 'personal') list = list.filter(r => r.scope === this.view);
+            if (this.view === 'shortcut') list = list.filter(r => r.shortcut);
+
             const q = this.search.trim().toLowerCase();
             if (q) list = list.filter(r =>
-                r.title.toLowerCase().includes(q)
+                (r.title || '').toLowerCase().includes(q)
                 || (r.body || '').toLowerCase().includes(q)
                 || (r.shortcut || '').toLowerCase().includes(q)
             );
-            if (this.scopeFilter) list = list.filter(r => r.scope === this.scopeFilter);
-            this.filtered = list;
+            return list;
         },
 
+        /* ── selection ────────────────────────────────────────────── */
+        select(reply) {
+            this.selectedId = reply.id;
+            // On narrow screens the preview is a drawer, so a tap should open it.
+            if (window.matchMedia('(max-width: 1180px)').matches) this.previewOpen = true;
+        },
+        selected() { return this.replies.find(r => r.id === this.selectedId) || null; },
+
+        // A team reply is read-only for an agent — the API would 403 the write.
+        canWrite(reply) { return reply.scope !== 'tenant' || this.canManageTeam; },
+
+        /* ── create / edit ────────────────────────────────────────── */
         openCreate() {
             this.editId     = null;
-            this.form       = { title: '', shortcut: '', body: '', scope: 'tenant', sort_order: 0 };
+            this.form       = { title: '', shortcut: '', body: '', scope: this.canManageTeam ? 'tenant' : 'personal', sort_order: 0 };
             this.modalError = null;
             this.showModal  = true;
+            this.$nextTick(() => this.$refs.titleInput?.focus());
         },
-
         openEdit(reply) {
-            this.editId     = reply.id;
-            this.form       = {
+            this.editId = reply.id;
+            this.form   = {
                 title:      reply.title,
+                // Stored with the leading slash; the field edits the bare name.
                 shortcut:   (reply.shortcut || '').replace(/^\//, ''),
                 body:       reply.body,
                 scope:      reply.scope,
                 sort_order: reply.sort_order || 0,
             };
-            this.modalError = null;
-            this.showModal  = true;
+            this.modalError  = null;
+            this.showModal   = true;
+            this.previewOpen = false;
+            this.$nextTick(() => this.$refs.titleInput?.focus());
         },
-
         closeModal() {
-            this.showModal = false;
-            this.editId    = null;
-            this.modalError= null;
+            this.showModal  = false;
+            this.editId     = null;
+            this.modalError = null;
         },
 
         async saveReply() {
-            if (!this.form.title.trim()) { this.modalError = '{{ __('ui.saved_replies_page.error_title_required') }}'; return; }
-            if (!this.form.body.trim())  { this.modalError = '{{ __('ui.saved_replies_page.error_body_required') }}'; return; }
+            if (!this.form.title.trim()) { this.modalError = this.i18n.errTitle; return; }
+            if (!this.form.body.trim())  { this.modalError = this.i18n.errBody;  return; }
 
-            this.saving = true;
+            this.saving     = true;
             this.modalError = null;
 
-            const payload = {
+            const shortcut = this.form.shortcut.trim().replace(/^\//, '');
+            const payload  = {
                 title:      this.form.title.trim(),
-                shortcut:   this.form.shortcut.trim() ? '/' + this.form.shortcut.trim().replace(/^\//, '') : null,
+                shortcut:   shortcut ? '/' + shortcut : null,
                 body:       this.form.body.trim(),
                 scope:      this.form.scope,
                 sort_order: this.form.sort_order || 0,
             };
 
             try {
-                const url    = this.editId ? `/api/saved-replies/${this.editId}` : '/api/saved-replies';
+                const url    = this.editId ? '/api/saved-replies/' + this.editId : '/api/saved-replies';
                 const method = this.editId ? 'PUT' : 'POST';
                 const res    = await fetch(url, {
                     method,
                     credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
                     body: JSON.stringify(payload),
                 });
                 const data = await res.json();
                 if (!res.ok) {
                     const first = Object.values(data.errors || {})[0];
-                    this.modalError = (Array.isArray(first) ? first[0] : first) || data.message || '{{ __('ui.saved_replies_page.save_error') }}';
+                    this.modalError = (Array.isArray(first) ? first[0] : first) || data.message || this.i18n.saveError;
                     return;
                 }
+                // store()/update() return the bare model, not a { data } envelope.
+                const savedId = data.data?.id ?? data.id;
+                if (savedId) this.selectedId = savedId;
                 this.closeModal();
                 await this.load();
             } catch {
-                this.modalError = '{{ __('ui.saved_replies_page.save_error') }}';
+                this.modalError = this.i18n.saveError;
             } finally {
                 this.saving = false;
             }
-        },
-
-        confirmDelete(reply) {
-            this.deleteTarget = reply;
         },
 
         async doDelete() {
             if (!this.deleteTarget) return;
             this.saving = true;
             try {
-                await fetch(`/api/saved-replies/${this.deleteTarget.id}`, {
+                await fetch('/api/saved-replies/' + this.deleteTarget.id, {
                     method: 'DELETE',
                     credentials: 'same-origin',
-                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
                 });
+                if (this.selectedId === this.deleteTarget.id) this.selectedId = null;
                 this.deleteTarget = null;
                 await this.load();
             } finally {
                 this.saving = false;
             }
         },
+
+        csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
     };
 }
-
-function csrf() {
-    return document.querySelector('meta[name=csrf-token]').content;
-}
 </script>
+
+@push('styles')
+    {{-- Shared Wavadesk console shell — see /webchat/settings and /ai-settings. --}}
+    <link rel="stylesheet" href="{{ asset('css/wavadesk-console.css') }}?v={{ filemtime(public_path('css/wavadesk-console.css')) }}">
 @endpush
 @endsection

@@ -28,7 +28,7 @@
         'header_subtitle'    => (string) old('header_subtitle', $widget->header_subtitle ?? ''),
         'enabled'            => (bool)   old('enabled', $widget->enabled),
         'welcome_message'    => (string) old('welcome_message', $widget->welcome_message),
-        'suggestions'        => (array)  old('suggestions', $widget->suggestions ?? []),
+        'suggestions'        => array_values((array) old('suggestions', $widget->suggestions ?? [])),
         'pre_chat_ask_email' => (bool)   old('pre_chat_ask_email', $widget->pre_chat_ask_email),
         'offline_message'    => (string) old('offline_message', $widget->offline_message ?? ''),
         'theme_color'        => (string) old('theme_color', $widget->theme_color),
@@ -38,9 +38,9 @@
         'bubble_style'       => (string) old('bubble_style', $widget->bubble_style ?: 'soft'),
         'show_branding'      => (bool)   old('show_branding', $widget->show_branding),
         'default_lang'       => (string) old('default_lang', $widget->default_lang ?: 'ar'),
-        'available_languages'=> (array)  old('available_languages', $widget->available_languages ?: ['ar', 'en']),
-        'topics'             => (array)  old('topics', $widget->topics ?? []),
-        'allowed_domains'    => (array)  old('allowed_domains', $widget->allowed_domains ?? []),
+        'available_languages'=> array_values((array) old('available_languages', $widget->available_languages ?: ['ar', 'en'])),
+        'topics'             => array_values((array) old('topics', $widget->topics ?? [])),
+        'allowed_domains'    => array_values((array) old('allowed_domains', $widget->allowed_domains ?? [])),
     ];
 
     // Palette matches widget.js CSS classes (.wvch-topic-<tint>).
@@ -50,585 +50,814 @@
         'purple' => '#15b6a8', 'red' => '#ef4444', 'gray' => '#6b7280', 'teal' => '#14b8a6',
     ];
 
+    // Theme-colour quick picks shown as swatches next to the hex field.
+    $themePresets = ['#0f7e7a', '#15b6a8', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0d1417'];
+
+    $langNames = ['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'];
+
+    // A section is display:none when it is not the active one, so a validation
+    // error inside a collapsed section would be invisible. Map each field back
+    // to its section and open the first one that failed.
+    $sectionOfField = [
+        'name' => 'widget', 'header_subtitle' => 'widget', 'enabled' => 'widget',
+        'welcome_message' => 'welcome', 'suggestions' => 'welcome',
+        'pre_chat_ask_email' => 'welcome', 'offline_message' => 'welcome',
+        'theme_color' => 'appear', 'position' => 'appear', 'launcher_text' => 'appear',
+        'launcher_icon' => 'appear', 'bubble_style' => 'appear', 'show_branding' => 'appear',
+        'topics' => 'topics',
+        'available_languages' => 'langs', 'default_lang' => 'langs',
+        'allowed_domains' => 'security',
+    ];
+    $openSection = 'widget';
+    foreach ($errors->keys() as $key) {
+        $root = explode('.', $key)[0];
+        if (isset($sectionOfField[$root])) { $openSection = $sectionOfField[$root]; break; }
+    }
+
     $i18n = [
-        'copy'    => __('ui.webchat_settings.copy'),
-        'copied'  => __('ui.webchat_settings.copied'),
+        'copy'        => __('ui.webchat_settings.copy'),
+        'copied'      => __('ui.webchat_settings.copied'),
+        'untitled'    => __('ui.webchat_settings.topic_untitled'),
+        'required'    => __('ui.webchat_settings.topic_required'),
+        'fallbackFmt' => __('ui.webchat_settings.topic_fallback', ['lang' => '__LANG__']),
+        'composer'    => __('ui.webchat_settings.preview_composer'),
+        'poweredBy'   => __('ui.webchat_settings.powered_by', ['app' => config('app.name', 'wavadesk')]),
+        'posLeft'     => __('ui.webchat_settings.position_left'),
+        'posRight'    => __('ui.webchat_settings.position_right'),
+        'cornerSoft'    => __('ui.webchat_settings.bubble_style_soft'),
+        'cornerRounded' => __('ui.webchat_settings.bubble_style_rounded'),
+        'cornerSquare'  => __('ui.webchat_settings.bubble_style_square'),
     ];
 @endphp
 
-<div x-data="webchatSettings()" x-init="init()" x-cloak class="wcs">
+{{-- The console layout below fills the viewport and manages its own scroll
+     regions, so the shared .page-content padding/height is neutralised for
+     this route only. --}}
+<script>document.body.classList.add('wc-host');</script>
 
-    <div class="page-header">
-        <div class="page-header-left">
-            <div class="page-title">{{ __('ui.webchat_settings.title') }}</div>
-            <div class="page-subtitle">{{ __('ui.webchat_settings.subtitle') }}</div>
+<div class="wv-console" x-data="wcSettings()" x-cloak>
+<form method="POST" action="{{ route($panelPrefix . '.webchat.settings.update') }}" class="wc-shell" @submit="onSubmit($event)">
+    @csrf
+    @method('PUT')
+
+    {{-- ══ PAGE HEAD ═══════════════════════════════════════════════ --}}
+    <div class="wc-phead">
+        <div class="m">
+            <h1>
+                {{ __('ui.webchat_settings.title') }}
+                <span class="wc-pill" :class="form.enabled ? 'on' : 'off'">
+                    <i></i><span x-text="form.enabled ? @js(__('ui.webchat_settings.pill_live')) : @js(__('ui.webchat_settings.pill_disabled'))"></span>
+                </span>
+            </h1>
+            <p>{{ __('ui.webchat_settings.subtitle') }}</p>
+        </div>
+        <div class="acts">
+            <span class="wc-dirty" :class="dirty ? 'on' : ''">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                {{ __('ui.webchat_settings.unsaved') }}
+            </span>
+            <button type="button" class="wc-btn g" @click="discard()" :disabled="!dirty">{{ __('ui.webchat_settings.discard') }}</button>
+            <button type="submit" class="wc-btn p" :disabled="saving">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                {{ __('ui.webchat_settings.save') }}
+            </button>
         </div>
     </div>
 
-    <form method="POST" action="{{ route($panelPrefix . '.webchat.settings.update') }}" class="wcs-form" @submit="saving = true">
-        @csrf
-        @method('PUT')
+    <div class="wc-body">
 
-        <div class="wcs-grid">
+        {{-- ══ SECTION NAV ══════════════════════════════════════════ --}}
+        <nav class="wc-snav">
+            <div class="lbl">{{ __('ui.webchat_settings.nav_settings') }}</div>
 
-            {{-- ── LEFT COLUMN: form cards ───────────────────────────── --}}
-            <div class="wcs-col-form">
+            <button type="button" class="wc-sn" :class="section === 'widget' ? 'on' : ''" @click="go('widget')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="2"/><path d="M3 8h18" stroke="currentColor" stroke-width="2"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_widget') }}</span>
+            </button>
 
-                {{-- Widget card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title">{{ __('ui.webchat_settings.card_widget') }}</div></div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_name') }}</label>
-                            <input type="text" name="name" x-model="form.name" class="form-control @error('name') error @enderror" required maxlength="120">
-                            @error('name') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_name') }}</div>
+            <button type="button" class="wc-sn" :class="section === 'welcome' ? 'on' : ''" @click="go('welcome')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 013.6 11.5a8.4 8.4 0 018.4-8.4 8.4 8.4 0 019 8.4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_welcome') }}</span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'appear' ? 'on' : ''" @click="go('appear')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 000 18" fill="currentColor" opacity=".22"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_appearance') }}</span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'topics' ? 'on' : ''" @click="go('topics')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7.5" height="7.5" rx="1.8" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.8" stroke="currentColor" stroke-width="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.8" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.8" stroke="currentColor" stroke-width="2"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_topics') }}</span>
+                <span class="n" x-text="form.topics.length"></span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'langs' ? 'on' : ''" @click="go('langs')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.4 2.5 15.6 0 18M12 3c-2.5 2.4-2.5 15.6 0 18" stroke="currentColor" stroke-width="2"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_languages') }}</span>
+                <span class="n" x-text="form.available_languages.length"></span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'install' ? 'on' : ''" @click="go('install')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_install') }}</span>
+            </button>
+
+            <button type="button" class="wc-sn" :class="section === 'security' ? 'on' : ''" @click="go('security')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.4 8.8-8 10-4.6-1.2-8-5-8-10V6l8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                <span>{{ __('ui.webchat_settings.nav_security') }}</span>
+                <svg class="warn" width="14" height="14" viewBox="0 0 24 24" fill="none" x-show="form.allowed_domains.length === 0"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+            </button>
+        </nav>
+
+        {{-- ══ FORM ═════════════════════════════════════════════════ --}}
+        <div class="wc-form" x-ref="formScroll"><div class="wc-fwrap">
+
+            {{-- ── WIDGET ──────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'widget'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_widget') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_widget_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow hi">
+                        <div class="m">
+                            <div class="n">{{ __('ui.webchat_settings.label_enabled') }}</div>
+                            <div class="s">{{ __('ui.webchat_settings.help_enabled') }}</div>
                         </div>
+                        <button type="button" class="wc-tg" :class="form.enabled ? 'on' : ''"
+                                role="switch" :aria-checked="form.enabled ? 'true' : 'false'"
+                                @click="form.enabled = !form.enabled"></button>
+                        <input type="hidden" name="enabled" :value="form.enabled ? 1 : 0">
+                    </div>
+                    @error('enabled') <div class="wc-err">{{ $message }}</div> @enderror
+                </div>
 
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_header_subtitle') }}</label>
-                            <input type="text" name="header_subtitle" x-model="form.header_subtitle"
-                                   class="form-control @error('header_subtitle') error @enderror"
-                                   maxlength="160"
-                                   :placeholder="'{{ __('ui.webchat_settings.placeholder_header_subtitle') }}'">
-                            @error('header_subtitle') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_header_subtitle') }}</div>
-                        </div>
+                <div class="wc-fld">
+                    <label for="wcName">{{ __('ui.webchat_settings.label_name') }}</label>
+                    <input id="wcName" class="wc-inp @error('name') err @enderror" type="text" name="name" maxlength="120" x-model="form.name">
+                    @error('name') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_name') }}</div>
+                </div>
 
-                        <div class="form-group wcs-toggle-row">
-                            <label class="wcs-toggle">
-                                <input type="checkbox" name="enabled" value="1" x-model="form.enabled">
-                                <span class="wcs-toggle-track"><span class="wcs-toggle-thumb"></span></span>
-                                <span class="wcs-toggle-labels">
-                                    <span class="wcs-toggle-label">{{ __('ui.webchat_settings.label_enabled') }}</span>
-                                    <span class="wcs-toggle-help">{{ __('ui.webchat_settings.help_enabled') }}</span>
+                <div class="wc-fld">
+                    <label for="wcTagline">{{ __('ui.webchat_settings.label_header_subtitle') }}</label>
+                    <input id="wcTagline" class="wc-inp @error('header_subtitle') err @enderror" type="text" name="header_subtitle"
+                           maxlength="160" x-model="form.header_subtitle"
+                           placeholder="{{ __('ui.webchat_settings.placeholder_header_subtitle') }}">
+                    <div class="wc-cnt"><span x-text="form.header_subtitle.length"></span>/160</div>
+                    @error('header_subtitle') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_header_subtitle') }}</div>
+                </div>
+            </section>
+
+            {{-- ── WELCOME ─────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'welcome'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_welcome') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_welcome_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <label for="wcWelcome">{{ __('ui.webchat_settings.label_welcome_message') }}</label>
+                    <textarea id="wcWelcome" class="wc-inp @error('welcome_message') err @enderror" name="welcome_message"
+                              maxlength="4000" x-model="form.welcome_message"></textarea>
+                    <div class="wc-cnt"><span x-text="form.welcome_message.length"></span>/4000</div>
+                    @error('welcome_message') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_welcome_message') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_suggestions') }}</span>
+                    <div class="wc-hint wc-hint-top">{{ __('ui.webchat_settings.help_suggestions') }}</div>
+
+                    <div class="wc-rep">
+                        <template x-if="form.suggestions.length === 0">
+                            <div class="wc-empty sm">{{ __('ui.webchat_settings.empty_chips') }}</div>
+                        </template>
+                        <template x-for="(chip, i) in form.suggestions" :key="'chip' + i">
+                            <div class="wc-chiprow">
+                                <span class="wc-num" x-text="i + 1"></span>
+                                <input class="wc-inp" type="text" maxlength="60"
+                                       :name="'suggestions[' + i + ']'"
+                                       x-model="form.suggestions[i]"
+                                       placeholder="{{ __('ui.webchat_settings.placeholder_chip') }}">
+                                <span class="wc-rowacts">
+                                    <button type="button" class="wc-ib" :disabled="i === 0" @click="move(form.suggestions, i, -1)" title="↑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                    <button type="button" class="wc-ib" :disabled="i === form.suggestions.length - 1" @click="move(form.suggestions, i, 1)" title="↓"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                    <button type="button" class="wc-ib del" @click="form.suggestions.splice(i, 1)" title="×"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
                                 </span>
-                            </label>
+                            </div>
+                        </template>
+                    </div>
+
+                    <button type="button" class="wc-btn g sm wc-mt9" x-show="form.suggestions.length < 12" @click="addChip()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        {{ __('ui.webchat_settings.add_chip') }}
+                    </button>
+
+                    @error('suggestions')   <div class="wc-err">{{ $message }}</div> @enderror
+                    @error('suggestions.*') <div class="wc-err">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow">
+                        <div class="m">
+                            <div class="n">{{ __('ui.webchat_settings.label_pre_chat') }}</div>
                         </div>
+                        <button type="button" class="wc-tg" :class="form.pre_chat_ask_email ? 'on' : ''"
+                                role="switch" :aria-checked="form.pre_chat_ask_email ? 'true' : 'false'"
+                                @click="form.pre_chat_ask_email = !form.pre_chat_ask_email"></button>
+                        <input type="hidden" name="pre_chat_ask_email" :value="form.pre_chat_ask_email ? 1 : 0">
                     </div>
                 </div>
 
-                {{-- Welcome card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title">{{ __('ui.webchat_settings.card_welcome') }}</div></div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_welcome_message') }}</label>
-                            <textarea name="welcome_message" x-model="form.welcome_message" rows="3" class="form-control @error('welcome_message') error @enderror" required maxlength="4000"></textarea>
-                            @error('welcome_message') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_welcome_message') }}</div>
-                        </div>
+                <div class="wc-fld">
+                    <label for="wcOffline">{{ __('ui.webchat_settings.label_offline_message') }}</label>
+                    <textarea id="wcOffline" class="wc-inp wc-inp-sm @error('offline_message') err @enderror" name="offline_message"
+                              maxlength="4000" x-model="form.offline_message"></textarea>
+                    @error('offline_message') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_offline_message') }}</div>
+                </div>
+            </section>
 
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_suggestions') }}</label>
-                            <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_suggestions') }}</div>
-
-                            <div class="wcs-chips" x-show="form.suggestions.length > 0">
-                                <template x-for="(chip, idx) in form.suggestions" :key="idx">
-                                    <div class="wcs-chip">
-                                        <input type="text"
-                                               :name="'suggestions[' + idx + ']'"
-                                               x-model="form.suggestions[idx]"
-                                               maxlength="60"
-                                               class="wcs-chip-input">
-                                        <button type="button" class="wcs-chip-btn" @click="moveChipUp(idx)"    :disabled="idx === 0"                        title="↑"><i class="ri-arrow-up-s-line"></i></button>
-                                        <button type="button" class="wcs-chip-btn" @click="moveChipDown(idx)"  :disabled="idx === form.suggestions.length-1" title="↓"><i class="ri-arrow-down-s-line"></i></button>
-                                        <button type="button" class="wcs-chip-btn wcs-chip-btn-danger" @click="removeChip(idx)" title="×"><i class="ri-close-line"></i></button>
-                                    </div>
-                                </template>
-                            </div>
-
-                            <div class="wcs-chip-add" x-show="form.suggestions.length < 12">
-                                <input type="text"
-                                       x-model="newChip"
-                                       @keydown.enter.prevent="addChip()"
-                                       :placeholder="'{{ __('ui.webchat_settings.placeholder_chip') }}'"
-                                       maxlength="60"
-                                       class="form-control">
-                                <button type="button" @click="addChip()" :disabled="!newChip.trim()" class="btn btn-outline btn-sm">
-                                    <i class="ri-add-line"></i> {{ __('ui.webchat_settings.add_chip') }}
-                                </button>
-                            </div>
-                            @error('suggestions') <div class="form-error">{{ $message }}</div> @enderror
-                            @error('suggestions.*') <div class="form-error">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="form-group wcs-toggle-row">
-                            <label class="wcs-toggle">
-                                <input type="checkbox" name="pre_chat_ask_email" value="1" x-model="form.pre_chat_ask_email">
-                                <span class="wcs-toggle-track"><span class="wcs-toggle-thumb"></span></span>
-                                <span class="wcs-toggle-labels">
-                                    <span class="wcs-toggle-label">{{ __('ui.webchat_settings.label_pre_chat') }}</span>
-                                </span>
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_offline_message') }}</label>
-                            <textarea name="offline_message" x-model="form.offline_message" rows="2" class="form-control @error('offline_message') error @enderror" maxlength="4000"></textarea>
-                            @error('offline_message') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_offline_message') }}</div>
-                        </div>
-                    </div>
+            {{-- ── APPEARANCE ──────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'appear'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_appearance') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_appearance_desc') }}</p>
                 </div>
 
-                {{-- Appearance card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title">{{ __('ui.webchat_settings.card_appearance') }}</div></div>
-                    <div class="card-body">
-                        <div class="wcs-inline-fields">
-                            <div class="form-group wcs-color-group">
-                                <label class="form-label">{{ __('ui.webchat_settings.label_theme_color') }}</label>
-                                <div class="wcs-color-row">
-                                    <input type="color" x-model="form.theme_color" class="wcs-color-swatch" aria-label="color picker">
-                                    <input type="text" name="theme_color" x-model="form.theme_color" class="form-control @error('theme_color') error @enderror" pattern="^#[0-9a-fA-F]{6}$" required maxlength="7">
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_theme_color') }}</span>
+                    <div class="wc-colorrow">
+                        <div class="wc-swatches">
+                            @foreach ($themePresets as $preset)
+                                <button type="button" class="wc-sw" :class="form.theme_color.toLowerCase() === '{{ $preset }}' ? 'on' : ''"
+                                        style="background:{{ $preset }}" title="{{ $preset }}"
+                                        @click="form.theme_color = '{{ $preset }}'"></button>
+                            @endforeach
+                        </div>
+                        <div class="wc-hexbox">
+                            <input type="color" :value="hexOrDefault(form.theme_color)" @input="form.theme_color = $event.target.value" aria-label="{{ __('ui.webchat_settings.label_theme_color') }}">
+                            <input type="text" name="theme_color" maxlength="7" x-model="form.theme_color">
+                        </div>
+                    </div>
+                    <div class="wc-err" x-show="clientError === 'theme_color'">{{ __('ui.webchat_settings.err_theme_color') }}</div>
+                    @error('theme_color') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_theme_color') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_position') }}</span>
+                    <div class="wc-seg">
+                        <button type="button" :class="form.position === 'left' ? 'on' : ''" @click="form.position = 'left'">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2.6" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="16" r="2.6" fill="currentColor"/></svg>
+                            {{ __('ui.webchat_settings.position_left') }}
+                        </button>
+                        <button type="button" :class="form.position === 'right' ? 'on' : ''" @click="form.position = 'right'">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2.6" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="2.6" fill="currentColor"/></svg>
+                            {{ __('ui.webchat_settings.position_right') }}
+                        </button>
+                    </div>
+                    <input type="hidden" name="position" :value="form.position">
+                    @error('position') <div class="wc-err">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="wc-fld">
+                    <label for="wcLauncherText">{{ __('ui.webchat_settings.label_launcher_text') }}</label>
+                    <input id="wcLauncherText" class="wc-inp @error('launcher_text') err @enderror" type="text" name="launcher_text"
+                           maxlength="120" x-model="form.launcher_text"
+                           placeholder="{{ __('ui.webchat_settings.placeholder_launcher') }}">
+                    @error('launcher_text') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_launcher_text') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_launcher_icon') }}</span>
+                    <div class="wc-picker">
+                        @foreach (['chat', 'message', 'help', 'sparkle'] as $iconKey)
+                            <button type="button" class="wc-pk" :class="form.launcher_icon === '{{ $iconKey }}' ? 'on' : ''"
+                                    @click="form.launcher_icon = '{{ $iconKey }}'">
+                                @includeIf('admin.webchat._launcher-icon', ['icon' => $iconKey])
+                                <span>{{ __('ui.webchat_settings.launcher_icon_' . $iconKey) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="launcher_icon" :value="form.launcher_icon">
+                    @error('launcher_icon') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_launcher_icon') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_bubble_style') }}</span>
+                    <div class="wc-corners">
+                        @foreach (['soft' => '7px', 'rounded' => '11px', 'square' => '2px'] as $styleKey => $swRadius)
+                            <button type="button" class="wc-cn" :class="form.bubble_style === '{{ $styleKey }}' ? 'on' : ''"
+                                    @click="form.bubble_style = '{{ $styleKey }}'">
+                                <span class="sw" style="border-radius:{{ $swRadius }}"></span>
+                                <span>{{ __('ui.webchat_settings.bubble_style_' . $styleKey) }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="bubble_style" :value="form.bubble_style">
+                    @error('bubble_style') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_bubble_style') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-trow">
+                        <div class="m">
+                            <div class="n">{{ __('ui.webchat_settings.label_show_branding') }}</div>
+                            <div class="s">{{ __('ui.webchat_settings.help_show_branding') }}</div>
+                        </div>
+                        <button type="button" class="wc-tg" :class="form.show_branding ? 'on' : ''"
+                                role="switch" :aria-checked="form.show_branding ? 'true' : 'false'"
+                                @click="form.show_branding = !form.show_branding"></button>
+                        <input type="hidden" name="show_branding" :value="form.show_branding ? 1 : 0">
+                    </div>
+                </div>
+            </section>
+
+            {{-- ── TOPICS ──────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'topics'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_topics') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_topics_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <div class="wc-rep">
+                        <template x-if="form.topics.length === 0">
+                            <div class="wc-empty">
+                                <div class="t">{{ __('ui.webchat_settings.empty_topics_title') }}</div>
+                                <div class="s">{{ __('ui.webchat_settings.empty_topics_hint') }}</div>
+                            </div>
+                        </template>
+
+                        <template x-for="(topic, t) in form.topics" :key="'topic' + t">
+                            <div class="wc-repitem">
+                                <div class="wc-rh">
+                                    <span class="grip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="6" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/></svg></span>
+                                    <span class="wc-num" x-text="t + 1"></span>
+                                    <span class="m"><span class="ttl" x-text="topicTitle(topic)"></span></span>
+                                    <span class="wc-rowacts">
+                                        <button type="button" class="wc-ib" :disabled="t === 0" @click="move(form.topics, t, -1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                        <button type="button" class="wc-ib" :disabled="t === form.topics.length - 1" @click="move(form.topics, t, 1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 10l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                        <button type="button" class="wc-ib del" @click="form.topics.splice(t, 1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+                                    </span>
                                 </div>
-                                @error('theme_color') <div class="form-error">{{ $message }}</div> @enderror
-                                <div class="form-help">{{ __('ui.webchat_settings.help_theme_color') }}</div>
-                            </div>
 
-                            <div class="form-group wcs-position-group">
-                                <label class="form-label">{{ __('ui.webchat_settings.label_position') }}</label>
-                                <div class="wcs-radio-row">
-                                    <label class="wcs-radio" :class="form.position === 'left' ? 'wcs-radio-active' : ''">
-                                        <input type="radio" name="position" value="left" x-model="form.position">
-                                        <i class="ri-arrow-left-down-line"></i>
-                                        <span>{{ __('ui.webchat_settings.position_left') }}</span>
-                                    </label>
-                                    <label class="wcs-radio" :class="form.position === 'right' ? 'wcs-radio-active' : ''">
-                                        <input type="radio" name="position" value="right" x-model="form.position">
-                                        <i class="ri-arrow-right-down-line"></i>
-                                        <span>{{ __('ui.webchat_settings.position_right') }}</span>
-                                    </label>
-                                </div>
-                                @error('position') <div class="form-error">{{ $message }}</div> @enderror
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_launcher_text') }}</label>
-                            <input type="text" name="launcher_text" x-model="form.launcher_text" class="form-control @error('launcher_text') error @enderror" maxlength="120" :placeholder="'{{ __('ui.webchat_settings.placeholder_launcher') }}'">
-                            @error('launcher_text') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_launcher_text') }}</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_launcher_icon') }}</label>
-                            <div class="wcs-icon-row">
-                                @php
-                                    $iconOptions = [
-                                        'chat'    => 'ri-chat-3-line',
-                                        'message' => 'ri-message-2-line',
-                                        'help'    => 'ri-question-line',
-                                        'sparkle' => 'ri-sparkling-2-line',
-                                    ];
-                                @endphp
-                                @foreach ($iconOptions as $key => $rmi)
-                                    <label class="wcs-icon-tile" :class="form.launcher_icon === '{{ $key }}' ? 'wcs-icon-tile-active' : ''">
-                                        <input type="radio" name="launcher_icon" value="{{ $key }}" x-model="form.launcher_icon">
-                                        <i class="{{ $rmi }}"></i>
-                                        <span>{{ __('ui.webchat_settings.launcher_icon_' . $key) }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('launcher_icon') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_launcher_icon') }}</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_bubble_style') }}</label>
-                            <div class="wcs-radio-row wcs-radio-row-3">
-                                @foreach (['soft', 'rounded', 'square'] as $style)
-                                    <label class="wcs-radio" :class="form.bubble_style === '{{ $style }}' ? 'wcs-radio-active' : ''">
-                                        <input type="radio" name="bubble_style" value="{{ $style }}" x-model="form.bubble_style">
-                                        <span class="wcs-bubble-preview wcs-bubble-preview-{{ $style }}"></span>
-                                        <span>{{ __('ui.webchat_settings.bubble_style_' . $style) }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('bubble_style') <div class="form-error">{{ $message }}</div> @enderror
-                            <div class="form-help">{{ __('ui.webchat_settings.help_bubble_style') }}</div>
-                        </div>
-
-                        <div class="form-group wcs-toggle-row">
-                            <label class="wcs-toggle">
-                                <input type="checkbox" name="show_branding" value="1" x-model="form.show_branding">
-                                <span class="wcs-toggle-track"><span class="wcs-toggle-thumb"></span></span>
-                                <span class="wcs-toggle-labels">
-                                    <span class="wcs-toggle-label">{{ __('ui.webchat_settings.label_show_branding') }}</span>
-                                    <span class="wcs-toggle-help">{{ __('ui.webchat_settings.help_show_branding') }}</span>
-                                </span>
-                            </label>
-                        </div>
-
-                        {{-- Languages --}}
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_languages') }}</label>
-                            <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_languages') }}</div>
-                            <div class="wcs-lang-grid">
-                                @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $label)
-                                    <label class="wcs-lang-tile"
-                                           :class="form.available_languages.includes('{{ $code }}') ? 'wcs-lang-tile-active' : ''">
-                                        <input type="checkbox"
-                                               name="available_languages[]"
-                                               value="{{ $code }}"
-                                               x-model="form.available_languages"
-                                               @change="ensureDefaultLangInList()">
-                                        <span class="wcs-lang-code">{{ strtoupper($code) }}</span>
-                                        <span class="wcs-lang-label">{{ $label }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('available_languages') <div class="form-error">{{ $message }}</div> @enderror
-                            @error('available_languages.*') <div class="form-error">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_default_lang') }}</label>
-                            {{-- data-no-ss opts out of the admin layout's Select2-like
-                                 enhancer (see initSS in layouts/admin.blade.php). That
-                                 enhancer snapshots options at load time, so x-show on
-                                 <option> tags never reaches the visible list AND its
-                                 dropdown was being clipped by the card overflow.
-                                 :hidden reactively removes disabled languages from
-                                 the native dropdown as tenants toggle checkboxes. --}}
-                            <select name="default_lang" x-model="form.default_lang" data-no-ss class="form-control">
-                                @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $label)
-                                    <option value="{{ $code }}"
-                                            :hidden="!form.available_languages.includes('{{ $code }}')">
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-help">{{ __('ui.webchat_settings.help_default_lang') }}</div>
-                            @error('default_lang') <div class="form-error">{{ $message }}</div> @enderror
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Welcome topics card --}}
-                <div class="card wcs-card">
-                    <div class="card-header">
-                        <div class="card-title">{{ __('ui.webchat_settings.card_topics') }}</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_topics') }}</div>
-
-                        {{-- Existing topic rows --}}
-                        <div class="wcs-topics" x-show="form.topics.length > 0">
-                            <template x-for="(topic, tIdx) in form.topics" :key="tIdx">
-                                <div class="wcs-topic-row">
-                                    <div class="wcs-topic-head">
-                                        <span class="wcs-topic-index" x-text="tIdx + 1"></span>
-
-                                        {{-- Tint picker --}}
-                                        <div class="wcs-tint-picker">
+                                <div class="wc-rb">
+                                    <div>
+                                        <span class="wc-sublabel">{{ __('ui.webchat_settings.topic_card_color') }}</span>
+                                        <div class="wc-swatches">
                                             @foreach ($topicTints as $tint)
-                                                <button type="button"
-                                                        class="wcs-tint-dot wcs-tint-dot-{{ $tint }}"
-                                                        :class="topic.tint === '{{ $tint }}' ? 'wcs-tint-dot-active' : ''"
-                                                        @click="topic.tint = '{{ $tint }}'"
-                                                        :aria-label="'{{ ucfirst($tint) }}'"
-                                                        title="{{ ucfirst($tint) }}"></button>
+                                                <button type="button" class="wc-sw dot" :class="topic.tint === '{{ $tint }}' ? 'on' : ''"
+                                                        style="background:{{ $topicTintHex[$tint] }}" title="{{ ucfirst($tint) }}"
+                                                        @click="topic.tint = '{{ $tint }}'"></button>
                                             @endforeach
-                                            <input type="hidden"
-                                                   :name="'topics[' + tIdx + '][tint]'"
-                                                   :value="topic.tint">
                                         </div>
+                                        <input type="hidden" :name="'topics[' + t + '][tint]'" :value="topic.tint">
+                                    </div>
 
-                                        <div class="wcs-topic-actions">
-                                            <button type="button" class="wcs-chip-btn" @click="moveTopicUp(tIdx)"   :disabled="tIdx === 0"                       title="↑"><i class="ri-arrow-up-s-line"></i></button>
-                                            <button type="button" class="wcs-chip-btn" @click="moveTopicDown(tIdx)" :disabled="tIdx === form.topics.length - 1" title="↓"><i class="ri-arrow-down-s-line"></i></button>
-                                            <button type="button" class="wcs-chip-btn wcs-chip-btn-danger" @click="removeTopic(tIdx)" title="×"><i class="ri-close-line"></i></button>
+                                    <div>
+                                        <span class="wc-sublabel">{{ __('ui.webchat_settings.topic_on_tap') }}</span>
+                                        <div class="wc-radios">
+                                            <label class="wc-rad" :class="topic.action === 'message' ? 'on' : ''">
+                                                <input type="radio" :name="'topics[' + t + '][action]'" value="message" x-model="topic.action">
+                                                {{ __('ui.webchat_settings.topic_action_message') }}
+                                            </label>
+                                            <label class="wc-rad" :class="topic.action === 'agent' ? 'on' : ''">
+                                                <input type="radio" :name="'topics[' + t + '][action]'" value="agent" x-model="topic.action">
+                                                {{ __('ui.webchat_settings.topic_action_agent') }}
+                                            </label>
                                         </div>
                                     </div>
 
-                                    {{-- Action selector: sends the label as a message OR triggers request-agent --}}
-                                    <div class="wcs-topic-action-row">
-                                        <label class="wcs-topic-action-opt">
-                                            <input type="radio" :name="'topics[' + tIdx + '][action]'" value="message" x-model="topic.action">
-                                            <span>{{ __('ui.webchat_settings.topic_action_message') }}</span>
-                                        </label>
-                                        <label class="wcs-topic-action-opt">
-                                            <input type="radio" :name="'topics[' + tIdx + '][action]'" value="agent" x-model="topic.action">
-                                            <span>{{ __('ui.webchat_settings.topic_action_agent') }}</span>
-                                        </label>
-                                    </div>
-
-                                    {{-- Per-language label inputs (only for enabled languages) --}}
-                                    <div class="wcs-topic-labels">
-                                        @foreach (['ar' => 'العربية', 'en' => 'English', 'fr' => 'Français'] as $code => $langLabel)
-                                            <div class="wcs-topic-label-group"
+                                    <div class="wc-langinps">
+                                        <span class="wc-sublabel">{{ __('ui.webchat_settings.topic_labels') }}</span>
+                                        @foreach ($langNames as $code => $langLabel)
+                                            <div class="wc-langinp" :class="form.default_lang === '{{ $code }}' ? 'dflt' : ''"
                                                  x-show="form.available_languages.includes('{{ $code }}')">
-                                                <label class="wcs-topic-label-tag">{{ strtoupper($code) }}</label>
-                                                <input type="text"
-                                                       :name="'topics[' + tIdx + '][labels][{{ $code }}]'"
+                                                <span class="tag">{{ strtoupper($code) }}<template x-if="form.default_lang === '{{ $code }}'"><span>*</span></template></span>
+                                                <input class="wc-inp" type="text" maxlength="60"
+                                                       :name="'topics[' + t + '][labels][{{ $code }}]'"
                                                        x-model="topic.labels['{{ $code }}']"
-                                                       maxlength="60"
-                                                       placeholder="{{ $langLabel }}"
-                                                       class="form-control wcs-topic-label-input">
+                                                       :placeholder="form.default_lang === '{{ $code }}' ? i18n.required : fallbackText()">
                                             </div>
                                         @endforeach
                                     </div>
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
+                    </div>
 
-                        <div class="wcs-topics-add" x-show="form.topics.length < 6">
-                            <button type="button" class="btn btn-outline btn-sm" @click="addTopic()">
-                                <i class="ri-add-line"></i> {{ __('ui.webchat_settings.add_topic') }}
+                    <button type="button" class="wc-btn g sm wc-mt10" x-show="form.topics.length < 6" @click="addTopic()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        {{ __('ui.webchat_settings.add_topic') }}
+                    </button>
+
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_topics') }}</div>
+
+                    @error('topics')               <div class="wc-err">{{ $message }}</div> @enderror
+                    @error('topics.*')             <div class="wc-err">{{ $message }}</div> @enderror
+                    @error('topics.*.labels')      <div class="wc-err">{{ $message }}</div> @enderror
+                </div>
+            </section>
+
+            {{-- ── LANGUAGES ───────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'langs'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.label_languages') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_languages_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_languages') }}</span>
+                    <div class="wc-langs">
+                        @foreach ($langNames as $code => $langLabel)
+                            <button type="button" class="wc-lgc" :class="form.available_languages.includes('{{ $code }}') ? 'on' : ''"
+                                    @click="toggleLang('{{ $code }}')">
+                                <svg class="tick" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div class="c">{{ strtoupper($code) }}</div>
+                                <div class="n">{{ $langLabel }}</div>
+                            </button>
+                        @endforeach
+                    </div>
+                    <template x-for="l in form.available_languages" :key="'lang' + l">
+                        <input type="hidden" name="available_languages[]" :value="l">
+                    </template>
+                    @error('available_languages')   <div class="wc-err">{{ $message }}</div> @enderror
+                    @error('available_languages.*') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_languages') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <label for="wcDefLang">{{ __('ui.webchat_settings.label_default_lang') }}</label>
+                    {{-- data-no-ss opts out of the admin layout's Select2-like enhancer
+                         (initSS in layouts/admin.blade.php): it snapshots options at
+                         load time, so reactive :hidden would never reach its list. --}}
+                    <select id="wcDefLang" class="wc-inp wc-sel" name="default_lang" data-no-ss x-model="form.default_lang">
+                        @foreach ($langNames as $code => $langLabel)
+                            <option value="{{ $code }}" :hidden="!form.available_languages.includes('{{ $code }}')">{{ $langLabel }}</option>
+                        @endforeach
+                    </select>
+                    @error('default_lang') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_default_lang') }}</div>
+                </div>
+            </section>
+
+            {{-- ── INSTALL ─────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'install'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_install') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_install_desc') }}</p>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.install_public_key') }}</span>
+                    <div class="wc-keybox">
+                        <div class="k" x-ref="pubkey">{{ $widget->public_key }}</div>
+                        <button type="button" class="wc-btn g" @click="copy($refs.pubkey.textContent.trim(), 'key')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2.2" stroke="currentColor" stroke-width="2"/><path d="M15 5.5A2.5 2.5 0 0012.5 3h-7A2.5 2.5 0 003 5.5v7A2.5 2.5 0 005.5 15" stroke="currentColor" stroke-width="2"/></svg>
+                            <span x-text="copied === 'key' ? i18n.copied : i18n.copy"></span>
+                        </button>
+                    </div>
+                    <div class="wc-hint">{{ __('ui.webchat_settings.install_public_key_hint') }}</div>
+                </div>
+
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.install_snippet') }}</span>
+                    <div class="wc-codebox">
+                        <div class="ch">
+                            <span class="t">index.html</span><span class="sp"></span>
+                            <button type="button" class="wc-cpbtn" @click="copy($refs.snippet.textContent, 'snippet')">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2.2" stroke="currentColor" stroke-width="2"/><path d="M15 5.5A2.5 2.5 0 0012.5 3h-7A2.5 2.5 0 003 5.5v7A2.5 2.5 0 005.5 15" stroke="currentColor" stroke-width="2"/></svg>
+                                <span x-text="copied === 'snippet' ? i18n.copied : i18n.copy"></span>
                             </button>
                         </div>
+                        <pre x-ref="snippet">{{ $embedSnippet }}</pre>
+                    </div>
+                    <div class="wc-hint">{{ __('ui.webchat_settings.install_snippet_hint') }}</div>
+                </div>
 
-                        @error('topics') <div class="form-error">{{ $message }}</div> @enderror
-                        @error('topics.*') <div class="form-error">{{ $message }}</div> @enderror
-                        @error('topics.*.labels') <div class="form-error">{{ $message }}</div> @enderror
+                <div class="wc-fld" x-show="!form.enabled">
+                    <div class="wc-note">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+                        <div>{!! __('ui.webchat_settings.note_disabled_install') !!}</div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- ── SECURITY ────────────────────────────────────────── --}}
+            <section class="wc-sec" x-show="section === 'security'">
+                <div class="wc-sechead">
+                    <h2>{{ __('ui.webchat_settings.card_security') }}</h2>
+                    <p>{{ __('ui.webchat_settings.sec_security_desc') }}</p>
+                </div>
+
+                {{-- UI-007: isDomainAllowed fails closed on an empty list, so an
+                     enabled widget with no origins 403s every visitor. --}}
+                <div class="wc-fld" x-show="form.enabled && form.allowed_domains.length === 0">
+                    <div class="wc-note danger">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+                        <div>{{ __('ui.webchat_settings.warn_enabled_without_domains') }}</div>
                     </div>
                 </div>
 
-                {{-- Security card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title">{{ __('ui.webchat_settings.card_security') }}</div></div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.label_allowed_domains') }}</label>
-                            <div class="form-help wcs-help-top">{{ __('ui.webchat_settings.help_allowed_domains') }}</div>
+                <div class="wc-fld">
+                    <span class="wc-flabel">{{ __('ui.webchat_settings.label_allowed_domains') }}</span>
 
-                            {{-- UI-007: warn when the widget is enabled but no
-                                 domain is configured. isDomainAllowed fails
-                                 closed on empty, so this state 403s every
-                                 visitor — the tenant needs to know before they
-                                 walk away from the page. --}}
-                            <div class="alert alert-warning" style="margin:8px 0;padding:10px 12px;border-radius:8px;background:#fef3c7;color:#92400e;font-size:13.5px"
-                                 x-show="form.enabled && form.allowed_domains.length === 0">
-                                <i class="ri-error-warning-line"></i>
-                                {{ __('ui.webchat_settings.warn_enabled_without_domains') }}
+                    <div class="wc-origins" x-show="form.allowed_domains.length > 0">
+                        <template x-for="(origin, i) in form.allowed_domains" :key="'origin' + i">
+                            <div class="wc-origin">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="globe"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.4 2.5 15.6 0 18M12 3c-2.5 2.4-2.5 15.6 0 18" stroke="currentColor" stroke-width="1.7"/></svg>
+                                <span class="u" x-text="origin"></span>
+                                <input type="hidden" :name="'allowed_domains[' + i + ']'" :value="origin">
+                                <button type="button" class="wc-ib del" @click="form.allowed_domains.splice(i, 1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
                             </div>
+                        </template>
+                    </div>
 
-                            <div class="wcs-domains" x-show="form.allowed_domains.length > 0">
-                                <template x-for="(dom, idx) in form.allowed_domains" :key="idx">
-                                    <div class="wcs-domain">
-                                        <i class="ri-global-line wcs-domain-icon"></i>
-                                        <input type="url"
-                                               :name="'allowed_domains[' + idx + ']'"
-                                               x-model="form.allowed_domains[idx]"
-                                               maxlength="255"
-                                               class="wcs-domain-input">
-                                        <button type="button" class="wcs-chip-btn wcs-chip-btn-danger" @click="removeDomain(idx)"><i class="ri-close-line"></i></button>
-                                    </div>
-                                </template>
-                            </div>
+                    <div class="wc-addrow" x-show="form.allowed_domains.length < 32">
+                        <input class="wc-inp" type="text" maxlength="255" x-model="newDomain"
+                               @keydown.enter.prevent="addDomain()"
+                               placeholder="{{ __('ui.webchat_settings.placeholder_domain') }}">
+                        <button type="button" class="wc-btn g" @click="addDomain()" :disabled="!newDomain.trim()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                            {{ __('ui.webchat_settings.add') }}
+                        </button>
+                    </div>
 
-                            <div class="wcs-chip-add" x-show="form.allowed_domains.length < 32">
-                                <input type="url"
-                                       x-model="newDomain"
-                                       @keydown.enter.prevent="addDomain()"
-                                       :placeholder="'{{ __('ui.webchat_settings.placeholder_domain') }}'"
-                                       maxlength="255"
-                                       class="form-control">
-                                <button type="button" @click="addDomain()" :disabled="!newDomain.trim()" class="btn btn-outline btn-sm">
-                                    <i class="ri-add-line"></i> {{ __('ui.webchat_settings.add_domain') }}
-                                </button>
-                            </div>
-                            @error('allowed_domains') <div class="form-error">{{ $message }}</div> @enderror
-                            @error('allowed_domains.*') <div class="form-error">{{ $message }}</div> @enderror
-                        </div>
+                    <div class="wc-err" x-show="clientError === 'allowed_domains'">{{ __('ui.webchat_settings.err_domains_required') }}</div>
+                    @error('allowed_domains')   <div class="wc-err">{{ $message }}</div> @enderror
+                    @error('allowed_domains.*') <div class="wc-err">{{ $message }}</div> @enderror
+                    <div class="wc-hint">{{ __('ui.webchat_settings.help_allowed_domains') }}</div>
+                </div>
+
+                <div class="wc-fld" x-show="form.allowed_domains.length === 0 && !form.enabled">
+                    <div class="wc-note">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3l9.5 17H2.5L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+                        <div>{!! __('ui.webchat_settings.note_no_origins') !!}</div>
                     </div>
                 </div>
+            </section>
 
-                <div class="wcs-actions">
-                    <button type="submit" class="btn btn-primary" :disabled="saving">
-                        <i class="ri-save-line"></i>
-                        <span>{{ __('ui.webchat_settings.save') }}</span>
-                    </button>
-                </div>
+        </div></div>
+
+        {{-- ══ PREVIEW ══════════════════════════════════════════════ --}}
+        <aside class="wc-prev" :class="previewOpen ? 'open' : ''">
+            <div class="wc-pvh">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="eye"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                <span class="t">{{ __('ui.webchat_settings.preview') }}</span>
+                <span class="cl" x-text="form.default_lang.toUpperCase()"></span>
             </div>
 
-            {{-- ── RIGHT COLUMN: install + preview ───────────────────── --}}
-            <div class="wcs-col-side">
-
-                {{-- Install card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title"><i class="ri-code-s-slash-line"></i> {{ __('ui.webchat_settings.card_install') }}</div></div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.install_public_key') }}</label>
-                            <div class="wcs-copy-row">
-                                <input type="text" readonly value="{{ $widget->public_key }}" class="form-control wcs-mono" x-ref="keyInput">
-                                <button type="button" class="btn btn-outline btn-sm" @click="copy($refs.keyInput.value, 'key')">
-                                    <i class="ri-clipboard-line"></i>
-                                    <span x-text="copiedTarget === 'key' ? i18n.copied : i18n.copy"></span>
-                                </button>
-                            </div>
-                            <div class="form-help">{{ __('ui.webchat_settings.install_public_key_hint') }}</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">{{ __('ui.webchat_settings.install_snippet') }}</label>
-                            <textarea readonly rows="4" class="form-control wcs-mono wcs-snippet" x-ref="snippet">{{ $embedSnippet }}</textarea>
-                            <div class="wcs-copy-row">
-                                <button type="button" class="btn btn-outline btn-sm" @click="copy($refs.snippet.value, 'snippet')">
-                                    <i class="ri-clipboard-line"></i>
-                                    <span x-text="copiedTarget === 'snippet' ? i18n.copied : i18n.copy"></span>
-                                </button>
-                            </div>
-                            <div class="form-help">{{ __('ui.webchat_settings.install_snippet_hint') }}</div>
-                        </div>
-                    </div>
+            <div class="wc-pvbody">
+                <div class="wc-devsw">
+                    <button type="button" :class="device === 'desktop' ? 'on' : ''" @click="device = 'desktop'">{{ __('ui.webchat_settings.device_desktop') }}</button>
+                    <button type="button" :class="device === 'mobile' ? 'on' : ''"  @click="device = 'mobile'">{{ __('ui.webchat_settings.device_mobile') }}</button>
                 </div>
 
-                {{-- Preview card --}}
-                <div class="card wcs-card">
-                    <div class="card-header"><div class="card-title"><i class="ri-eye-line"></i> {{ __('ui.webchat_settings.card_preview') }}</div></div>
-                    <div class="card-body">
-                        <div class="wcs-preview-stage"
-                             :class="['wcs-preview-' + form.position, 'wcs-preview-bubble-' + form.bubble_style]">
-                            <div class="wcs-preview-card" x-show="form.enabled">
-                                <div class="wcs-preview-header" :style="'background:' + form.theme_color">
-                                    <div class="wcs-preview-header-inner">
-                                        <div>
-                                            <div class="wcs-preview-title" x-text="form.name || 'Live Chat'"></div>
-                                            <div class="wcs-preview-subtitle" x-show="form.header_subtitle" x-text="form.header_subtitle"></div>
-                                        </div>
-                                        <div class="wcs-preview-close"><i class="ri-close-line"></i></div>
-                                    </div>
+                {{-- Disabled state --}}
+                <div class="wc-pvdis" x-show="!form.enabled">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="opacity:.5"><path d="M2 12s3.6-7 10-7c1.4 0 2.7.3 3.8.9M22 12s-3.6 7-10 7c-1.4 0-2.7-.3-3.8-.9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <div class="t">{{ __('ui.webchat_settings.preview_disabled_title') }}</div>
+                    <div class="s">{{ __('ui.webchat_settings.preview_disabled_hint') }}</div>
+                </div>
+
+                {{-- Widget mock --}}
+                <template x-if="form.enabled">
+                    <div class="wc-stage">
+                        <div class="wc-wgt" :class="device === 'mobile' ? 'mob' : ''"
+                             :style="'border-radius:' + panelRadius()" :dir="form.default_lang === 'ar' ? 'rtl' : 'ltr'">
+                            <div class="wh" :style="'background:' + safeColor()">
+                                <div class="m">
+                                    <div class="n" x-text="form.name || 'Live Chat'"></div>
+                                    <div class="s" x-show="form.header_subtitle" x-text="form.header_subtitle"></div>
                                 </div>
-                                <div class="wcs-preview-body">
-                                    <div class="wcs-preview-welcome" x-text="form.welcome_message || ' '"></div>
-                                    <div class="wcs-preview-chips" x-show="form.suggestions.length > 0">
-                                        <template x-for="chip in form.suggestions.slice(0, 6)" :key="chip">
-                                            <button type="button" class="wcs-preview-chip" :style="'border-color:' + form.theme_color + '; color:' + form.theme_color" x-text="chip"></button>
-                                        </template>
-                                    </div>
+                                <svg class="x" width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+                            </div>
+
+                            <div class="wb">
+                                <div class="wmsg" :style="bubbleStyle()" x-text="form.welcome_message"></div>
+
+                                <div class="wchips" x-show="visibleChips().length > 0">
+                                    <template x-for="(chip, i) in visibleChips()" :key="'pchip' + i">
+                                        <span class="wchip" :style="'border-radius:' + (form.bubble_style === 'square' ? '3px' : '99px')" x-text="chip"></span>
+                                    </template>
                                 </div>
-                                <div class="wcs-preview-branding" x-show="form.show_branding">
-                                    <i class="ri-flashlight-line"></i>
-                                    <span>Powered by <b>{{ config('app.name', 'wavadesk') }}</b></span>
+
+                                <div class="wtopics" x-show="form.topics.length > 0">
+                                    <template x-for="(topic, i) in form.topics" :key="'ptopic' + i">
+                                        <span class="wtopic" :style="'background:' + tintHex(topic.tint) + ';border-radius:' + radius()">
+                                            <template x-if="topic.action === 'agent'">
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="2.4"/><path d="M5.5 20a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+                                            </template>
+                                            <template x-if="topic.action !== 'agent'">
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.9 8.9 0 01-3.9-.9L3 20.5l1.5-4.6A8.4 8.4 0 013.6 11.5a8.4 8.4 0 018.4-8.4 8.4 8.4 0 019 8.4z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>
+                                            </template>
+                                            <span x-text="topicPreviewLabel(topic)"></span>
+                                        </span>
+                                    </template>
                                 </div>
                             </div>
 
-                            <div class="wcs-preview-launcher" :style="'background:' + form.theme_color" x-show="form.enabled">
-                                <template x-if="form.launcher_text">
-                                    <span class="wcs-preview-launcher-text" x-text="form.launcher_text"></span>
-                                </template>
-                                <i class="wcs-preview-launcher-icon"
-                                   :class="{
-                                       'ri-chat-3-line':      form.launcher_icon === 'chat',
-                                       'ri-message-2-line':   form.launcher_icon === 'message',
-                                       'ri-question-line':    form.launcher_icon === 'help',
-                                       'ri-sparkling-2-line': form.launcher_icon === 'sparkle'
-                                   }"></i>
+                            <div class="wf">
+                                <span class="fi" x-text="i18n.composer"></span>
+                                <span class="sb" :style="'background:' + safeColor()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 12L21 4l-8 17-2-7-8-2z" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg></span>
                             </div>
 
-                            <div class="wcs-preview-disabled" x-show="!form.enabled">
-                                <i class="ri-toggle-line"></i>
-                                <span>Widget disabled</span>
-                            </div>
+                            <div class="credit" x-show="form.show_branding" x-text="i18n.poweredBy"></div>
+                        </div>
+
+                        <div class="wc-launcher" :class="form.position === 'left' ? 'left' : ''">
+                            <span class="llabel" x-show="form.launcher_text" x-text="form.launcher_text"></span>
+                            <span class="lbub" :style="'background:' + safeColor()">
+                                @foreach (['chat', 'message', 'help', 'sparkle'] as $iconKey)
+                                    <template x-if="form.launcher_icon === '{{ $iconKey }}'">
+                                        @includeIf('admin.webchat._launcher-icon', ['icon' => $iconKey, 'size' => 20])
+                                    </template>
+                                @endforeach
+                            </span>
                         </div>
                     </div>
+                </template>
+
+                <div class="wc-pvmeta">
+                    <div class="kv"><span class="k">{{ __('ui.webchat_settings.meta_theme') }}</span><span class="v" x-text="form.theme_color"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.webchat_settings.meta_position') }}</span><span class="v" x-text="form.position === 'left' ? i18n.posLeft : i18n.posRight"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.webchat_settings.meta_corners') }}</span><span class="v" x-text="cornerLabel()"></span></div>
+                    <div class="kv"><span class="k">{{ __('ui.webchat_settings.meta_languages') }}</span><span class="v" x-text="form.available_languages.map(l => l.toUpperCase()).join(' · ')"></span></div>
                 </div>
             </div>
+        </aside>
 
-        </div>
-    </form>
+    </div>
+</form>
 
+    {{-- Mobile preview drawer trigger --}}
+    <button type="button" class="wc-pvfab" @click="previewOpen = true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+        {{ __('ui.webchat_settings.preview') }}
+    </button>
+    <div class="wc-scrim" :class="previewOpen ? 'on' : ''" @click="previewOpen = false"></div>
 </div>
 
 <script>
-function webchatSettings() {
+function wcSettings() {
     return {
-        form:         @json($initial),
-        i18n:         @json($i18n),
-        newChip:      '',
-        newDomain:    '',
-        saving:       false,
-        copiedTarget: null,
-        _copiedTimer: null,
+        form:        @json($initial),
+        i18n:        @json($i18n),
+        tints:       @json($topicTintHex),
+        baseline:    '',
+        section:     @js($openSection),
+        device:      'desktop',
+        previewOpen: false,
+        newDomain:   '',
+        saving:      false,
+        copied:      null,
+        clientError: null,
+        dirty:       false,
+        _copyTimer:  null,
 
         init() {
-            // no-op; Alpine handles reactive bindings
+            this.normalizeTopics();
+            this.baseline = JSON.stringify(this.form);
+            // One deep watcher drives both the dirty pill and the live preview,
+            // so every control stays a plain x-model binding.
+            this.$watch('form', () => { this.dirty = JSON.stringify(this.form) !== this.baseline; }, { deep: true });
         },
 
+        // Rows saved before a language was enabled can miss that key entirely;
+        // Alpine needs the property to exist before x-model can track it.
+        normalizeTopics() {
+            this.form.topics = (this.form.topics || []).map(t => ({
+                tint:   t.tint || 'blue',
+                action: t.action === 'agent' ? 'agent' : 'message',
+                labels: Object.assign({ ar: '', en: '', fr: '' }, t.labels || {}),
+            }));
+        },
+
+        go(s) {
+            this.section = s;
+            this.clientError = null;
+            if (this.$refs.formScroll) this.$refs.formScroll.scrollTop = 0;
+        },
+
+        /* ── list helpers ─────────────────────────────────────────── */
+        move(list, i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= list.length) return;
+            const [item] = list.splice(i, 1);
+            list.splice(j, 0, item);
+        },
         addChip() {
-            const v = this.newChip.trim();
-            if (!v || this.form.suggestions.length >= 12) return;
-            this.form.suggestions.push(v);
-            this.newChip = '';
+            if (this.form.suggestions.length >= 12) return;
+            this.form.suggestions.push('');
+            this.$nextTick(() => {
+                const rows = this.$el.querySelectorAll('.wc-chiprow .wc-inp');
+                if (rows.length) rows[rows.length - 1].focus();
+            });
         },
-        removeChip(idx) { this.form.suggestions.splice(idx, 1); },
-        moveChipUp(idx) {
-            if (idx <= 0) return;
-            const [c] = this.form.suggestions.splice(idx, 1);
-            this.form.suggestions.splice(idx - 1, 0, c);
-        },
-        moveChipDown(idx) {
-            if (idx >= this.form.suggestions.length - 1) return;
-            const [c] = this.form.suggestions.splice(idx, 1);
-            this.form.suggestions.splice(idx + 1, 0, c);
-        },
-
-        addDomain() {
-            const v = this.newDomain.trim();
-            if (!v || this.form.allowed_domains.length >= 32) return;
-            this.form.allowed_domains.push(v);
-            this.newDomain = '';
-        },
-        removeDomain(idx) { this.form.allowed_domains.splice(idx, 1); },
-
         addTopic() {
             if (this.form.topics.length >= 6) return;
-            // Rotate the default tint so successive rows get distinct colors.
-            const palette = ['blue','orange','green','purple','red','gray','teal'];
-            const tint    = palette[this.form.topics.length % palette.length];
+            const palette = Object.keys(this.tints);
             this.form.topics.push({
-                tint:   tint,
+                tint:   palette[this.form.topics.length % palette.length],
                 action: 'message',
                 labels: { ar: '', en: '', fr: '' },
             });
         },
-        removeTopic(idx) { this.form.topics.splice(idx, 1); },
-        moveTopicUp(idx) {
-            if (idx <= 0) return;
-            const [t] = this.form.topics.splice(idx, 1);
-            this.form.topics.splice(idx - 1, 0, t);
+        addDomain() {
+            let v = this.newDomain.trim().replace(/\/+$/, '');
+            if (!v || this.form.allowed_domains.length >= 32) return;
+            if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+            if (!this.form.allowed_domains.includes(v)) this.form.allowed_domains.push(v);
+            this.newDomain = '';
         },
-        moveTopicDown(idx) {
-            if (idx >= this.form.topics.length - 1) return;
-            const [t] = this.form.topics.splice(idx, 1);
-            this.form.topics.splice(idx + 1, 0, t);
+        toggleLang(code) {
+            const langs = this.form.available_languages;
+            if (langs.includes(code)) {
+                if (langs.length === 1) return;            // never leave the widget language-less
+                this.form.available_languages = langs.filter(l => l !== code);
+                if (this.form.default_lang === code) this.form.default_lang = this.form.available_languages[0];
+            } else {
+                const order = ['ar', 'en', 'fr'];
+                this.form.available_languages = order.filter(l => langs.includes(l) || l === code);
+            }
         },
 
-        ensureDefaultLangInList() {
-            // Keep at least one language enabled + make sure default_lang is
-            // in the enabled set (otherwise fall back to the first enabled).
-            if (this.form.available_languages.length === 0) {
-                this.form.available_languages = [this.form.default_lang || 'ar'];
+        /* ── preview helpers ──────────────────────────────────────── */
+        radius()      { return { soft: '10px', rounded: '18px', square: '2px' }[this.form.bubble_style] || '10px'; },
+        panelRadius() { return this.form.bubble_style === 'square' ? '3px' : '16px'; },
+        bubbleStyle() {
+            const side = this.form.default_lang === 'ar' ? 'right' : 'left';
+            return 'border-radius:' + this.radius() + ';border-bottom-' + side + '-radius:4px';
+        },
+        safeColor()   { return /^#[0-9a-fA-F]{6}$/.test(this.form.theme_color) ? this.form.theme_color : '#0f7e7a'; },
+        hexOrDefault(v) { return /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#0f7e7a'; },
+        tintHex(tint) { return this.tints[tint] || this.tints.blue; },
+        visibleChips() { return this.form.suggestions.filter(c => (c || '').trim() !== ''); },
+        cornerLabel() {
+            return { soft: this.i18n.cornerSoft, rounded: this.i18n.cornerRounded, square: this.i18n.cornerSquare }[this.form.bubble_style] || '';
+        },
+        fallbackText() { return this.i18n.fallbackFmt.replace('__LANG__', this.form.default_lang.toUpperCase()); },
+        topicTitle(topic) {
+            const l = topic.labels || {};
+            return (l[this.form.default_lang] || l.en || l.ar || l.fr || '').trim() || this.i18n.untitled;
+        },
+        topicPreviewLabel(topic) {
+            const l = topic.labels || {};
+            return (l[this.form.default_lang] || l.en || l.ar || l.fr || '').trim() || this.i18n.untitled;
+        },
+
+        /* ── actions ──────────────────────────────────────────────── */
+        discard() {
+            this.form = JSON.parse(this.baseline);
+            this.clientError = null;
+            this.dirty = false;
+        },
+
+        onSubmit(e) {
+            // The inactive sections are display:none, so a native `required`
+            // would block submission with nothing visible. Validate here and
+            // jump to the offending section instead.
+            let problem = null;
+            if (!this.form.name.trim())                                      problem = ['widget', 'name'];
+            else if (!this.form.welcome_message.trim())                      problem = ['welcome', 'welcome_message'];
+            else if (!/^#[0-9a-fA-F]{6}$/.test(this.form.theme_color))       problem = ['appear', 'theme_color'];
+            else if (this.form.enabled && this.form.allowed_domains.length === 0) problem = ['security', 'allowed_domains'];
+
+            if (problem) {
+                e.preventDefault();
+                this.section     = problem[0];
+                this.clientError = problem[1];
+                this.previewOpen = false;
+                if (this.$refs.formScroll) this.$refs.formScroll.scrollTop = 0;
+                return;
             }
-            if (!this.form.available_languages.includes(this.form.default_lang)) {
-                this.form.default_lang = this.form.available_languages[0];
-            }
+            this.saving = true;
         },
 
         copy(value, target) {
             if (!value) return;
             const done = () => {
-                this.copiedTarget = target;
-                if (this._copiedTimer) clearTimeout(this._copiedTimer);
-                this._copiedTimer = setTimeout(() => { this.copiedTarget = null; }, 1800);
+                this.copied = target;
+                if (this._copyTimer) clearTimeout(this._copyTimer);
+                this._copyTimer = setTimeout(() => { this.copied = null; }, 1800);
             };
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(value).then(done).catch(() => {
-                    // Fallback via a temporary textarea (older browsers, insecure contexts)
-                    const t = document.createElement('textarea');
-                    t.value = value; document.body.appendChild(t);
-                    t.select(); document.execCommand('copy'); document.body.removeChild(t);
-                    done();
-                });
-            } else {
+            const fallback = () => {
                 const t = document.createElement('textarea');
                 t.value = value; document.body.appendChild(t);
                 t.select(); document.execCommand('copy'); document.body.removeChild(t);
                 done();
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(done).catch(fallback);
+            } else {
+                fallback();
             }
         },
     };
@@ -636,266 +865,8 @@ function webchatSettings() {
 </script>
 
 @push('styles')
-<style>
-    /* ── WebChat settings (wcs-) scoped styles ──────────────────────── */
-    .wcs { display: flex; flex-direction: column; }
-    .wcs-form { display: block; }
-    .wcs-grid { display: grid; grid-template-columns: 1fr 380px; gap: 1rem; margin-top: 1rem; }
-    @media (max-width: 1200px) { .wcs-grid { grid-template-columns: 1fr; } }
-
-    .wcs-col-form, .wcs-col-side { display: flex; flex-direction: column; gap: 1rem; }
-
-    .wcs-card { border-radius: var(--radius-lg); }
-    .wcs-help-top { margin-bottom: .5rem; }
-    .wcs-inline-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 640px) { .wcs-inline-fields { grid-template-columns: 1fr; } }
-
-    /* Toggle switch */
-    .wcs-toggle-row { padding: .5rem 0; }
-    .wcs-toggle { display: flex; align-items: center; gap: .75rem; cursor: pointer; }
-    .wcs-toggle input { position: absolute; opacity: 0; pointer-events: none; }
-    .wcs-toggle-track {
-        width: 40px; height: 22px; border-radius: 999px; background: var(--gray-bg);
-        position: relative; transition: var(--transition); flex-shrink: 0;
-    }
-    .wcs-toggle-thumb {
-        position: absolute; top: 2px; left: 2px;
-        width: 18px; height: 18px; border-radius: 50%; background: #fff;
-        box-shadow: 0 1px 3px rgba(0,0,0,.15); transition: var(--transition);
-    }
-    .wcs-toggle input:checked + .wcs-toggle-track                { background: var(--brand); }
-    .wcs-toggle input:checked + .wcs-toggle-track .wcs-toggle-thumb { transform: translateX(18px); }
-    .wcs-toggle-labels { display: flex; flex-direction: column; gap: .125rem; }
-    .wcs-toggle-label  { font-size: .875rem; font-weight: 500; color: var(--text-primary); }
-    .wcs-toggle-help   { font-size: .75rem; color: var(--text-muted); }
-
-    /* Chips */
-    .wcs-chips { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
-    .wcs-chip  { display: flex; align-items: center; gap: .375rem;
-        background: var(--page-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
-        padding: .25rem .375rem;
-    }
-    .wcs-chip-input { flex: 1; border: none; background: transparent; padding: .25rem .5rem; font-size: .875rem; outline: none; }
-    .wcs-chip-btn   {
-        border: none; background: transparent; cursor: pointer;
-        color: var(--text-muted); padding: .25rem; border-radius: .25rem;
-        display: inline-flex; align-items: center; justify-content: center;
-        transition: var(--transition);
-    }
-    .wcs-chip-btn:hover:not(:disabled) { background: var(--card-bg); color: var(--text-primary); }
-    .wcs-chip-btn:disabled { opacity: .3; cursor: not-allowed; }
-    .wcs-chip-btn-danger:hover:not(:disabled) { color: var(--red); }
-
-    .wcs-chip-add { display: flex; gap: .5rem; }
-    .wcs-chip-add .form-control { flex: 1; }
-
-    /* Domains */
-    .wcs-domains { display: flex; flex-direction: column; gap: .375rem; margin-bottom: .75rem; }
-    .wcs-domain  {
-        display: flex; align-items: center; gap: .5rem;
-        background: var(--page-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
-        padding: .375rem .625rem;
-    }
-    .wcs-domain-icon  { color: var(--text-muted); flex-shrink: 0; }
-    .wcs-domain-input {
-        flex: 1; border: none; background: transparent; font-family: var(--font-mono, ui-monospace, monospace);
-        font-size: .8125rem; outline: none; padding: .125rem 0;
-    }
-
-    /* Color picker */
-    .wcs-color-row { display: flex; gap: .5rem; align-items: center; }
-    .wcs-color-swatch {
-        width: 44px; height: 38px; border: 1px solid var(--card-border); border-radius: var(--radius);
-        cursor: pointer; padding: 0; background: transparent;
-    }
-    .wcs-color-row .form-control { font-family: var(--font-mono, ui-monospace, monospace); text-transform: lowercase; }
-
-    /* Position radio */
-    .wcs-radio-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-    .wcs-radio-row-3 { grid-template-columns: repeat(3, 1fr); }
-    .wcs-radio {
-        display: flex; align-items: center; gap: .5rem;
-        border: 1px solid var(--card-border); border-radius: var(--radius);
-        padding: .625rem .75rem; cursor: pointer;
-        font-size: .875rem; color: var(--text-primary);
-        transition: var(--transition);
-    }
-    .wcs-radio input { position: absolute; opacity: 0; pointer-events: none; }
-    .wcs-radio:hover        { background: var(--page-bg); }
-    .wcs-radio-active       { border-color: var(--brand); background: var(--brand-xlight); color: var(--brand-dark); }
-    .wcs-radio-active i     { color: var(--brand); }
-
-    /* Bubble-shape swatch inside the bubble_style radio */
-    .wcs-bubble-preview {
-        display: inline-block; width: 26px; height: 16px;
-        background: var(--brand-xlight); border: 1px solid var(--brand);
-        flex-shrink: 0;
-    }
-    .wcs-bubble-preview-soft    { border-radius: 6px; }
-    .wcs-bubble-preview-rounded { border-radius: 14px; }
-    .wcs-bubble-preview-square  { border-radius: 2px; }
-
-    /* Icon-picker tiles */
-    .wcs-icon-row  { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
-    .wcs-icon-tile {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .25rem; padding: .625rem .375rem;
-        border: 1px solid var(--card-border); border-radius: var(--radius);
-        cursor: pointer; font-size: .75rem; color: var(--text-primary);
-        transition: var(--transition);
-    }
-    .wcs-icon-tile input   { position: absolute; opacity: 0; pointer-events: none; }
-    .wcs-icon-tile i       { font-size: 1.25rem; color: var(--text-muted); }
-    .wcs-icon-tile:hover                { background: var(--page-bg); }
-    .wcs-icon-tile-active               { border-color: var(--brand); background: var(--brand-xlight); color: var(--brand-dark); }
-    .wcs-icon-tile-active i             { color: var(--brand); }
-    @media (max-width: 480px) { .wcs-icon-row { grid-template-columns: repeat(2, 1fr); } }
-
-    /* Language multi-select tiles */
-    .wcs-lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
-    .wcs-lang-tile {
-        position: relative;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .125rem; padding: .625rem .375rem;
-        border: 1px solid var(--card-border); border-radius: var(--radius);
-        cursor: pointer; font-size: .75rem; color: var(--text-primary);
-        transition: var(--transition); background: var(--card-bg);
-    }
-    .wcs-lang-tile input { position: absolute; opacity: 0; pointer-events: none; }
-    .wcs-lang-code  { font-size: .95rem; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
-    .wcs-lang-label { font-size: .75rem; color: var(--text-secondary); }
-    .wcs-lang-tile:hover              { background: var(--page-bg); }
-    .wcs-lang-tile-active             { border-color: var(--brand); background: var(--brand-xlight); }
-    .wcs-lang-tile-active .wcs-lang-code  { color: var(--brand); }
-    .wcs-lang-tile-active .wcs-lang-label { color: var(--brand-dark); }
-    @media (max-width: 480px) { .wcs-lang-grid { grid-template-columns: repeat(2, 1fr); } }
-
-    /* Copy row + snippet */
-    .wcs-copy-row { display: flex; gap: .5rem; align-items: center; margin-top: .375rem; }
-    .wcs-copy-row .form-control { flex: 1; }
-    .wcs-mono { font-family: var(--font-mono, ui-monospace, monospace); font-size: .8125rem; }
-    .wcs-snippet { resize: none; white-space: pre; overflow-x: auto; margin-bottom: .375rem; }
-
-    .wcs-actions { display: flex; justify-content: flex-end; padding-top: .5rem; }
-
-    /* Preview */
-    .wcs-preview-stage {
-        position: relative; height: 320px; border-radius: var(--radius-lg);
-        background: linear-gradient(135deg, var(--page-bg), var(--card-bg));
-        border: 1px dashed var(--card-border); overflow: hidden;
-    }
-    .wcs-preview-card {
-        position: absolute; top: 20px; width: calc(100% - 32px); left: 16px;
-        max-height: 200px; background: var(--card-bg); border: 1px solid var(--card-border);
-        border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.08);
-        overflow: hidden; display: flex; flex-direction: column;
-    }
-    .wcs-preview-header       { color: #fff; padding: .625rem .875rem; }
-    .wcs-preview-header-inner { display: flex; justify-content: space-between; align-items: center; }
-    .wcs-preview-title        { font-size: .875rem; font-weight: 600; }
-    .wcs-preview-subtitle     { font-size: .6875rem; opacity: .85; margin-top: 2px; line-height: 1.2;
-                                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
-    .wcs-preview-close        { opacity: .8; font-size: 1rem; }
-    .wcs-preview-body         { padding: .75rem .875rem; background: var(--card-bg); }
-    .wcs-preview-welcome      { font-size: .8125rem; color: var(--text-primary); margin-bottom: .5rem; line-height: 1.4;
-                                display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .wcs-preview-chips        { display: flex; flex-wrap: wrap; gap: .25rem; }
-    .wcs-preview-chip         {
-        background: transparent; border: 1px solid; border-radius: 999px;
-        padding: .1875rem .625rem; font-size: .6875rem; cursor: default;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: 130px;
-    }
-    .wcs-preview-branding     {
-        display: flex; align-items: center; justify-content: center; gap: .25rem;
-        padding: .375rem; font-size: .625rem; color: var(--text-muted);
-        background: var(--card-bg); border-top: 1px solid var(--card-border);
-    }
-    .wcs-preview-branding i   { font-size: .75rem; }
-
-    /* Bubble-style variants applied to the preview card */
-    .wcs-preview-bubble-soft    .wcs-preview-card { border-radius: 12px; }
-    .wcs-preview-bubble-rounded .wcs-preview-card { border-radius: 20px; }
-    .wcs-preview-bubble-square  .wcs-preview-card { border-radius: 4px; }
-    .wcs-preview-bubble-soft    .wcs-preview-chip { border-radius: 999px; }
-    .wcs-preview-bubble-rounded .wcs-preview-chip { border-radius: 999px; }
-    .wcs-preview-bubble-square  .wcs-preview-chip { border-radius: 4px; }
-
-    .wcs-preview-launcher {
-        position: absolute; bottom: 20px; height: 48px;
-        border-radius: 999px; color: #fff; padding: 0 1rem;
-        display: inline-flex; align-items: center; gap: .5rem;
-        box-shadow: 0 6px 18px rgba(0,0,0,.15); cursor: pointer;
-    }
-    .wcs-preview-launcher-icon { font-size: 1.375rem; }
-    .wcs-preview-launcher-text { font-size: .8125rem; font-weight: 500; }
-    .wcs-preview-left  .wcs-preview-launcher { left:  16px; }
-    .wcs-preview-right .wcs-preview-launcher { right: 16px; }
-
-    [dir="rtl"] .wcs-preview-left  .wcs-preview-launcher { left: auto; right: 16px; }
-    [dir="rtl"] .wcs-preview-right .wcs-preview-launcher { right: auto; left: 16px; }
-
-    .wcs-preview-disabled {
-        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        flex-direction: column; gap: .5rem; color: var(--text-muted); font-size: .875rem;
-    }
-    .wcs-preview-disabled i { font-size: 2rem; opacity: .4; }
-
-    /* ── Welcome topics editor ──────────────────────────────────────── */
-    .wcs-topics { display: flex; flex-direction: column; gap: .75rem; margin-top: .75rem; }
-    .wcs-topic-row {
-        border: 1px solid var(--card-border, #e5e7eb);
-        border-radius: 10px;
-        padding: .75rem;
-        background: var(--card-bg, #fff);
-        display: flex; flex-direction: column; gap: .625rem;
-    }
-    .wcs-topic-head {
-        display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
-    }
-    .wcs-topic-index {
-        width: 24px; height: 24px; border-radius: 999px;
-        background: var(--brand-soft, #ecf7f6); color: var(--brand, #0f7e7a);
-        display: inline-flex; align-items: center; justify-content: center;
-        font-size: .8125rem; font-weight: 700;
-    }
-    .wcs-topic-actions { margin-inline-start: auto; display: flex; gap: .25rem; }
-
-    .wcs-tint-picker { display: inline-flex; gap: .3125rem; align-items: center; }
-    .wcs-tint-dot {
-        width: 22px; height: 22px; border-radius: 999px;
-        border: 2px solid transparent;
-        padding: 0; cursor: pointer;
-        transition: transform .12s ease, border-color .12s ease;
-    }
-    .wcs-tint-dot:hover { transform: scale(1.1); }
-    .wcs-tint-dot-active { border-color: var(--text-primary, #0f172a); transform: scale(1.1); }
-    .wcs-tint-dot-blue   { background: #3b82f6; }
-    .wcs-tint-dot-orange { background: #f97316; }
-    .wcs-tint-dot-green  { background: #10b981; }
-    .wcs-tint-dot-purple { background: #15b6a8; }
-    .wcs-tint-dot-red    { background: #ef4444; }
-    .wcs-tint-dot-gray   { background: #6b7280; }
-    .wcs-tint-dot-teal   { background: #14b8a6; }
-
-    .wcs-topic-action-row { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .8125rem; }
-    .wcs-topic-action-opt {
-        display: inline-flex; align-items: center; gap: .375rem;
-        color: var(--text-primary, #0f172a); cursor: pointer;
-    }
-    .wcs-topic-action-opt input { accent-color: var(--brand, #0f7e7a); }
-
-    .wcs-topic-labels { display: flex; flex-direction: column; gap: .375rem; }
-    .wcs-topic-label-group {
-        display: grid; grid-template-columns: 42px 1fr; gap: .5rem; align-items: center;
-    }
-    .wcs-topic-label-tag {
-        font-size: .6875rem; font-weight: 700; letter-spacing: .05em;
-        color: var(--text-muted, #64748b); text-align: center;
-    }
-    .wcs-topic-label-input { font-size: .8125rem; }
-
-    .wcs-topics-add { margin-top: .75rem; }
-</style>
+    {{-- Shared Wavadesk console shell (page head + section nav + form pane +
+         preview pane). Also used by /ai-settings and /saved-replies. --}}
+    <link rel="stylesheet" href="{{ asset('css/wavadesk-console.css') }}?v={{ filemtime(public_path('css/wavadesk-console.css')) }}">
 @endpush
 @endsection

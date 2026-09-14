@@ -45,6 +45,14 @@ class WebChatAutoReplyService
             return null;
         }
 
+        // The visitor asking for a human is the escalation the keywords exist to
+        // catch. Checked before the API call so the reply is never billed and
+        // then discarded.
+        if ($this->shouldEscalate((string) $incoming->body, $settings)) {
+            $this->promoteToPending($conversation, 'ai_escalation_keyword', 'customer_keyword');
+            return null;
+        }
+
         if (!$settings->hasQuota()) {
             $this->promoteToPending($conversation, 'ai_quota_exhausted');
             Log::channel('webchat')->warning('AI quota exhausted', [
@@ -75,10 +83,10 @@ class WebChatAutoReplyService
                 system: $this->promptBuilder->buildSystemPrompt($tenant),
             );
 
+            // One generated reply = one unit of the plan's monthly allowance.
+            $settings->consumeReply();
+
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
-            if ($tokens > 0) {
-                $settings->increment('tokens_used_this_period', $tokens);
-            }
 
             $text = PromptBuilder::sanitizeReply((string) ($response->content[0]->text ?? ''));
 
@@ -91,7 +99,7 @@ class WebChatAutoReplyService
             }
 
             if ($this->shouldEscalate($text, $settings)) {
-                $this->promoteToPending($conversation, 'ai_escalation_keyword');
+                $this->promoteToPending($conversation, 'ai_escalation_keyword', 'reply_keyword');
                 return null;
             }
 
@@ -184,6 +192,10 @@ class WebChatAutoReplyService
 
     private function shouldEscalate(string $text, $settings): bool
     {
+        if (trim($text) === '') {
+            return false;
+        }
+
         $keywords = $settings->escalation_keywords ?? [];
         foreach ($keywords as $kw) {
             if ($kw && stripos($text, (string) $kw) !== false) {
@@ -215,7 +227,15 @@ class WebChatAutoReplyService
         return $message;
     }
 
-    private function promoteToPending(Conversation $conversation, string $reason): void
+    /**
+     * Hand the chat to the human queue.
+     *
+     * $escalation is set only when a keyword caused the handoff — the other
+     * reasons (quota, mode off, transport error) are the AI stepping aside, not
+     * the visitor asking for a person, and badging those as escalated would
+     * make the flag meaningless.
+     */
+    private function promoteToPending(Conversation $conversation, string $reason, ?string $escalation = null): void
     {
         if (!$conversation->isBot()) {
             return;
@@ -223,6 +243,12 @@ class WebChatAutoReplyService
 
         $conversation->status           = Conversation::STATUS_PENDING;
         $conversation->last_activity_at = now();
+
+        if ($escalation !== null && $conversation->escalated_at === null) {
+            $conversation->escalated_at      = now();
+            $conversation->escalation_reason = $escalation;
+        }
+
         $conversation->save();
 
         Log::channel('webchat')->info('AI: promoted to pending', [

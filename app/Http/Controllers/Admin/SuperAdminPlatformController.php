@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Console\Commands\CloseIdleAiConversations;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
+use App\Models\PlatformSetting;
 use App\Models\Tenant;
+use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\AddonPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -351,23 +355,8 @@ class SuperAdminPlatformController extends Controller
     {
         $data = $this->validatePlan($request);
 
-        Plan::create([
-            'name'                        => $data['name'],
-            'stripe_price_id_monthly'     => $data['stripe_price_id_monthly'] ?? null,
-            'stripe_price_id_annual'      => $data['stripe_price_id_annual'] ?? null,
-            'price_monthly'               => $data['price_monthly'],
-            'price_annual'                => $data['price_annual'] ?? null,
-            'max_users'                   => $data['max_users'],
-            'max_conversations_per_month' => $data['max_conversations_per_month'],
-            'ai_included'                 => (bool) ($data['ai_included'] ?? false),
-            // Preserve NULL rather than coercing to 0 — 0 now means AI OFF,
-            // NULL means unlimited. See migration 2026_09_09_210000.
-            'ai_token_quota'              => array_key_exists('ai_token_quota', $data)
-                ? (is_null($data['ai_token_quota']) ? null : (int) $data['ai_token_quota'])
-                : null,
-            'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
-            'features'                    => $this->parseFeatures($data['features'] ?? null),
-            'is_active'                   => (bool) ($data['is_active'] ?? true),
+        Plan::create($this->planAttributes($data) + [
+            'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
 
         return redirect()
@@ -393,34 +382,19 @@ class SuperAdminPlatformController extends Controller
                 ->with('error', __('ui.controller_messages.cannot_disable_last_active_plan'));
         }
 
-        $plan->update([
-            'name'                        => $data['name'],
-            'stripe_price_id_monthly'     => $data['stripe_price_id_monthly'] ?? null,
-            'stripe_price_id_annual'      => $data['stripe_price_id_annual'] ?? null,
-            'price_monthly'               => $data['price_monthly'],
-            'price_annual'                => $data['price_annual'] ?? null,
-            'max_users'                   => $data['max_users'],
-            'max_conversations_per_month' => $data['max_conversations_per_month'],
-            'ai_included'                 => (bool) ($data['ai_included'] ?? false),
-            // Preserve NULL rather than coercing to 0 — 0 now means AI OFF,
-            // NULL means unlimited. See migration 2026_09_09_210000.
-            'ai_token_quota'              => array_key_exists('ai_token_quota', $data)
-                ? (is_null($data['ai_token_quota']) ? null : (int) $data['ai_token_quota'])
-                : null,
-            'reservations_enabled'        => (bool) ($data['reservations_enabled'] ?? false),
-            'features'                    => $this->parseFeatures($data['features'] ?? null),
-            'is_active'                   => $nextStatus,
+        $plan->update($this->planAttributes($data) + [
+            'is_active' => $nextStatus,
         ]);
 
         // Sync AI quota to every tenant on this plan when it changed. Matches
         // the "Overwrite every tenant" behaviour the operator picked when this
         // feature landed — a per-tenant override is expected to be re-applied
         // by the super admin if they want it back.
-        if ($plan->wasChanged('ai_token_quota')) {
+        if ($plan->wasChanged('ai_message_quota')) {
             $tenantIds = \App\Models\Tenant::where('plan_id', $plan->id)->pluck('id');
             if ($tenantIds->isNotEmpty()) {
                 \App\Models\AiSettings::whereIn('tenant_id', $tenantIds)
-                    ->update(['monthly_token_quota' => $plan->ai_token_quota]);
+                    ->update(['monthly_message_quota' => $plan->ai_message_quota]);
             }
         }
 
@@ -502,6 +476,85 @@ class SuperAdminPlatformController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Conversation automation the super admin owns platform-wide.
+     *
+     * Kept out of the per-tenant AI settings on purpose: this is a housekeeping
+     * rule about abandoned chats, not part of a tenant's AI configuration, and
+     * one window across the platform is what was asked for.
+     */
+    public function conversationSettings()
+    {
+        return view('admin.platform.conversation-settings', [
+            'idleMinutes' => (int) PlatformSetting::get(
+                CloseIdleAiConversations::SETTING_KEY,
+                CloseIdleAiConversations::DEFAULT_MINUTES,
+            ),
+            'presets' => [0, 15, 30, 45, 60, 120, 240, 480, 1440],
+        ]);
+    }
+
+    public function updateConversationSettings(Request $request)
+    {
+        // 0 disables the sweep; the ceiling is a day, past which "idle" stops
+        // meaning anything useful.
+        $data = $request->validate([
+            'ai_idle_close_minutes' => ['required', 'integer', 'min:0', 'max:1440'],
+        ]);
+
+        PlatformSetting::set(
+            CloseIdleAiConversations::SETTING_KEY,
+            (int) $data['ai_idle_close_minutes'],
+            'integer',
+        );
+
+        return back()->with('success', __('ui.platform_conversation_settings_page.saved'));
+    }
+
+    /**
+     * Add-on pricing. The tenant billing page, the checkout and the PayPal
+     * order all read these through AddonPricing, so a price saved here takes
+     * effect everywhere at once — there is no second copy to keep in step.
+     */
+    public function addonSettings()
+    {
+        return view('admin.platform.addon-settings', [
+            'pricing' => AddonPricing::forView(),
+        ]);
+    }
+
+    public function updateAddonSettings(Request $request)
+    {
+        $data = $request->validate([
+            // Prices are money, so they validate as decimals rather than
+            // integers — $6.50 a seat has to survive the round trip.
+            'seat_price'       => ['required', 'numeric', 'min:0', 'max:9999'],
+            'seat_max'         => ['required', 'integer', 'min:1', 'max:500'],
+            'seats_enabled'    => ['nullable', 'boolean'],
+            'ai_pack_price'    => ['required', 'numeric', 'min:0', 'max:9999'],
+            'ai_pack_messages' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'ai_pack_max'      => ['required', 'integer', 'min:1', 'max:500'],
+            'ai_packs_enabled' => ['nullable', 'boolean'],
+        ]);
+
+        PlatformSetting::set(AddonPricing::KEY_SEAT_PRICE,    number_format((float) $data['seat_price'], 2, '.', ''));
+        PlatformSetting::set(AddonPricing::KEY_SEAT_MAX,      (int) $data['seat_max'], 'integer');
+        PlatformSetting::set(AddonPricing::KEY_SEATS_ENABLED, (bool) $request->boolean('seats_enabled'), 'boolean');
+
+        PlatformSetting::set(AddonPricing::KEY_PACK_PRICE,    number_format((float) $data['ai_pack_price'], 2, '.', ''));
+        PlatformSetting::set(AddonPricing::KEY_PACK_MESSAGES, (int) $data['ai_pack_messages'], 'integer');
+        PlatformSetting::set(AddonPricing::KEY_PACK_MAX,      (int) $data['ai_pack_max'], 'integer');
+        PlatformSetting::set(AddonPricing::KEY_PACKS_ENABLED, (bool) $request->boolean('ai_packs_enabled'), 'boolean');
+
+        AuditLog::record('platform.addon_pricing_updated', null, [
+            'seat_price'    => (float) $data['seat_price'],
+            'ai_pack_price' => (float) $data['ai_pack_price'],
+            'ai_pack_size'  => (int) $data['ai_pack_messages'],
+        ]);
+
+        return back()->with('success', __('ui.platform_addons_page.saved'));
     }
 
     public function systemHealth()
@@ -684,8 +737,6 @@ class SuperAdminPlatformController extends Controller
     {
         return $request->validate([
             'name'                        => ['required', 'string', 'max:150', Rule::unique('plans', 'name')->ignore($plan?->id)],
-            'stripe_price_id_monthly'     => 'nullable|string|max:255',
-            'stripe_price_id_annual'      => 'nullable|string|max:255',
             'price_monthly'               => 'required|numeric|min:0',
             // CALC-013: nullable so "not offered" is expressible as null. The
             // landing page treats 0 and null the same ("no annual") and hides
@@ -693,25 +744,109 @@ class SuperAdminPlatformController extends Controller
             // to the monthly price under a yearly label.
             'price_annual'                => 'nullable|numeric|min:0',
             'max_users'                   => 'required|integer|min:1',
+            // Blank = no cap. The landing card can advertise this limit, so it
+            // needed a field of its own rather than staying DB-only.
+            'max_instances'               => 'nullable|integer|min:0',
             'max_conversations_per_month' => 'required|integer|min:0',
             'ai_included'                 => 'nullable|boolean',
-            // null (blank) = unlimited, 0 = AI off, positive = hard cap.
-            // Same convention flows to ai_settings.monthly_token_quota via the
-            // sync in updatePlan below.
-            'ai_token_quota'              => 'nullable|integer|min:0',
-            'reservations_enabled'        => 'nullable|boolean',
-            'features'                    => 'nullable|json',
+            // How many AI replies a tenant on this plan gets each month:
+            // 'unlimited' or a positive 'limited' number. Whether AI runs at
+            // all is the ai_agent module, not a number — planAttributes()
+            // folds the two back into ai_message_quota's three-state column,
+            // and the sync in updatePlan pushes it to every tenant.
+            'ai_messages_mode'            => 'nullable|in:unlimited,limited',
+            'ai_message_limit'            => 'nullable|integer|min:1|required_if:ai_messages_mode,limited',
             'is_active'                   => 'nullable|boolean',
+
+            // Per-plan free trial. A blank length falls back to the platform
+            // default (config app.trial_days) inside Plan::trialDays().
+            'trial_enabled'               => 'nullable|boolean',
+            'trial_days'                  => 'nullable|integer|min:1|max:365',
+
+            // Module entitlements + the manual landing-page picks. Both are
+            // validated against their catalogues so a hand-crafted POST cannot
+            // introduce a key nothing knows how to render or gate.
+            'modules'                     => 'nullable|array',
+            'modules.*'                   => ['string', Rule::in(array_keys(config('plan_modules', [])))],
+            'landing_features'            => 'nullable|array',
+            'landing_features.*'          => ['string', Rule::in($this->landingAttributeKeys())],
         ]);
     }
 
-    private function parseFeatures(?string $features): ?array
+    /** Every key the landing picker may submit: built-ins plus module lines. */
+    private function landingAttributeKeys(): array
     {
-        if ($features === null || trim($features) === '') {
+        return array_merge(
+            array_keys(config('plan_landing_attributes', [])),
+            array_map(
+                fn (string $module) => 'module:' . $module,
+                array_keys(config('plan_modules', []))
+            )
+        );
+    }
+
+    /**
+     * Shared shaping for storePlan/updatePlan.
+     *
+     * `ai_included` and `reservations_enabled` are no longer edited directly —
+     * they are derived from the module checkboxes so there is one control per
+     * concept. Keeping the columns in sync matters: ProcessIncomingMessage and
+     * ReservationController still read reservations_enabled.
+     */
+    private function planAttributes(array $data): array
+    {
+        $modules = array_values(array_unique((array) ($data['modules'] ?? [])));
+
+        // `always` modules are posted via a hidden field, but re-assert them so
+        // a stripped POST cannot produce a plan without the core channel.
+        foreach (config('plan_modules', []) as $key => $meta) {
+            if (($meta['always'] ?? false) && !in_array($key, $modules, true)) {
+                $modules[] = $key;
+            }
+        }
+
+        $trialEnabled = (bool) ($data['trial_enabled'] ?? false);
+        $aiIncluded   = in_array('ai_agent', $modules, true);
+
+        return [
+            'name'                        => $data['name'],
+            'price_monthly'               => $data['price_monthly'],
+            'price_annual'                => $data['price_annual'] ?? null,
+            'max_users'                   => $data['max_users'],
+            'max_instances'               => $data['max_instances'] ?? null,
+            'max_conversations_per_month' => $data['max_conversations_per_month'],
+            'ai_included'                 => $aiIncluded,
+            'ai_message_quota'            => $this->aiMessageQuota($data, $aiIncluded),
+            'reservations_enabled'        => in_array('reservations', $modules, true),
+            'modules'                     => $modules,
+            'landing_features'            => array_values(array_unique((array) ($data['landing_features'] ?? []))),
+            'trial_enabled'               => $trialEnabled,
+            'trial_days'                  => $trialEnabled && !empty($data['trial_days'])
+                ? (int) $data['trial_days']
+                : null,
+        ];
+    }
+
+    /**
+     * Fold the form's two AI controls back into plans.ai_message_quota, which
+     * keeps its three-state convention: 0 = no AI on this plan, NULL =
+     * unlimited AI messages, positive = the monthly cap.
+     *
+     * A plan without the ai_agent module is 0 whatever the radio says — the
+     * tenant can never reach the AI, so an allowance would be a lie on the
+     * pricing card and in the tenant's AI settings.
+     */
+    private function aiMessageQuota(array $data, bool $aiIncluded): ?int
+    {
+        if (!$aiIncluded) {
+            return 0;
+        }
+
+        if (($data['ai_messages_mode'] ?? 'unlimited') !== 'limited') {
             return null;
         }
 
-        return json_decode($features, true);
+        return isset($data['ai_message_limit']) ? (int) $data['ai_message_limit'] : null;
     }
 
 }

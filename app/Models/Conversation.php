@@ -14,6 +14,7 @@ class Conversation extends Model
     protected $fillable = [
         'tenant_id', 'instance_id', 'customer_id', 'team_id', 'title', 'state',
         'owner_agent_id', 'claimed_at', 'closed_at', 'ai_suspended',
+        'escalated_at', 'escalation_reason',
         'last_message_at', 'last_message_preview', 'unread_count',
     ];
 
@@ -26,6 +27,7 @@ class Conversation extends Model
         'claimed_at'      => 'datetime',
         'closed_at'       => 'datetime',
         'last_message_at' => 'datetime',
+        'escalated_at'    => 'datetime',
         'ai_suspended'    => 'boolean',
         'unread_count'    => 'integer',
     ];
@@ -42,6 +44,7 @@ class Conversation extends Model
     public function isClaimed(): bool { return $this->state === 'claimed'; }
     public function isClosed(): bool { return $this->state === 'closed'; }
     public function isAiEligible(): bool { return $this->state === 'pool' && !$this->ai_suspended; }
+    public function isEscalated(): bool { return $this->escalated_at !== null; }
 
     public function scopePool($q) { return $q->where('state', 'pool'); }
     public function scopeClaimed($q) { return $q->where('state', 'claimed'); }

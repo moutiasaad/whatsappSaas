@@ -154,6 +154,7 @@ return [
     'errors' => [
         'credentials_mismatch' => 'These credentials do not match our records.',
         'super_admin_only' => 'This portal is only for super admins.',
+        'use_control_panel_login' => 'Platform accounts sign in from the control panel, not from this form.',
         'admin_only' => 'This portal is only for tenant admins.',
         'supervisor_only' => 'This portal is only for supervisors.',
         'agent_only' => 'This portal is only for support agents.',

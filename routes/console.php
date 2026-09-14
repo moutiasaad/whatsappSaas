@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\CloseIdleAiConversations;
 use App\Console\Commands\ExpireSubscriptions;
 use App\Console\Commands\RolloverAiQuotas;
 use App\Console\Commands\SendRenewalReminders;
@@ -24,6 +25,11 @@ Schedule::command(SendRenewalReminders::class)->dailyAt('08:00');
 
 // Web-chat: release conversations left claimed but idle every minute
 Schedule::command(WebChatReleaseStale::class)->everyMinute()->withoutOverlapping();
+
+// Close AI-handled conversations the customer has gone quiet on. The window
+// itself is a super-admin setting; the sweep runs every minute so a change to
+// it takes effect immediately rather than on the next hour.
+Schedule::command(CloseIdleAiConversations::class)->everyMinute()->withoutOverlapping();
 
 // Roll over AI monthly token quotas for idle tenants
 Schedule::command(RolloverAiQuotas::class)->dailyAt('00:10');

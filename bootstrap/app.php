@@ -35,10 +35,21 @@ return Application::configure(basePath: dirname(__DIR__))
         // the user sign out cleanly instead of hitting a 419 PAGE EXPIRED wall.
         $middleware->validateCsrfTokens(except: ['api/*', 'logout']);
 
+        // A guest who lands on a control-panel URL belongs at the control-panel
+        // sign-in, not the workspace one — the two are separate doors.
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+            $panel = config('app.super_admin_prefix', 'admin-control-panel');
+
+            return $request->is($panel, $panel . '/*')
+                ? route('superadmin.login')
+                : route('login');
+        });
+
         $middleware->alias([
             'role'         => \App\Http\Middleware\CheckRole::class,
             'role_path'    => \App\Http\Middleware\EnsureCanonicalRolePath::class,
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
+            'module'       => \App\Http\Middleware\CheckPlanModule::class,
             'api.key'      => \App\Http\Middleware\AuthenticateWithApiKey::class,
             'webchat.widget'  => \App\Http\Middleware\WebChat\ResolveWebChatWidget::class,
             'webchat.domain'  => \App\Http\Middleware\WebChat\WebChatDomainGuard::class,

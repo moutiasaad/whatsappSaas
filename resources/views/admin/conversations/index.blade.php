@@ -172,7 +172,9 @@
             <h4 x-text="emptyTitle()"></h4>
             <p x-text="emptyDesc()"></p>
             <div x-show="tab === 'pool'">
-                @if(auth()->user()->isAdmin() || auth()->user()->isSuperAdmin())
+                {{-- Tenant admins only: instance management is not part of the
+                     platform control panel, so a super admin has no such route. --}}
+                @if(auth()->user()->isAdmin())
                     <a href="{{ route($panelPrefix . '.instances.index') }}" class="btn btn-outline btn-sm">
                         <i class="ri-smartphone-line"></i> {{ __('ui.conversations_page.check_instances') }}
                     </a>

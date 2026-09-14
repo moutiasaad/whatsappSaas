@@ -157,6 +157,7 @@ return [
     'errors' => [
         'credentials_mismatch' => 'Ces identifiants ne correspondent pas à nos enregistrements.',
         'super_admin_only' => 'Ce portail est réservé aux super admins.',
+        'use_control_panel_login' => 'Les comptes plateforme se connectent depuis le panneau de contrôle, pas depuis ce formulaire.',
         'admin_only' => 'Ce portail est réservé aux admins tenant.',
         'supervisor_only' => 'Ce portail est réservé aux superviseurs.',
         'agent_only' => 'Ce portail est réservé aux agents support.',

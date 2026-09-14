@@ -1,0 +1,256 @@
+:root{
+  --teal:#0f7e7a;--teal-l:#15b6a8;--teal-d:#0a5e5b;--teal-50:#ecf7f6;--teal-100:#d6efed;
+  --ink:#0d1417;--ink-2:#161e22;--ink-3:#232b33;
+  --text:#0f172a;--muted:#64748b;--muted-2:#94a3b8;
+  --border:#e2e8f0;--border-2:#cbd5e1;--soft:#f8fafc;
+  --amber:#d97706;--amber-50:#fef3e2;
+  --wa:#25a35a;--lc:#4f6bed;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;font-family:"Outfit",ui-sans-serif,system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:#fff;line-height:1.6;font-size:16px}
+a{color:var(--teal);text-decoration:none}a:hover{color:var(--teal-d)}
+h1,h2,h3,h4{margin:0;letter-spacing:-.035em;font-weight:700;text-wrap:pretty}
+p{margin:0}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1140px;margin:0 auto;padding:0 28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:50px;padding:0 24px;border-radius:11px;font-size:15.5px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.15s;white-space:nowrap}
+.btn.p{background:var(--teal);color:#fff}
+.btn.p:hover{background:var(--teal-d);color:#fff}
+.btn.g{background:#fff;color:var(--text);border-color:var(--border)}
+.btn.g:hover{border-color:var(--border-2);background:var(--soft);color:var(--text)}
+.btn.d{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.2)}
+.btn.d:hover{background:rgba(255,255,255,.14);color:#fff}
+.btn.sm{height:42px;font-size:14.5px;padding:0 18px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav .in{height:70px;display:flex;align-items:center;gap:30px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .wm{font-weight:800;font-size:20px;letter-spacing:-.03em;color:var(--text)}
+.nav nav{display:flex;gap:24px;margin-left:10px}
+.nav nav a{font-size:14.5px;color:var(--muted);font-weight:500}
+.nav nav a:hover{color:var(--text)}
+.nav .act{margin-left:auto;display:flex;align-items:center;gap:14px}
+.nav .act a.si{font-size:14.5px;color:var(--muted);font-weight:500}
+
+/* breadcrumb */
+.bc{padding:16px 0 0;font-size:13px;color:var(--muted-2)}
+.bc ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bc a{color:var(--muted)}
+.bc .sep{color:var(--border-2)}
+.bc [aria-current]{color:var(--text);font-weight:600}
+
+/* hero */
+.hero{background:var(--ink);color:#fff;padding:56px 0 64px;position:relative;overflow:hidden;margin-top:16px}
+.hero .glow{position:absolute;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(21,182,168,.15),transparent 60%);top:-440px;right:-300px;pointer-events:none}
+.hero .in{position:relative;max-width:800px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--teal-l);background:rgba(21,182,168,.12);border:1px solid rgba(21,182,168,.24);padding:7px 14px;border-radius:999px}
+.hero h1{font-size:47px;line-height:1.08;margin-top:20px}
+.hero h1 em{font-style:normal;color:var(--teal-l)}
+.hero .lede{font-size:18.5px;color:#94a3b8;margin-top:18px;max-width:62ch}
+.hero .cta{display:flex;gap:11px;margin-top:28px;flex-wrap:wrap}
+.hero .micro{display:flex;gap:18px;margin-top:18px;flex-wrap:wrap}
+.hero .micro span{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#8b99a6}
+
+/* article layout */
+.doc{display:grid;grid-template-columns:216px minmax(0,1fr);gap:52px;padding:52px 0 20px;align-items:start}
+.toc{position:sticky;top:92px}
+.toc .lbl{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted-2);margin-bottom:12px}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;counter-reset:t}
+.toc a{display:block;font-size:13.5px;color:var(--muted);padding:6px 10px;border-radius:7px;border-left:2px solid var(--border);line-height:1.4}
+.toc a:hover{background:var(--soft);color:var(--text)}
+.toc a.on{color:var(--teal);border-left-color:var(--teal);background:var(--teal-50);font-weight:600}
+
+.art{min-width:0}
+.art section{margin-bottom:52px;scroll-margin-top:90px}
+.art section:last-child{margin-bottom:0}
+.art h2{font-size:31px;line-height:1.15;margin-bottom:16px}
+.art h3{font-size:20px;line-height:1.25;margin:28px 0 10px}
+.art p{font-size:16.5px;color:#334155;margin-bottom:15px;max-width:70ch}
+.art p:last-child{margin-bottom:0}
+.art strong{font-weight:600;color:var(--text)}
+.art ul,.art ol{margin:0 0 16px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:10px;max-width:70ch}
+.art li{font-size:16.5px;color:#334155;display:flex;gap:11px;align-items:flex-start;line-height:1.55}
+.art li svg{flex-shrink:0;margin-top:5px}
+.art ol.numbered{counter-reset:n}
+.art ol.numbered li{counter-increment:n}
+.art ol.numbered li::before{content:counter(n);flex-shrink:0;width:24px;height:24px;border-radius:7px;background:var(--teal-50);color:var(--teal);font-size:12.5px;font-weight:700;display:grid;place-items:center;margin-top:2px}
+
+figure{margin:24px 0 26px}
+/* fit-content, not full width: with the height cap a portrait screenshot is
+   only ~240px wide, and a column-width frame left 300px of empty grey either
+   side of it. The frame hugs the image and centres in the column instead. */
+figure .shot{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--soft);box-shadow:0 24px 50px -30px rgba(13,20,23,.3);width:fit-content;max-width:100%;margin-inline:auto;line-height:0}
+/* Five of the screenshots are portrait crops (a conversation queue is 704x1766).
+   At full column width those render several thousand pixels tall and turn one
+   figure into most of the page. Cap the height and let the width follow the real
+   aspect ratio, so a tall shot sits centred at roughly its natural size while a
+   wide one still fills the column. */
+figure .shot img{display:block;max-height:600px;width:auto;max-width:100%;height:auto}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:11px;line-height:1.5;display:flex;gap:8px;align-items:flex-start}
+figcaption svg{flex-shrink:0;margin-top:3px;color:var(--teal)}
+
+.note{background:var(--teal-50);border:1px solid var(--teal-100);border-radius:13px;padding:17px 19px;margin:22px 0;display:flex;gap:12px;align-items:flex-start}
+.note svg{flex-shrink:0;margin-top:3px}
+.note .m{min-width:0}
+.note .h{font-size:14px;font-weight:700;color:var(--teal-d);letter-spacing:-.005em}
+.note p{font-size:15px;color:#215f5c;margin:4px 0 0;max-width:none}
+.note.amber{background:var(--amber-50);border-color:#fcd9a4}
+.note.amber .h{color:#92400e}
+.note.amber p{color:#7c4a10}
+
+.steps{display:flex;flex-direction:column;gap:14px;margin:22px 0}
+.step{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:13px;padding:18px}
+.step .n{width:30px;height:30px;border-radius:9px;background:var(--teal);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
+.step .m{min-width:0}
+.step .h{font-size:16.5px;font-weight:700;letter-spacing:-.015em}
+.step p{font-size:15.5px;margin:5px 0 0;max-width:none}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:22px 0}
+.fc{border:1px solid var(--border);border-radius:13px;padding:20px;background:#fff}
+.fc .ic{width:38px;height:38px;border-radius:11px;background:var(--teal-50);display:grid;place-items:center;margin-bottom:13px}
+.fc .h{font-size:16.5px;font-weight:700;letter-spacing:-.015em}
+.fc p{font-size:15px;color:var(--muted);margin:6px 0 0;max-width:none}
+
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
+.sc{border:1px solid var(--border);border-radius:13px;padding:19px;background:var(--soft)}
+.sc b{display:block;font-size:29px;font-weight:800;letter-spacing:-.045em;line-height:1;color:var(--teal)}
+.sc span{font-size:14px;color:var(--muted);display:block;margin-top:6px;line-height:1.4}
+
+table{width:100%;border-collapse:collapse;margin:22px 0;font-size:15.5px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 14px 10px;border-bottom:1px solid var(--border)}
+td{padding:13px 14px;border-bottom:1px solid #f1f5f7;color:#334155;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.tw{overflow-x:auto}
+
+/* faq */
+details{border:1px solid var(--border);border-radius:13px;margin-bottom:11px;background:#fff}
+details[open]{border-color:var(--teal-100)}
+summary{padding:18px 20px;font-size:16.5px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:14px;letter-spacing:-.01em}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted-2);border-bottom:2px solid var(--muted-2);transform:rotate(45deg);margin-left:auto;transition:.18s;flex-shrink:0}
+details[open] summary::after{transform:rotate(-135deg)}
+details .a{padding:0 20px 19px}
+details .a p{font-size:15.5px;color:var(--muted);margin-bottom:11px}
+details .a p:last-child{margin-bottom:0}
+
+/* related */
+.related{border-top:1px solid var(--border);padding:44px 0;margin-top:52px}
+.related h2{font-size:24px;margin-bottom:6px}
+.related .sub{font-size:15px;color:var(--muted);margin-bottom:22px}
+.rg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.rc{border:1px solid var(--border);border-radius:13px;padding:19px;transition:.15s;display:block}
+.rc:hover{border-color:var(--teal-100);box-shadow:0 12px 30px -18px rgba(15,126,122,.3)}
+.rc .k{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}
+.rc .h{font-size:16.5px;font-weight:700;letter-spacing:-.015em;margin-top:7px;color:var(--text)}
+.rc p{font-size:14.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+/* final cta */
+.final{background:var(--ink);color:#fff;text-align:center;padding:76px 0;position:relative;overflow:hidden}
+.final .glow{position:absolute;width:860px;height:860px;border-radius:50%;background:radial-gradient(circle,rgba(21,182,168,.16),transparent 62%);bottom:-520px;left:50%;transform:translateX(-50%);pointer-events:none}
+.final .in{position:relative}
+.final h2{font-size:37px;line-height:1.12;max-width:20ch;margin:0 auto}
+.final p{font-size:17.5px;color:#94a3b8;margin-top:15px}
+.final .cta{display:flex;gap:11px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+.final .micro{display:flex;gap:18px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.final .micro span{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#8b99a6}
+
+/* footer */
+footer{background:var(--ink);color:#8b99a6;padding:48px 0 36px;border-top:1px solid #1f272e}
+footer .cols{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px;padding-bottom:32px;border-bottom:1px solid #1f272e}
+footer .wm{color:#fff;font-weight:800;font-size:19px;letter-spacing:-.03em}
+footer .tag{font-size:14px;margin-top:9px;max-width:30ch;line-height:1.55}
+footer h4{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#5d6b76;margin-bottom:13px}
+footer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+footer a{color:#8b99a6;font-size:14px}
+footer a:hover{color:#fff}
+footer .base{padding-top:24px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+
+@media (max-width:1000px){
+  .doc{grid-template-columns:minmax(0,1fr);gap:0;padding-top:36px}
+  .toc{position:static;border:1px solid var(--border);border-radius:13px;padding:16px;margin-bottom:36px}
+  .toc ol{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
+  .hero h1{font-size:35px}
+  .art h2{font-size:26px}
+  .cards,.stats,.rg{grid-template-columns:1fr}
+  .final h2{font-size:28px}
+  footer .cols{grid-template-columns:1fr 1fr}
+}
+/* Hiding the header links has to happen at the same width the mobile menu
+   button appears (see partials/marketing-mobile-nav), or the 981-1000px band
+   has neither: the links were already gone but the burger had not arrived. */
+@media (max-width:980px){
+  .nav nav{display:none}
+}
+@media (max-width:600px){
+  .wrap{padding:0 18px}
+  .hero{padding:40px 0 48px}
+  .hero h1{font-size:29px}
+  .hero .lede{font-size:16.5px}
+  .art p,.art li{font-size:16px}
+  .toc ol{grid-template-columns:1fr}
+  footer .cols{grid-template-columns:1fr}
+}
+
+/* ── App integration ───────────────────────────────────────────────────────
+   Added on top of the handoff stylesheet: RTL support for the Arabic locale,
+   and a mega-menu / footer sitemap matching the landing page so the header is
+   the same component on every marketing surface. */
+html[dir="rtl"] body{font-family:"Cairo",ui-sans-serif,system-ui,sans-serif;line-height:1.7}
+html[dir="rtl"] .hero .glow{right:auto;left:-300px}
+html[dir="rtl"] .nav nav{margin-left:0;margin-right:10px}
+html[dir="rtl"] .nav .act{margin-left:0;margin-right:auto}
+html[dir="rtl"] .toc a{border-left:none;border-right:2px solid transparent}
+
+/* language picker, shared with the landing nav */
+.lang-wrap{position:relative}
+.lang{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);border:1px solid var(--border);padding:6px 10px;border-radius:8px;cursor:pointer;background:#fff;font-weight:500;font-family:inherit}
+.lang:hover{border-color:var(--border-2)}
+.lang-dd{position:absolute;top:calc(100% + 8px);inset-inline-end:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 34px -18px rgba(15,23,42,.35);min-width:150px;overflow:hidden;z-index:200;display:none}
+.lang-dd.open{display:block}
+.lang-item{display:block;width:100%;background:none;border:none;padding:10px 14px;font-size:13.5px;cursor:pointer;color:var(--text);text-align:start;font-family:inherit}
+.lang-item:hover{background:var(--teal-50)}
+.lang-item.active{font-weight:600;color:var(--teal)}
+
+/* feature index grid */
+.fidx{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:44px 0 8px}
+.fidx .rc{display:flex;flex-direction:column}
+@media (max-width:980px){.fidx{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.fidx{grid-template-columns:1fr}}
+
+/* ── Product mega-menu ─────────────────────────────────────────────────────
+   Must match the landing page's copy of these rules. Without them the panel
+   has no positioning or visibility state, so all ten items render inline and
+   the header dumps the whole menu onto the page. */
+.has-mega{position:relative;display:flex;align-items:center}
+.navbtn{display:inline-flex;align-items:center;gap:6px;font-size:14.5px;color:var(--muted);font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.navbtn:hover,.has-mega:hover .navbtn,.has-mega:focus-within .navbtn{color:var(--text)}
+.navbtn svg{transition:transform .18s}
+.has-mega:hover .navbtn svg,.has-mega:focus-within .navbtn svg{transform:rotate(180deg)}
+/* The padding-top is a hover bridge: without it the pointer crosses a gap
+   between the trigger and the panel and the menu closes under the cursor. */
+.mega{position:absolute;top:100%;inset-inline-start:50%;transform:translateX(-50%) translateY(6px);padding-top:14px;opacity:0;visibility:hidden;transition:opacity .18s,transform .18s,visibility .18s;z-index:60}
+html[dir="rtl"] .mega{transform:translateX(50%) translateY(6px)}
+.has-mega:hover .mega,.has-mega:focus-within .mega{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+html[dir="rtl"] .has-mega:hover .mega,html[dir="rtl"] .has-mega:focus-within .mega{transform:translateX(50%) translateY(0)}
+.megainner{width:690px;max-width:calc(100vw - 40px);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 34px 80px -28px rgba(13,20,23,.34);padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.mi{display:flex;gap:12px;padding:11px 12px;border-radius:12px;transition:.13s;color:var(--text)}
+.mi:hover{background:var(--soft);color:var(--text)}
+.mi .mic{width:36px;height:36px;border-radius:10px;background:var(--teal-50);display:grid;place-items:center;flex-shrink:0}
+.mi .mt{font-size:14.5px;font-weight:600;color:var(--text);line-height:1.3;letter-spacing:-.01em;display:block}
+.mi .ms{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4;display:block}
+.megafoot{grid-column:1/-1;margin-top:6px;padding:13px 12px 3px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.megafoot .mf{font-size:13px;color:var(--muted)}
+.megafoot a.mfl{font-size:13px;font-weight:600;margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px}
+@media (max-width:980px){.has-mega{display:none}}
+
+/* ── Footer sitemap ────────────────────────────────────────────────────────
+   The shared marketing footer uses the landing page's newer class names
+   (fcols/ftag/fbase); the handoff stylesheet only defined the older
+   cols/tag/base, so these four columns rendered as a single unstyled stack. */
+footer .fcols{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:32px;padding-bottom:32px;border-bottom:1px solid #1f272e}
+footer .ftag{font-size:14px;margin-top:9px;max-width:30ch;line-height:1.55;color:#8b99a6}
+footer .fbase{padding-top:24px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px;align-items:center}
+@media (max-width:980px){footer .fcols{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){footer .fcols{grid-template-columns:1fr}}

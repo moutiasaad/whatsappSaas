@@ -68,26 +68,64 @@ class EvolutionApiClient implements GatewayClientInterface
 
     public function getStatus(string $instanceId): string
     {
-        try {
-            $res = $this->fetchInstance($instanceId);
-            $rawStatus = strtolower((string) (
-                data_get($res, 'connectionStatus')
-                ?? data_get($res, 'status')
-                ?? data_get($res, 'instance.connectionStatus')
-                ?? data_get($res, 'state')
-                ?? data_get($res, 'instance.state')
-                ?? 'close'
-            ));
+        return $this->probeStatus($instanceId) ?? 'disconnected';
+    }
 
-            return match ($rawStatus) {
-                'open', 'online', 'connected'                    => 'connected',
-                'connecting', 'pairing', 'pending', 'qr', 'qrcode' => 'connecting',
-                'close', 'closed', 'offline', 'disconnected'    => 'disconnected',
-                default                                          => 'disconnected',
-            };
+    /**
+     * Same as getStatus(), but returns null when the gateway could not be
+     * reached at all, so a caller can tell "the phone is offline" apart from
+     * "we failed to ask" and leave the last known state alone.
+     */
+    public function probeStatus(string $instanceId): ?string
+    {
+        try {
+            return $this->statusFromPayload($this->fetchInstance($instanceId));
         } catch (\Exception) {
-            return 'disconnected';
+            return null;
         }
+    }
+
+    /**
+     * Derive our local status from an /instance/fetchInstance payload.
+     *
+     * The live Baileys socket state (Whatsapp.connection.state) outranks the
+     * gateway's own connectionStatus field. On the iStoreBox build
+     * connectionStatus is effectively static — it reports ONLINE for every
+     * instance that was ever paired, including ones whose socket has since
+     * closed. Reading it first is what let an instance sit in the dashboard as
+     * "connected" while every /message/sendText against it answered HTTP 500,
+     * which surfaced to API clients as an opaque OTP gateway_error.
+     */
+    public function statusFromPayload(array $payload): string
+    {
+        $socketState = strtolower((string) (
+            data_get($payload, 'Whatsapp.connection.state')
+            ?? data_get($payload, 'whatsapp.connection.state')
+            ?? data_get($payload, 'instance.Whatsapp.connection.state')
+            ?? ''
+        ));
+
+        if ($socketState !== '') {
+            return $this->mapConnectionState($socketState);
+        }
+
+        return $this->mapConnectionState(strtolower((string) (
+            data_get($payload, 'connectionStatus')
+            ?? data_get($payload, 'status')
+            ?? data_get($payload, 'instance.connectionStatus')
+            ?? data_get($payload, 'state')
+            ?? data_get($payload, 'instance.state')
+            ?? 'close'
+        )));
+    }
+
+    private function mapConnectionState(string $state): string
+    {
+        return match ($state) {
+            'open', 'online', 'connected'                      => 'connected',
+            'connecting', 'pairing', 'pending', 'qr', 'qrcode' => 'connecting',
+            default                                            => 'disconnected',
+        };
     }
 
     public function fetchInstance(string $instanceId): array
@@ -115,6 +153,23 @@ class EvolutionApiClient implements GatewayClientInterface
         }
 
         return $this->putJson("/webhook/set/{$instanceId}", $payload);
+    }
+
+    /**
+     * Stop the gateway posting connection.update for this instance, leaving
+     * every other event — messages above all — flowing (PROC-019).
+     *
+     * This is the narrowest cut that ends the reconnect loop's traffic: the
+     * webhook stays enabled, the instance and its pairing are untouched, and
+     * setWebhook() restores the full event set, which connect() already does on
+     * every deliberate re-pair.
+     */
+    public function muteConnectionEvents(string $instanceId, string $url, ?string $hmacSecret = null): array
+    {
+        $events = $this->defaultWebhookEvents();
+        $events['connectionUpdated'] = false;
+
+        return $this->setWebhook($instanceId, $url, $events, $hmacSecret);
     }
 
     public function findContacts(string $instanceId, string $remoteJid): array
@@ -262,9 +317,17 @@ class EvolutionApiClient implements GatewayClientInterface
         ]);
     }
 
+    /**
+     * Drop the WhatsApp session but keep the instance (PROC-019).
+     *
+     * This previously pointed at /instance/delete, which destroys the instance
+     * outright — the gateway exposes /instance/logout separately, and that is
+     * the call that clears stored credentials so the next connect pairs fresh
+     * and emits a QR.
+     */
     public function logout(string $instanceId): void
     {
-        $this->delete("/instance/delete/{$instanceId}");
+        $this->delete("/instance/logout/{$instanceId}");
     }
 
     public function deleteInstance(string $instanceId): void

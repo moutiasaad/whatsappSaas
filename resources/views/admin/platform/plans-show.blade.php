@@ -61,14 +61,6 @@
                         <div class="form-control" style="display:flex;align-items:center;">${{ number_format((float) $plan->price_annual, 2) }}</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ __('ui.platform_plans_show_page.stripe_monthly_price_id') }}</label>
-                        <div class="form-control" style="display:flex;align-items:center;font-family:monospace;">{{ $plan->stripe_price_id_monthly ?: __('ui.platform_plans_show_page.not_set') }}</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">{{ __('ui.platform_plans_show_page.stripe_annual_price_id') }}</label>
-                        <div class="form-control" style="display:flex;align-items:center;font-family:monospace;">{{ $plan->stripe_price_id_annual ?: __('ui.platform_plans_show_page.not_set') }}</div>
-                    </div>
-                    <div class="form-group">
                         <label class="form-label">{{ __('ui.platform_plans_show_page.ai_included') }}</label>
                         <div style="height:40px;display:flex;align-items:center;">
                             @if($plan->ai_included)
@@ -79,22 +71,65 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ __('ui.platform_plans_show_page.ai_token_quota') }}</label>
+                        <label class="form-label">{{ __('ui.platform_plans_show_page.ai_messages') }}</label>
                         <div class="form-control" style="display:flex;align-items:center;">
-                            @if(is_null($plan->ai_token_quota))
+                            @if(is_null($plan->ai_message_quota))
                                 {{ __('ui.platform_plans_show_page.unlimited') }}
-                            @elseif($plan->ai_token_quota === 0)
+                            @elseif($plan->ai_message_quota === 0)
                                 {{ __('ui.platform_plans_show_page.ai_off') }}
                             @else
-                                {{ number_format($plan->ai_token_quota) }}
+                                {{ __('ui.platform_plans_show_page.ai_messages_per_month', ['count' => number_format($plan->ai_message_quota)]) }}
                             @endif
                         </div>
                     </div>
                 </div>
 
+                {{-- ══ FREE TRIAL ══════════════════════════════════════ --}}
                 <div class="form-group" style="margin-top:16px;">
-                    <label class="form-label">{{ __('ui.platform_plans_show_page.features_json') }}</label>
-                    <textarea class="form-control" rows="8" readonly>{{ $plan->features ? json_encode($plan->features, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) : '[]' }}</textarea>
+                    <label class="form-label">{{ __('ui.plan_form_fields.trial_title') }}</label>
+                    <div style="height:40px;display:flex;align-items:center;gap:.5rem;">
+                        @if($plan->hasTrial())
+                            <span class="badge badge-green"><i class="ri-time-line"></i> {{ __('landing.attr_trial', ['days' => $plan->trialDays()]) }}</span>
+                        @else
+                            <span class="badge badge-gray"><i class="ri-close-line"></i> {{ __('ui.platform_plans_show_page.no_trial') }}</span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- ══ MODULES ═════════════════════════════════════════ --}}
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">{{ __('ui.plan_form_fields.modules_title') }}</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-top:.25rem;">
+                        @foreach(config('plan_modules', []) as $key => $meta)
+                            @if($plan->hasModule($key))
+                                <span class="badge badge-green"><i class="{{ $meta['icon'] }}"></i> {{ __('ui.plan_modules.' . $key) }}</span>
+                            @else
+                                <span class="badge badge-gray" style="opacity:.6"><i class="ri-close-line"></i> {{ __('ui.plan_modules.' . $key) }}</span>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- ══ LANDING PAGE ATTRIBUTES ═════════════════════════ --}}
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">{{ __('ui.plan_form_fields.landing_title') }}</label>
+                    @php $picked = $plan->landingAttributes(); @endphp
+                    @if($picked === null)
+                        <div class="form-hint" style="margin-top:.25rem;">{{ __('ui.platform_plans_show_page.landing_not_curated') }}</div>
+                    @elseif(empty($picked))
+                        <div class="form-hint" style="margin-top:.25rem;">{{ __('ui.platform_plans_show_page.landing_none') }}</div>
+                    @else
+                        <div style="display:flex;flex-wrap:wrap;gap:.375rem;margin-top:.25rem;">
+                            @foreach($picked as $attr)
+                                <span class="badge badge-blue">
+                                    <i class="ri-eye-line"></i>
+                                    {{ str_starts_with($attr, 'module:')
+                                        ? __('ui.plan_modules.' . substr($attr, 7))
+                                        : __('ui.plan_landing_attributes.' . $attr) }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

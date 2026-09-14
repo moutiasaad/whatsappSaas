@@ -561,7 +561,8 @@
                     if (S.seenIds[m.id]) return;
                     S.messages.push({
                         id: m.id, sender_type: m.sender_type, sender_id: m.sender_id,
-                        body: m.body, created_at: m.created_at, sender: m.sender || null
+                        body: m.body, created_at: m.created_at, sender: m.sender || null,
+                        attachment: m.attachment || null
                     });
                     S.seenIds[m.id] = true;
                     if (m.id > S.lastMessageId) S.lastMessageId = m.id;
@@ -758,7 +759,8 @@
             chat:    '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.13L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
             arrow:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
             spark:   '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6z"/></svg>',
-            check:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>'
+            check:   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
+            file:    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M14 3v5h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/></svg>'
         };
         return SVGS[icon] || '';
     }
@@ -1278,6 +1280,12 @@
         // Only bot/agent replies get parsed for menu options. Human agents can
         // still hit the parser, but with the strict "**bold**" bullet rule the
         // false-positive rate is negligible.
+        // An agent can send a file with or without a caption. It goes above the
+        // text, the way every chat client puts the attachment first.
+        if (m.attachment && m.attachment.url) {
+            bubble.appendChild(attachmentNode(m.attachment));
+        }
+
         var parsed = (side === 'left') ? parseBotOptions(m.body) : null;
         var hasMenu = parsed && parsed.options.length >= 2;
 
@@ -1308,7 +1316,10 @@
             // Even when there's no clickable menu, strip markdown bold markers
             // so visitors never see raw ** in a rendered bubble.
             var clean = side === 'left' ? cleanInlineMarkdown(m.body) : m.body;
-            bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: clean }));
+            // A file sent without a caption must not leave an empty line under it.
+            if ((clean || '').trim() || !m.attachment) {
+                bubble.appendChild(_('div', { class: 'wvch-bubble-body', text: clean }));
+            }
         }
 
         row.appendChild(bubble);
@@ -1327,6 +1338,29 @@
 
         el.thread.appendChild(row);
         scrollToBottom();
+    }
+
+    // An attachment an agent sent. Images and media preview in place; anything
+    // else becomes a chip that opens in a new tab. The url is always one this
+    // app hosts — the send endpoint refuses anything else.
+    function attachmentNode(a) {
+        var name = a.name || 'File';
+
+        if (a.type === 'image') {
+            return _('a', { class: 'wvch-att wvch-att-img', href: a.url, target: '_blank', rel: 'noopener' }, [
+                _('img', { src: a.url, alt: name, loading: 'lazy' })
+            ]);
+        }
+        if (a.type === 'audio') {
+            return _('audio', { class: 'wvch-att wvch-att-media', src: a.url, controls: 'controls', preload: 'none' });
+        }
+        if (a.type === 'video') {
+            return _('video', { class: 'wvch-att wvch-att-media', src: a.url, controls: 'controls', preload: 'metadata' });
+        }
+        return _('a', { class: 'wvch-att wvch-att-file', href: a.url, target: '_blank', rel: 'noopener' }, [
+            _('span', { class: 'wvch-att-ic', html: svg('file') }),
+            _('span', { class: 'wvch-att-name', text: name })
+        ]);
     }
 
     function typewriter(node, text) {
@@ -1912,6 +1946,15 @@
             "#wvch-root[dir='rtl'] .wvch-bubble-right { border-top-left-radius: 5px; }",
             "#wvch-root[dir='ltr'] .wvch-bubble-right { border-top-right-radius: 5px; }",
             "#wvch-root .wvch-bubble-body { white-space: pre-wrap; }",
+            "#wvch-root .wvch-att { display: block; margin-bottom: 6px; border-radius: 12px; overflow: hidden; max-width: 240px; }",
+            "#wvch-root .wvch-bubble-body + .wvch-att, #wvch-root .wvch-att:last-child { margin-bottom: 0; }",
+            "#wvch-root .wvch-att-img img { display: block; width: 100%; height: auto; max-height: 260px; object-fit: cover; }",
+            "#wvch-root .wvch-att-media { width: 240px; max-width: 100%; }",
+            "#wvch-root audio.wvch-att-media { height: 38px; }",
+            "#wvch-root .wvch-att-file { display: flex; align-items: center; gap: 8px; padding: 9px 11px; text-decoration: none; background: rgba(255,255,255,.18); color: inherit; }",
+            "#wvch-root .wvch-bubble-left .wvch-att-file { background: var(--wvch-surface-2, #f4f6f9); border: 1px solid var(--wvch-line); }",
+            "#wvch-root .wvch-att-ic { display: flex; flex-shrink: 0; }",
+            "#wvch-root .wvch-att-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
             "#wvch-root .wvch-bubble-outro { margin-top: 10px; color: var(--wvch-text-2, #4b5563); font-size: 13.5px; }",
 
             /* Quick-reply option buttons rendered inside a bot bubble when the

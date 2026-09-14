@@ -45,12 +45,31 @@
     </div>
 
     @if($payment?->isCompleted())
-        <h1>{{ __('auth.register.payment_success_heading') }}</h1>
-        <p>{{ __('auth.register.payment_success_desc', ['plan' => $plan?->name ?? '']) }}</p>
+        {{-- An AI top-up did not change the plan, so it must not claim it did. --}}
+        @if($payment->isAiPack())
+            <h1>{{ __('ui.payment_page.pack_success_heading') }}</h1>
+            <p>{{ __('ui.payment_page.pack_success_desc', ['n' => number_format($payment->packMessages())]) }}</p>
+        @elseif($payment->isSeatPack())
+            <h1>{{ __('ui.payment_page.seat_success_heading') }}</h1>
+            <p>{{ trans_choice('ui.payment_page.seat_success_desc', $payment->packSeats(), ['count' => $payment->packSeats()]) }}</p>
+        @else
+            <h1>{{ __('auth.register.payment_success_heading') }}</h1>
+            <p>{{ __('auth.register.payment_success_desc', ['plan' => $plan?->name ?? '']) }}</p>
+        @endif
 
-        @if($tenant || $plan)
+        @if($tenant || $plan || $payment->isAiPack() || $payment->isSeatPack())
         <div class="details">
-            @if($plan)
+            @if($payment->isAiPack())
+            <div class="detail-row">
+                <span class="detail-label">{{ __('ui.payment_page.pack_line') }}</span>
+                <span class="detail-value">{{ __('ui.payment_page.pack_name', ['n' => number_format($payment->packMessages())]) }}</span>
+            </div>
+            @elseif($payment->isSeatPack())
+            <div class="detail-row">
+                <span class="detail-label">{{ __('ui.payment_page.seat_line') }}</span>
+                <span class="detail-value">{{ trans_choice('ui.payment_page.seat_name', $payment->packSeats(), ['count' => $payment->packSeats()]) }}</span>
+            </div>
+            @elseif($plan)
             <div class="detail-row">
                 <span class="detail-label">{{ __('auth.register.order_plan') }}</span>
                 <span class="detail-value">{{ $plan->name }}</span>

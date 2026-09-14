@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Services\PayPalService;
 use App\Services\PayPalStandardService;
 use App\Services\StripeService;
+use App\Support\AddonPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +39,35 @@ class PaymentController extends Controller
         $tenant = $request->user()->tenant;
         abort_unless($tenant, 403);
 
+        $plan = Plan::findOrFail($request->plan_id);
+
+        // A plan that offers a free trial is switched to immediately and billed
+        // only when the trial runs out — that is what "activate free trial"
+        // means. Granted once per plan per tenant (trialed_plan_ids), otherwise
+        // a tenant could hop between plans to stay permanently un-billed.
+        if ($plan->hasTrial() && !$tenant->hasTrialedPlan($plan->id)) {
+            $tenant->markPlanTrialed($plan->id);
+            $tenant->forceFill([
+                'plan_id'              => $plan->id,
+                'subscription_status'  => 'trial',
+                'trial_ends_at'        => now()->addDays($plan->trialDays()),
+                'subscription_ends_at' => null,
+                'is_active'            => true,
+            ])->save();
+
+            AuditLog::record('tenant.trial_started', $tenant, [
+                'plan_id'    => $plan->id,
+                'trial_days' => $plan->trialDays(),
+            ]);
+
+            return redirect()
+                ->route($request->user()->routeNamePrefix() . '.billing.index')
+                ->with('success', __('ui.controller_messages.trial_started', [
+                    'plan' => $plan->name,
+                    'days' => $plan->trialDays(),
+                ]));
+        }
+
         // Do NOT persist plan_id here. Carry the picked plan through checkout
         // so it only takes effect when the payment completes via
         // activateTenantSubscription() — that closes the unpaid-upgrade path
@@ -44,6 +75,169 @@ class PaymentController extends Controller
         return redirect()->route('payment.checkout', [
             'tenant'  => $tenant->id,
             'plan_id' => (int) $request->plan_id,
+        ]);
+    }
+
+    /**
+     * Checkout for a one-off AI message top-up.
+     *
+     * Reuses the same stepped payment page as a plan purchase; `$packKind`
+     * flips the copy and the line items. Scoped to the caller's own tenant —
+     * the tenant is never read from the URL — so nobody can put a pack on
+     * someone else's account.
+     */
+    public function aiPackCheckout(Request $request)
+    {
+        abort_unless(AddonPricing::packsEnabled(), 404);
+
+        $data = $request->validate([
+            'packs' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxPacks()],
+        ]);
+
+        $tenant = $request->user()->tenant;
+        abort_unless($tenant, 403);
+
+        $packs = (int) $data['packs'];
+
+        return view('payment.checkout', [
+            'tenant'   => $tenant,
+            'plan'     => $tenant->plan,
+            'admin'    => $request->user(),
+            'kind'     => TenantPayment::KIND_AI_PACK,
+            'packs'    => $packs,
+            'messages' => $packs * AddonPricing::packMessages(),
+            'amount'   => AddonPricing::packTotal($packs),
+            'backUrl'  => $this->backUrl($request),
+        ]);
+    }
+
+    /**
+     * Checkout for a whole order: a plan change and/or add-ons, together.
+     *
+     * Buying a plan, seats and messages used to mean three PayPal hand-offs in
+     * a row. Everything the tenant selected is now one approval and one charge.
+     * Quantities come from the request but every price comes from the server.
+     */
+    public function cartCheckout(Request $request)
+    {
+        $data = $this->validateCart($request);
+        $user = $request->user();
+        $tenant = $user->tenant;
+        abort_unless($tenant, 403);
+
+        $cart = $this->priceCart($data, $tenant);
+        abort_if($cart['amount'] <= 0, 404);
+
+        return view('payment.checkout', [
+            'tenant' => $tenant,
+            'plan'   => $cart['plan'] ?? $tenant->plan,
+            'admin'  => $user,
+            'kind'   => TenantPayment::KIND_CART,
+            'cart'   => $cart,
+            'amount' => $cart['amount'],
+            'backUrl'=> $this->backUrl($request),
+        ]);
+    }
+
+    /**
+     * Where "Back" on a checkout page should go.
+     *
+     * Prefers the page the buyer actually came from, but only when it is on
+     * this host and is not a checkout page itself — following an arbitrary
+     * Referer would be an open redirect, and bouncing back to the checkout the
+     * buyer is standing on would be a dead button. Falls back to billing for a
+     * signed-in admin and to the pricing section for a guest mid-signup.
+     */
+    private function backUrl(Request $request): string
+    {
+        $previous = (string) url()->previous();
+
+        $sameHost = $previous !== ''
+            && parse_url($previous, PHP_URL_HOST) === $request->getHost();
+
+        $isCheckout = str_contains((string) parse_url($previous, PHP_URL_PATH), '/payment/');
+
+        if ($sameHost && !$isCheckout) {
+            return $previous;
+        }
+
+        $user = $request->user();
+
+        return $user && !$user->isSuperAdmin()
+            ? route($user->routeNamePrefix() . '.billing.index')
+            : url('/#pricing');
+    }
+
+    /** Shared validation for both the cart page and its PayPal order. */
+    private function validateCart(Request $request): array
+    {
+        return $request->validate([
+            'plan_id' => ['nullable', 'integer', Rule::exists('plans', 'id')->where('is_active', true)],
+            'seats'   => ['nullable', 'integer', 'min:0', 'max:' . AddonPricing::maxSeats()],
+            'packs'   => ['nullable', 'integer', 'min:0', 'max:' . AddonPricing::maxPacks()],
+            // Which PayPal screen to open on — the card form or account login.
+            'card'    => ['nullable', 'boolean'],
+        ]);
+    }
+
+    /**
+     * Price an order from server-side values only.
+     *
+     * An add-on the operator has taken off sale is dropped rather than charged,
+     * so a stale page cannot buy something no longer offered.
+     */
+    private function priceCart(array $data, $tenant): array
+    {
+        $plan  = !empty($data['plan_id']) ? Plan::where('id', $data['plan_id'])->where('is_active', true)->first() : null;
+        $seats = AddonPricing::seatsEnabled() ? max(0, (int) ($data['seats'] ?? 0)) : 0;
+        $packs = AddonPricing::packsEnabled() ? max(0, (int) ($data['packs'] ?? 0)) : 0;
+
+        // An unlimited-AI plan makes message packs meaningless — do not sell one
+        // alongside a plan that already grants unlimited messages.
+        $targetPlan = $plan ?: $tenant->plan;
+        if ($targetPlan && $targetPlan->ai_message_quota === null) {
+            $packs = 0;
+        }
+
+        $planCost = $plan ? round((float) $plan->price_monthly, 2) : 0.0;
+
+        return [
+            'plan'      => $plan,
+            'seats'     => $seats,
+            'packs'     => $packs,
+            'messages'  => $packs * AddonPricing::packMessages(),
+            'plan_cost' => $planCost,
+            'seat_cost' => AddonPricing::seatTotal($seats),
+            'pack_cost' => AddonPricing::packTotal($packs),
+            'amount'    => round($planCost + AddonPricing::seatTotal($seats) + AddonPricing::packTotal($packs), 2),
+        ];
+    }
+
+    /**
+     * Checkout for extra agent seats. Same shape as the AI pack: priced from
+     * platform settings and billed to the signed-in admin's own tenant.
+     */
+    public function seatPackCheckout(Request $request)
+    {
+        abort_unless(AddonPricing::seatsEnabled(), 404);
+
+        $data = $request->validate([
+            'seats' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxSeats()],
+        ]);
+
+        $tenant = $request->user()->tenant;
+        abort_unless($tenant, 403);
+
+        $seats = (int) $data['seats'];
+
+        return view('payment.checkout', [
+            'tenant' => $tenant,
+            'plan'   => $tenant->plan,
+            'admin'  => $request->user(),
+            'kind'   => TenantPayment::KIND_SEAT_PACK,
+            'seats'  => $seats,
+            'amount' => AddonPricing::seatTotal($seats),
+            'backUrl'=> $this->backUrl($request),
         ]);
     }
 
@@ -67,7 +261,13 @@ class PaymentController extends Controller
         $admin  = $tenant->users()->where('role', 'admin')->first();
         $amount = (float) $plan->price_monthly;
 
-        return view('payment.checkout', compact('tenant', 'plan', 'admin', 'amount'));
+        return view('payment.checkout', [
+            'tenant'  => $tenant,
+            'plan'    => $plan,
+            'admin'   => $admin,
+            'amount'  => $amount,
+            'backUrl' => $this->backUrl($request),
+        ]);
     }
 
     public function initiate(Request $request)
@@ -246,7 +446,7 @@ class PaymentController extends Controller
                     'gateway_response' => $session->toArray(),
                 ]);
 
-                $this->activateTenantSubscription($payment);
+                $this->fulfilPayment($payment);
 
                 Log::info('Tenant activated via Stripe', [
                     'tenant_id'  => $payment->tenant_id,
@@ -363,6 +563,77 @@ class PaymentController extends Controller
             ]);
     }
 
+    /**
+     * Start an email-only (PayPal Standard) checkout for any order shape.
+     *
+     * Standard mode needs no OAuth app — just PAYPAL_PAYEE_EMAIL — so it is what
+     * runs when no client id is configured. The trade-off is that completion is
+     * IPN-driven: the buyer returns before PayPal has told us anything, and the
+     * success page shows a processing state until the IPN lands.
+     *
+     * Prices are computed here from plans and platform settings, exactly as the
+     * REST path does; nothing about the amount comes from the browser.
+     */
+    public function paypalStandardStart(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            abort(403);
+        }
+
+        abort_unless($this->paypalStd->isConfigured(), 404);
+
+        $tenant = $user->tenant;
+        $cart   = $this->priceCart($this->validateCart($request), $tenant);
+
+        abort_if($cart['amount'] <= 0, 404);
+
+        $parts = array_filter([
+            $cart['plan']?->name,
+            $cart['seats'] ? $cart['seats'] . ' seats' : null,
+            $cart['packs'] ? number_format($cart['messages']) . ' AI messages' : null,
+        ]);
+
+        $invoiceId = 'std_' . $tenant->id . '_' . time();
+
+        $payment = TenantPayment::create([
+            'tenant_id'       => $tenant->id,
+            'plan_id'         => $cart['plan']?->id,
+            'kind'            => TenantPayment::KIND_CART,
+            'amount'          => $cart['amount'],
+            'currency'        => config('services.paypal.currency', 'USD'),
+            'payment_method'  => 'paypal',
+            // The Standard flow has no order id until the IPN arrives, so the
+            // invoice id is what both sides key on.
+            'paypal_order_id' => $invoiceId,
+            'status'          => 'pending',
+            'gateway_response'=> ['mode' => 'standard'],
+            'metadata'        => [
+                'plan_id'  => $cart['plan']?->id,
+                'seats'    => $cart['seats'],
+                'packs'    => $cart['packs'],
+                'messages' => $cart['messages'],
+            ],
+        ]);
+
+        $params = $this->paypalStd->buildCheckoutParams(
+            amount:        $cart['amount'],
+            itemName:      implode(' + ', $parts) . ' — ' . $tenant->name,
+            invoiceId:     $invoiceId,
+            returnUrl:     route('payment.success', ['token' => $invoiceId]),
+            cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
+            notifyUrl:     route('payment.paypal.ipn'),
+            customPayload: (string) $payment->id,
+            preferCard:    $request->boolean('card'),
+        );
+
+        return response()->view('payment.paypal-standard-redirect', [
+            'action' => $this->paypalStd->getCheckoutUrl(),
+            'params' => $params,
+        ]);
+    }
+
     public function paypalIpn(Request $request)
     {
         $rawBody = $request->getContent();
@@ -441,7 +712,7 @@ class PaymentController extends Controller
                 'paypal_capture_id' => $data['txn_id'] ?? null,
                 'gateway_response'  => array_merge(is_array($payment->gateway_response) ? $payment->gateway_response : [], ['ipn' => $data]),
             ]);
-            $this->activateTenantSubscription($payment);
+            $this->fulfilPayment($payment);
 
             Log::info('Tenant activated via PayPal Standard IPN', [
                 'tenant_id' => $payment->tenant_id,
@@ -462,6 +733,20 @@ class PaymentController extends Controller
 
     public function createPaypalOrder(Request $request)
     {
+        // An AI pack is priced from config and billed to the signed-in admin's
+        // own tenant — never from a client-supplied amount or tenant id.
+        if ($request->input('kind') === TenantPayment::KIND_AI_PACK) {
+            return $this->createAiPackOrder($request);
+        }
+
+        if ($request->input('kind') === TenantPayment::KIND_SEAT_PACK) {
+            return $this->createSeatPackOrder($request);
+        }
+
+        if ($request->input('kind') === TenantPayment::KIND_CART) {
+            return $this->createCartOrder($request);
+        }
+
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with('plan')->findOrFail($request->tenant_id);
@@ -489,6 +774,7 @@ class PaymentController extends Controller
             TenantPayment::create([
                 'tenant_id'       => $tenant->id,
                 'plan_id'         => $plan->id,
+                'kind'            => TenantPayment::KIND_SUBSCRIPTION,
                 'amount'          => $amount,
                 'currency'        => config('services.paypal.currency', 'USD'),
                 'payment_method'  => 'paypal',
@@ -505,11 +791,183 @@ class PaymentController extends Controller
         }
     }
 
+    private function createAiPackOrder(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            return response()->json(['error' => 'forbidden'], 403);
+        }
+
+        abort_unless(AddonPricing::packsEnabled(), 404);
+
+        $data = $request->validate([
+            'packs' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxPacks()],
+        ]);
+
+        $tenant   = $user->tenant;
+        $packs    = (int) $data['packs'];
+        $messages = $packs * AddonPricing::packMessages();
+        $amount   = AddonPricing::packTotal($packs);
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $messages . ' AI messages — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'aipack_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                // No plan_id: a pack does not change what the tenant subscribes to.
+                'plan_id'         => null,
+                'kind'            => TenantPayment::KIND_AI_PACK,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'sdk', 'order' => $order],
+                'metadata'        => ['packs' => $packs, 'messages' => $messages],
+            ]);
+
+            return response()->json(['id' => $order['id']]);
+        } catch (\Throwable $e) {
+            Log::error('PayPal AI-pack create-order failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'create_order_failed'], 500);
+        }
+    }
+
+    private function createSeatPackOrder(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            return response()->json(['error' => 'forbidden'], 403);
+        }
+
+        abort_unless(AddonPricing::seatsEnabled(), 404);
+
+        $data = $request->validate([
+            'seats' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxSeats()],
+        ]);
+
+        $tenant = $user->tenant;
+        $seats  = (int) $data['seats'];
+        $amount = AddonPricing::seatTotal($seats);
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $seats . ' agent seats — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'seats_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => null,
+                'kind'            => TenantPayment::KIND_SEAT_PACK,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'sdk', 'order' => $order],
+                'metadata'        => ['seats' => $seats],
+            ]);
+
+            return response()->json(['id' => $order['id']]);
+        } catch (\Throwable $e) {
+            Log::error('PayPal seat create-order failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'create_order_failed'], 500);
+        }
+    }
+
+    private function createCartOrder(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            return response()->json(['error' => 'forbidden'], 403);
+        }
+
+        $tenant = $user->tenant;
+        $cart   = $this->priceCart($this->validateCart($request), $tenant);
+
+        if ($cart['amount'] <= 0) {
+            return response()->json(['error' => 'empty_cart'], 422);
+        }
+
+        $parts = array_filter([
+            $cart['plan']?->name,
+            $cart['seats'] ? $cart['seats'] . ' seats' : null,
+            $cart['packs'] ? number_format($cart['messages']) . ' AI messages' : null,
+        ]);
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $cart['amount'],
+                description: implode(' + ', $parts) . ' — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'cart_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                // plan_id is set only when the order actually changes the plan,
+                // so activateTenantSubscription has something to switch to.
+                'plan_id'         => $cart['plan']?->id,
+                'kind'            => TenantPayment::KIND_CART,
+                'amount'          => $cart['amount'],
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'sdk', 'order' => $order],
+                'metadata'        => [
+                    'plan_id'  => $cart['plan']?->id,
+                    'seats'    => $cart['seats'],
+                    'packs'    => $cart['packs'],
+                    'messages' => $cart['messages'],
+                ],
+            ]);
+
+            return response()->json(['id' => $order['id']]);
+        } catch (\Throwable $e) {
+            Log::error('PayPal cart create-order failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'create_order_failed'], 500);
+        }
+    }
+
     public function capturePaypalOrder(Request $request, string $orderId)
     {
         $payment = TenantPayment::where('paypal_order_id', $orderId)->first();
         if (!$payment) {
             return response()->json(['error' => 'payment_not_found'], 404);
+        }
+
+        // A plan purchase can be captured by the guest who is mid-registration,
+        // so it stays open. A pack credits an existing tenant's balance, so only
+        // that tenant's own admin may finish it.
+        if ($payment->isAiPack() || $payment->isSeatPack() || $payment->isCart()) {
+            $user = $request->user();
+            if (!$user || !$user->isAdmin() || $user->tenant_id !== $payment->tenant_id) {
+                return response()->json(['error' => 'forbidden'], 403);
+            }
         }
 
         try {
@@ -623,7 +1081,7 @@ class PaymentController extends Controller
                     'gateway_response'  => ['order' => $order, 'capture' => $capture],
                 ]);
 
-                $this->activateTenantSubscription($payment);
+                $this->fulfilPayment($payment);
 
                 Log::info('Tenant activated via PayPal', [
                     'tenant_id' => $payment->tenant_id,
@@ -663,6 +1121,207 @@ class PaymentController extends Controller
         return $tenant->plan;
     }
 
+    /**
+     * Apply a completed payment.
+     *
+     * Every gateway callback lands here rather than calling
+     * activateTenantSubscription() directly: a one-off AI pack must NOT move
+     * the tenant's plan or renewal date, which is exactly what the old
+     * unconditional activation would have done to any non-subscription row.
+     */
+    private function fulfilPayment(TenantPayment $payment): void
+    {
+        if ($payment->isAiPack()) {
+            $this->creditAiPack($payment);
+
+            return;
+        }
+
+        if ($payment->isSeatPack()) {
+            $this->creditSeatPack($payment);
+
+            return;
+        }
+
+        if ($payment->isCart()) {
+            $this->fulfilCart($payment);
+
+            return;
+        }
+
+        $this->activateTenantSubscription($payment);
+    }
+
+    /**
+     * Grant the messages a completed pack purchase paid for.
+     *
+     * Guarded by a `credited_at` stamp in metadata so a webhook arriving after
+     * the browser-side capture — both of which reach this method — cannot
+     * double-credit the tenant.
+     */
+    private function creditAiPack(TenantPayment $payment): void
+    {
+        $metadata = $payment->metadata ?? [];
+
+        if (!empty($metadata['credited_at'])) {
+            return;
+        }
+
+        $messages = $payment->packMessages();
+        $tenant   = $payment->tenant;
+
+        if ($messages <= 0 || !$tenant) {
+            Log::warning('AI pack payment completed with nothing to credit', [
+                'payment_id' => $payment->id,
+                'messages'   => $messages,
+            ]);
+
+            return;
+        }
+
+        $settings = $tenant->aiSettings;
+
+        if (!$settings) {
+            // A tenant who never opened the AI page has no settings row yet;
+            // the credit still has to land somewhere it will be found later.
+            $settings = \App\Models\AiSettings::create([
+                'tenant_id'             => $tenant->id,
+                'monthly_message_quota' => $tenant->plan?->ai_message_quota,
+            ]);
+        }
+
+        $settings->creditMessages($messages);
+
+        $payment->forceFill([
+            'metadata' => array_merge($metadata, ['credited_at' => now()->toIso8601String()]),
+        ])->save();
+
+        AuditLog::record('tenant.ai_pack_purchased', $tenant, [
+            'payment_id' => $payment->id,
+            'packs'      => $metadata['packs'] ?? null,
+            'messages'   => $messages,
+            'amount'     => (float) $payment->amount,
+        ]);
+
+        Log::info('AI message pack credited', [
+            'tenant_id' => $tenant->id,
+            'messages'  => $messages,
+            'payment_id'=> $payment->id,
+        ]);
+    }
+
+    /**
+     * Grant the agent seats a completed purchase paid for.
+     *
+     * Same `credited_at` guard as the AI pack: the browser capture and the
+     * webhook both land here, and a tenant must not be given the seats twice.
+     */
+    private function creditSeatPack(TenantPayment $payment): void
+    {
+        $metadata = $payment->metadata ?? [];
+
+        if (!empty($metadata['credited_at'])) {
+            return;
+        }
+
+        $seats  = $payment->packSeats();
+        $tenant = $payment->tenant;
+
+        if ($seats <= 0 || !$tenant) {
+            Log::warning('Seat payment completed with nothing to credit', [
+                'payment_id' => $payment->id,
+                'seats'      => $seats,
+            ]);
+
+            return;
+        }
+
+        $tenant->creditSeats($seats);
+
+        $payment->forceFill([
+            'metadata' => array_merge($metadata, ['credited_at' => now()->toIso8601String()]),
+        ])->save();
+
+        AuditLog::record('tenant.seats_purchased', $tenant, [
+            'payment_id' => $payment->id,
+            'seats'      => $seats,
+            'amount'     => (float) $payment->amount,
+        ]);
+
+        Log::info('Agent seats credited', [
+            'tenant_id'  => $tenant->id,
+            'seats'      => $seats,
+            'payment_id' => $payment->id,
+        ]);
+    }
+
+    /**
+     * Apply everything one combined order paid for.
+     *
+     * Guarded as a whole rather than per part: activateTenantSubscription
+     * extends the renewal date, so replaying it would hand out a free month.
+     * The stamp is written before any of the three effects so a mid-way failure
+     * cannot be re-run into a double credit either.
+     */
+    private function fulfilCart(TenantPayment $payment): void
+    {
+        $metadata = $payment->metadata ?? [];
+
+        if (!empty($metadata['credited_at'])) {
+            return;
+        }
+
+        $tenant = $payment->tenant;
+
+        if (!$tenant) {
+            Log::warning('Cart payment completed with no tenant', ['payment_id' => $payment->id]);
+
+            return;
+        }
+
+        $payment->forceFill([
+            'metadata' => array_merge($metadata, ['credited_at' => now()->toIso8601String()]),
+        ])->save();
+
+        $seats    = (int) ($metadata['seats'] ?? 0);
+        $messages = (int) ($metadata['messages'] ?? 0);
+
+        if ($payment->plan_id) {
+            $this->activateTenantSubscription($payment);
+        }
+
+        if ($seats > 0) {
+            $tenant->creditSeats($seats);
+        }
+
+        if ($messages > 0) {
+            // Re-read after a possible plan change: activateTenantSubscription
+            // resets the quota, and the top-up must land on top of the new one.
+            $settings = $tenant->fresh()->aiSettings ?: \App\Models\AiSettings::create([
+                'tenant_id'             => $tenant->id,
+                'monthly_message_quota' => $tenant->fresh()->plan?->ai_message_quota,
+            ]);
+
+            $settings->creditMessages($messages);
+        }
+
+        AuditLog::record('tenant.order_completed', $tenant, [
+            'payment_id' => $payment->id,
+            'plan_id'    => $payment->plan_id,
+            'seats'      => $seats,
+            'messages'   => $messages,
+            'amount'     => (float) $payment->amount,
+        ]);
+
+        Log::info('Combined order fulfilled', [
+            'tenant_id'  => $tenant->id,
+            'payment_id' => $payment->id,
+            'plan_id'    => $payment->plan_id,
+            'seats'      => $seats,
+            'messages'   => $messages,
+        ]);
+    }
+
     private function activateTenantSubscription(TenantPayment $payment): void
     {
         $tenant = $payment->tenant;
@@ -699,7 +1358,7 @@ class PaymentController extends Controller
         if ($previousPlanId !== $payment->plan_id && $tenant->aiSettings) {
             $newPlan = $tenant->plan()->first();
             $tenant->aiSettings->update([
-                'monthly_token_quota' => $newPlan?->ai_token_quota,
+                'monthly_message_quota' => $newPlan?->ai_message_quota,
             ]);
         }
     }

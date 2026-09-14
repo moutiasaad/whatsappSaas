@@ -15,7 +15,8 @@ class AiSettings extends Model
         'tenant_id', 'mode', 'whatsapp_enabled', 'webchat_enabled',
         'reply_language', 'suggestion_count', 'reply_when_claimed',
         'system_prompt', 'escalation_keywords',
-        'monthly_token_quota', 'tokens_used_this_period', 'quota_reset_at',
+        'monthly_message_quota', 'ai_messages_used_this_period', 'quota_reset_at',
+        'extra_message_credits',
     ];
 
     protected $casts = [
@@ -23,8 +24,9 @@ class AiSettings extends Model
         'whatsapp_enabled'       => 'boolean',
         'webchat_enabled'        => 'boolean',
         'reply_when_claimed'     => 'boolean',
-        'monthly_token_quota'    => 'integer',
-        'tokens_used_this_period'=> 'integer',
+        'monthly_message_quota'       => 'integer',
+        'ai_messages_used_this_period'=> 'integer',
+        'extra_message_credits'       => 'integer',
         'suggestion_count'       => 'integer',
         'quota_reset_at'         => 'datetime',
     ];
@@ -47,16 +49,80 @@ class AiSettings extends Model
 
     public function hasQuota(): bool
     {
-        // Unified semantics (see migration 2026_09_09_210000):
+        // Unified semantics (see migration 2026_09_10_090000):
         //   null       = unlimited  → always has quota
         //   0          = AI off      → never has quota
-        //   positive N = hard cap of N tokens per period
-        if ($this->monthly_token_quota === null) return true;
-        if ($this->monthly_token_quota === 0)    return false;
+        //   positive N = hard cap of N AI replies per period
+        if ($this->monthly_message_quota === null) return true;
+        if ($this->monthly_message_quota === 0)    return false;
 
         $this->rolloverIfDue();
 
-        return $this->tokens_used_this_period < $this->monthly_token_quota;
+        if ($this->ai_messages_used_this_period < $this->monthly_message_quota) {
+            return true;
+        }
+
+        // Monthly allowance spent — fall through to purchased top-up messages.
+        return $this->extra_message_credits > 0;
+    }
+
+    /** Is the tenant currently answering out of purchased credits? */
+    public function isOnPurchasedCredits(): bool
+    {
+        if ($this->monthly_message_quota === null || $this->monthly_message_quota === 0) {
+            return false;
+        }
+
+        return $this->ai_messages_used_this_period >= $this->monthly_message_quota
+            && $this->extra_message_credits > 0;
+    }
+
+    /**
+     * Grant purchased AI messages.
+     *
+     * Atomic increment rather than read-modify-write: two packs paid for at the
+     * same moment (an IPN racing a capture callback) must add up, not overwrite.
+     */
+    public function creditMessages(int $messages): void
+    {
+        if ($messages > 0) {
+            $this->increment('extra_message_credits', $messages);
+        }
+    }
+
+    /**
+     * Bill one AI reply against the period allowance.
+     *
+     * Called once per generated reply — an unlimited tenant is still counted so
+     * the usage figure on the AI settings page stays truthful.
+     */
+    public function consumeReply(int $count = 1): void
+    {
+        $this->rolloverIfDue();
+
+        // Spend the monthly allowance first; only the overflow touches
+        // purchased credits, so a top-up is never burnt while plan messages
+        // are still available. Unlimited (null) and off (0) tenants have no
+        // allowance boundary to cross, so they only ever bump the counter.
+        $quota = $this->monthly_message_quota;
+
+        if ($quota !== null && $quota > 0) {
+            $free      = max(0, $quota - $this->ai_messages_used_this_period);
+            $fromPlan  = min($count, $free);
+            $fromCredit= min($count - $fromPlan, $this->extra_message_credits);
+
+            if ($fromCredit > 0) {
+                $this->decrement('extra_message_credits', $fromCredit);
+            }
+
+            // Usage still counts every reply, including credit-funded ones, so
+            // the usage figure on the AI settings page stays truthful.
+            $this->increment('ai_messages_used_this_period', $count);
+
+            return;
+        }
+
+        $this->increment('ai_messages_used_this_period', $count);
     }
 
     /**
@@ -68,7 +134,7 @@ class AiSettings extends Model
      * CALC-011: rows created by AiController::show or by
      * AiSettingsController::update leave quota_reset_at NULL because they
      * fell through to the column default. The old guard treated NULL as a
-     * reason to bail, so those tenants exhausted their 100k tokens once and
+     * reason to bail, so those tenants exhausted their allowance once and
      * their AI stayed off forever. Treat NULL as "never rolled" — anchor
      * from updated_at (or now) at the start of that month so the loop below
      * can advance to the current period on the very first pass, then run
@@ -101,13 +167,13 @@ class AiSettings extends Model
         }
 
         $affected = $query->update([
-            'tokens_used_this_period' => 0,
-            'quota_reset_at'          => $next,
+            'ai_messages_used_this_period' => 0,
+            'quota_reset_at'               => $next,
         ]);
 
         if ($affected) {
-            $this->tokens_used_this_period = 0;
-            $this->quota_reset_at          = $next;
+            $this->ai_messages_used_this_period = 0;
+            $this->quota_reset_at               = $next;
         } else {
             $this->refresh();
         }
@@ -116,16 +182,18 @@ class AiSettings extends Model
     public function remainingQuota(): ?int
     {
         // null = unlimited → no remainder to report; caller renders "∞".
-        if ($this->monthly_token_quota === null) return null;
-        return max(0, $this->monthly_token_quota - $this->tokens_used_this_period);
+        if ($this->monthly_message_quota === null) return null;
+
+        return max(0, $this->monthly_message_quota - $this->ai_messages_used_this_period)
+            + $this->extra_message_credits;
     }
 
     public function quotaPercentage(): int
     {
         // Unlimited → nothing consumed relative to infinity → 0%.
         // OFF       → the bar is by definition full (all "N of 0" used).
-        if ($this->monthly_token_quota === null) return 0;
-        if ($this->monthly_token_quota === 0)    return 100;
-        return (int) round(($this->tokens_used_this_period / $this->monthly_token_quota) * 100);
+        if ($this->monthly_message_quota === null) return 0;
+        if ($this->monthly_message_quota === 0)    return 100;
+        return (int) round(($this->ai_messages_used_this_period / $this->monthly_message_quota) * 100);
     }
 }

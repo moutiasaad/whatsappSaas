@@ -50,10 +50,11 @@ class RegisterController extends Controller
         $plan = Plan::findOrFail($request->plan_id);
         $slug = $this->generateSlug($request->company_name);
 
-        // Every signup gets a trial on the plan they picked — no payment at
-        // signup. CheckSubscription starts blocking API access when
-        // trial_ends_at passes, at which point they must pay from /billing.
-        $trialDays = (int) config('app.trial_days', 7);
+        // The trial is a property of the plan now, not a global setting: the
+        // super admin turns it on per plan and sets its length. A plan with no
+        // trial bills from day one — trial_ends_at lands on now(), so
+        // CheckSubscription sends the new admin straight to /billing.
+        $trialDays = $plan->trialDays();
 
         DB::beginTransaction();
         try {
@@ -63,6 +64,9 @@ class RegisterController extends Controller
                 'plan_id'             => $plan->id,
                 'subscription_status' => 'trial',
                 'trial_ends_at'       => now()->addDays($trialDays),
+                // Recorded so a later switch back to this plan cannot mint a
+                // second free trial on it.
+                'trialed_plan_ids'    => $trialDays > 0 ? [$plan->id] : [],
                 'is_active'           => true,
             ]);
 

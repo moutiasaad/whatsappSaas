@@ -92,6 +92,7 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .st.assigned{background:var(--teal-50);color:var(--teal)}
 .ubx .st.bot{background:var(--lc-50);color:var(--lc)}
 .ubx .st.ai{background:rgba(21,182,168,.14);color:var(--teal-d)}
+.ubx .st.esc{background:rgba(220,38,38,.12);color:#b91c1c}
 .ubx .st.closed{background:var(--soft-2);color:var(--mut)}
 .ubx .asg{font-size:11px;color:var(--mut);display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto}
 .ubx .asg .a{width:17px;height:17px;border-radius:50%;background:var(--teal-d);color:#fff;font-size:8.5px;font-weight:700;display:grid;place-items:center}
@@ -154,6 +155,71 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .send:hover{background:var(--teal-d)}
 .ubx .send:disabled{background:var(--bd-2);cursor:default}
 html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
+.ubx .crow .cbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--mut);transition:.12s;flex-shrink:0}
+.ubx .crow .cbtn:hover{background:var(--soft-2);color:var(--txt)}
+.ubx .crow .cbtn.on{background:var(--teal-50);color:var(--teal)}
+.ubx .crow .cbtn:disabled{opacity:.45;cursor:not-allowed}
+
+/* pending attachment, sitting above the textarea until the message is sent */
+.ubx .att{display:flex;align-items:center;gap:9px;margin:9px 9px 0;padding:8px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--soft)}
+.ubx .att .ic{width:30px;height:30px;border-radius:7px;background:var(--teal-50);color:var(--teal);display:grid;place-items:center;flex-shrink:0}
+.ubx .att img{width:34px;height:34px;border-radius:7px;object-fit:cover;flex-shrink:0}
+.ubx .att .m{flex:1;min-width:0}
+.ubx .att .n{font-size:12.5px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ubx .att .s{font-size:11px;color:var(--mut-2);margin-top:1px}
+.ubx .att .x{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--mut);flex-shrink:0;transition:.12s}
+.ubx .att .x:hover{background:#fef2f2;color:#dc2626}
+
+/* media inside a bubble */
+.ubx .bub .media{display:block;margin:-2px 0 5px;border-radius:10px;overflow:hidden;max-width:260px}
+.ubx .bub .media img{display:block;width:100%;height:auto;max-height:300px;object-fit:cover;cursor:zoom-in}
+.ubx .bub .file{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;margin:-1px 0 5px;background:rgba(255,255,255,.16);max-width:260px}
+.ubx .bub.in .file{background:var(--soft);border:1px solid var(--bd)}
+.ubx .bub .file .ic{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;flex-shrink:0;background:rgba(255,255,255,.22)}
+.ubx .bub.in .file .ic{background:var(--teal-50);color:var(--teal)}
+.ubx .bub .file .n{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ubx .bub .file.off{opacity:.82;cursor:default}
+.ubx .bub audio.media{width:250px;max-width:100%;height:38px}
+.ubx .bub video.media{width:100%;max-height:280px;background:#000}
+
+/* saved replies — anchored above the composer, per the Inbox design kit */
+.ubx .cbox{position:relative}
+.ubx .srp{position:absolute;bottom:calc(100% + 8px);inset-inline-start:0;width:min(380px,100%);background:#fff;border:1px solid var(--bd);border-radius:13px;box-shadow:0 22px 55px -22px rgba(13,20,23,.42);z-index:60;overflow:hidden;display:flex;flex-direction:column;max-height:330px}
+.ubx .srp .hd{padding:10px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ubx .srp .hd input{flex:1;border:none;outline:none;font-size:13px;font-family:inherit;color:var(--txt);background:none;min-width:0}
+.ubx .srp .hd input::placeholder{color:var(--mut-2)}
+.ubx .srp .bd{overflow-y:auto;padding:5px;min-height:0}
+.ubx .srp .it{display:block;width:100%;text-align:start;padding:8px 10px;border-radius:9px;transition:.11s}
+.ubx .srp .it:hover,.ubx .srp .it:focus-visible{background:var(--teal-50);outline:none}
+.ubx .srp .it .t{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--txt)}
+.ubx .srp .it .sc{font-size:10.5px;font-weight:700;color:var(--teal);background:var(--teal-50);border-radius:5px;padding:1px 5px;flex-shrink:0}
+.ubx .srp .it .tag{font-size:10px;font-weight:700;color:var(--mut);background:var(--soft-2);border-radius:5px;padding:1px 5px;flex-shrink:0}
+.ubx .srp .it .b{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ubx .srp .empty{padding:20px 14px;text-align:center;font-size:12.5px;color:var(--mut-2)}
+.ubx .srp .hd .ad{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--teal);background:var(--teal-50);flex-shrink:0;transition:.11s}
+.ubx .srp .hd .ad:hover{background:var(--teal-100)}
+.ubx .srp .hd .ttl{flex:1;font-size:13px;font-weight:700;color:var(--txt);min-width:0}
+.ubx .srp .ft{border-top:1px solid var(--bd);padding:7px 12px;flex-shrink:0}
+.ubx .srp .ft a{font-size:12px;font-weight:600;color:var(--teal);display:inline-flex;align-items:center;gap:5px}
+.ubx .srp .ft a:hover{text-decoration:underline}
+/* create form — the agent saves the phrasing they just typed without leaving the thread */
+.ubx .srp .fm{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0}
+.ubx .srp .fm label{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.01em}
+.ubx .srp .fm input[type=text],.ubx .srp .fm textarea{width:100%;border:1px solid var(--bd);border-radius:9px;padding:7px 9px;font-size:12.5px;font-family:inherit;color:var(--txt);background:#fff;outline:none;transition:.11s}
+.ubx .srp .fm input[type=text]:focus,.ubx .srp .fm textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-50)}
+.ubx .srp .fm textarea{resize:vertical;min-height:64px;line-height:1.45}
+.ubx .srp .fm .pfx{display:flex;align-items:center;border:1px solid var(--bd);border-radius:9px;overflow:hidden;background:#fff}
+.ubx .srp .fm .pfx span{padding:0 8px;font-size:12.5px;font-weight:700;color:var(--mut-2);background:var(--soft-2);align-self:stretch;display:grid;place-items:center}
+.ubx .srp .fm .pfx input{border:none!important;border-radius:0;box-shadow:none!important}
+.ubx .srp .fm .seg{display:flex;gap:6px}
+.ubx .srp .fm .seg button{flex:1;border:1px solid var(--bd);border-radius:9px;padding:6px 8px;font-size:11.5px;font-weight:700;color:var(--mut);background:#fff;transition:.11s}
+.ubx .srp .fm .seg button.on{border-color:var(--teal);background:var(--teal-50);color:var(--teal-d)}
+.ubx .srp .fm .err{font-size:11.5px;font-weight:600;color:#dc2626}
+.ubx .srp .fm .ac{display:flex;gap:7px;justify-content:flex-end;margin-top:2px}
+.ubx .srp .fm .ac button{border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:700;transition:.11s}
+.ubx .srp .fm .ac .g{border:1px solid var(--bd);color:var(--mut);background:#fff}
+.ubx .srp .fm .ac .p{background:var(--teal);color:#fff}
+.ubx .srp .fm .ac .p:disabled{opacity:.55}
 .ubx .closed-bar{background:var(--soft-2);border:1px solid var(--bd);border-radius:12px;padding:13px;display:flex;align-items:center;justify-content:center;gap:9px;font-size:13.5px;color:var(--mut);font-weight:500;text-align:center}
 .ubx .claim-bar{background:linear-gradient(180deg,var(--amber-50),#fff);border:1px solid #fcd9a4;border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ubx .claim-bar .m{flex:1;min-width:0}
@@ -239,6 +305,16 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
 @php
     $panelPrefix = auth()->user()->routeNamePrefix();
     $i18n = __('ui.inbox_page');
+
+    // Saved replies follow the same entitlement as the sidebar link, and the
+    // same scope rule as Api\SavedReplyController: only a workspace owner may
+    // create a reply the whole team sees.
+    $srUser        = auth()->user();
+    $canUseReplies = $srUser->isSuperAdmin() || ($srUser->tenant?->planAllows('saved_replies') ?? false);
+    $canSaveTeamReply = $srUser->isAdmin() || $srUser->isSupervisor() || $srUser->isSuperAdmin();
+    $manageRepliesUrl = $canUseReplies && \Illuminate\Support\Facades\Route::has($panelPrefix . '.saved-replies.index')
+        ? route($panelPrefix . '.saved-replies.index')
+        : '';
     $jsLabels = [
         'tab_pending'     => __('ui.webchat_page.tab_pending'),
         'tab_mine'        => __('ui.webchat_page.tab_mine'),
@@ -251,14 +327,47 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
         'status_closed'   => $i18n['status_closed'],
         'status_bot'      => $i18n['status_bot'],
         'status_ai'       => $i18n['status_ai'],
+        'status_escalated'=> $i18n['status_escalated'],
+        'escalated_hint'  => $i18n['escalated_hint'],
         'claim_error'     => $i18n['claim_error'],
         'send_error'      => $i18n['send_error'],
         'action_error'    => $i18n['action_error'],
+        'reassign_error'  => $i18n['reassign_error'],
+        'reassign_done'   => $i18n['reassign_done'],
         'just_now'        => __('ui.webchat_page.just_now'),
+        // Authors for messages appended live, where the server-rendered `who`
+        // of the thread payload is not available to fall back on.
+        'who_ai'          => __('ui.inbox_page.ai'),
+        'who_agent'       => __('ui.inbox_page.agent'),
+        'attach'            => $i18n['attach'],
+        'attach_error'      => $i18n['attach_error'],
+        'attach_remove'     => $i18n['attach_remove'],
+        'attach_uploading'  => $i18n['attach_uploading'],
+        'attach_generic'    => $i18n['attach_generic'],
+        'saved_replies'     => $i18n['saved_replies'],
+        'sr_empty'          => $i18n['saved_replies_empty'],
+        'sr_none'           => $i18n['saved_replies_none'],
+        'sr_error'          => $i18n['saved_replies_error'],
+        'sr_personal'       => $i18n['saved_replies_personal'],
+        'sr_tenant'         => $i18n['saved_replies_tenant'],
+        'sr_new'            => $i18n['saved_replies_new'],
+        'sr_added'          => $i18n['saved_replies_added'],
+        'sr_err_title'      => __('ui.saved_replies_page.error_title_required'),
+        'sr_err_body'       => __('ui.saved_replies_page.error_body_required'),
+        'sr_err_save'       => __('ui.saved_replies_page.save_error'),
+        'cancel'            => __('ui.cancel'),
+        'media_image'       => $i18n['media_image'],
+        'media_audio'       => $i18n['media_audio'],
+        'media_video'       => $i18n['media_video'],
+        'media_document'    => $i18n['media_document'],
+        'media_offsite'     => $i18n['media_offsite'],
     ];
 @endphp
 
-<div x-data="unifiedInbox()" x-init="init()" x-cloak class="ubx" :class="{ 'v-thread': mobileThread }">
+{{-- No x-init here: Alpine calls init() on the x-data object automatically.
+     Adding x-init="init()" ran it twice, which started two poll timers and
+     left the first one unreachable. --}}
+<div x-data="unifiedInbox()" x-cloak class="ubx" :class="{ 'v-thread': mobileThread }">
 
     {{-- ═══════════ LIST ═══════════ --}}
     <section class="list">
@@ -341,6 +450,12 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                                     <span x-text="labels.status_ai"></span>
                                 </span>
                             </template>
+                            <template x-if="r.escalated">
+                                <span class="st esc" style="display:inline-flex;align-items:center;gap:3px" :title="labels.escalated_hint">
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1.5 21h21L12 2zm1 14h-2v2h2v-2zm0-7h-2v5h2V9z"/></svg>
+                                    <span x-text="labels.status_escalated"></span>
+                                </span>
+                            </template>
                             <template x-if="r.assignee">
                                 <span class="asg">
                                     <span class="a" x-text="initials(r.assignee.name)"></span>
@@ -399,6 +514,12 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                         <div class="n" x-text="thread.header.name"></div>
                         <div class="s">
                             <span class="st" :class="thread.header.status" x-text="labels['status_' + thread.header.status] ?? thread.header.status"></span>
+                            <template x-if="thread.header.escalated">
+                                <span class="st esc" style="display:inline-flex;align-items:center;gap:3px" :title="labels.escalated_hint">
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1.5 21h21L12 2zm1 14h-2v2h2v-2zm0-7h-2v5h2V9z"/></svg>
+                                    <span x-text="labels.status_escalated"></span>
+                                </span>
+                            </template>
                             <template x-if="thread.header.assignee">
                                 <span x-text="thread.header.assignee.id === myId ? '{{ $i18n['claimed_by_you'] }}' : '{{ $i18n['claimed_by'] }} ' + thread.header.assignee.name"></span>
                             </template>
@@ -423,6 +544,12 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                             <button type="button" class="btn g" @click="release()" :disabled="busy">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M15 7h2a5 5 0 010 10h-2M9 17H7A5 5 0 017 7h2M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                                 {{ $i18n['release'] }}
+                            </button>
+                        </template>
+                        <template x-if="thread.can.reassign && assignTpl">
+                            <button type="button" class="btn g" @click="openReassign()" :disabled="busy">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 3.5a4 4 0 010 7.3M8 11a4 4 0 100-8 4 4 0 000 8zM2 20.5a6 6 0 0112 0M18 14.6a6 6 0 013.9 5.9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                                {{ $i18n['reassign'] }}
                             </button>
                         </template>
                         <template x-if="thread.can.close">
@@ -452,7 +579,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                                             {{-- Keep this element on one line: .bub is white-space:pre-wrap, so any
                                                  source indentation between these tags renders as literal spaces
                                                  inside the bubble. --}}
-                                            <div class="bub" :class="g.side"><span x-text="(m.body || '').trim()"></span><template x-if="isUndelivered(m, g)"><span class="undeliv" :title="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"><i class="ri-error-warning-line"></i><span x-text="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"></span></span></template><template x-if="mi === g.items.length - 1"><div class="tm" x-text="formatTime(m.created_at)"></div></template></div>
+                                            <div class="bub" :class="g.side"><template x-if="m.media && m.media.inline && m.media.type === 'image'"><a class="media" :href="m.media.url" target="_blank" rel="noopener"><img :src="m.media.url" :alt="m.media.name || labels.media_image" loading="lazy"></a></template><template x-if="m.media && m.media.inline && m.media.type === 'audio'"><audio class="media" controls preload="none" :src="m.media.url"></audio></template><template x-if="m.media && m.media.inline && m.media.type === 'video'"><video class="media" controls preload="metadata" :src="m.media.url"></video></template><template x-if="m.media && m.media.inline && !['image','audio','video'].includes(m.media.type)"><a class="file" :href="m.media.url" target="_blank" rel="noopener"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="n" x-text="m.media.name || labels.media_document"></span></a></template><template x-if="m.media && !m.media.inline"><span class="file off" :title="labels.media_offsite"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="n" x-text="m.media.name || mediaLabel(m.media.type)"></span></span></template><span x-text="(m.body || '').trim()"></span><template x-if="isUndelivered(m, g)"><span class="undeliv" :title="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"><i class="ri-error-warning-line"></i><span x-text="m.status === 'failed' ? labels.msg_failed : labels.msg_undelivered"></span></span></template><template x-if="mi === g.items.length - 1"><div class="tm" x-text="formatTime(m.created_at)"></div></template></div>
                                         </template>
                                     </div>
                                 </div>
@@ -493,12 +620,140 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                     </template>
 
                     <template x-if="thread.can.reply">
-                        <div class="cbox">
+                        <div class="cbox" @keydown.escape="srCreating ? (srCreating = false) : (srOpen = false)">
+                            {{-- Saved replies: click a row to drop its body into the composer.
+
+                                 x-show, not x-if: with x-if the panel is created
+                                 during the same click that opens it, so Alpine's
+                                 freshly-registered .outside handler saw that very
+                                 click as an outside click and shut it again — the
+                                 panel appeared to do nothing at all. x-show keeps
+                                 the element mounted, so .outside correctly ignores
+                                 clicks while it is hidden, and x-ref="srSearch"
+                                 exists in time to be focused. --}}
+                            <div class="srp" x-show="srOpen" x-cloak @click.outside="srOpen = false">
+                                    <div class="hd">
+                                        <template x-if="!srCreating">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="color:var(--mut-2);flex-shrink:0"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                        </template>
+                                        <input type="text" x-show="!srCreating" x-model="srQuery" x-ref="srSearch" placeholder="{{ $i18n['saved_replies_search'] }}">
+                                        <span class="ttl" x-show="srCreating" x-text="labels.sr_new"></span>
+                                        {{-- Add without leaving the thread: the draft in the composer seeds the body. --}}
+                                        <button type="button" class="ad" @click="toggleCreateReply()"
+                                                :title="srCreating ? labels.cancel : labels.sr_new">
+                                            <template x-if="!srCreating">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+                                            </template>
+                                            <template x-if="srCreating">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                                            </template>
+                                        </button>
+                                    </div>
+
+                                    {{-- Create form --}}
+                                    <div class="fm" x-show="srCreating">
+                                        <div>
+                                            <label for="srNewTitle">{{ __('ui.saved_replies_page.field_title') }}</label>
+                                            <input id="srNewTitle" type="text" maxlength="120" x-model="srForm.title" x-ref="srTitle"
+                                                   placeholder="{{ __('ui.saved_replies_page.field_title_placeholder') }}">
+                                        </div>
+                                        <div>
+                                            <label for="srNewShortcut">{{ __('ui.saved_replies_page.field_shortcut') }}</label>
+                                            <div class="pfx">
+                                                <span>/</span>
+                                                <input id="srNewShortcut" type="text" maxlength="31" x-model="srForm.shortcut"
+                                                       placeholder="{{ __('ui.saved_replies_page.field_shortcut_placeholder') }}"
+                                                       @input="srForm.shortcut = srForm.shortcut.replace(/[^a-z0-9_-]/g, '')">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="srNewBody">{{ __('ui.saved_replies_page.field_body') }}</label>
+                                            <textarea id="srNewBody" maxlength="4000" x-model="srForm.body"
+                                                      placeholder="{{ __('ui.saved_replies_page.field_body_placeholder') }}"></textarea>
+                                        </div>
+                                        @if($canSaveTeamReply)
+                                            <div>
+                                                <label>{{ __('ui.saved_replies_page.field_scope') }}</label>
+                                                <div class="seg" style="margin-top:5px">
+                                                    <button type="button" :class="srForm.scope === 'tenant' ? 'on' : ''"
+                                                            @click="srForm.scope = 'tenant'" x-text="labels.sr_tenant"></button>
+                                                    <button type="button" :class="srForm.scope === 'personal' ? 'on' : ''"
+                                                            @click="srForm.scope = 'personal'" x-text="labels.sr_personal"></button>
+                                                </div>
+                                            </div>
+                                        @endif
+                                        <div class="err" x-show="srFormError" x-text="srFormError"></div>
+                                        <div class="ac">
+                                            <button type="button" class="g" @click="srCreating = false" x-text="labels.cancel"></button>
+                                            <button type="button" class="p" @click="createReply()" :disabled="srSaving">{{ __('ui.save') }}</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="bd" x-show="!srCreating">
+                                        <template x-for="r in filteredReplies" :key="r.id">
+                                            <button type="button" class="it" @click="useReply(r)">
+                                                <span class="t">
+                                                    <span x-text="r.title"></span>
+                                                    {{-- Seeded shortcuts already carry the slash; don't double it. --}}
+                                                    <template x-if="r.shortcut"><span class="sc" x-text="r.shortcut.startsWith('/') ? r.shortcut : '/' + r.shortcut"></span></template>
+                                                    <span class="tag" x-text="r.scope === 'tenant' ? labels.sr_tenant : labels.sr_personal"></span>
+                                                </span>
+                                                <span class="b" x-text="r.body"></span>
+                                            </button>
+                                        </template>
+                                        <template x-if="!filteredReplies.length">
+                                            <div class="empty" x-text="srError ? labels.sr_error : (replies.length ? labels.sr_none : labels.sr_empty)"></div>
+                                        </template>
+                                    </div>
+@if($manageRepliesUrl)
+                                    <div class="ft" x-show="!srCreating">
+                                        <a href="{{ $manageRepliesUrl }}">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M4 20h3l10-10-3-3L4 17v3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                            {{ __('ui.inbox_page.saved_replies_manage') }}
+                                        </a>
+                                    </div>
+@endif
+                            </div>
+
+                            {{-- Uploaded and waiting to go out with the next send. --}}
+                            <template x-if="attachment">
+                                <div class="att">
+                                    <template x-if="attachment.type === 'image' && attachment.url">
+                                        <img :src="attachment.url" alt="">
+                                    </template>
+                                    <template x-if="attachment.type !== 'image' || !attachment.url">
+                                        <span class="ic">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                        </span>
+                                    </template>
+                                    <div class="m">
+                                        <div class="n" x-text="attachment.file_name || labels.attach_generic"></div>
+                                        <div class="s" x-text="uploading ? labels.attach_uploading : humanSize(attachment.size)"></div>
+                                    </div>
+                                    <button type="button" class="x" @click="clearAttachment()" :title="labels.attach_remove">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+
                             <textarea x-model="composer" @keydown.enter.exact.prevent="send()" rows="1"
                                       placeholder="{{ $i18n['composer_placeholder'] }}"></textarea>
                             <div class="crow">
+                                <input type="file" x-ref="file" style="display:none" @change="pickFile($event)"
+                                       accept=".jpeg,.jpg,.png,.gif,.webp,.mp4,.mov,.avi,.mp3,.ogg,.aac,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip">
+                                <button type="button" class="cbtn" @click="$refs.file.click()"
+                                        :disabled="uploading || sending" :title="labels.attach">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 11.5l-8.4 8.4a5 5 0 01-7-7l8.4-8.4a3.3 3.3 0 014.7 4.7l-8.4 8.4a1.7 1.7 0 01-2.3-2.3l7.7-7.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                @if($canUseReplies)
+                                <button type="button" class="cbtn" :class="srOpen ? 'on' : ''"
+                                        @click.stop="toggleReplies()" :title="labels.saved_replies">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                </button>
+                                @endif
                                 <span class="sp">↵ {{ $i18n['enter_to_send'] }}</span>
-                                <button type="button" class="send" @click="send()" :disabled="!composer.trim() || sending">
+                                <button type="button" class="send" @click="send()"
+                                        :disabled="(!composer.trim() && !attachment) || sending || uploading">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
                                 </button>
                             </div>
@@ -532,6 +787,41 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
         </div>
     </aside>
 
+    {{-- ═══════════ reassign modal ═══════════ --}}
+    <template x-if="reassignModal">
+        <div class="ubx-modal" @click.self="reassignModal = false">
+            <div class="box">
+                <h3>{{ $i18n['reassign_title'] }}</h3>
+                <template x-if="thread?.header?.assignee">
+                    <p style="font-size:12px;color:var(--mut);margin:0 0 10px">
+                        {{ $i18n['reassign_current'] }}: <strong x-text="thread.header.assignee.name"></strong>
+                    </p>
+                </template>
+                <template x-if="reassignLoading">
+                    <p style="font-size:12px;color:var(--mut)">…</p>
+                </template>
+                <template x-if="!reassignLoading && reassignAgents.length === 0">
+                    <p style="font-size:12px;color:var(--mut)">{{ $i18n['reassign_none'] }}</p>
+                </template>
+                <template x-if="!reassignLoading && reassignAgents.length > 0">
+                    <div>
+                        <label>{{ $i18n['reassign_to'] }}</label>
+                        <select x-model="reassignAgentId" style="width:100%">
+                            <template x-for="a in reassignAgents" :key="a.id">
+                                <option :value="a.id" x-text="a.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </template>
+                <div class="acts">
+                    <button type="button" class="btn g" @click="reassignModal = false">{{ __('ui.cancel') }}</button>
+                    <button type="button" class="btn p" @click="doReassign()"
+                            :disabled="busy || reassignLoading || !reassignAgentId">{{ $i18n['reassign_confirm'] }}</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
     {{-- ═══════════ close modal ═══════════ --}}
     <template x-if="closeModal">
         <div class="ubx-modal" @click.self="closeModal = false">
@@ -554,16 +844,22 @@ function unifiedInbox() {
         labels: @json($jsLabels),
         listUrl:    @json(route($panelPrefix . '.inbox.list')),
         threadTpl:  @json(route($panelPrefix . '.inbox.thread', ['channel' => '__CH__', 'ref' => '__REF__'])),
+        assignTpl:  @json(\Illuminate\Support\Facades\Route::has($panelPrefix . '.inbox.assignable')
+            ? route($panelPrefix . '.inbox.assignable', ['channel' => '__CH__', 'ref' => '__REF__'])
+            : ''),
         webchatTpl: @json($canUseWebChat ? route($panelPrefix . '.webchat.conversations.index') : ''),
+        uploadUrl:  '/api/media/upload',
+        repliesUrl: '/api/saved-replies',
         myId:       @json((int) auth()->id()),
         myName:     @json((string) auth()->user()->name),
 
         tabs: ['pending', 'mine', 'all', 'closed'],
         channel: 'all',
-        tab: 'pending',
+        // 'mine' when the agent already has claimed threads — see InboxController::index.
+        tab: @json($initialTab ?? 'pending'),
         q: '',
         rows: [],
-        counts: {},
+        counts: @json($initialCounts ?? []),
         loading: false,
 
         activeKey: null,
@@ -576,39 +872,102 @@ function unifiedInbox() {
         mobileThread: false,
         closeModal: false,
         closeTitle: '',
+        reassignModal: false,
+        reassignAgents: [],
+        reassignAgentId: '',
+        reassignLoading: false,
         wsConnected: false,
+        attachment: null,
+        uploading: false,
+        srOpen: false,
+        srQuery: '',
+        srError: false,
+        replies: [],
+        _repliesLoaded: false,
+        srCreating: false,
+        srSaving: false,
+        srFormError: '',
+        srCanTeam: @json($canSaveTeamReply),
+        srForm: { title: '', shortcut: '', body: '', scope: 'personal' },
         _timer: null,
+        _chan: null,
+        _tmp: 0,
+        _booted: false,
+        _listReq: null,
+        _listSeq: 0,
 
         init() {
+            // Idempotent: a second call must not start a second poll timer.
+            // Two timers is exactly what produced the duplicated list requests.
+            if (this._booted) return;
+            this._booted = true;
+
             this.loadList();
+            clearInterval(this._timer);
             this._timer = setInterval(() => this.loadList(true), 15000);
-            if (window._echoStateListeners) window._echoStateListeners.push((c) => { this.wsConnected = c; });
+
+            if (window._echoStateListeners) window._echoStateListeners.push((c) => {
+                this.wsConnected = c;
+                // Echo finishes connecting after init() on a cold load, and a
+                // dropped socket resubscribes on reconnect. Either way the thread
+                // already on screen needs its subscription (re)attached.
+                if (c && this.thread) this.watchThread();
+            });
             this.wsConnected = !!window._echoConnected;
-            window.addEventListener('beforeunload', () => clearInterval(this._timer));
+            window.addEventListener('beforeunload', () => this.teardown());
+        },
+
+        teardown() {
+            clearInterval(this._timer);
+            this._timer = null;
+            clearTimeout(this._sendSettle);
+            this._listReq?.abort();
+            this.unwatchThread();
         },
 
         // ── list ──
         setChannel(c) { if (this.channel === c) return; this.channel = c; this.clearThread(); this.loadList(); },
         setTab(t)     { if (this.tab === t) return; this.tab = t; this.clearThread(); this.loadList(); },
 
-        clearThread() { this.activeKey = null; this.thread = null; this.mobileThread = false; this.infoOpen = false; },
+        clearThread() { this.unwatchThread(); this.resetComposer(); this.activeKey = null; this.thread = null; this.mobileThread = false; this.infoOpen = false; },
+
+        // A half-written reply or a staged file belongs to the thread it was
+        // started in — carrying either into the next one sends it to the wrong
+        // person.
+        resetComposer() { this.composer = ''; this.attachment = null; this.uploading = false; this.srOpen = false; this.srQuery = ''; this.srCreating = false; },
 
         async loadList(silent = false) {
+            // A new list load supersedes whatever is still in flight: switching
+            // tabs quickly used to leave several racing requests, and whichever
+            // landed last won regardless of which tab was actually on screen.
+            this._listReq?.abort();
+            const req = this._listReq = new AbortController();
+            const seq = ++this._listSeq;
+
             if (!silent) this.loading = true;
             try {
                 const url = new URL(this.listUrl, window.location.origin);
                 url.searchParams.set('channel', this.channel);
                 url.searchParams.set('tab', this.tab);
                 if (this.q.trim()) url.searchParams.set('q', this.q.trim());
-                const r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const r = await fetch(url, {
+                    signal: req.signal,
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 const data = await r.json();
+
+                // Drop a response the user has already navigated past.
+                if (seq !== this._listSeq) return;
+
                 this.rows = data.data || [];
                 this.counts = data.counts || {};
             } catch (e) {
+                // An abort is the expected outcome of switching tabs, not a fault.
+                if (e.name === 'AbortError') return;
                 console.error('[inbox] list failed', e);
             } finally {
-                if (!silent) this.loading = false;
+                if (!silent && seq === this._listSeq) this.loading = false;
             }
         },
 
@@ -617,8 +976,9 @@ function unifiedInbox() {
             this.mobileThread = true;
             if (this.activeKey === row.key) return;
             this.activeKey = row.key;
+            this.unwatchThread();
             this.thread = null;
-            this.composer = '';
+            this.resetComposer();
             this.threadLoading = true;
             try {
                 await this.loadThread(row.channel, row.ref);
@@ -638,6 +998,7 @@ function unifiedInbox() {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             this.thread = await r.json();
             this.threadLoading = false;
+            this.watchThread();
             if (this.thread.can.reply) this.markRead();
             await this.$nextTick();
             this.scrollBottom();
@@ -646,7 +1007,7 @@ function unifiedInbox() {
         // Best effort — a failed read receipt shouldn't disturb the thread.
         markRead() {
             const url = this.actionUrl('read');
-            if (url) this.post(url).catch(() => {});
+            return url ? this.post(url).catch(() => {}) : Promise.resolve();
         },
 
         // A freshly sent message sits at 'pending' for the second or two the
@@ -665,6 +1026,115 @@ function unifiedInbox() {
         async reloadThread() {
             if (!this.thread) return;
             await this.loadThread(this.thread.channel, this.thread.ref);
+        },
+
+        // ── live thread ──
+        // The list polls every 15s, but an open thread only ever refreshed on
+        // open or after an action. So an inbound message updated the row in the
+        // sidebar — unread dot, new preview — while the conversation on screen
+        // stayed frozen, which read as "the message never arrived". Subscribe to
+        // the open conversation's own channel and append as messages land.
+        watchThread() {
+            this.unwatchThread();
+            const t = this.thread;
+            if (!t || !window.Echo) return;
+
+            // A super admin has no tenant_id, so channel authorization rejects
+            // them on a tenant conversation; they stay on the poll.
+            const name = t.channel === 'whatsapp'
+                ? (t.tenant_id ? `tenant.${t.tenant_id}.conversation.${t.ref}` : null)
+                : `webchat.conversation.${t.ref}`;
+            if (!name) return;
+
+            this._chan = name;
+            const ch = window.Echo.private(name);
+            if (t.channel === 'whatsapp') {
+                ch.listen('.message.received', (e) => this.absorbWhatsApp(e))
+                  .listen('.message.sent',     (e) => this.absorbWhatsApp(e));
+            } else {
+                ch.listen('.webchat.message.sent', (e) => this.absorbWebChat(e));
+            }
+        },
+
+        unwatchThread() {
+            if (this._chan) window.Echo?.leave?.(this._chan);
+            this._chan = null;
+        },
+
+        absorbWhatsApp(e) {
+            const m = e?.message;
+            if (!m || this.thread?.channel !== 'whatsapp') return;
+            if (String(m.conversation_id) !== String(this.thread.ref)) return;
+
+            this.absorb({
+                id:         'wa-' + m.id,
+                kind:       'text',
+                side:       m.direction === 'in' ? 'in' : 'out',
+                who:        m.direction === 'in'
+                                ? this.thread.header.name
+                                : (m.author_type === 'agent'
+                                    ? (this.thread.header.assignee?.name ?? this.labels.who_agent)
+                                    : this.labels.who_ai),
+                body:       m.body,
+                created_at: m.sent_at || m.created_at,
+                status:     m.status,
+            });
+        },
+
+        absorbWebChat(e) {
+            const m = e?.message;
+            if (!m || this.thread?.channel !== 'webchat') return;
+            if (m.conversation_uuid && m.conversation_uuid !== this.thread.ref) return;
+
+            this.absorb({
+                id:         'lc-' + m.id,
+                kind:       m.sender_type === 'system' ? 'system' : 'text',
+                side:       m.sender_type === 'visitor' ? 'in' : 'out',
+                who:        m.sender_type === 'visitor'
+                                ? this.thread.header.name
+                                : (m.sender_type === 'bot'
+                                    ? this.labels.who_ai
+                                    : (this.thread.header.assignee?.name ?? this.labels.who_agent)),
+                body:       m.body,
+                created_at: m.created_at,
+                status:     'sent',
+                media:      m.attachment ? {
+                    url:    m.attachment.url,
+                    type:   m.attachment.type,
+                    name:   m.attachment.name,
+                    inline: true,
+                } : null,
+            });
+        },
+
+        // Both ends can deliver the same message twice — the web-chat event
+        // reaches the sender's own socket, and a queued WhatsApp send broadcasts
+        // again once it leaves the gateway — so the id decides, not arrival. A
+        // second delivery is a status update, not a duplicate bubble: merge it,
+        // which is what settles an optimistic bubble from pending to sent.
+        absorb(msg) {
+            const list = this.thread.messages;
+            const at = list.findIndex((x) => x.id === msg.id);
+            if (at !== -1) { list[at] = { ...list[at], ...msg }; return; }
+
+            // Only follow the bottom if the agent is already reading there.
+            // Yanking the viewport while they scroll back through history is
+            // worse than a message landing below the fold.
+            const follow = this.isAtBottom();
+            list.push(msg);
+            this.$nextTick(() => { if (follow) this.scrollBottom(); });
+
+            if (msg.side !== 'in') return;
+            // The thread is open in front of the agent, so its row must not go on
+            // claiming the message is unread.
+            const read = this.thread.can?.reply ? this.markRead() : Promise.resolve();
+            read.then(() => this.loadList(true));
+        },
+
+        isAtBottom() {
+            const el = this.$refs.thread;
+            if (!el) return true;
+            return el.scrollHeight - el.scrollTop - el.clientHeight < 60;
         },
 
         // Consecutive messages from one sender collapse into a single group.
@@ -747,6 +1217,45 @@ function unifiedInbox() {
             } finally { this.busy = false; }
         },
 
+        // The picker is fetched per thread rather than cached: team membership
+        // and the current assignee both change what is eligible.
+        async openReassign() {
+            const t = this.thread;
+            if (!t || !this.assignTpl) return;
+            this.reassignAgents  = [];
+            this.reassignAgentId = '';
+            this.reassignLoading = true;
+            this.reassignModal   = true;
+            try {
+                const url = this.assignTpl.replace('__CH__', t.channel).replace('__REF__', encodeURIComponent(t.ref));
+                const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const d = await r.json();
+                this.reassignAgents  = d.agents ?? [];
+                this.reassignAgentId = this.reassignAgents[0]?.id ?? '';
+            } catch (e) {
+                console.error('[inbox] load assignable failed', e);
+                window.showToast?.('error', this.labels.reassign_error);
+                this.reassignModal = false;
+            } finally { this.reassignLoading = false; }
+        },
+
+        async doReassign() {
+            if (this.busy || !this.reassignAgentId) return;
+            this.busy = true;
+            try {
+                const r = await this.post(this.actionUrl('reassign'), { agent_id: this.reassignAgentId });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                this.reassignModal = false;
+                await this.reloadThread();
+                await this.loadList(true);
+                window.showToast?.('success', this.labels.reassign_done);
+            } catch (e) {
+                console.error('[inbox] reassign failed', e);
+                window.showToast?.('error', this.labels.reassign_error);
+            } finally { this.busy = false; }
+        },
+
         openClose() { this.closeTitle = this.thread?.header?.name ? '' : ''; this.closeModal = true; },
 
         async doClose() {
@@ -764,26 +1273,214 @@ function unifiedInbox() {
             } finally { this.busy = false; }
         },
 
+        // The reply used to appear only after the POST and a full thread refetch
+        // had both come back, so it lagged a beat behind the keystroke. Paint the
+        // bubble first and reconcile after: the server's id replaces the local
+        // one, so the echo from the broadcast merges instead of duplicating.
         async send() {
             const body = this.composer.trim();
-            if (!body || this.sending || !this.thread?.can.reply) return;
-            this.sending = true;
-            try {
-                const r = await this.post(this.actionUrl('messages'), { body });
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                this.composer = '';
-                await this.reloadThread();
-                await this.loadList(true);
+            const file = this.attachment;
+            if ((!body && !file) || this.sending || this.uploading || !this.thread?.can.reply) return;
 
-                // The send is queued, so the row is still 'pending' on the
-                // reload above. Settle the delivery state once the job has had
-                // time to run — nothing else refreshes an open thread.
-                clearTimeout(this._sendSettle);
-                this._sendSettle = setTimeout(() => this.reloadThread().catch(() => {}), 4000);
+            // Pin the thread: the agent can switch conversations while the POST
+            // is in flight, and the reconcile must not land on the new one.
+            const t = this.thread;
+            const tempId = 'tmp-' + (++this._tmp);
+            this.absorb({
+                id:         tempId,
+                kind:       'text',
+                side:       'out',
+                who:        this.thread.header.assignee?.name ?? this.myName,
+                body:       body,
+                created_at: new Date().toISOString(),
+                status:     'pending',
+                media:      file ? { url: file.url, type: file.type, name: file.file_name, mime: file.mime_type } : null,
+            });
+            this.composer = '';
+            this.attachment = null;
+            this.srOpen = false;
+            this.sending = true;
+
+            const payload = file
+                ? { body, media_url: file.url, type: file.type, file_name: file.file_name, media_path: file.media_path }
+                : { body };
+
+            try {
+                const r = await this.post(this.actionUrl('messages'), payload);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+
+                // Re-key the optimistic bubble to the stored id, so the reload and
+                // the broadcast both land on it instead of adding a second copy.
+                const saved = await r.json().catch(() => null);
+                const realId = t.channel === 'whatsapp'
+                    ? (saved?.id ? 'wa-' + saved.id : null)
+                    : (saved?.message?.id ? 'lc-' + saved.message.id : null);
+                const at = t.messages.findIndex((m) => m.id === tempId);
+                if (at !== -1 && realId) t.messages[at].id = realId;
+
+                this.loadList(true);
+
+                // The send is queued, so it is still 'pending' above. Settle the
+                // delivery state once the job has had time to run.
+                if (this.thread === t) {
+                    clearTimeout(this._sendSettle);
+                    this._sendSettle = setTimeout(() => this.reloadThread().catch(() => {}), 4000);
+                }
             } catch (e) {
                 console.error('[inbox] send failed', e);
+                // Drop the bubble and hand the text back rather than leaving a
+                // message on screen that never left the building.
+                const at = t.messages.findIndex((m) => m.id === tempId);
+                if (at !== -1) t.messages.splice(at, 1);
+                if (this.thread === t) {
+                    if (!this.composer.trim()) this.composer = body;
+                    if (file) this.attachment = file;
+                }
                 window.showToast?.('error', this.labels.send_error);
             } finally { this.sending = false; }
+        },
+
+        // ── attachments ──
+        // Upload on pick so the file is already stored by the time the agent hits
+        // send; the reply endpoint only wants the resulting url.
+        async pickFile(ev) {
+            const f = ev.target.files?.[0];
+            ev.target.value = '';
+            if (!f) return;
+
+            this.uploading = true;
+            this.attachment = { file_name: f.name, size: f.size, type: f.type.startsWith('image/') ? 'image' : 'document', url: null };
+            try {
+                const fd = new FormData();
+                fd.append('file', f);
+                const r = await fetch(this.uploadUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: fd,
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const d = await r.json();
+                this.attachment = { ...d, size: f.size };
+            } catch (e) {
+                console.error('[inbox] upload failed', e);
+                this.attachment = null;
+                window.showToast?.('error', this.labels.attach_error);
+            } finally { this.uploading = false; }
+        },
+
+        clearAttachment() { this.attachment = null; this.uploading = false; },
+
+        // Name for media we can't render — the type is all we know about it.
+        mediaLabel(type) {
+            return this.labels['media_' + type] || this.labels.media_document;
+        },
+
+        humanSize(bytes) {
+            if (!Number.isFinite(bytes)) return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        },
+
+        // ── saved replies ──
+        async toggleReplies() {
+            this.srOpen = !this.srOpen;
+            if (!this.srOpen) { this.srCreating = false; return; }
+            this.$nextTick(() => this.$refs.srSearch?.focus());
+            if (this._repliesLoaded) return;
+            this._repliesLoaded = true;
+            try {
+                const r = await fetch(this.repliesUrl, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                this.replies = (await r.json()).data || [];
+                this.srError = false;
+            } catch (e) {
+                console.error('[inbox] saved replies failed', e);
+                // Let the next open retry — a blip shouldn't disable the panel.
+                this._repliesLoaded = false;
+                this.srError = true;
+            }
+        },
+
+        get filteredReplies() {
+            const q = this.srQuery.trim().toLowerCase();
+            if (!q) return this.replies;
+            return this.replies.filter((r) =>
+                (r.title || '').toLowerCase().includes(q)
+                || (r.shortcut || '').toLowerCase().includes(q)
+                || (r.body || '').toLowerCase().includes(q));
+        },
+
+        // Opening the form seeds the body with whatever is already in the
+        // composer: the common case is "I just wrote this, keep it".
+        toggleCreateReply() {
+            this.srCreating = !this.srCreating;
+            if (!this.srCreating) return;
+            this.srFormError = '';
+            this.srForm = {
+                title: '',
+                shortcut: '',
+                body: this.composer.trim(),
+                scope: this.srCanTeam ? 'tenant' : 'personal',
+            };
+            this.$nextTick(() => this.$refs.srTitle?.focus());
+        },
+
+        async createReply() {
+            if (this.srSaving) return;
+            const title = this.srForm.title.trim();
+            const body  = this.srForm.body.trim();
+            if (!title) { this.srFormError = this.labels.sr_err_title; return; }
+            if (!body)  { this.srFormError = this.labels.sr_err_body;  return; }
+
+            this.srSaving = true;
+            this.srFormError = '';
+            const shortcut = this.srForm.shortcut.trim().replace(/^\//, '');
+
+            try {
+                const r = await this.post(this.repliesUrl, {
+                    title,
+                    body,
+                    shortcut: shortcut ? '/' + shortcut : null,
+                    // A non-privileged user asking for 'tenant' is downgraded
+                    // server-side, so the list stays truthful either way.
+                    scope: this.srCanTeam ? this.srForm.scope : 'personal',
+                });
+                const data = await r.json().catch(() => null);
+                if (!r.ok) {
+                    const first = Object.values(data?.errors || {})[0];
+                    this.srFormError = (Array.isArray(first) ? first[0] : first) || data?.message || this.labels.sr_err_save;
+                    return;
+                }
+                const saved = data?.data ?? data;
+                if (saved?.id) this.replies = [saved, ...this.replies];
+                this._repliesLoaded = true;
+                this.srError = false;
+                this.srCreating = false;
+                window.showToast?.('success', this.labels.sr_added);
+            } catch (e) {
+                console.error('[inbox] saved reply create failed', e);
+                this.srFormError = this.labels.sr_err_save;
+            } finally {
+                this.srSaving = false;
+            }
+        },
+
+        // Append rather than overwrite — the agent has often already typed a
+        // greeting before reaching for the canned part.
+        useReply(r) {
+            const cur = this.composer.trim();
+            this.composer = cur ? cur + '\n' + r.body : r.body;
+            this.srOpen = false;
+            this.srQuery = '';
         },
 
         // ── ui helpers ──

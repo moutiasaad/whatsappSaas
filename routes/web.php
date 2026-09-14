@@ -27,6 +27,7 @@ use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
 use App\Http\Controllers\WebChat\WidgetSettingsController as WebChatWidgetSettingsController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PaymentController;
@@ -37,6 +38,15 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 Route::get('/docs/api', fn () => response()->file(public_path('docs/api.html')))->name('docs.api');
+
+// Feature / SEO content pages. Static marketing routes, deliberately outside
+// every auth group so crawlers reach them without a redirect.
+Route::get('/features', [FeatureController::class, 'index'])->name('features.index');
+Route::get('/features/{slug}', [FeatureController::class, 'show'])
+    ->where('slug', '[a-z0-9\-]+')
+    ->name('features.show');
+Route::get('/sitemap.xml', [FeatureController::class, 'sitemap'])->name('sitemap');
+Route::get('/robots.txt',  [FeatureController::class, 'robots'])->name('robots');
 
 // Legal pages (still reachable — required for Stripe/regulators)
 Route::get('/legal/terms',   [LandingController::class, 'terms'])->name('legal.terms');
@@ -54,12 +64,28 @@ Route::post('/payment/initiate', [PaymentController::class, 'initiate'])->name('
 Route::post('/payment/upgrade', [PaymentController::class, 'upgrade'])
     ->name('payment.upgrade')
     ->middleware(['auth', ResolveTenant::class, 'role:admin,super_admin']);
+// One-off AI message top-up. The tenant comes from the signed-in admin, never
+// the URL, so the pack can only ever be billed to the buyer's own workspace.
+Route::get('/payment/ai-messages', [PaymentController::class, 'aiPackCheckout'])
+    ->name('payment.ai-pack')
+    ->middleware(['auth', ResolveTenant::class, 'role:admin']);
+Route::get('/payment/seats', [PaymentController::class, 'seatPackCheckout'])
+    ->name('payment.seat-pack')
+    ->middleware(['auth', ResolveTenant::class, 'role:admin']);
+// A plan change and add-ons bought together — one approval, one charge.
+Route::get('/payment/order', [PaymentController::class, 'cartCheckout'])
+    ->name('payment.cart')
+    ->middleware(['auth', ResolveTenant::class, 'role:admin']);
 Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/failed', [PaymentController::class, 'failed'])->name('payment.failed');
 Route::post('/payment/webhook', [PaymentController::class, 'webhook'])->name('payment.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // PayPal
 Route::post('/payment/paypal/initiate', [PaymentController::class, 'initiatePaypal'])->name('payment.paypal.initiate');
+// Email-only PayPal Standard checkout, used when no REST client id is set.
+Route::post('/payment/paypal/standard', [PaymentController::class, 'paypalStandardStart'])
+    ->name('payment.paypal.standard')
+    ->middleware(['auth', ResolveTenant::class, 'role:admin']);
 Route::get('/payment/paypal/return',    [PaymentController::class, 'paypalReturn'])->name('payment.paypal.return');
 Route::get('/payment/paypal/cancel',    [PaymentController::class, 'paypalCancel'])->name('payment.paypal.cancel');
 Route::post('/payment/paypal/webhook',  [PaymentController::class, 'paypalWebhook'])->name('payment.paypal.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
@@ -79,8 +105,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/supervisor/login', [LoginController::class, 'supervisorLogin'])->name('supervisor.login.submit');
     Route::get('/agent/login', [LoginController::class, 'showAgentLoginForm'])->name('agent.login');
     Route::post('/agent/login', [LoginController::class, 'agentLogin'])->name('agent.login.submit');
-    Route::get('/superadmin/login', [LoginController::class, 'showSuperAdminLoginForm'])->name('superadmin.login');
-    Route::post('/superadmin/login', [LoginController::class, 'superAdminLogin'])->name('superadmin.login.submit');
+    // Control-panel sign-in lives under the panel's own prefix. The route
+    // names stay `superadmin.login*` so existing links and the rejection
+    // redirects in LoginController keep resolving.
+    Route::get(config('app.super_admin_prefix', 'admin-control-panel') . '/login', [LoginController::class, 'showSuperAdminLoginForm'])->name('superadmin.login');
+    Route::post(config('app.super_admin_prefix', 'admin-control-panel') . '/login', [LoginController::class, 'superAdminLogin'])->name('superadmin.login.submit');
+    // Previous URL — kept so old bookmarks land on the new form.
+    Route::get('/superadmin/login', fn () => redirect()->route('superadmin.login', [], 301));
 });
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
@@ -146,6 +177,11 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             Route::get('/inbox/thread/{channel}/{ref}', [InboxController::class, 'thread'])
                 ->whereIn('channel', ['whatsapp', 'webchat'])
                 ->name('inbox.thread');
+            // Agents a thread may be handed to, filtered by the same rules the
+            // reassign endpoints enforce.
+            Route::get('/inbox/assignable/{channel}/{ref}', [InboxController::class, 'assignable'])
+                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->name('inbox.assignable');
 
             // Conversations - all system users
             Route::get('/conversations', [ConversationWebController::class, 'index'])->name('conversations.index');
@@ -159,6 +195,14 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             // Customers - all system users
             Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
             Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+
+            // Saved replies - every role that answers a conversation needs its
+            // own canned replies, so the library is not admin-only. Who may
+            // create or edit a *team* reply is enforced by the API the page
+            // and the inbox composer both talk to.
+            Route::middleware('module:saved_replies')->group(function () {
+                Route::get('/saved-replies', [SavedReplyWebController::class, 'index'])->name('saved-replies.index');
+            });
 
             // Web Live-Chat — human-answered chat widget (separate from WhatsApp).
             // Not available to super_admin — they don't act as frontline agents.
@@ -174,6 +218,8 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                         ->name('conversations.claim');
                     Route::post('/conversations/{uuid}/release', [WebChatConversationController::class, 'release'])
                         ->name('conversations.release');
+                    Route::post('/conversations/{uuid}/reassign', [WebChatConversationController::class, 'reassign'])
+                        ->name('conversations.reassign');
                     Route::post('/conversations/{uuid}/suggest-title', [WebChatConversationController::class, 'suggestTitle'])
                         ->name('conversations.suggest-title');
                     Route::post('/conversations/{uuid}/close', [WebChatConversationController::class, 'close'])
@@ -233,21 +279,26 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
                 Route::get('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
 
-                // Teams
-                Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
-                Route::get('/teams/create', [TeamController::class, 'create'])->name('teams.create');
-                Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
-                Route::get('/teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
-                Route::put('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
-                Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
-                Route::post('/teams/bulk', [TeamController::class, 'bulk'])->name('teams.bulk');
+                // Teams — plan module.
+                Route::middleware('module:teams')->group(function () {
+                    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+                    Route::get('/teams/create', [TeamController::class, 'create'])->name('teams.create');
+                    Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
+                    Route::get('/teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
+                    Route::put('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
+                    Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
+                    Route::post('/teams/bulk', [TeamController::class, 'bulk'])->name('teams.bulk');
+                });
 
-                // Reports
-                Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-                Route::get('/reports/data', [ReportController::class, 'data'])->name('reports.data');
+                // Reports + Audit log — plan modules.
+                Route::middleware('module:reports')->group(function () {
+                    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+                    Route::get('/reports/data', [ReportController::class, 'data'])->name('reports.data');
+                });
 
-                // Audit Log
-                Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
+                Route::middleware('module:audit_log')->group(function () {
+                    Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
+                });
 
                 // Billing — accessible to both admin and super_admin (controller gates by role).
                 // Exempted from the subscription gate so a lapsed tenant can still reach the
@@ -268,8 +319,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::post('/notifications', [NotificationController::class, 'send'])->name('notifications.send');
             });
 
-            // Reservations module (admin only, plan-gated inside controller)
-            Route::middleware('role:admin')->group(function () {
+            // Reservations module (admin only; the controller also checks the
+            // legacy reservations_enabled flag, which stays in sync with the
+            // `reservations` module checkbox).
+            Route::middleware(['role:admin', 'module:reservations'])->group(function () {
                 Route::get('/reservations', [ReservationController::class, 'index'])->name('reservations.index');
                 Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.status');
                 Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->name('reservations.destroy');
@@ -283,9 +336,11 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/reservations/{reservation}', [ReservationController::class, 'show'])->name('reservations.show');
             });
 
-            // Knowledge Base, AI settings, Saved Replies (tenant admin only)
+            // Knowledge Base + AI settings (tenant admin only).
+            // Each block carries its own plan-module gate.
             Route::middleware('role:admin')->group(function () {
                 // Knowledge Base
+                Route::middleware('module:knowledge_base')->group(function () {
                 Route::get('/knowledge', [KnowledgeController::class, 'index'])->name('knowledge.index');
                 Route::post('/knowledge', [KnowledgeController::class, 'store'])->name('knowledge.store');
                 Route::get('/knowledge/import/template', [KnowledgeController::class, 'importJsonTemplate'])->name('knowledge.import.template');
@@ -293,21 +348,25 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::get('/knowledge/{entry}/edit', [KnowledgeController::class, 'edit'])->name('knowledge.edit');
                 Route::put('/knowledge/{entry}', [KnowledgeController::class, 'update'])->name('knowledge.update');
                 Route::delete('/knowledge/{entry}', [KnowledgeController::class, 'destroy'])->name('knowledge.destroy');
+                });
 
                 // AI Settings
-                Route::get('/ai-settings', [AiSettingsController::class, 'index'])->name('ai-settings.index');
-                Route::put('/ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
-
-                // Saved Replies
-                Route::get('/saved-replies', [SavedReplyWebController::class, 'index'])->name('saved-replies.index');
+                Route::middleware('module:ai_agent')->group(function () {
+                    Route::get('/ai-settings', [AiSettingsController::class, 'index'])->name('ai-settings.index');
+                    Route::put('/ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
+                });
 
                 // Web Live-Chat — widget settings (per-tenant customization)
-                Route::get('/webchat/settings', [WebChatWidgetSettingsController::class, 'show'])->name('webchat.settings.show');
-                Route::put('/webchat/settings', [WebChatWidgetSettingsController::class, 'update'])->name('webchat.settings.update');
+                Route::middleware('module:webchat')->group(function () {
+                    Route::get('/webchat/settings', [WebChatWidgetSettingsController::class, 'show'])->name('webchat.settings.show');
+                    Route::put('/webchat/settings', [WebChatWidgetSettingsController::class, 'update'])->name('webchat.settings.update');
+                });
 
                 // OTP-over-WhatsApp API service (tenant configuration + integration snippets)
-                Route::get('/otp-service', [OtpServiceController::class, 'show'])->name('otp-service.show');
-                Route::put('/otp-service', [OtpServiceController::class, 'update'])->name('otp-service.update');
+                Route::middleware('module:otp_service')->group(function () {
+                    Route::get('/otp-service', [OtpServiceController::class, 'show'])->name('otp-service.show');
+                    Route::put('/otp-service', [OtpServiceController::class, 'update'])->name('otp-service.update');
+                });
             });
 
             // SaaS control plane (super admin only)
@@ -345,11 +404,155 @@ Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'sys
         });
 };
 
-// Legacy path retained for compatibility. Canonical role paths are enforced on safe methods.
-$registerPanelRoutes('admin', 'admin', ['super_admin', 'admin', 'supervisor', 'agent'], true, true);
+$superAdminPrefix = config('app.super_admin_prefix', 'admin-control-panel');
+
+// The control panel used to live at /super-admin. Permanently redirect the old
+// paths (query string included) so saved bookmarks and any link still pointing
+// at them land on the current URL instead of a 404.
+if ($superAdminPrefix !== 'super-admin') {
+    Route::get('/super-admin/{path?}', function (?string $path = null) use ($superAdminPrefix) {
+        $target = '/' . $superAdminPrefix . ($path !== null && $path !== '' ? '/' . $path : '');
+        $query  = request()->getQueryString();
+
+        return redirect($target . ($query ? '?' . $query : ''), 301);
+    })->where('path', '.*');
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM CONTROL PANEL (super admin only)
+//
+// Registered separately from $registerPanelRoutes on purpose. The super admin
+// runs the platform, not a workspace: they get the control plane plus the
+// cross-tenant read views, and none of the tenant-operational pages
+// (instances, users, teams, settings, AI, knowledge, saved replies, webchat,
+// OTP, reservations) that the tenant panel registers.
+//
+// The route-name prefix stays `super_admin.` so User::routeNamePrefix() and
+// every existing route('super_admin.*') call keep resolving — only the URL
+// prefix moved from /super-admin to /admin-control-panel.
+// ─────────────────────────────────────────────────────────────────────────────
+$registerControlPanelRoutes = function () use ($superAdminPrefix): void {
+    $panelPrefix = $superAdminPrefix;
+    $middleware  = ['auth', ResolveTenant::class];
+    if (config('auth.require_email_verification')) {
+        $middleware[] = 'verified';
+    }
+    $middleware[] = 'role:super_admin';
+
+    Route::middleware($middleware)
+        ->prefix($panelPrefix)
+        ->name('super_admin.')
+        ->group(function () {
+            Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+            // ── Cross-tenant oversight (read) ────────────────────────────
+            Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
+            Route::get('/inbox/list', [InboxController::class, 'list'])->name('inbox.list');
+            Route::get('/inbox/thread/{channel}/{ref}', [InboxController::class, 'thread'])
+                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->name('inbox.thread');
+            // The inbox renders a reassign picker for any role ConversationPolicy
+            // lets reassign, and super_admin is one of them — without this route
+            // the page itself 500s on route('super_admin.inbox.assignable').
+            Route::get('/inbox/assignable/{channel}/{ref}', [InboxController::class, 'assignable'])
+                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->name('inbox.assignable');
+
+            Route::get('/conversations', [ConversationWebController::class, 'index'])->name('conversations.index');
+            Route::get('/conversations/{conversation}', [ConversationWebController::class, 'show'])->name('conversations.show');
+
+            Route::get('/archive', [ArchiveController::class, 'index'])->name('archive.index');
+            Route::get('/archive/whatsapp/{conversation}', [ArchiveController::class, 'showWhatsApp'])->name('archive.whatsapp.show');
+            Route::get('/archive/webchat/{uuid}', [ArchiveController::class, 'showWebChat'])->name('archive.webchat.show');
+
+            Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+
+            Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+            Route::get('/reports/data', [ReportController::class, 'data'])->name('reports.data');
+
+            Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
+
+            Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+            Route::get('/billing/payments', [BillingController::class, 'payments'])->name('billing.payments');
+            Route::get('/billing/payments/{payment}', [BillingController::class, 'showPayment'])->name('billing.payment.show');
+
+            Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+            Route::post('/notifications', [NotificationController::class, 'send'])->name('notifications.send');
+
+            // ── Own account ──────────────────────────────────────────────
+            // Exempt from 'verified' so a super admin can still correct a
+            // mistyped address without being locked out of the panel.
+            Route::withoutMiddleware([\Illuminate\Auth\Middleware\EnsureEmailIsVerified::class])->group(function () {
+                Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+                Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+                Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
+                Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
+                Route::post('/profile/regenerate-api-key', [ProfileController::class, 'regenerateApiKey'])->name('profile.regenerate-api-key');
+            });
+
+            // ── Super admin accounts ─────────────────────────────────────
+            Route::get('/super-admins', [SuperAdminManagerController::class, 'index'])->name('super-admins.index');
+            Route::get('/super-admins/create', [SuperAdminManagerController::class, 'create'])->name('super-admins.create');
+            Route::post('/super-admins', [SuperAdminManagerController::class, 'store'])->name('super-admins.store');
+            Route::get('/super-admins/{superAdmin}/edit', [SuperAdminManagerController::class, 'edit'])->name('super-admins.edit');
+            Route::put('/super-admins/{superAdmin}', [SuperAdminManagerController::class, 'update'])->name('super-admins.update');
+            Route::delete('/super-admins/{superAdmin}', [SuperAdminManagerController::class, 'destroy'])->name('super-admins.destroy');
+
+            // ── Control plane ────────────────────────────────────────────
+            Route::get('/platform/tenants', [SuperAdminPlatformController::class, 'tenants'])->name('platform.tenants');
+            Route::get('/platform/tenants/create', [SuperAdminPlatformController::class, 'createTenant'])->name('platform.tenants.create');
+            Route::post('/platform/tenants', [SuperAdminPlatformController::class, 'storeTenant'])->name('platform.tenants.store');
+            Route::get('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'showTenant'])->name('platform.tenants.show');
+            Route::get('/platform/tenants/{tenant}/edit', [SuperAdminPlatformController::class, 'editTenant'])->name('platform.tenants.edit');
+            Route::put('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'updateTenant'])->name('platform.tenants.update');
+            Route::delete('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'destroyTenant'])->name('platform.tenants.destroy');
+            Route::post('/platform/tenants/bulk', [SuperAdminPlatformController::class, 'bulkTenants'])->name('platform.tenants.bulk');
+
+            Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
+            Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
+            Route::post('/platform/plans', [SuperAdminPlatformController::class, 'storePlan'])->name('platform.plans.store');
+            Route::get('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'showPlan'])->name('platform.plans.show');
+            Route::get('/platform/plans/{plan}/edit', [SuperAdminPlatformController::class, 'editPlan'])->name('platform.plans.edit');
+            Route::put('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'updatePlan'])->name('platform.plans.update');
+            Route::patch('/platform/plans/{plan}/status', [SuperAdminPlatformController::class, 'togglePlanStatus'])->name('platform.plans.status');
+            Route::post('/platform/plans/bulk', [SuperAdminPlatformController::class, 'bulkPlans'])->name('platform.plans.bulk');
+
+            Route::get('/platform/conversation-settings', [SuperAdminPlatformController::class, 'conversationSettings'])->name('platform.conversation-settings');
+            Route::put('/platform/conversation-settings', [SuperAdminPlatformController::class, 'updateConversationSettings'])->name('platform.conversation-settings.update');
+
+            // Add-on pricing — what tenants pay for extra seats and AI packs.
+            Route::get('/platform/addons', [SuperAdminPlatformController::class, 'addonSettings'])->name('platform.addons');
+            Route::put('/platform/addons', [SuperAdminPlatformController::class, 'updateAddonSettings'])->name('platform.addons.update');
+
+            Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
+
+            Route::get('/platform/legal-pages', [LegalPageController::class, 'index'])->name('platform.legal-pages.index');
+            Route::get('/platform/legal-pages/{slug}/{locale}/edit', [LegalPageController::class, 'edit'])->name('platform.legal-pages.edit');
+            Route::put('/platform/legal-pages/{slug}/{locale}', [LegalPageController::class, 'update'])->name('platform.legal-pages.update');
+        });
+};
+
+// Legacy path retained for compatibility. Canonical role paths are enforced on
+// safe methods. Super admins are deliberately absent: the control plane lives on
+// its own prefix and no longer shares the tenant panel's routes.
+$registerPanelRoutes('admin', 'admin', ['admin', 'supervisor', 'agent'], true, true);
 
 // Canonical role-specific pathnames
-$registerPanelRoutes('super-admin', 'super_admin', ['super_admin'], true);
+$registerControlPanelRoutes();
 $registerPanelRoutes('tenant-admin', 'tenant_admin', ['admin'], true);
 $registerPanelRoutes('supervisor', 'supervisor', ['supervisor'], false);
 $registerPanelRoutes('agent', 'agent', ['agent'], false);
+
+// ── Language entry points ───────────────────────────────────────────────────
+// /ar, /en/features/whatsapp-multi-agent and so on open the site in that
+// language and then redirect to the clean path, so the prefix never stays in
+// the URL and no page gains a second, duplicate address.
+//
+// Registered last and constrained to the supported codes, so it can only ever
+// match a locale segment — /features and /agent are untouched.
+Route::get('/{locale}/{path?}', [LocaleController::class, 'enter'])
+    ->where('locale', implode('|', array_keys(config('locales.supported', ['en' => []]))))
+    ->where('path', '.*')
+    ->name('locale.enter');

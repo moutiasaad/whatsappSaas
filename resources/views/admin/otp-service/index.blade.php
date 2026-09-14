@@ -300,7 +300,7 @@ const verifyJson = await verify.json();</span></div>
                 <div style="margin-top:1.25rem;padding:.75rem .875rem;background:var(--page-bg);border:1px solid var(--card-border);border-radius:.625rem;font-size:.75rem;color:var(--text-muted);">
                     <div style="font-weight:600;color:var(--text-primary);margin-bottom:.375rem;">{{ __('otp.response_ref_title') }}</div>
                     <div><code>ok</code>: {{ __('otp.response_ref_ok') }}</div>
-                    <div><code>error</code>: cooldown | invalid_code | expired | too_many_attempts | no_instance | otp_disabled</div>
+                    <div><code>error</code>: cooldown | invalid_code | expired | too_many_attempts | no_instance | instance_offline | gateway_error | otp_disabled</div>
                     <div><code>retry_after</code>: {{ __('otp.response_ref_retry') }}</div>
                 </div>
 

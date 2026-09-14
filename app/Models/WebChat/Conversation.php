@@ -25,6 +25,7 @@ class Conversation extends Model
     protected $fillable = [
         'uuid', 'tenant_id', 'widget_id', 'visitor_id', 'status', 'title',
         'claimed_by', 'claimed_at', 'closed_by', 'closed_at', 'last_activity_at',
+        'escalated_at', 'escalation_reason',
         'visitor_name', 'visitor_email', 'page_url', 'referrer', 'user_agent', 'ip',
     ];
 
@@ -37,6 +38,7 @@ class Conversation extends Model
         'claimed_at'       => 'datetime',
         'closed_at'        => 'datetime',
         'last_activity_at' => 'datetime',
+        'escalated_at'     => 'datetime',
     ];
 
     protected static function booted(): void

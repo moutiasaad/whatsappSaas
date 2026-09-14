@@ -39,6 +39,14 @@ class AutoReplyService
             return null;
         }
 
+        // The customer asking for a human is the escalation the keywords are
+        // there to catch, and it is worth catching before the API call rather
+        // than after: the reply would be billed and then thrown away.
+        if ($this->shouldEscalate((string) $incoming->body, $settings)) {
+            $this->markEscalated($conversation, 'customer_keyword');
+            return null;
+        }
+
         if (!$settings->hasQuota()) {
             $this->disableAndNotify($conversation->tenant);
             return null;
@@ -64,8 +72,12 @@ class AutoReplyService
                 system: $this->promptBuilder->buildSystemPrompt($conversation->tenant),
             );
 
+            // One generated reply = one unit of the plan's monthly allowance.
+            // Billed on a successful API call, before the text is inspected:
+            // the call was made and paid for either way.
+            $settings->consumeReply();
+
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
-            $settings->increment('tokens_used_this_period', $tokens);
 
             $text = PromptBuilder::sanitizeReply((string) ($response->content[0]->text ?? ''));
 
@@ -81,10 +93,7 @@ class AutoReplyService
             ]);
 
             if ($this->shouldEscalate($text, $settings)) {
-                $conversation->update(['ai_suspended' => true]);
-                Log::channel('whatsapp')->info('AI: escalation keyword detected — suspended', [
-                    'conversation_id' => $conversation->id,
-                ]);
+                $this->markEscalated($conversation, 'reply_keyword');
                 return null;
             }
 
@@ -104,12 +113,63 @@ class AutoReplyService
         }
     }
 
+    /**
+     * Hand the thread to a human and flag it, so the inbox can badge it as
+     * escalated rather than leaving it looking like any other pooled thread.
+     *
+     * Suspending the AI is what actually stops it answering; escalated_at is
+     * the part an agent sees. Left alone if it is already flagged, so the
+     * timestamp keeps saying when the escalation began.
+     */
+    private function markEscalated(Conversation $conversation, string $reason): void
+    {
+        $updates = ['ai_suspended' => true];
+
+        if ($conversation->escalated_at === null) {
+            $updates['escalated_at']      = now();
+            $updates['escalation_reason'] = $reason;
+        }
+
+        $wasFlagged = $conversation->escalated_at !== null;
+
+        $conversation->update($updates);
+
+        // conversation_events already has an 'escalated' type; recording it puts
+        // the handoff on the thread's timeline next to claims and closes.
+        if (!$wasFlagged) {
+            rescue(fn () => \App\Models\ConversationEvent::create([
+                'conversation_id' => $conversation->id,
+                'type'            => 'escalated',
+                'actor_id'        => null,
+                'payload'         => ['reason' => $reason],
+                'created_at'      => now(),
+            ]));
+        }
+
+        Log::channel('whatsapp')->info('AI: escalation keyword detected — suspended', [
+            'conversation_id' => $conversation->id,
+            'reason'          => $reason,
+        ]);
+    }
+
     private function shouldEscalate(string $text, $settings): bool
     {
-        $keywords = $settings->escalation_keywords ?? ['manager', 'refund', 'complaint', 'lawsuit'];
-        foreach ($keywords as $kw) {
-            if (stripos($text, $kw) !== false) return true;
+        if (trim($text) === '') {
+            return false;
         }
+
+        $keywords = $settings->escalation_keywords ?? ['manager', 'refund', 'complaint', 'lawsuit'];
+
+        foreach ($keywords as $kw) {
+            // An empty keyword makes stripos match every message, which would
+            // escalate the entire inbox — the webchat service already guards
+            // for this, so guard here too.
+            $kw = trim((string) $kw);
+            if ($kw !== '' && stripos($text, $kw) !== false) {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -146,7 +206,7 @@ class AutoReplyService
 
     private function disableAndNotify($tenant): void
     {
-        $quota = (int) ($tenant->aiSettings?->monthly_token_quota ?? 0);
+        $quota = (int) ($tenant->aiSettings?->monthly_message_quota ?? 0);
 
         $tenant->aiSettings()->update(['mode' => 'off']);
 

@@ -46,6 +46,11 @@ class PayPalStandardService
      * Build the query the browser needs to POST to open PayPal-hosted checkout.
      * The caller renders an auto-submitting form pointing at getCheckoutUrl().
      */
+    /**
+     * @param bool $preferCard Open PayPal on the card form rather than the
+     *                         account login. Guest checkout is requested either
+     *                         way; this only changes which screen shows first.
+     */
     public function buildCheckoutParams(
         float $amount,
         string $itemName,
@@ -53,7 +58,8 @@ class PayPalStandardService
         string $returnUrl,
         string $cancelUrl,
         string $notifyUrl,
-        string $customPayload = ''
+        string $customPayload = '',
+        bool $preferCard = false
     ): array {
         if (!$this->isConfigured()) {
             throw new RuntimeException('PayPal payee email is not configured.');
@@ -69,6 +75,17 @@ class PayPalStandardService
             'custom'        => $customPayload,
             'no_shipping'   => '1',
             'no_note'       => '1',
+            // 'Sole' is PayPal's flag for guest checkout — a buyer can pay by
+            // card without creating an account. Without it the hosted page
+            // demands a PayPal login and there is no card option at all.
+            //
+            // It only takes effect if "PayPal account optional" is ON in the
+            // receiving account (Account Settings -> Website payments ->
+            // Website preferences). If it is off, PayPal silently ignores this
+            // and shows the login screen.
+            'solution_type' => 'Sole',
+            // Which screen opens first: the card form, or the account login.
+            'landing_page'  => $preferCard ? 'Billing' : 'Login',
             'return'        => $returnUrl,
             'cancel_return' => $cancelUrl,
             'notify_url'    => $notifyUrl,

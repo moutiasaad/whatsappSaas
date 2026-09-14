@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantPayment;
+use App\Models\User;
+use App\Support\AddonPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -21,9 +23,40 @@ class BillingController extends Controller
         }
 
         $tenant = $this->currentTenant();
-        $plans  = Plan::where('is_active', true)->orderBy('price_monthly')->get();
+        $plans  = Plan::where('is_active', true)->orderBy('price_monthly')->orderBy('id')->get();
 
-        return view('admin.billing.index', compact('tenant', 'plans'));
+        $tenant->loadMissing('plan', 'aiSettings');
+        $ai = $tenant->aiSettings;
+
+        // Usage the page's two meters read. A null AI quota means unlimited, 0
+        // means the plan carries no AI at all — the view renders those states
+        // rather than dividing by them.
+        $usage = [
+            'users'       => User::where('tenant_id', $tenant->id)->count(),
+            // Purchased seats are part of the ceiling the meter measures against.
+            'user_limit'  => (int) ($tenant->plan?->max_users ?: 0) + (int) $tenant->extra_seats,
+            'extra_seats' => (int) $tenant->extra_seats,
+            'ai_used'     => (int) ($ai?->ai_messages_used_this_period ?? 0),
+            'ai_quota'    => $ai ? $ai->monthly_message_quota : $tenant->plan?->ai_message_quota,
+            'ai_credits'  => (int) ($ai?->extra_message_credits ?? 0),
+            'ai_resets_at'=> $ai?->quota_reset_at,
+        ];
+
+        // Only this tenant's own receipts, newest first.
+        $invoices = TenantPayment::where('tenant_id', $tenant->id)
+            ->with('plan')
+            ->orderByDesc('created_at')
+            ->limit(12)
+            ->get();
+
+        return view('admin.billing.index', [
+            'tenant'   => $tenant,
+            'plans'    => $plans,
+            'usage'    => $usage,
+            'invoices' => $invoices,
+            // Live add-on pricing, owned by the super admin.
+            'pricing'  => AddonPricing::forView(),
+        ]);
     }
 
     public function payments(Request $request)

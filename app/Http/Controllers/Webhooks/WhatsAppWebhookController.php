@@ -6,19 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessIncomingMessage;
 use App\Models\WebhookEvent;
 use App\Models\WhatsAppInstance;
+use App\Services\WhatsApp\ConnectionFlapGuard;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppWebhookController extends Controller
 {
-    public function handle(Request $request, string $token): Response
+    public function handle(Request $request, string $token, ConnectionFlapGuard $guard): Response
     {
-        Log::channel('whatsapp')->info('Webhook hit', [
-            'token_prefix' => substr($token, 0, 8) . '...',
-            'ip'           => $request->ip(),
-            'event'        => $this->eventType($request->all()),
-        ]);
+        $payload   = $request->all();
+        $eventType = $this->eventType($payload);
 
         $instance = WhatsAppInstance::withoutGlobalScope('tenant')
             ->where('webhook_token', $token)
@@ -41,18 +39,30 @@ class WhatsAppWebhookController extends Controller
             return response('', 202);
         }
 
-        $payload = $request->all();
+        // PROC-019: the gateway reconnects a refused socket immediately and
+        // forever, emitting a connection.update on every lap. Absorb that stream
+        // here — before the insert, the job and the broadcast — so a dead
+        // session costs one indexed lookup instead of pegging PHP-FPM.
+        if ($guard->absorbs($instance, $eventType, $payload)) {
+            return response('', 202);
+        }
+
+        Log::channel('whatsapp')->info('Webhook hit', [
+            'token_prefix' => substr($token, 0, 8) . '...',
+            'ip'           => $request->ip(),
+            'event'        => $eventType,
+        ]);
 
         Log::channel('whatsapp')->info('Webhook accepted — dispatching job', [
             'instance_id' => $instance->id,
             'instance'    => $instance->name,
-            'event_type'  => $this->eventType($payload),
+            'event_type'  => $eventType,
         ]);
 
         $event = WebhookEvent::create([
             'tenant_id'  => $instance->tenant_id,
             'instance_id'=> $instance->id,
-            'event_type' => $this->eventType($payload),
+            'event_type' => $eventType,
             'payload'    => $payload,
         ]);
 

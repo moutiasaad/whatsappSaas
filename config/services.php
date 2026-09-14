@@ -58,6 +58,10 @@ return [
         'webhook_id'    => env('PAYPAL_WEBHOOK_ID'),
         'currency'      => env('PAYPAL_CURRENCY', 'USD'),
         'payee_email'   => env('PAYPAL_PAYEE_EMAIL'),
+        // Only for the REST/Orders flow, and only meaningful if this account
+        // has partner permissions to be paid on another merchant's behalf.
+        // Normally left unset so funds go to the client id's own account.
+        'rest_payee_email' => env('PAYPAL_REST_PAYEE_EMAIL'),
     ],
 
 ];

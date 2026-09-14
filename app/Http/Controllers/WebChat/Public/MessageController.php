@@ -109,6 +109,9 @@ class MessageController extends Controller
                 'sender_type' => $m->sender_type,
                 'sender_id'   => $m->sender_id,
                 'body'        => $m->body,
+                // Only the attachment is exposed, never the whole meta blob —
+                // it is the visitor reading this, and meta is ours to use.
+                'attachment'  => $m->meta['attachment'] ?? null,
                 'created_at'  => $m->created_at?->toISOString(),
             ]);
 

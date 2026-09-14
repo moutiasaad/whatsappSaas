@@ -39,3 +39,10 @@ Thumbs.db
 # Pre-migration database dumps. These contain live user data (emails, password
 # hashes) and must never reach the repository.
 /storage/backups/
+
+# Internal audit output and the original design handoff. Working material, not
+# application source: build scripts, coverage dumps and spreadsheet reports that
+# describe the codebase rather than form part of it.
+/FILES/
+/storage/audit/
+/audit_report_*.xlsx

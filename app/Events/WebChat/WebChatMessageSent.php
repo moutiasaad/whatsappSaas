@@ -44,7 +44,9 @@ class WebChatMessageSent implements ShouldBroadcastNow
                 'sender_type'     => $m->sender_type,
                 'sender_id'       => $m->sender_id,
                 'body'            => $m->body,
-                'meta'            => $m->meta,
+                // Visitors receive this event, so publish only the attachment
+                // rather than the whole meta blob, which is ours to use.
+                'attachment'      => $m->meta['attachment'] ?? null,
                 'created_at'      => $m->created_at?->toISOString(),
             ],
             'conversation' => [

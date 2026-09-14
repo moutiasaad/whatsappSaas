@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\User;
 use App\Models\WebChat\Conversation as WebChatConversation;
 use App\Models\WebChat\Message as WebChatMessage;
 use Illuminate\Http\JsonResponse;
@@ -26,10 +27,19 @@ class InboxController extends Controller
 
     private const LIMIT = 150;
 
-    public function index()
+    public function index(Request $request)
     {
+        // Open on "Mine" when the agent is already holding something: their own
+        // claimed threads are the work in front of them, and landing on Pending
+        // hid it behind a tab. Counted here rather than after the first list
+        // response so the opening request already asks for the right tab —
+        // switching afterwards would mean two requests and a visible flip.
+        $counts = $this->counts($request, 'all');
+
         return view('admin.inbox.index', [
             'canUseWebChat' => $this->canUseWebChat(),
+            'initialTab'    => ($counts['mine'] ?? 0) > 0 ? 'mine' : 'pending',
+            'initialCounts' => $counts,
         ]);
     }
 
@@ -113,6 +123,10 @@ class InboxController extends Controller
                     'preview'          => $c->title ?: $c->last_message_preview,
                     'status'           => $this->whatsappStatus($c->state),
                     'ai'               => isset($aiAnswered[$c->id]) && !$c->ai_suspended,
+                    // A closed thread has been dealt with, so the flag stops
+                    // being news; it survives a claim on purpose, so a
+                    // supervisor can still see which threads the AI handed over.
+                    'escalated'        => $c->escalated_at !== null && !$c->isClosed(),
                     'assignee'         => $c->ownerAgent ? ['id' => $c->ownerAgent->id, 'name' => $c->ownerAgent->name] : null,
                     'unread'           => (int) $c->unread_count,
                     'last_activity_at' => optional($c->last_message_at ?? $c->created_at)->toISOString(),
@@ -132,7 +146,14 @@ class InboxController extends Controller
             'mine'   => $query->where('status', WebChatConversation::STATUS_ASSIGNED)->where('claimed_by', $user->id),
             'all'    => $query->where('status', '!=', WebChatConversation::STATUS_CLOSED),
             'closed' => $query->where('status', WebChatConversation::STATUS_CLOSED),
-            default  => $query->where('status', WebChatConversation::STATUS_PENDING),
+            // A bot-handled chat has no human on it, which is the same footing as
+            // a pooled WhatsApp thread — and those do list under pending, badged
+            // "AI". Leaving 'bot' out meant an agent watching pending never saw a
+            // live visitor the AI was still answering; it surfaced only under All.
+            default  => $query->whereIn('status', [
+                WebChatConversation::STATUS_PENDING,
+                WebChatConversation::STATUS_BOT,
+            ]),
         };
 
         if ($search !== '') {
@@ -158,13 +179,66 @@ class InboxController extends Controller
                     'subtitle'         => $c->visitor_email ?: $c->page_url,
                     'initials'         => $this->initials($c->visitor_name ?: $c->uuid),
                     'preview'          => $c->title ?: ($c->latestMessage ? Str::limit($c->latestMessage->body, 120) : null),
-                    'status'           => $c->status === 'bot' ? 'ai' : $c->status,
-                    'ai'               => false,
+                    'status'           => $this->webchatStatus($c->status),
+                    // Mirrors the WhatsApp row: pending, but the AI is on it.
+                    'ai'               => $c->status === WebChatConversation::STATUS_BOT,
+                    'escalated'        => $c->escalated_at !== null && !$c->isClosed(),
                     'assignee'         => $c->claimer ? ['id' => $c->claimer->id, 'name' => $c->claimer->name] : null,
                     'unread'           => 0,
                     'last_activity_at' => optional($c->last_activity_at ?? $c->created_at)->toISOString(),
                 ];
             });
+    }
+
+    /**
+     * Agents this conversation may be handed to.
+     *
+     * Eligibility repeats what Api\ConversationController::reassign() enforces
+     * on the write side — same tenant, role agent, and a member of the
+     * conversation's team when it is team-scoped — so the picker cannot offer a
+     * name the endpoint would then reject with a 422. The current assignee is
+     * left out: reassigning a thread to whoever already holds it is a no-op.
+     */
+    public function assignable(Request $request, string $channel, string $ref): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($channel === 'whatsapp') {
+            $c = Conversation::withoutGlobalScope('tenant')->findOrFail((int) $ref);
+            abort_unless($user->can('reassign', $c), 403);
+
+            $tenantId  = $c->tenant_id;
+            $teamId    = $c->team_id;
+            $currentId = $c->owner_agent_id;
+        } else {
+            abort_unless($this->canUseWebChat(), 403);
+
+            $c = WebChatConversation::withoutGlobalScope('tenant')
+                ->where('tenant_id', $user->tenant_id)
+                ->where('uuid', $ref)
+                ->firstOrFail();
+
+            abort_unless(
+                $c->status === WebChatConversation::STATUS_ASSIGNED
+                    && ($user->isAdmin() || $user->isSupervisor() || $user->isSuperAdmin()),
+                403,
+            );
+
+            $tenantId  = $c->tenant_id;
+            $teamId    = null;
+            $currentId = $c->claimed_by;
+        }
+
+        $agents = User::where('tenant_id', $tenantId)
+            ->where('role', 'agent')
+            ->when($currentId, fn ($q) => $q->where('id', '!=', $currentId))
+            ->when($teamId, fn ($q) => $q->whereHas('teams', fn ($t) => $t->where('teams.id', $teamId)))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'agents' => $agents->map(fn (User $a) => ['id' => $a->id, 'name' => $a->name])->values(),
+        ]);
     }
 
     /** Per-tab badge counts, one grouped query per channel. */
@@ -188,7 +262,9 @@ class InboxController extends Controller
             $base = WebChatConversation::withoutGlobalScope('tenant')->where('tenant_id', $user->tenant_id);
 
             $byStatus = (clone $base)->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
-            $counts['pending'] += (int) ($byStatus[WebChatConversation::STATUS_PENDING] ?? 0);
+            // Same rule as the pending query above — bot chats are pending too.
+            $counts['pending'] += (int) ($byStatus[WebChatConversation::STATUS_PENDING] ?? 0)
+                                + (int) ($byStatus[WebChatConversation::STATUS_BOT] ?? 0);
             $counts['closed']  += (int) ($byStatus[WebChatConversation::STATUS_CLOSED] ?? 0);
             $counts['all']     += (int) $byStatus->except(WebChatConversation::STATUS_CLOSED)->sum();
             $counts['mine']    += (int) (clone $base)
@@ -238,6 +314,20 @@ class InboxController extends Controller
                 // Without this the UI cannot tell a delivered message from one
                 // still sitting in the queue, so a failed send looks like a sent one.
                 'status'     => $m->status,
+                // Attachments were stored and sent but never returned here, so an
+                // uploaded file left an empty bubble in the thread. `file_name`
+                // predates media_filename on some rows — fall back to it.
+                'media'      => $m->media_url ? [
+                    'url'  => $m->media_url,
+                    'type' => $m->type,
+                    'name' => $m->media_filename ?: ($m->ai_metadata['file_name'] ?? null),
+                    'mime' => $m->media_mime,
+                    // Inbound WhatsApp media is an AES-encrypted CDN blob
+                    // (mmg.whatsapp.net/….enc) that no <img>/<audio> can decode.
+                    // Only files this app stored itself are renderable inline;
+                    // the rest get a labelled chip instead of a broken element.
+                    'inline' => $this->isLocalMedia($m->media_url),
+                ] : null,
             ]);
 
         $name = $c->customer?->display_name ?: ($c->customer?->phone_e164 ?: __('ui.inbox_page.unknown_contact'));
@@ -255,11 +345,16 @@ class InboxController extends Controller
         return response()->json([
             'channel' => 'whatsapp',
             'ref'     => (string) $c->id,
+            // The live thread subscribes to tenant.{tenant}.conversation.{id};
+            // take the tenant from the conversation rather than the viewer, who
+            // may be a super admin with no tenant_id of their own.
+            'tenant_id' => $c->tenant_id,
             'header'  => [
                 'name'     => $name,
                 'subtitle' => $c->customer?->phone_e164,
                 'initials' => $this->initials($name),
                 'status'   => $this->whatsappStatus($c->state),
+                'escalated'=> $c->escalated_at !== null && !$c->isClosed(),
                 'assignee' => $c->ownerAgent ? ['id' => $c->ownerAgent->id, 'name' => $c->ownerAgent->name] : null,
             ],
             // PROC-023: derive from ConversationPolicy so the buttons match what
@@ -272,6 +367,7 @@ class InboxController extends Controller
                 'reply'   => $user->can('reply', $c),
                 'release' => $user->can('release', $c),
                 'close'   => $user->can('close', $c),
+                'reassign'=> $user->can('reassign', $c),
             ],
             'ai' => [
                 'applies'   => $aiOnHere,
@@ -319,6 +415,15 @@ class InboxController extends Controller
                 'body'       => $m->body,
                 'created_at' => $m->created_at?->toISOString(),
                 'status'     => 'sent',
+                // Live-chat attachments live on the message's meta; they are
+                // always files we host, so they render inline.
+                'media'      => ($a = $m->meta['attachment'] ?? null) ? [
+                    'url'    => $a['url'] ?? null,
+                    'type'   => $a['type'] ?? 'document',
+                    'name'   => $a['name'] ?? null,
+                    'mime'   => null,
+                    'inline' => $this->isLocalMedia($a['url'] ?? null),
+                ] : null,
             ]);
 
         $isMine = $c->status === WebChatConversation::STATUS_ASSIGNED && (int) $c->claimed_by === (int) $user->id;
@@ -330,7 +435,8 @@ class InboxController extends Controller
                 'name'     => $name,
                 'subtitle' => $c->visitor_email,
                 'initials' => $this->initials($c->visitor_name ?: $c->uuid),
-                'status'   => $c->status === 'bot' ? 'ai' : $c->status,
+                'status'   => $this->webchatStatus($c->status),
+                'escalated'=> $c->escalated_at !== null && !$c->isClosed(),
                 'assignee' => $c->claimer ? ['id' => $c->claimer->id, 'name' => $c->claimer->name] : null,
             ],
             'can' => [
@@ -338,6 +444,12 @@ class InboxController extends Controller
                 'reply'   => $isMine,
                 'release' => $isMine,
                 'close'   => $c->status !== WebChatConversation::STATUS_CLOSED && ($isMine || $user->isAdmin()),
+                // Handing a live thread to a different agent is a supervisory
+                // act, not the owner's — the owner releases instead. Mirrors
+                // ConversationPolicy::reassign, minus the team check webchat
+                // conversations have no column for.
+                'reassign'=> $c->status === WebChatConversation::STATUS_ASSIGNED
+                    && ($user->isAdmin() || $user->isSupervisor() || $user->isSuperAdmin()),
             ],
             'ai' => [
                 'applies'    => (bool) $user->tenant?->aiSettings?->enabledFor('webchat'),
@@ -404,10 +516,47 @@ class InboxController extends Controller
         };
     }
 
+    /**
+     * Webchat status as a workflow state, the same vocabulary whatsappStatus()
+     * speaks.
+     *
+     * 'bot' used to map to its own 'ai' state, which rendered an "AI" status
+     * badge — while the row's separate `ai` flag rendered a second, identical
+     * "AI" badge right beside it. A bot-held chat is waiting for a human just
+     * like a pooled WhatsApp thread, so it reads 'pending' here and lets the
+     * `ai` flag be the single thing that says the AI is on it.
+     */
+    private function webchatStatus(?string $status): string
+    {
+        return match ($status) {
+            WebChatConversation::STATUS_BOT      => 'pending',
+            WebChatConversation::STATUS_ASSIGNED => 'assigned',
+            WebChatConversation::STATUS_CLOSED   => 'closed',
+            default                              => 'pending',
+        };
+    }
+
     private function kv(string $label, $value): ?array
     {
         $value = trim((string) $value);
         return $value === '' ? null : ['k' => $label, 'v' => $value];
+    }
+
+    /**
+     * Can the browser render this media directly?
+     *
+     * True only for files served from this app (agent uploads land on the public
+     * disk). Inbound WhatsApp media points at mmg.whatsapp.net and is encrypted,
+     * so it has to be shown as a chip rather than an <img>/<audio>/<video>.
+     */
+    private function isLocalMedia(?string $url): bool
+    {
+        if (!$url) return false;
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if ($host === null) return true; // relative path — served by us
+
+        return strcasecmp($host, (string) parse_url((string) config('app.url'), PHP_URL_HOST)) === 0;
     }
 
     private function initials(?string $name): string

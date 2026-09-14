@@ -7,6 +7,30 @@ return [
 
     // Navbar
     'nav_features' => 'Features',
+    // Shared marketing header + footer sitemap (landing and /features).
+    // Product showcase (browser-framed screenshots on the home page).
+    'show_title'        => 'This is the whole product',
+    'show_sub'          => 'No demo call needed to see it. Three screens carry almost everything your team touches day to day.',
+    'show_tab_inbox'     => 'Shared inbox',
+    'show_tab_dashboard' => 'Dashboard',
+    'show_tab_livechat'  => 'Live chat setup',
+    'show_alt_inbox'     => 'wavadesk shared inbox with the conversation queue, an open thread and the customer context panel',
+    'show_alt_dashboard' => 'wavadesk dashboard showing plan status, usage meters, KPI cards and conversation volume',
+    'show_alt_livechat'  => 'wavadesk live chat settings with widget configuration and a live preview',
+    'show_cap_inbox'     => 'WhatsApp and website conversations in one queue. Claim a conversation and it locks to you, so no customer ever gets two answers.',
+    'show_cap_dashboard' => 'Response time, volume by channel, agent workload and how much your AI resolved on its own — without setting up any tracking.',
+    'show_cap_livechat'  => 'Configure the website widget with a live preview beside the controls, then paste one snippet into your site.',
+    'nav_primary'       => 'Main',
+    'nav_menu_open' => 'Open menu',
+    'nav_menu_close' => 'Close menu',
+    'nav_language' => 'Language',
+    'nav_product'       => 'Product',
+    'nav_see_pricing'   => 'See pricing',
+    'nav_signin'        => 'Sign in',
+    'nav_cta'           => 'Start free trial',
+    'footer_automation' => 'Automation',
+    'footer_platform'   => 'Platform',
+    'footer_home'       => 'Home',
     'nav_pricing'  => 'Pricing',
     'nav_how'      => 'How it works',
     'nav_faq'      => 'FAQ',
@@ -207,11 +231,15 @@ return [
     'f6_d'                            => 'Scan once and you are live. Keep the number your customers already message — nothing changes on their side.',
 
     'pricing2_title'                  => 'Try it free, decide after',
-    'pricing2_sub'                    => ':days days of the full product. No card at signup, and nothing is charged until you choose a plan.',
+    'pricing2_sub'                    => 'Starter comes with a :days-day free trial. No card at signup, and nothing is charged until you choose a plan.',
     'popular_short'                   => 'Most popular',
     'plan_tagline_starter'            => 'For a small team getting off one phone.',
     'plan_tagline_growth'             => 'For teams running support as a function.',
-    'price_note'                      => 'Every plan starts with the same :days-day free trial. Cancel any time during it and nothing is charged.',
+    'plan_tagline_scale'              => 'For teams that want every module switched on.',
+    // The promise that opens every plan card, above the per-plan bullets.
+    'plan_unlimited_headline'         => 'Unlimited WhatsApp conversations. No per-message fee. No Meta conversation fee. Ever.',
+    'plan_trial_badge'                => ':days days free',
+    'price_note'                      => 'Every plan includes unlimited WhatsApp conversations. Starter opens with a :days-day free trial — cancel during it and nothing is charged.',
     'no_plans'                        => 'No plans are available right now. Check back soon.',
 
     'final_title'                     => 'Get your team off one phone this afternoon.',
@@ -222,4 +250,8 @@ return [
     // ── signed-in visitors ──
     'go_to_dashboard'      => 'Go to my dashboard',
     'signed_in_as'         => 'Signed in as :name',
+    'attr_trial' => ':days-day free trial',
+    'attr_instances' => '{1} 1 WhatsApp number|[2,*] :n WhatsApp numbers',
+    'attr_ai_messages' => ':n AI messages / month',
+    'attr_ai_unlimited' => 'Unlimited AI messages',
 ];

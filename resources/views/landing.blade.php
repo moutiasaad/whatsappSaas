@@ -2,6 +2,49 @@
     $isRtl     = (bool) data_get(config('locales.supported', []), app()->getLocale() . '.rtl');
     $trialDays = (int) config('app.trial_days', 14);
     $planCount = $plans->count();
+
+    /*
+     * Renders one curated landing attribute for a plan. Returns null when the
+     * attribute has nothing to say for this plan (no limit set, module not
+     * granted), so the caller can skip the bullet entirely rather than print
+     * an empty or misleading one.
+     */
+    $planAttributeLine = function ($plan, string $attr): ?string {
+        if (str_starts_with($attr, 'module:')) {
+            $module = substr($attr, 7);
+
+            return $plan->hasModule($module) ? __('ui.plan_modules.' . $module) : null;
+        }
+
+        return match ($attr) {
+            'trial' => $plan->hasTrial()
+                ? __('landing.attr_trial', ['days' => $plan->trialDays()])
+                : null,
+
+            'max_users' => $plan->max_users
+                ? __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users])
+                : null,
+
+            // Pluralised: a one-number plan must not advertise "1 numbers".
+            'max_instances' => $plan->max_instances
+                ? trans_choice('landing.attr_instances', $plan->max_instances, ['n' => number_format($plan->max_instances)])
+                : null,
+
+            'max_conversations' => $plan->max_conversations_per_month
+                ? __('landing.limit_convos', ['n' => number_format($plan->max_conversations_per_month)])
+                : null,
+
+            // NULL = unlimited AI messages, 0 = no AI on this plan, positive
+            // = the monthly allowance.
+            'ai_messages' => is_null($plan->ai_message_quota)
+                ? __('landing.attr_ai_unlimited')
+                : ((int) $plan->ai_message_quota === 0
+                    ? null
+                    : __('landing.attr_ai_messages', ['n' => number_format($plan->ai_message_quota)])),
+
+            default => null,
+        };
+    };
     $isAuthed  = !empty($homeRoute);
     // Signed-in visitors get one CTA — back to their own panel.
     $ctaUrl    = $homeRoute ?? route('register');
@@ -13,6 +56,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ __('landing.page_title') }}</title>
 <meta name="description" content="{{ __('landing.page_desc') }}">
+<link rel="canonical" href="{{ url('/') }}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+{{-- The home page really does exist in all three languages, so each one gets
+     an alternate. The locale is carried in the session rather than the URL, so
+     every alternate points at the same address — enough to tell a crawler the
+     translations exist without inventing URLs that do not. --}}
+@foreach(array_keys(config('locales.supported', [])) as $code)
+<link rel="alternate" hreflang="{{ $code }}" href="{{ url('/') }}">
+@endforeach
+<link rel="alternate" hreflang="x-default" href="{{ url('/') }}">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ __('landing.page_title') }}">
+<meta property="og:description" content="{{ __('landing.page_desc') }}">
+<meta property="og:url" content="{{ url('/') }}">
+<meta property="og:site_name" content="{{ config('app.name', 'wavadesk') }}">
+<meta property="og:image" content="{{ asset('img/features/inbox-full.png') }}">
+<meta property="og:locale" content="{{ app()->getLocale() }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ __('landing.page_title') }}">
+<meta name="twitter:description" content="{{ __('landing.page_desc') }}">
+<meta name="twitter:image" content="{{ asset('img/features/inbox-full.png') }}">
+
 <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
 <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16.png') }}">
@@ -20,6 +87,62 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+
+@php
+    // Structured data. The offer catalogue is generated from the live plans and
+    // the FAQ from the same keys the accordions below render, so neither can
+    // advertise something the page does not actually show.
+    $faqKeys = range(1, 6);
+    $homeLd = [
+        '@context' => 'https://schema.org',
+        '@graph'   => [
+            [
+                '@type'       => 'Organization',
+                '@id'         => url('/') . '#organization',
+                'name'        => config('app.name', 'wavadesk'),
+                'url'         => url('/'),
+                'logo'        => ['@type' => 'ImageObject', 'url' => asset('favicon-512.png')],
+                'description' => __('landing.page_desc'),
+            ],
+            [
+                '@type'       => 'WebSite',
+                '@id'         => url('/') . '#website',
+                'url'         => url('/'),
+                'name'        => config('app.name', 'wavadesk'),
+                'inLanguage'  => app()->getLocale(),
+                'publisher'   => ['@id' => url('/') . '#organization'],
+            ],
+            [
+                '@type'               => 'SoftwareApplication',
+                'name'                => config('app.name', 'wavadesk'),
+                'applicationCategory' => 'BusinessApplication',
+                'operatingSystem'     => 'Web',
+                'description'         => __('landing.page_desc'),
+                'url'                 => url('/'),
+                'offers'              => $plans->map(fn ($p) => [
+                    '@type'         => 'Offer',
+                    'name'          => $p->name,
+                    'price'         => number_format((float) $p->price_monthly, 2, '.', ''),
+                    'priceCurrency' => config('billing.currency', 'USD'),
+                    'url'           => url('/#pricing'),
+                ])->values()->all(),
+            ],
+            [
+                '@type'      => 'FAQPage',
+                'mainEntity' => collect($faqKeys)->map(fn ($k) => [
+                    '@type'          => 'Question',
+                    'name'           => __('landing.faq_' . $k . '_q'),
+                    'acceptedAnswer' => [
+                        '@type' => 'Answer',
+                        'text'  => __('landing.faq_' . $k . '_a', ['days' => $trialDays]),
+                    ],
+                ])->all(),
+            ],
+        ],
+    ];
+@endphp
+<script type="application/ld+json">{!! json_encode($homeLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
 <style>
 :root{
   --teal:#0f7e7a;--teal-l:#15b6a8;--teal-d:#0a5e5b;--teal-50:#ecf7f6;--teal-100:#d6efed;
@@ -73,6 +196,54 @@ section{padding:96px 0}
 .lang-item{display:block;width:100%;background:none;border:none;padding:10px 14px;font-size:13.5px;cursor:pointer;color:var(--text);text-align:start}
 .lang-item:hover{background:var(--teal-50)}
 .lang-item.active{font-weight:600;color:var(--teal)}
+
+/* mega menu — opens on hover AND focus-within so it is keyboard reachable */
+.has-mega{position:relative;display:flex;align-items:center}
+.navbtn{display:inline-flex;align-items:center;gap:6px;font-size:14.5px;color:var(--muted);font-weight:500;background:none;border:none;cursor:pointer;font-family:inherit;padding:0}
+.navbtn:hover,.has-mega:hover .navbtn,.has-mega:focus-within .navbtn{color:var(--text)}
+.navbtn svg{transition:transform .18s}
+.has-mega:hover .navbtn svg,.has-mega:focus-within .navbtn svg{transform:rotate(180deg)}
+/* The padding-top is a hover bridge: without it the pointer crosses a gap
+   between the trigger and the panel and the menu closes under the cursor. */
+.mega{position:absolute;top:100%;inset-inline-start:50%;transform:translateX(-50%) translateY(6px);padding-top:14px;opacity:0;visibility:hidden;transition:opacity .18s,transform .18s,visibility .18s;z-index:60}
+html[dir="rtl"] .mega{transform:translateX(50%) translateY(6px)}
+.has-mega:hover .mega,.has-mega:focus-within .mega{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+html[dir="rtl"] .has-mega:hover .mega,html[dir="rtl"] .has-mega:focus-within .mega{transform:translateX(50%) translateY(0)}
+.megainner{width:690px;max-width:calc(100vw - 40px);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 34px 80px -28px rgba(13,20,23,.34);padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.mi{display:flex;gap:12px;padding:11px 12px;border-radius:12px;transition:.13s;color:var(--text)}
+.mi:hover{background:var(--soft);color:var(--text)}
+.mi .mic{width:36px;height:36px;border-radius:10px;background:var(--teal-50);display:grid;place-items:center;flex-shrink:0}
+.mi .mt{font-size:14.5px;font-weight:600;color:var(--text);line-height:1.3;letter-spacing:-.01em;display:block}
+.mi .ms{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4;display:block}
+.megafoot{grid-column:1/-1;margin-top:6px;padding:13px 12px 3px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.megafoot .mf{font-size:13px;color:var(--muted)}
+.megafoot a.mfl{font-size:13px;font-weight:600;margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px}
+@media (max-width:980px){.has-mega{display:none}}
+
+/* product showcase */
+.show{background:var(--soft);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.shtabs{display:flex;gap:6px;justify-content:center;margin-bottom:26px;flex-wrap:wrap}
+.sht{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 17px;border-radius:11px;border:1px solid var(--border);background:#fff;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s;font-family:inherit}
+.sht:hover{border-color:var(--border-2);color:var(--text)}
+.sht.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.shframe{border:1px solid var(--border-2);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 40px 90px -40px rgba(13,20,23,.42)}
+.shbar{height:40px;background:#eef2f5;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;padding:0 15px}
+.shbar i{width:11px;height:11px;border-radius:50%;background:#cbd5e1;display:block}
+.shbar .u{margin-inline-start:12px;background:#fff;border:1px solid var(--border);border-radius:7px;height:24px;flex:1;max-width:300px;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--muted-2);font-family:ui-monospace,monospace;direction:ltr}
+.shframe img{display:block;width:100%;height:auto}
+.shcap{text-align:center;font-size:14px;color:var(--muted);margin-top:18px;max-width:60ch;margin-inline:auto;line-height:1.55}
+@media (max-width:980px){.shtabs{gap:5px}.sht{height:38px;padding:0 13px;font-size:13px}}
+
+/* sticky mobile CTA — shown once the hero form scrolls away, hidden again
+   over the final form so the page never shows two competing CTAs at once */
+.mobcta{position:fixed;bottom:0;inset-inline:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:12px;align-items:center;transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.mobcta.show{transform:translateY(0)}
+.mobcta .t{flex:1;min-width:0;line-height:1.25}
+.mobcta .t b{display:block;font-size:14px;font-weight:700}
+.mobcta .t span{font-size:12.5px;color:var(--muted)}
+.mobcta .btn{height:46px;padding:0 20px;font-size:15px}
+@media (max-width:980px){.mobcta{display:flex}footer{padding-bottom:96px}}
+@media (prefers-reduced-motion:reduce){.mobcta{transition:none}}
 
 /* hero */
 .hero{background:var(--ink);color:#fff;padding:84px 0 96px;position:relative;overflow:hidden}
@@ -156,6 +327,12 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
 .plan{background:#fff;border:1px solid var(--border);border-radius:18px;padding:32px;position:relative;display:flex;flex-direction:column}
 .plan.hot{border-color:var(--teal);box-shadow:0 20px 50px -28px rgba(15,126,122,.4)}
 .plan .badge{position:absolute;top:-11px;inset-inline-start:32px;background:var(--teal);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:999px}
+.plan .badge.trial{background:var(--ink)}
+/* The unlimited-conversations promise: identical on every card, so it reads as
+   a platform guarantee rather than a per-plan feature. */
+.plan-hl{margin-top:18px;padding:12px 14px;border-radius:12px;background:var(--teal-50);border:1px solid var(--teal-100);display:flex;gap:9px;align-items:flex-start;font-size:13.5px;font-weight:600;line-height:1.45;color:var(--teal-d)}
+.plan-hl svg{flex-shrink:0;margin-top:2px}
+.plan ul.has-hl{margin-top:16px}
 .plan .pn{font-size:19px;font-weight:700}
 .plan .pp{font-size:42px;font-weight:700;letter-spacing:-.04em;margin-top:10px;line-height:1.1}
 .plan .pp span{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0}
@@ -191,11 +368,16 @@ details .a{padding:0 22px 20px;font-size:15px;color:var(--muted);line-height:1.6
 .final .microtrust{justify-content:center}
 
 /* footer */
-footer{background:var(--ink);color:#8b99a6;padding:40px 0;border-top:1px solid #1f272e}
-footer .in{display:flex;align-items:center;gap:20px;flex-wrap:wrap;font-size:13.5px}
-footer .wm{color:#fff;font-weight:800;font-size:17px;letter-spacing:-.03em}
-footer nav{margin-inline-start:auto;display:flex;gap:22px;flex-wrap:wrap}
-footer a{color:#8b99a6}footer a:hover{color:#fff}
+footer{background:var(--ink);color:#8b99a6;padding:48px 0 34px;border-top:1px solid #1f272e}
+footer .fcols{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:32px;padding-bottom:30px;border-bottom:1px solid #1f272e}
+footer .wm{color:#fff;font-weight:800;font-size:19px;letter-spacing:-.03em}
+footer .ftag{font-size:14px;margin-top:9px;max-width:30ch;line-height:1.55;color:#8b99a6}
+footer h4{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#5d6b76;margin:0 0 13px}
+footer ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+footer a{color:#8b99a6;font-size:14px}footer a:hover{color:#fff}
+footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+@media (max-width:980px){footer .fcols{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){footer .fcols{grid-template-columns:1fr}}
 
 /* sticky mobile CTA */
 .mobcta{position:fixed;bottom:0;left:0;right:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:12px;align-items:center;transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
@@ -249,9 +431,47 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
     <svg width="34" height="34" viewBox="0 0 512 512" fill="none" aria-hidden="true"><rect x="7" y="7" width="498" height="498" rx="118" fill="#0f7e7a"/><g transform="translate(256,256) scale(.8) translate(-284,-267)"><path d="M 96 326 C 162 326, 162 184, 240 184 C 320 184, 320 350, 388 350 C 432 350, 432 226, 472 226" stroke="#fff" stroke-width="46" stroke-linecap="round" fill="none"/><circle cx="96" cy="326" r="34" fill="#fff"/><circle cx="472" cy="226" r="34" fill="#d6efed"/></g></svg>
     <span class="wm">{{ config('app.name', 'wavadesk') }}</span>
   </a>
-  <nav>
+  <nav aria-label="{{ __('landing.nav_primary') }}">
+    {{-- Product mega-menu. Every feature page is one hover away from the home
+         page, which is what turns ten articles into a crawlable cluster. --}}
+    @php
+        $megaIcons = [
+            'whatsapp-shared-inbox' => 'ri-chat-3-line',
+            'ai-agent'              => 'ri-sparkling-2-line',
+            'whatsapp-multi-agent'  => 'ri-team-line',
+            'knowledge-base'        => 'ri-book-2-line',
+            'live-chat-widget'      => 'ri-chat-smile-2-line',
+            'teams-routing'         => 'ri-node-tree',
+            'otp-service'           => 'ri-shield-keyhole-line',
+            'reservations'          => 'ri-calendar-check-line',
+            'reports-analytics'     => 'ri-bar-chart-2-line',
+            'api-integrations'      => 'ri-code-s-slash-line',
+        ];
+    @endphp
+    <div class="has-mega">
+      <button class="navbtn" type="button" aria-haspopup="true">
+        {{ __('landing.nav_product') }}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="mega"><div class="megainner">
+        @foreach(config('seo_pages', []) as $fslug => $fpage)
+        <a class="mi" href="{{ url('/features/' . $fslug) }}">
+          <span class="mic"><i class="{{ $megaIcons[$fslug] ?? 'ri-checkbox-blank-circle-line' }}" style="color:#0f7e7a;font-size:18px"></i></span>
+          <span>
+            <span class="mt">{{ __('features.' . $fslug . '.nav_title') }}</span>
+            <span class="ms">{{ __('features.' . $fslug . '.nav_sub') }}</span>
+          </span>
+        </a>
+        @endforeach
+        <div class="megafoot">
+          <span class="mf">{{ __('landing.plan_unlimited_headline') }}</span>
+          <a class="mfl" href="#pricing">{{ __('landing.nav_see_pricing') }}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+      </div></div>
+    </div>
     <a href="#how">{{ __('landing.nav_how') }}</a>
-    <a href="#features">{{ __('landing.nav_features') }}</a>
     <a href="#pricing">{{ __('landing.nav_pricing') }}</a>
     <a href="#faq">{{ __('landing.nav_faq') }}</a>
   </nav>
@@ -278,8 +498,11 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
       <a class="si" href="{{ route('login') }}">{{ __('landing.nav_login') }}</a>
       <a class="btn p" href="{{ route('register') }}">{{ __('landing.hero_cta') }}</a>
     @endif
+    @include('partials.marketing-mobile-nav-button')
   </div>
 </div></div>
+
+@include('partials.marketing-mobile-nav')
 
 {{-- ══════════ HERO ══════════ --}}
 <div class="hero" id="top">
@@ -383,6 +606,53 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
   </div>
 </section>
 
+{{-- ══════════ PRODUCT SHOWCASE ══════════ --}}
+<section class="show" id="product">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>{{ __('landing.show_title') }}</h2>
+      <p>{{ __('landing.show_sub') }}</p>
+    </div>
+    @php
+        // Tab, screenshot, fake URL and caption move together — a caption that
+        // does not match the image on screen is worse than no caption.
+        // Dashboard leads: it is the screen a visitor lands on after signup and
+        // reads fastest cold, so it carries the first impression better than the
+        // inbox, which needs the queue explained before it makes sense.
+        $shots = [
+            ['img' => 'dashboard-shell.png',   'url' => 'app.wavadesk.com/dashboard',          'key' => 'dashboard'],
+            ['img' => 'inbox-full.png',        'url' => 'app.wavadesk.com/inbox',              'key' => 'inbox'],
+            ['img' => 'livechat-settings.png', 'url' => 'app.wavadesk.com/settings/live-chat', 'key' => 'livechat'],
+        ];
+
+        // Resolved once here so the tab script gets a plain array.
+        $shotPayload = collect($shots)->map(fn ($sh) => [
+            'img' => asset('img/features/' . $sh['img']),
+            'url' => $sh['url'],
+            'alt' => __('landing.show_alt_' . $sh['key']),
+            'cap' => __('landing.show_cap_' . $sh['key']),
+        ])->all();
+    @endphp
+    <div class="shtabs" id="shtabs" role="tablist">
+      @foreach($shots as $i => $shot)
+      <button class="sht {{ $i === 0 ? 'on' : '' }}" type="button" role="tab" data-s="{{ $i }}"
+              aria-selected="{{ $i === 0 ? 'true' : 'false' }}">
+        {{ __('landing.show_tab_' . $shot['key']) }}
+      </button>
+      @endforeach
+    </div>
+    <div class="shframe">
+      <div class="shbar" aria-hidden="true"><i></i><i></i><i></i><span class="u" id="shurl">{{ $shots[0]['url'] }}</span></div>
+      {{-- width/height are set so the browser reserves the box and the page
+           does not shift when the screenshot decodes. --}}
+      <img id="shimg" src="{{ asset('img/features/' . $shots[0]['img']) }}"
+           alt="{{ __('landing.show_alt_' . $shots[0]['key']) }}"
+           width="1593" height="883" loading="lazy" decoding="async">
+    </div>
+    <p class="shcap" id="shcap">{{ __('landing.show_cap_' . $shots[0]['key']) }}</p>
+  </div>
+</section>
+
 {{-- ══════════ FEATURES ══════════ --}}
 <section id="features">
   <div class="wrap">
@@ -448,14 +718,22 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
       @foreach($plans as $i => $plan)
       @php
         $isPopular  = $i === 1 && $planCount >= 2;
+        // Taglines follow card position, not the popular flag — with three
+        // plans the last one needs its own line instead of repeating starter's.
+        $tagline    = [0 => 'starter', 1 => 'growth', 2 => 'scale'][$i] ?? 'starter';
         $isFree     = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
-        $features   = is_array($plan->features) ? $plan->features : [];
         // CALC-013: 0 and null both mean "no annual price offered". Do not
         // substitute one cycle's price for the other.
         $hasAnnual  = (float) $plan->price_annual > 0;
       @endphp
       <div class="plan {{ $isPopular ? 'hot' : '' }}">
-        @if($isPopular)<span class="badge">{{ __('landing.popular_short') }}</span>@endif
+        @if($isPopular)
+          <span class="badge">{{ __('landing.popular_short') }}</span>
+        @elseif($plan->hasTrial())
+          {{-- A plan that ships a free trial says so on the card itself, not
+               only in the bullet list, so the offer survives a quick scan. --}}
+          <span class="badge trial">{{ __('landing.plan_trial_badge', ['days' => $plan->trialDays()]) }}</span>
+        @endif
         <div class="pn">{{ $plan->name }}</div>
         @if($isFree)
           <div class="pp">{{ __('landing.plan_free_label') }}</div>
@@ -464,25 +742,45 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
             $<span class="plan-amount" data-monthly="{{ number_format((float) $plan->price_monthly, 0) }}"@if($hasAnnual) data-annual="{{ number_format((float) $plan->price_annual, 0) }}"@endif>{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span>@if($hasAnnual)<span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>@endif
           </div>
         @endif
-        <div class="pd">{{ __('landing.plan_tagline_' . ($isPopular ? 'growth' : 'starter')) }}</div>
+        <div class="pd">{{ __('landing.plan_tagline_' . $tagline) }}</div>
 
-        <ul>
-          @if($plan->max_users)
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#0f7e7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}</li>
-          @endif
-          @if($plan->max_conversations_per_month)
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#0f7e7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ __('landing.limit_convos', ['n' => number_format($plan->max_conversations_per_month)]) }}</li>
-          @endif
-          <li class="{{ $plan->ai_included ? '' : 'off' }}">
-            @if($plan->ai_included)
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#0f7e7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ __('landing.feat_ai_included') }}
-            @else
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round"/></svg>{{ __('landing.feat_ai_not') }}
+        {{-- Every card opens with the same promise, before any plan-specific
+             bullet, so the pricing model is stated once and unambiguously. --}}
+        <div class="plan-hl">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>{{ __('landing.plan_unlimited_headline') }}</span>
+        </div>
+
+        <ul class="has-hl">
+          @php
+            // The super admin curates this list per plan under Plans → Landing
+            // page attributes. NULL means the plan predates the picker, so the
+            // original automatic layout is used instead of an empty card.
+            $picked = $plan->landingAttributes();
+          @endphp
+
+          @if($picked === null)
+            @if($plan->max_users)
+            <li>@include('partials.landing-tick'){{ __('ui.platform_plans_page.users_limit', ['count' => $plan->max_users]) }}</li>
             @endif
-          </li>
-          @foreach($features as $feat)
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#0f7e7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ $feat }}</li>
-          @endforeach
+            @if($plan->max_conversations_per_month)
+            <li>@include('partials.landing-tick'){{ __('landing.limit_convos', ['n' => number_format($plan->max_conversations_per_month)]) }}</li>
+            @endif
+            <li class="{{ $plan->ai_included ? '' : 'off' }}">
+              @if($plan->ai_included)
+                @include('partials.landing-tick'){{ __('landing.feat_ai_included') }}
+              @else
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round"/></svg>{{ __('landing.feat_ai_not') }}
+              @endif
+            </li>
+          @else
+            @foreach($picked as $attr)
+              @php $line = $planAttributeLine($plan, $attr); @endphp
+              @if($line !== null)
+              <li>@include('partials.landing-tick'){{ $line }}</li>
+              @endif
+            @endforeach
+          @endif
         </ul>
 
         <div class="btnwrap">
@@ -541,23 +839,54 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
 </section>
 
 {{-- ══════════ FOOTER ══════════ --}}
-<footer><div class="wrap in">
-  <span class="wm">{{ config('app.name', 'wavadesk') }}</span>
-  <span>{{ __('landing.footer_tagline') }}</span>
-  <nav>
-    <a href="#features">{{ __('landing.footer_features') }}</a>
-    <a href="#pricing">{{ __('landing.footer_pricing') }}</a>
-    <a href="#faq">{{ __('landing.nav_faq') }}</a>
+{{-- Four-column sitemap. Every feature page is linked from the home page, so
+     a crawler reaches the whole cluster from one entry point. --}}
+@php $seoPages = config('seo_pages', []); @endphp
+<footer><div class="wrap">
+  <div class="fcols">
+    <div>
+      <span class="wm">{{ config('app.name', 'wavadesk') }}</span>
+      <p class="ftag">{{ __('landing.footer_tagline') }}</p>
+    </div>
+    <div>
+      <h4>{{ __('landing.footer_product') }}</h4>
+      <ul>
+        @foreach(['whatsapp-shared-inbox','whatsapp-multi-agent','live-chat-widget','teams-routing'] as $fs)
+          @isset($seoPages[$fs])<li><a href="{{ url('/features/' . $fs) }}">{{ __('features.' . $fs . '.nav_title') }}</a></li>@endisset
+        @endforeach
+      </ul>
+    </div>
+    <div>
+      <h4>{{ __('landing.footer_automation') }}</h4>
+      <ul>
+        @foreach(['ai-agent','knowledge-base','otp-service','reservations'] as $fs)
+          @isset($seoPages[$fs])<li><a href="{{ url('/features/' . $fs) }}">{{ __('features.' . $fs . '.nav_title') }}</a></li>@endisset
+        @endforeach
+      </ul>
+    </div>
+    <div>
+      <h4>{{ __('landing.footer_platform') }}</h4>
+      <ul>
+        @foreach(['reports-analytics','api-integrations'] as $fs)
+          @isset($seoPages[$fs])<li><a href="{{ url('/features/' . $fs) }}">{{ __('features.' . $fs . '.nav_title') }}</a></li>@endisset
+        @endforeach
+        <li><a href="#pricing">{{ __('landing.footer_pricing') }}</a></li>
+        @if($isAuthed)
+          <li><a href="{{ $homeRoute }}">{{ __('landing.go_to_dashboard') }}</a></li>
+        @else
+          <li><a href="{{ route('login') }}">{{ __('landing.nav_login') }}</a></li>
+        @endif
+      </ul>
+    </div>
+  </div>
+  <div class="fbase">
+    <span>&copy; {{ date('Y') }} {{ config('app.name', 'wavadesk') }}</span>
+    <a href="#top">{{ __('landing.footer_home') }}</a>
     <a href="{{ route('legal.privacy') }}">{{ __('landing.footer_privacy') }}</a>
     <a href="{{ route('legal.terms') }}">{{ __('landing.footer_terms') }}</a>
     <a href="{{ route('legal.cookies') }}">{{ __('landing.footer_cookies') }}</a>
-    @if($isAuthed)
-      <a href="{{ $homeRoute }}">{{ __('landing.go_to_dashboard') }}</a>
-    @else
-      <a href="{{ route('login') }}">{{ __('landing.nav_login') }}</a>
-    @endif
-  </nav>
-</div></div></footer>
+  </div>
+</div></footer>
 
 <div class="mobcta" id="mobcta">
   @if($isAuthed)
@@ -572,6 +901,28 @@ footer a{color:#8b99a6}footer a:hover{color:#fff}
 <script>
 (() => {
   // ── lang dropdown ──
+  /* ── product showcase tabs ── */
+  const SHOTS = @json($shotPayload);
+  const shTabs = document.getElementById('shtabs');
+  if (shTabs) {
+    const shImg = document.getElementById('shimg');
+    const shUrl = document.getElementById('shurl');
+    const shCap = document.getElementById('shcap');
+    shTabs.addEventListener('click', e => {
+      const b = e.target.closest('.sht');
+      if (!b) return;
+      shTabs.querySelectorAll('.sht').forEach(x => {
+        x.classList.remove('on');
+        x.setAttribute('aria-selected', 'false');
+      });
+      b.classList.add('on');
+      b.setAttribute('aria-selected', 'true');
+      const s = SHOTS[+b.dataset.s];
+      shImg.src = s.img; shImg.alt = s.alt;
+      shUrl.textContent = s.url; shCap.textContent = s.cap;
+    });
+  }
+
   const langBtn = document.getElementById('langBtn');
   const langDD  = document.getElementById('langDropdown');
   if (langBtn && langDD) {

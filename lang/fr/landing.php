@@ -7,6 +7,30 @@ return [
 
     // Navbar
     'nav_features' => 'Fonctionnalités',
+    // En-tête marketing et plan de site partagés (accueil et /features).
+    // Vitrine produit (captures encadrées sur la page d'accueil).
+    'show_title'        => 'Voici le produit en entier',
+    'show_sub'          => 'Pas besoin de démo pour le voir. Trois écrans couvrent presque tout ce que votre équipe utilise au quotidien.',
+    'show_tab_inbox'     => 'Boîte partagée',
+    'show_tab_dashboard' => 'Tableau de bord',
+    'show_tab_livechat'  => 'Chat en direct',
+    'show_alt_inbox'     => 'Boîte partagée wavadesk avec la file de conversations, un fil ouvert et le panneau de contexte client',
+    'show_alt_dashboard' => 'Tableau de bord wavadesk affichant le statut de l\'offre, les jauges d\'usage, les indicateurs et le volume de conversations',
+    'show_alt_livechat'  => 'Réglages du chat en direct wavadesk avec la configuration du widget et un aperçu en direct',
+    'show_cap_inbox'     => 'Les conversations WhatsApp et web dans une seule file. Prenez une conversation et elle se verrouille sur vous : aucun client ne reçoit deux réponses.',
+    'show_cap_dashboard' => 'Temps de réponse, volume par canal, charge des agents et part résolue par l\'IA — sans installer le moindre suivi.',
+    'show_cap_livechat'  => 'Configurez le widget du site avec un aperçu en direct à côté des réglages, puis collez un seul extrait de code sur votre site.',
+    'nav_primary'       => 'Principal',
+    'nav_menu_open' => 'Ouvrir le menu',
+    'nav_menu_close' => 'Fermer le menu',
+    'nav_language' => 'Langue',
+    'nav_product'       => 'Produit',
+    'nav_see_pricing'   => 'Voir les tarifs',
+    'nav_signin'        => 'Se connecter',
+    'nav_cta'           => 'Essai gratuit',
+    'footer_automation' => 'Automatisation',
+    'footer_platform'   => 'Plateforme',
+    'footer_home'       => 'Accueil',
     'nav_pricing'  => 'Tarifs',
     'nav_how'      => 'Comment ça marche',
     'nav_faq'      => 'FAQ',
@@ -207,11 +231,15 @@ return [
     'f6_d'                            => 'Un scan et vous êtes en ligne. Gardez le numéro que vos clients contactent déjà — rien ne change pour eux.',
 
     'pricing2_title'                  => 'Essayez gratuitement, décidez ensuite',
-    'pricing2_sub'                    => ':days jours de produit complet. Aucune carte à l\'inscription, et rien n\'est débité tant que vous n\'avez pas choisi une offre.',
+    'pricing2_sub'                    => 'Starter inclut un essai gratuit de :days jours. Aucune carte à l\'inscription, et rien n\'est débité tant que vous n\'avez pas choisi une offre.',
     'popular_short'                   => 'Le plus choisi',
     'plan_tagline_starter'            => 'Pour une petite équipe qui quitte le téléphone unique.',
     'plan_tagline_growth'             => 'Pour les équipes dont le support est un vrai métier.',
-    'price_note'                      => 'Toutes les offres démarrent par le même essai gratuit de :days jours. Annulez pendant l\'essai et rien n\'est débité.',
+    'plan_tagline_scale'              => 'Pour les équipes qui veulent tous les modules activés.',
+    // La promesse qui ouvre chaque carte de forfait, au-dessus des puces.
+    'plan_unlimited_headline'         => 'Messages illimités sur WhatsApp. Aucun frais par message. Aucun frais de conversation Meta. Jamais.',
+    'plan_trial_badge'                => ':days jours offerts',
+    'price_note'                      => 'Toutes les offres incluent les messages WhatsApp illimités. Starter démarre par un essai gratuit de :days jours — annulez pendant l\'essai et rien n\'est débité.',
     'no_plans'                        => 'Aucune offre disponible pour le moment. Revenez bientôt.',
 
     'final_title'                     => 'Sortez votre équipe du téléphone unique dès cet après-midi.',
@@ -222,4 +250,8 @@ return [
     // ── signed-in visitors ──
     'go_to_dashboard'      => 'Accéder à mon tableau de bord',
     'signed_in_as'         => 'Connecté en tant que :name',
+    'attr_trial' => 'Essai gratuit de :days jours',
+    'attr_instances' => '{1} 1 numéro WhatsApp|[2,*] :n numéros WhatsApp',
+    'attr_ai_messages' => ':n messages IA / mois',
+    'attr_ai_unlimited' => 'Messages IA illimités',
 ];

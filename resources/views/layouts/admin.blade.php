@@ -74,6 +74,16 @@
                 private: function(channel) { return makeChannelShim(_pusher.subscribe('private-' + channel)); },
                 channel: function(channel) { return makeChannelShim(_pusher.subscribe(channel)); },
                 join:    function(channel) { return makeChannelShim(_pusher.subscribe('presence-' + channel)); },
+                // Without this a per-conversation subscription can never be torn
+                // down: pusher.subscribe() hands back the channel it already has,
+                // so re-opening a thread binds a second handler to it, and every
+                // thread visited this session keeps firing into the one on screen.
+                // Mirrors Echo's leave() — drop whichever variant is subscribed.
+                leave: function(channel) {
+                    ['private-' + channel, 'presence-' + channel, channel].forEach(function(name) {
+                        if (_pusher.channel(name)) _pusher.unsubscribe(name);
+                    });
+                },
             };
         } catch(e) {
             console.warn('Echo init failed:', e);
@@ -334,6 +344,20 @@
         }
         .sidebar-nav a.active .nav-badge { background: rgba(255,255,255,.22); }
 
+        /* A module the plan does not include: still reachable, visibly not
+           bought yet. Dimmed rather than disabled — the click is the point. */
+        .sidebar-nav a.nav-locked { color: var(--sidebar-muted); }
+        .sidebar-nav a.nav-locked i { opacity: .55; }
+        .sidebar-nav a.nav-locked:hover { color: var(--sidebar-text); }
+        .sidebar-nav a.nav-locked:hover i { opacity: .8; }
+        .sidebar-nav a .nav-lock {
+            margin-inline-start: auto;
+            font-size: 12.5px;
+            width: auto;
+            opacity: .55;
+        }
+        .sidebar-nav a.nav-locked.active { background: var(--sidebar-hover); color: #fff; }
+
         .sidebar-nav a .nav-badge.red { background: var(--red); }
 
         /* Pinned bottom block (Settings / API Docs) */
@@ -526,6 +550,24 @@
 
         /* Notification dropdown panel */
         .notif-wrap { position: relative; }
+
+        /* account menu — same shell as the notification panel */
+        .profile-btn { padding: 0; overflow: hidden; position: relative; }
+        .profile-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; position: absolute; inset: 0; }
+        .profile-btn .ini { font-size: 13px; font-weight: 700; color: var(--brand); }
+        .profile-panel { width: 244px; padding: 6px; }
+        .profile-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 12px; border-bottom: 1px solid var(--card-border); margin-bottom: 6px; }
+        .profile-head .av { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-xlight); color: var(--brand); display: grid; place-items: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+        .profile-head .m { min-width: 0; }
+        .profile-head .n { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-head .e { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text-primary); background: none; border: none; cursor: pointer; font-family: inherit; text-align: start; transition: var(--transition); }
+        .profile-item:hover { background: var(--page-bg); color: var(--text-primary); }
+        .profile-item i { font-size: 16px; color: var(--text-secondary); flex-shrink: 0; }
+        .profile-item.danger { color: var(--red); }
+        .profile-item.danger:hover { background: var(--red-bg); }
+        .profile-item.danger i { color: var(--red); }
+        .profile-sep { height: 1px; background: var(--card-border); margin: 6px 0; }
         .notif-panel {
             position: absolute;
             top: calc(100% + 8px);
@@ -1734,6 +1776,14 @@
                 $u    = Auth::user();
                 $isSA = $u->isSuperAdmin();
                 $sp   = fn (string $p) => $u->hasSuperAdminPermission($p);
+                // Plan entitlement. Mirrors the `module` middleware so the rail
+                // never offers a page the tenant's plan would bounce them off.
+                $mod  = fn (string $m) => $u->tenant?->planAllows($m) ?? false;
+                // A `teaser` module the plan lacks stays in the rail, locked:
+                // opening it shows the blurred upgrade preview rather than a
+                // dead end, so the gap sells the upgrade instead of hiding it.
+                $teased  = fn (string $m) => !$mod($m) && (bool) config("plan_modules.$m.teaser");
+                $modShow = fn (string $m) => $mod($m) || $teased($m);
 
                 // ── badge counts ──
                 $poolCountQuery = \App\Models\Conversation::pool();
@@ -1756,6 +1806,8 @@
                         'items' => [
                             ['route' => 'platform.tenants',           'match' => ['platform.tenants*'],       'icon' => 'ri-building-2-line',    'label' => __('ui.sidebar.tenants'),            'show' => $sp('platform_tenants')],
                             ['route' => 'platform.plans',             'match' => ['platform.plans*'],         'icon' => 'ri-price-tag-3-line',   'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
+                            ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line', 'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
+                            ['route' => 'platform.addons',            'match' => ['platform.addons*'],        'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
                             ['route' => 'platform.system-health',     'match' => ['platform.system-health*'], 'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),      'show' => $sp('platform_system_health')],
                             ['route' => 'platform.legal-pages.index', 'match' => ['platform.legal-pages*'],   'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),        'show' => $sp('platform_legal_pages')],
                             ['route' => 'super-admins.index',         'match' => ['super-admins.*'],          'icon' => 'ri-shield-user-line',   'label' => __('ui.sidebar.super_admins'),       'show' => $u->isMasterSuperAdmin()],
@@ -1773,13 +1825,16 @@
                         ],
                     ],
 
+                    // Tenant-operational management. Super admins no longer
+                    // have these routes at all — the control panel is the
+                    // platform, not a workspace.
                     [
                         'label' => __('ui.sidebar.management'),
-                        'show'  => $u->hasAnyRole(['admin', 'super_admin']),
+                        'show'  => $u->isAdmin(),
                         'items' => [
-                            ['route' => 'instances.index', 'match' => ['instances.*'], 'icon' => 'ri-smartphone-line',    'label' => __('ui.sidebar.whatsapp_instances'), 'show' => !$isSA || $sp('instances')],
-                            ['route' => 'teams.index',     'match' => ['teams.*'],     'icon' => 'ri-team-line',          'label' => __('ui.sidebar.teams'),              'show' => !$isSA || $sp('teams')],
-                            ['route' => 'users.index',     'match' => ['users.*'],     'icon' => 'ri-user-settings-line', 'label' => __('ui.sidebar.agents_users'),       'show' => !$isSA || $sp('users')],
+                            ['route' => 'instances.index', 'match' => ['instances.*'], 'icon' => 'ri-smartphone-line',    'label' => __('ui.sidebar.whatsapp_instances')],
+                            ['route' => 'teams.index',     'match' => ['teams.*'],     'icon' => 'ri-team-line',          'label' => __('ui.sidebar.teams'), 'show' => $modShow('teams'), 'locked' => $teased('teams')],
+                            ['route' => 'users.index',     'match' => ['users.*'],     'icon' => 'ri-user-settings-line', 'label' => __('ui.sidebar.agents_users')],
                         ],
                     ],
 
@@ -1787,7 +1842,7 @@
                         'label' => __('ui.sidebar.management'),
                         'show'  => $u->isSupervisor(),
                         'items' => [
-                            ['route' => 'teams.index', 'match' => ['teams.*'], 'icon' => 'ri-team-line', 'label' => __('ui.sidebar.teams')],
+                            ['route' => 'teams.index', 'match' => ['teams.*'], 'icon' => 'ri-team-line', 'label' => __('ui.sidebar.teams'), 'locked' => $teased('teams')],
                         ],
                     ],
 
@@ -1795,18 +1850,29 @@
                         'label' => __('ui.sidebar.automation'),
                         'show'  => $u->isAdmin(),
                         'items' => [
-                            ['route' => 'ai-settings.index',   'match' => ['ai-settings.*'],   'icon' => 'ri-sparkling-2-line', 'label' => __('ui.sidebar.ai_agent')],
-                            ['route' => 'knowledge.index',     'match' => ['knowledge.*'],     'icon' => 'ri-book-2-line',      'label' => __('ui.sidebar.knowledge_base')],
-                            ['route' => 'saved-replies.index', 'match' => ['saved-replies.*'], 'icon' => 'ri-chat-3-line',      'label' => __('ui.sidebar.saved_replies')],
+                            ['route' => 'ai-settings.index',   'match' => ['ai-settings.*'],   'icon' => 'ri-sparkling-2-line', 'label' => __('ui.sidebar.ai_agent'),       'show' => $mod('ai_agent')],
+                            ['route' => 'knowledge.index',     'match' => ['knowledge.*'],     'icon' => 'ri-book-2-line',      'label' => __('ui.sidebar.knowledge_base'), 'show' => $mod('knowledge_base')],
+                            ['route' => 'saved-replies.index', 'match' => ['saved-replies.*'], 'icon' => 'ri-chat-3-line',      'label' => __('ui.sidebar.saved_replies'),  'show' => $mod('saved_replies')],
+                        ],
+                    ],
+
+                    // Supervisors and agents get the saved-reply library too —
+                    // they write the replies. Team-scoped entries stay read-only
+                    // for agents; the API enforces that.
+                    [
+                        'label' => __('ui.sidebar.automation'),
+                        'show'  => $u->isSupervisor() || $u->isAgent(),
+                        'items' => [
+                            ['route' => 'saved-replies.index', 'match' => ['saved-replies.*'], 'icon' => 'ri-chat-3-line', 'label' => __('ui.sidebar.saved_replies'), 'show' => $mod('saved_replies')],
                         ],
                     ],
 
                     [
                         'label' => __('ui.sidebar.modules'),
                         'items' => [
-                            ['route' => 'otp-service.show',            'match' => ['otp-service.*'],            'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),   'show' => $u->isAdmin()],
-                            ['route' => 'reservations.index',          'match' => ['reservations.*'],           'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),  'show' => $u->isAdmin() && $u->tenant?->plan?->reservations_enabled],
-                            ['route' => 'webchat.settings.show', 'match' => ['webchat.*'], 'icon' => 'ri-chat-smile-2-line', 'label' => __('ui.sidebar.live_chat'), 'show' => $u->isAdmin()],
+                            ['route' => 'otp-service.show',      'match' => ['otp-service.*'],  'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),  'show' => $u->isAdmin() && $mod('otp_service')],
+                            ['route' => 'reservations.index',    'match' => ['reservations.*'], 'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'), 'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
+                            ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],      'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),    'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
                         ],
                     ],
 
@@ -1814,7 +1880,8 @@
                         'label' => __('ui.sidebar.insights'),
                         'show'  => $u->hasAnyRole(['admin', 'super_admin']),
                         'items' => [
-                            ['route' => 'reports.index',       'match' => ['reports.*'],       'icon' => 'ri-bar-chart-2-line',    'label' => __('ui.sidebar.reports'),       'show' => $u->isAdmin() || ($isSA && $sp('reports'))],
+                            ['route' => 'reports.index',       'match' => ['reports.*'],       'icon' => 'ri-bar-chart-2-line',    'label' => __('ui.sidebar.reports'),       'show' => ($u->isAdmin() && $mod('reports')) || ($isSA && $sp('reports'))],
+                            ['route' => 'audit-log.index',     'match' => ['audit-log.*'],     'icon' => 'ri-file-list-3-line',    'label' => __('ui.sidebar.audit_log'),     'show' => $isSA && $sp('audit_log')],
                             ['route' => 'notifications.index', 'match' => ['notifications.*'], 'icon' => 'ri-notification-3-line', 'label' => __('ui.sidebar.notifications'), 'show' => $isSA && $sp('notifications')],
                             ['route' => 'billing.index',       'match' => ['billing.index'],   'icon' => 'ri-bank-card-line',      'label' => __('ui.sidebar.billing'),       'show' => $isSA && $sp('billing')],
                             ['route' => 'billing.payments',    'match' => ['billing.payments', 'billing.payment.show'], 'icon' => 'ri-receipt-line', 'label' => __('ui.sidebar.payments'), 'show' => $isSA && $sp('billing')],
@@ -1825,6 +1892,13 @@
                     [
                         'pinned' => true,
                         'items'  => [
+                            // Billing sits above Settings: it is the page a tenant
+                            // admin reaches for most often, and it was previously
+                            // only linked from the super admin's Insights group.
+                            // Gated on isAdmin because billing.index exists for
+                            // the tenant_admin prefix only — a supervisor or agent
+                            // following it would hit a missing route.
+                            ['route' => 'billing.index',    'match' => ['billing.index'], 'icon' => 'ri-bank-card-line',  'label' => __('ui.sidebar.billing'),  'show' => $u->isAdmin()],
                             $isSA
                                 ? ['route' => 'profile.show',   'match' => ['profile.*'],  'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings')]
                                 : ['route' => 'settings.index', 'match' => ['settings.*'], 'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings'), 'show' => $u->isAdmin()],
@@ -1864,11 +1938,14 @@
 
                 @foreach($items as $item)
                     <a href="{{ $item['url'] ?? route($panelPrefix . '.' . $item['route']) }}"
-                       class="{{ isset($item['route']) ? $navActive(array_map(fn ($m) => $panelPrefix . '.' . $m, $item['match'] ?? [$item['route']])) : '' }}"
+                       class="{{ isset($item['route']) ? $navActive(array_map(fn ($m) => $panelPrefix . '.' . $m, $item['match'] ?? [$item['route']])) : '' }}{{ !empty($item['locked']) ? ' nav-locked' : '' }}"
+                       @if(!empty($item['locked'])) title="{{ __('ui.module_locked.nav_hint') }}" @endif
                        @if(!empty($item['external'])) target="_blank" rel="noopener" @endif>
                         <i class="{{ $item['icon'] }}"></i>
                         <span>{{ $item['label'] }}</span>
-                        @if(!empty($item['badge']))
+                        @if(!empty($item['locked']))
+                            <i class="ri-lock-2-line nav-lock" aria-label="{{ __('ui.module_locked.nav_hint') }}"></i>
+                        @elseif(!empty($item['badge']))
                             <span class="nav-badge">{{ $item['badge'] }}</span>
                         @elseif(!empty($item['external']))
                             <i class="ri-external-link-line" style="margin-inline-start:auto;font-size:11px;opacity:.5"></i>
@@ -1952,13 +2029,6 @@
                     </select>
                 </form>
 
-                <a href="{{ route('admin.conversations.index', ['tab' => 'pool']) }}" class="topbar-btn" title="{{ __('ui.inbox') }}">
-                    <i class="ri-inbox-line"></i>
-                    @if(($poolCount ?? 0) > 0)
-                        <span class="topbar-notif-dot"></span>
-                    @endif
-                </a>
-
                 {{-- Notification bell --}}
                 <div class="notif-wrap" id="notifWrap">
                     <button class="topbar-btn" id="notifBtn" title="{{ __('ui.notifications') }}">
@@ -1985,6 +2055,46 @@
                                 </a>
                             @endif
                         </div>
+                    </div>
+                </div>
+
+                {{-- Account menu --}}
+                <div class="notif-wrap" id="profileWrap">
+                    <button class="topbar-btn profile-btn" id="profileBtn" type="button"
+                            aria-haspopup="true" aria-expanded="false" title="{{ Auth::user()->name }}">
+                        <img src="{{ Auth::user()->avatar_url }}" alt="" onerror="this.remove()">
+                        <span class="ini">{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}</span>
+                    </button>
+
+                    <div class="notif-panel profile-panel" id="profilePanel">
+                        <div class="profile-head">
+                            <div class="av">{{ strtoupper(substr(Auth::user()->name, 0, 1)) }}</div>
+                            <div class="m">
+                                <div class="n">{{ Auth::user()->name }}</div>
+                                <div class="e">{{ Auth::user()->email }}</div>
+                            </div>
+                        </div>
+
+                        <a class="profile-item" href="{{ route($panelPrefix . '.profile.show') }}">
+                            <i class="ri-user-settings-line"></i>{{ __('ui.profile_page.title') }}
+                        </a>
+
+                        {{-- Workspace settings is an admin-only page; a supervisor
+                             or agent following this link would only be bounced. --}}
+                        @if(Auth::user()->isAdmin())
+                        <a class="profile-item" href="{{ route($panelPrefix . '.settings.index') }}">
+                            <i class="ri-settings-3-line"></i>{{ __('ui.settings_page.title') }}
+                        </a>
+                        @endif
+
+                        <div class="profile-sep"></div>
+
+                        <form method="POST" action="{{ route('logout') }}" data-no-loading>
+                            @csrf
+                            <button type="submit" class="profile-item danger">
+                                <i class="ri-logout-box-r-line"></i>{{ __('ui.logout') }}
+                            </button>
+                        </form>
                     </div>
                 </div>
 
@@ -2817,6 +2927,38 @@
         /* ---- initial count fetch + poll fallback every 5 min ---- */
         fetchCount();
         setInterval(fetchCount, 300000);
+
+        /* ---- account menu ---- */
+        const pBtn   = document.getElementById('profileBtn');
+        const pPanel = document.getElementById('profilePanel');
+
+        if (pBtn && pPanel) {
+            pBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                // Only one panel open at a time — two overlapping dropdowns in
+                // the same corner is just a mess.
+                panel.classList.remove('open');
+                const open = pPanel.classList.toggle('open');
+                pBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!pPanel.contains(e.target) && !pBtn.contains(e.target)) {
+                    pPanel.classList.remove('open');
+                    pBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    pPanel.classList.remove('open');
+                    pBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // The bell closes the account menu for the same reason.
+        btn.addEventListener('click', function () { pPanel?.classList.remove('open'); });
     })();
     </script>
 </body>

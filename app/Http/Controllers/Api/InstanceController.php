@@ -66,6 +66,16 @@ class InstanceController extends Controller
     {
         $this->authorizeInstance($instance);
 
+        // PROC-019: a deliberate re-pair is the only thing that can clear a
+        // session WhatsApp has refused, so it clears the flap guard and opens a
+        // grace window the guard stands down for while the phone scans.
+        $guard = app(\App\Services\WhatsApp\ConnectionFlapGuard::class);
+        $refusedSession = $guard->isTripped($instance)
+            && (bool) data_get($instance->settings, 'connection_guard.permanent');
+        $guard->reset($instance);
+        $guard->beginPairing($instance);
+        $instance->refresh();
+
         try {
             $gateway = $this->gateway($instance);
 
@@ -92,6 +102,24 @@ class InstanceController extends Controller
                         ?? $gatewayName,
                 ]);
                 $instance->refresh();
+            }
+
+            // A session WhatsApp has permanently refused will never emit a QR:
+            // the gateway keeps trying to resume the stored credentials instead
+            // of pairing. Logging out clears those credentials while leaving the
+            // instance itself in place, so this connect pairs from scratch.
+            if ($refusedSession && $instance->gateway_instance_id) {
+                try {
+                    $gateway->logout($instance->gateway_instance_id);
+                    \Illuminate\Support\Facades\Log::channel('whatsapp')->info('Cleared refused session before re-pair', [
+                        'instance_id' => $instance->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::channel('whatsapp')->warning('Session clear failed', [
+                        'instance_id' => $instance->id,
+                        'error'       => $e->getMessage(),
+                    ]);
+                }
             }
 
             $this->ensureWebhookRegistered($gateway, $instance);
@@ -168,7 +196,7 @@ class InstanceController extends Controller
         try {
             $gateway     = $this->gateway($instance);
             $details     = $gateway->fetchInstance($instance->gateway_instance_id);
-            $status      = $gateway->getStatus($instance->gateway_instance_id);
+            $status      = $gateway->statusFromPayload($details);
             $phoneNumber = $this->extractPhoneNumber($details);
 
             if ($status === 'connected') {

@@ -166,6 +166,12 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function handleConnectionUpdate(array $payload, $instance): void
     {
+        // PROC-019: events queued before the guard tripped are still in flight.
+        // Applying them would overwrite the 'error' status the guard just set.
+        if (app(\App\Services\WhatsApp\ConnectionFlapGuard::class)->isTripped($instance)) {
+            return;
+        }
+
         $state = $this->extractConnectionState($payload);
 
         $status = match($state) {
@@ -196,8 +202,17 @@ class ProcessIncomingMessage implements ShouldQueue
             $updates['qr_code'] = null;
         }
 
+        // PROC-019: last_status_at moves on every event, so comparing the whole
+        // update set would broadcast on every lap of a reconnect loop. Only a
+        // status change or a fresh QR is worth pushing to the dashboard.
+        $changed = $instance->status !== $status
+            || (array_key_exists('qr_code', $updates) && $updates['qr_code'] !== $instance->qr_code);
+
         $instance->update($updates);
-        broadcast(new \App\Events\InstanceStatusChanged($instance->fresh()));
+
+        if ($changed) {
+            broadcast(new \App\Events\InstanceStatusChanged($instance->fresh()));
+        }
     }
 
     private function normalizedEvent(array $payload): string

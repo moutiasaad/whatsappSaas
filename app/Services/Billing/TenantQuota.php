@@ -23,7 +23,13 @@ class TenantQuota
     public function userLimit(User $actor): ?int
     {
         if ($actor->isSuperAdmin()) return null;
-        return (int) ($actor->tenant?->plan?->max_users ?? self::DEFAULT_USER_LIMIT);
+
+        $tenant = $actor->tenant;
+        $base   = (int) ($tenant?->plan?->max_users ?? self::DEFAULT_USER_LIMIT);
+
+        // Purchased seats sit on the tenant, not the plan, so they survive a
+        // plan change — the tenant paid for the seat, not for the tier.
+        return $base + (int) ($tenant?->extra_seats ?? 0);
     }
 
     public function currentInstanceCount(User $actor): int

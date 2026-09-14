@@ -104,6 +104,18 @@ class LoginController extends Controller
                 );
             }
 
+            // The platform account is not a workspace account: it has no tenant
+            // and no tenant panel to land on. Turning it away from the shared
+            // form keeps the two sign-ins genuinely separate rather than one
+            // door that happens to branch afterwards.
+            if (!$superAdminOnly && $user->isSuperAdmin()) {
+                return $this->rejectPortalLogin(
+                    $request,
+                    __('auth.errors.use_control_panel_login'),
+                    'superadmin.login'
+                );
+            }
+
             if ($superAdminOnly) {
                 $target = route('super_admin.dashboard');
             } else {

@@ -25,7 +25,7 @@ class SingleInstanceController extends Controller
         try {
             $gateway        = $this->gateway($instance);
             $details        = $gateway->fetchInstance($instance->gateway_instance_id);
-            $gatewayStatus  = $gateway->getStatus($instance->gateway_instance_id);
+            $gatewayStatus  = $gateway->statusFromPayload($details);
             $phone          = $this->extractPhone($details);
 
             // The gateway reports 'close' (→ disconnected) both while waiting for a QR

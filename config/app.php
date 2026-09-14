@@ -81,6 +81,12 @@ return [
     'trial_days' => (int) env('TRIAL_DAYS', 7),
 
     /*
+     * URL prefix for the platform control panel (super admin only). The route
+     * *name* prefix stays `super_admin.` regardless — only the path changes.
+     */
+    'super_admin_prefix' => trim((string) env('SUPER_ADMIN_PREFIX', 'admin-control-panel'), '/'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

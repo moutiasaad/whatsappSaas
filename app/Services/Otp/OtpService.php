@@ -2,6 +2,7 @@
 
 namespace App\Services\Otp;
 
+use App\Events\InstanceStatusChanged;
 use App\Models\OtpCode;
 use App\Models\Tenant;
 use App\Models\WhatsAppInstance;
@@ -57,14 +58,15 @@ class OtpService
         // The code exists only in memory on this request and as a bcrypt hash
         // in code_hash — nobody with DB or log read access can recover it.
 
+        $gateway = new EvolutionApiClient(
+            $instance->effectiveGatewayUrl(),
+            $instance->effectiveGatewayApiKey()
+        );
+
         try {
-            $gateway = new EvolutionApiClient(
-                $instance->effectiveGatewayUrl(),
-                $instance->effectiveGatewayApiKey()
-            );
             $gateway->sendText($instance->gateway_instance_id, $identifier, $body);
         } catch (\Throwable $e) {
-            return $this->fail('gateway_error', 'Failed to deliver OTP: ' . $e->getMessage(), 502);
+            return $this->handleSendFailure($tenant, $instance, $gateway, $e);
         }
 
         OtpCode::updateOrCreate(
@@ -84,6 +86,67 @@ class OtpService
             'identifier' => $identifier,
             'expires_in' => $ttl * 60,
         ];
+    }
+
+    /**
+     * Turn a failed gateway send into an actionable answer.
+     *
+     * The gateway answers HTTP 500 with an empty body for every send it cannot
+     * complete, so the exception alone cannot say why. Re-probing the instance
+     * separates the two cases the caller has to word differently: our own
+     * WhatsApp socket is down (nothing the end user can do), or the socket is
+     * fine and WhatsApp refused this particular recipient (most often a number
+     * that is not on WhatsApp).
+     */
+    private function handleSendFailure(
+        Tenant $tenant,
+        WhatsAppInstance $instance,
+        EvolutionApiClient $gateway,
+        \Throwable $e
+    ): array {
+        $liveStatus = null;
+
+        try {
+            $liveStatus = $gateway->probeStatus($instance->gateway_instance_id);
+        } catch (\Throwable) {
+            // Leave $liveStatus null — treated as "could not determine".
+        }
+
+        Log::warning('OTP send failed', [
+            'tenant_id'   => $tenant->id,
+            'instance_id' => $instance->id,
+            'gateway_id'  => $instance->gateway_instance_id,
+            'live_status' => $liveStatus,
+            'error'       => $e->getMessage(),
+        ]);
+
+        if ($liveStatus !== null && $liveStatus !== 'connected') {
+            // The dashboard is showing this instance as connected but its
+            // WhatsApp socket has dropped. Correct the record so the workspace
+            // owner sees the real state and knows to re-scan the QR.
+            if ($instance->status !== $liveStatus) {
+                $instance->update(['status' => $liveStatus, 'last_status_at' => now()]);
+
+                try {
+                    broadcast(new InstanceStatusChanged($instance->fresh()));
+                } catch (\Throwable) {
+                    // The corrected row is what matters here; a dead broadcast
+                    // connection must not turn this into a 500 for the caller.
+                }
+            }
+
+            return $this->fail(
+                'instance_offline',
+                'The workspace WhatsApp connection is offline. Reconnect the instance and try again.',
+                503
+            );
+        }
+
+        return $this->fail(
+            'gateway_error',
+            'WhatsApp rejected delivery to this number. Check that it is an active WhatsApp account.',
+            502
+        );
     }
 
     /**
