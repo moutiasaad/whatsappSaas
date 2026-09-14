@@ -1487,6 +1487,7 @@ return [
         'archive' => 'الأرشيف',
         'live_chat_settings' => 'إعدادات الدردشة',
         'otp_service' => 'خدمة OTP',
+        'notify_service' => 'إشعارات واتساب',
         'teams' => 'الفرق',
         'whatsapp_instances' => 'حالات WhatsApp',
         'agents_users' => 'الوكلاء والمستخدمون',

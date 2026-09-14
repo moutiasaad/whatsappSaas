@@ -1870,9 +1870,13 @@
                     [
                         'label' => __('ui.sidebar.modules'),
                         'items' => [
-                            ['route' => 'otp-service.show',      'match' => ['otp-service.*'],  'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),  'show' => $u->isAdmin() && $mod('otp_service')],
-                            ['route' => 'reservations.index',    'match' => ['reservations.*'], 'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'), 'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
-                            ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],      'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),    'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
+                            ['route' => 'otp-service.show',      'match' => ['otp-service.*'],    'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),    'show' => $u->isAdmin() && $mod('otp_service')],
+                            // Notify is not a plan module (no `notify_service`
+                            // key in config/plan_modules.php), so it stays on
+                            // the plain isAdmin gate main shipped it with.
+                            ['route' => 'notify-service.show',   'match' => ['notify-service.*'], 'icon' => 'ri-send-plane-line',     'label' => __('ui.sidebar.notify_service'), 'show' => $u->isAdmin()],
+                            ['route' => 'reservations.index',    'match' => ['reservations.*'],   'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),   'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
+                            ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],        'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),      'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
                         ],
                     ],
 
