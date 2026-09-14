@@ -1453,6 +1453,7 @@ Toujours :
         'archive' => 'Archive',
         'live_chat_settings' => 'Paramètres du chat',
         'otp_service' => 'Service OTP',
+        'notify_service' => 'Notification WhatsApp',
         'teams' => 'Équipes',
         'whatsapp_instances' => 'Instances WhatsApp',
         'agents_users' => 'Agents & Utilisateurs',

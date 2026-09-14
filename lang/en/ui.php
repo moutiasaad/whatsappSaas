@@ -1455,6 +1455,7 @@ Always:
         'archive' => 'Archive',
         'live_chat_settings' => 'Live Chat Settings',
         'otp_service' => 'OTP Service',
+        'notify_service' => 'WhatsApp Notify',
         'teams' => 'Teams',
         'whatsapp_instances' => 'WhatsApp Instances',
         'agents_users' => 'Agents & Users',

@@ -1805,6 +1805,7 @@
                         'label' => __('ui.sidebar.modules'),
                         'items' => [
                             ['route' => 'otp-service.show',            'match' => ['otp-service.*'],            'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),   'show' => $u->isAdmin()],
+                            ['route' => 'notify-service.show',         'match' => ['notify-service.*'],         'icon' => 'ri-send-plane-line',     'label' => __('ui.sidebar.notify_service'),'show' => $u->isAdmin()],
                             ['route' => 'reservations.index',          'match' => ['reservations.*'],           'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),  'show' => $u->isAdmin() && $u->tenant?->plan?->reservations_enabled],
                             ['route' => 'webchat.settings.show', 'match' => ['webchat.*'], 'icon' => 'ri-chat-smile-2-line', 'label' => __('ui.sidebar.live_chat'), 'show' => $u->isAdmin()],
                         ],
