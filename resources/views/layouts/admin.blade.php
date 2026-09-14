@@ -561,8 +561,8 @@
         .profile-head .m { min-width: 0; }
         .profile-head .n { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .profile-head .e { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .profile-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text-primary); background: none; border: none; cursor: pointer; font-family: inherit; text-align: start; transition: var(--transition); }
-        .profile-item:hover { background: var(--page-bg); color: var(--text-primary); }
+        .profile-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text-primary); background: none; border: none; cursor: pointer; font-family: inherit; text-align: start; text-decoration: none; transition: var(--transition); }
+        .profile-item:hover { background: var(--page-bg); color: var(--text-primary); text-decoration: none; }
         .profile-item i { font-size: 16px; color: var(--text-secondary); flex-shrink: 0; }
         .profile-item.danger { color: var(--red); }
         .profile-item.danger:hover { background: var(--red-bg); }

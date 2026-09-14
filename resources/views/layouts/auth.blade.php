@@ -185,6 +185,47 @@ h2.formtitle{font-size:29px;font-weight:700;letter-spacing:-.03em;margin:0}
 .planopt:checked+.planlbl .mark{background:var(--teal);border-color:var(--teal)}
 .planlbl .hot{position:absolute;top:-9px;inset-inline-start:12px;background:var(--teal);color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
 
+/* signup wizard header (step 1 / step 2) */
+.wizsteps{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.wizsteps .st{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted-2);white-space:nowrap}
+.wizsteps .st i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11.5px;font-weight:700;background:var(--soft);border:1px solid var(--border);color:var(--muted-2)}
+.wizsteps .st.on{color:var(--teal-d)}
+.wizsteps .st.on i{background:var(--teal);border-color:var(--teal);color:#fff}
+.wizsteps .st.done{color:var(--teal)}
+.wizsteps .st.done i{background:var(--teal-50);border-color:var(--teal-100);color:var(--teal)}
+.wizsteps .bar{flex:1;height:2px;border-radius:2px;background:var(--border)}
+.ctahint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.45}
+
+/* ---------- step 2: plan choice ---------- */
+.pane .inner.plans-wide{max-width:560px}
+.pickplans{display:grid;gap:11px;margin-top:22px}
+.pickplan{position:relative;display:block;border:1px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:.15s;background:#fff}
+.pickplan:hover{border-color:var(--border-2)}
+.planopt:checked+.pickplan{border-color:var(--teal);background:var(--teal-50);box-shadow:0 0 0 3px rgba(15,126,122,.09)}
+.planopt:focus-visible+.pickplan{box-shadow:0 0 0 3px rgba(15,126,122,.22)}
+.pickplan .top{display:flex;align-items:flex-start;gap:12px}
+.pickplan .mark{width:20px;height:20px;flex-shrink:0;margin-top:2px;border-radius:50%;border:1.5px solid var(--border-2);display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;transition:.15s}
+.planopt:checked+.pickplan .mark{background:var(--teal);border-color:var(--teal)}
+.pickplan .mid{flex:1;min-width:0}
+.pickplan .nm{font-size:15.5px;font-weight:700;letter-spacing:-.015em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pickplan .price{text-align:end;flex-shrink:0}
+.pickplan .price b{font-size:20px;font-weight:700;letter-spacing:-.03em;display:block;line-height:1.1}
+.pickplan .price span{font-size:12px;color:var(--muted)}
+.pickplan .free{display:inline-flex;align-items:center;gap:5px;background:var(--teal);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.pickplan .pop{display:inline-flex;align-items:center;background:var(--soft);border:1px solid var(--border);color:var(--muted);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.pickplan .note{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.planopt:checked+.pickplan .note{color:var(--teal-d)}
+.pickplan ul{list-style:none;margin:11px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px}
+.pickplan li{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pickplan li svg{flex-shrink:0}
+.whoami{display:flex;align-items:center;gap:11px;background:var(--soft);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13.5px;margin-bottom:22px}
+.whoami .av{width:34px;height:34px;border-radius:9px;background:var(--teal-50);color:var(--teal-d);display:grid;place-items:center;font-weight:700;font-size:14px;flex-shrink:0}
+.whoami .m{min-width:0}
+.whoami .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.whoami .e{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.signout{margin-inline-start:auto;font-size:12.5px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;text-decoration:underline}
+.signout:hover{color:var(--teal)}
+
 /* otp digits */
 .otpdigits{display:flex;gap:9px;justify-content:space-between;margin:6px 0 4px}
 .otpdigits input{width:100%;height:58px;text-align:center;font-size:23px;font-weight:700;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--text);outline:none;transition:.14s;padding:0}
@@ -253,6 +294,7 @@ html[dir="rtl"] .backlink svg{transform:scaleX(-1)}
   h2.formtitle{font-size:25px}
   .grid2{grid-template-columns:1fr;gap:0}
   .plans{grid-template-columns:1fr}
+  .pickplan{padding:14px}
   .otpdigits{gap:6px}
   .otpdigits input{height:52px;font-size:20px}
   .reassure{gap:12px}

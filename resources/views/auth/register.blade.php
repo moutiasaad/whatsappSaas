@@ -9,9 +9,11 @@
 @endsection
 
 @section('pane')
-@php
-    $trialDays = (int) config('app.trial_days', 14);
-@endphp
+<div class="wizsteps" aria-label="{{ __('auth.register.steps_label') }}">
+    <span class="st on"><i>1</i>{{ __('auth.register.step_account') }}</span>
+    <span class="bar"></span>
+    <span class="st"><i>2</i>{{ __('auth.register.step_plan') }}</span>
+</div>
 
 <div class="trialbadge">
     <div class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#fff"/></svg></div>
@@ -34,24 +36,10 @@
 <form method="POST" action="{{ route('register.store') }}" id="regForm" data-spin novalidate style="margin-top:24px">
     @csrf
 
-    @if($plans->count())
-    <div class="section-label" style="margin-top:0">{{ __('auth.register.choose_plan') }}</div>
-    <div class="plans {{ $plans->count() === 1 ? 'one' : '' }}">
-        @foreach($plans as $i => $plan)
-        @php
-            $isFree = !$plan->price_monthly || (float) $plan->price_monthly === 0.0;
-            $checked = (old('plan_id', $selectedPlan?->id) == $plan->id);
-        @endphp
-        <input type="radio" class="planopt" name="plan_id" id="plan_{{ $plan->id }}" value="{{ $plan->id }}" {{ $checked ? 'checked' : '' }}>
-        <label class="planlbl" for="plan_{{ $plan->id }}">
-            @if($i === 1 && $plans->count() >= 2)<span class="hot">{{ __('landing.popular_short') }}</span>@endif
-            <span class="mark">&#10003;</span>
-            <span class="pn">{{ $plan->name }}</span>
-            <span class="pp">{{ $isFree ? __('landing.plan_free_label') : '$' . number_format((float) $plan->price_monthly, 0) . ' ' . __('landing.plan_per_month') }}</span>
-        </label>
-        @endforeach
-    </div>
-    @error('plan_id')<div class="hint err">{{ $message }}</div>@enderror
+    {{-- The plan is chosen on step 2, once the workspace exists. A card picked
+         on the pricing page rides along so it arrives pre-selected there. --}}
+    @if($intendedPlan)
+    <input type="hidden" name="plan_id" value="{{ $intendedPlan->id }}">
     @endif
 
     <div class="field">
@@ -94,6 +82,7 @@
     </div>
 
     <button class="cta" type="submit"><span class="sp"></span><span class="lbl">{{ __('auth.register.submit_btn') }}</span></button>
+    <div class="ctahint">{{ __('auth.register.submit_hint', ['days' => $trialDays]) }}</div>
 
     <div class="reassure">
         <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.8"/></svg>{{ __('landing.trust_no_card') }}</span>

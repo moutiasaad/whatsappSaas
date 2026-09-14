@@ -58,6 +58,17 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:5,1')->name('register.store');
 });
 
+// Step 2 of signup: the workspace and its admin already exist, the plan does
+// not. Deliberately outside the panel groups — no 'subscription' middleware
+// (a plan-less tenant is exactly who this page is for) and no 'verified'
+// gate, so an admin whose verification mail never arrived can still subscribe.
+Route::middleware(['auth', ResolveTenant::class, 'role:admin'])->group(function () {
+    Route::get('/register/plan', [RegisterController::class, 'plan'])->name('register.plan');
+    Route::post('/register/plan', [RegisterController::class, 'choosePlan'])
+        ->middleware('throttle:10,1')
+        ->name('register.plan.store');
+});
+
 // Payment (Stripe + PayPal)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
 Route::post('/payment/initiate', [PaymentController::class, 'initiate'])->name('payment.initiate');

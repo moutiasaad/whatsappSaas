@@ -18,6 +18,26 @@ class CheckSubscription
 
         $tenant = $user->tenant;
 
+        // Signup step 2 never finished: the workspace exists but no plan was
+        // ever chosen, so there is nothing to bill and nothing to trial. The
+        // admin goes back to the picker; anyone else on that workspace is
+        // simply told to wait for them.
+        if ($tenant && !$tenant->plan_id) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'No plan selected for this workspace yet.',
+                    'code'    => 'plan_not_selected',
+                ], 403);
+            }
+
+            if ($user->role === 'admin') {
+                return redirect()->route('register.plan');
+            }
+
+            return $this->deny($request, $user, 'plan_not_selected',
+                'This workspace has no plan yet. Ask your administrator to choose one.');
+        }
+
         if (!$tenant || !$tenant->isActive()) {
             return $this->deny($request, $user, 'subscription_inactive',
                 'Your subscription is inactive. Please renew your plan to continue.');
