@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# wavadesk — restore the bundle onto a FRESH server, as root.
+#
+#   bash deploy/replicate/import-bundle.sh /root/wavadesk-bundle-<stamp>.tar.gz
+#
+# Assumes RUNBOOK.md step 1 (provisioning) is already done: php 8.3, node 22,
+# mariadb, postgres, apache, supervisor, composer, and the `www` user exist.
+#
+# Idempotent: safe to re-run. It will not overwrite a database that already has
+# tables unless you pass --force-db.
+# ─────────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+BUNDLE="${1:-}"
+APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
+GW_PATH="${GW_PATH:-/www/wwwroot/public/xapi-prod-v1.wavadesk.com}"
+APP_USER="${APP_USER:-www}"
+FORCE_DB=0
+[ "${2:-}" = "--force-db" ] && FORCE_DB=1
+
+[ "$(id -u)" -eq 0 ] || { echo "✗ run as root" >&2; exit 1; }
+[ -n "$BUNDLE" ] && [ -f "$BUNDLE" ] || { echo "usage: $0 /path/to/wavadesk-bundle-*.tar.gz [--force-db]" >&2; exit 1; }
+id "$APP_USER" >/dev/null 2>&1 || { echo "✗ user '$APP_USER' does not exist — do RUNBOOK step 1 first" >&2; exit 1; }
+
+WORK="$(mktemp -d /root/wavadesk-restore.XXXXXX)"; chmod 700 "$WORK"
+trap 'rm -rf "$WORK"' EXIT
+tar -xzf "$BUNDLE" -C "$WORK"
+B="$(find "$WORK" -maxdepth 1 -type d -name 'bundle-*' | head -1)"
+[ -d "$B" ] || { echo "✗ bundle layout not recognised" >&2; exit 1; }
+
+env_get() { grep -m1 "^$1=" "$2" | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"; }
+as_app()  { sudo -u "$APP_USER" -H "$@"; }
+
+echo "── source fingerprint ─────────────────────────────"; cat "$B/SOURCE-FINGERPRINT.txt"; echo "───────────────────────────────────────────────────"; echo
+
+# ── 1. app .env ──────────────────────────────────────────────────────────────
+echo "→ [1/8] app .env"
+if [ -f "$APP_PATH/.env" ]; then
+    cp "$APP_PATH/.env" "$APP_PATH/.env.bak.$(date +%s)"
+    echo "   existing .env backed up"
+fi
+install -o "$APP_USER" -g "$APP_USER" -m 640 "$B/env/wavadesk.env" "$APP_PATH/.env"
+
+# ── 2. MariaDB ───────────────────────────────────────────────────────────────
+echo "→ [2/8] MariaDB restore"
+DB_NAME="$(env_get DB_DATABASE "$APP_PATH/.env")"
+DB_USER="$(env_get DB_USERNAME "$APP_PATH/.env")"
+DB_PASS="$(env_get DB_PASSWORD "$APP_PATH/.env")"
+mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS';"
+mysql -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1'; FLUSH PRIVILEGES;"
+EXISTING="$(mysql -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME';")"
+if [ "$EXISTING" -gt 0 ] && [ "$FORCE_DB" -eq 0 ]; then
+    echo "   ⚠ '$DB_NAME' already has $EXISTING tables — skipping. Re-run with --force-db to overwrite."
+else
+    gunzip -c "$B/db/wavadesk-mysql.sql.gz" | mysql --default-character-set=utf8mb4 "$DB_NAME"
+    echo "   restored"
+fi
+
+# ── 3. Postgres (gateway) ────────────────────────────────────────────────────
+echo "→ [3/8] Postgres restore"
+PG_DB="$(cat "$B/db/pg-dbname.txt")"
+GW_PG_URL="$(env_get DATABASE_URL "$B/env/gateway.env")"
+PG_USER="$(sed -E 's#^[a-z]+://([^:]+):.*#\1#' <<<"$GW_PG_URL")"
+PG_PASS="$(sed -E 's#^[a-z]+://[^:]+:([^@]+)@.*#\1#' <<<"$GW_PG_URL")"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$PG_USER'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE ROLE \"$PG_USER\" LOGIN PASSWORD '$PG_PASS';"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$PG_DB'" | grep -q 1 \
+  || sudo -u postgres createdb -O "$PG_USER" "$PG_DB"
+PG_TABLES="$(sudo -u postgres psql -tAd "$PG_DB" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")"
+if [ "$PG_TABLES" -gt 0 ] && [ "$FORCE_DB" -eq 0 ]; then
+    echo "   ⚠ '$PG_DB' already has $PG_TABLES tables — skipping. Re-run with --force-db to overwrite."
+else
+    sudo -u postgres pg_restore --no-owner --no-acl --clean --if-exists -d "$PG_DB" "$B/db/gateway-postgres.dump" || true
+    sudo -u postgres psql -d "$PG_DB" -c "GRANT ALL ON SCHEMA public TO \"$PG_USER\"; GRANT ALL ON ALL TABLES IN SCHEMA public TO \"$PG_USER\"; GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO \"$PG_USER\";"
+    echo "   restored"
+fi
+
+# ── 4. gateway source ────────────────────────────────────────────────────────
+echo "→ [4/8] gateway source"
+if [ ! -d "$GW_PATH/.git" ]; then
+    mkdir -p "$(dirname "$GW_PATH")"
+    # Clone from the BUNDLE, not from upstream — upstream lacks the native_flow commit.
+    git clone "$B/gateway/gateway-repo.bundle" "$GW_PATH"
+    git -C "$GW_PATH" checkout "$(cat "$B/gateway/branch.txt")" 2>/dev/null || \
+    git -C "$GW_PATH" checkout "$(cat "$B/gateway/HEAD.txt")"
+    git -C "$GW_PATH" remote set-url origin https://github.com/code-chat-br/whatsapp-api.git
+    if [ -s "$B/gateway/working-tree.patch" ]; then
+        git -C "$GW_PATH" apply "$B/gateway/working-tree.patch" && echo "   working-tree edits applied"
+    fi
+    chown -R "$APP_USER:$APP_USER" "$GW_PATH"
+else
+    echo "   already present — left alone"
+fi
+install -o "$APP_USER" -g "$APP_USER" -m 640 "$B/env/gateway.env" "$GW_PATH/.env"
+
+echo "→ [5/8] gateway instances/ (Baileys auth)"
+if [ -f "$B/gateway/instances.tar.gz" ]; then
+    tar -xzf "$B/gateway/instances.tar.gz" -C "$GW_PATH"
+    chown -R "$APP_USER:$APP_USER" "$GW_PATH/instances"
+    echo "   restored — paired numbers should reconnect without a new QR"
+fi
+
+echo "→ [6/8] tenant uploads"
+[ -f "$B/storage/storage-app.tar.gz" ] && tar -xzf "$B/storage/storage-app.tar.gz" -C "$APP_PATH/storage"
+
+# ── 7. app build ─────────────────────────────────────────────────────────────
+echo "→ [7/8] composer + npm build"
+cd "$APP_PATH"
+as_app composer install --no-dev --optimize-autoloader --no-interaction
+as_app npm ci
+as_app npm run build
+as_app php artisan storage:link || true
+chown -R "$APP_USER:$APP_USER" storage bootstrap/cache public/build
+chmod -R 775 storage bootstrap/cache
+# A root-owned storage/logs/laravel.log makes php-fpm AND every queue worker
+# fail on write, and the failure is silent until you tail the log.
+find storage -user root -exec chown "$APP_USER:$APP_USER" {} + 2>/dev/null || true
+
+echo "→ [8/8] gateway deps + build"
+cd "$GW_PATH"
+as_app npm install
+as_app npx prisma generate
+as_app npm run build
+
+echo
+echo "✓ Restore done. Nothing is listening yet — that is deliberate."
+echo "  Continue at RUNBOOK.md step 4 (domains + .env rewrite) before starting services."
+echo "  Read step 4 first: starting the gateway while the OLD server still runs will"
+echo "  fight it for the same WhatsApp sessions and log both of them out."

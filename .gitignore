@@ -46,3 +46,9 @@ Thumbs.db
 /FILES/
 /storage/audit/
 /audit_report_*.xlsx
+
+# Migration bundles from deploy/replicate/export-bundle.sh. Every secret in the
+# stack in plaintext — both .env files, both database dumps, Baileys auth state.
+wavadesk-bundle-*.tar.gz
+/wavadesk-migration/
+.env.bak.*

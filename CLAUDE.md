@@ -1,3 +1,13 @@
+## Setting this project up on a new server
+
+If this clone is on a **fresh server** and the stack is not running yet, stop and
+read `deploy/replicate/RUNBOOK.md`, then follow its steps in order. A `git clone`
+is not enough on its own: the WhatsApp gateway is a second application with its
+own database and unpushed local commits, and neither `.env` nor either database
+is in git. `deploy/replicate/README.md` explains the layout in one page.
+
+---
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
