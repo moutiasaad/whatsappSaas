@@ -14,7 +14,6 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\InstanceWebController;
 use App\Http\Controllers\Admin\KnowledgeController;
-use App\Http\Controllers\Admin\NotifyServiceController;
 use App\Http\Controllers\Admin\OtpServiceController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SavedReplyWebController;
@@ -379,13 +378,6 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                     Route::get('/otp-service', [OtpServiceController::class, 'show'])->name('otp-service.show');
                     Route::put('/otp-service', [OtpServiceController::class, 'update'])->name('otp-service.update');
                 });
-
-                // WhatsApp Notify — like SMTP but delivers over WhatsApp to the
-                // admin's phone. Not a plan module, so it carries no `module:`
-                // gate; every tenant admin gets it.
-                Route::get('/notify-service',       [NotifyServiceController::class, 'show'])->name('notify-service.show');
-                Route::put('/notify-service',       [NotifyServiceController::class, 'update'])->name('notify-service.update');
-                Route::post('/notify-service/test', [NotifyServiceController::class, 'test'])->name('notify-service.test');
             });
 
             // SaaS control plane (super admin only)
