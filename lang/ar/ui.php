@@ -762,6 +762,7 @@ return [
         'delete_prompt' => 'حذف :name?',
         'delete_warning' => 'سيؤدي هذا إلى حذف النسخة وجميع البيانات المرتبطة بها نهائياً.',
         'delete_instance' => 'حذف النسخة',
+        'delete_blocked_trial' => 'حذف هذه النسخة معطّل خلال الفترة التجريبية. قم بالترقية إلى خطة مدفوعة لإزالتها.',
         'save_changes' => 'حفظ التغييرات',
     ],
     'platform_tenants_page' => [
@@ -1152,6 +1153,7 @@ return [
         'instance_created' => 'تم إنشاء النسخة ":name".',
         'instance_updated' => 'تم تحديث النسخة.',
         'instance_deleted' => 'تم حذف النسخة ":name".',
+        'instance_delete_blocked_trial' => 'لا يمكن للمساحات في الفترة التجريبية حذف نسخة واتساب. قم بالترقية إلى خطة مدفوعة أولاً.',
         'knowledge_created' => 'تم إنشاء مدخل المعرفة.',
         'knowledge_updated' => 'تم تحديث المدخل.',
         'knowledge_deleted' => 'تم حذف المدخل.',

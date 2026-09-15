@@ -251,6 +251,16 @@ class InstanceController extends Controller
     {
         $this->authorizeInstance($instance);
 
+        // Same trial-guard as the web destroy path — the API surface exists so
+        // programmatic clients (dashboard AJAX, integrations) can hit it, and
+        // both need to enforce the same rule. See InstanceWebController::destroy
+        // for the rationale.
+        if (! auth()->user()->isSuperAdmin() && $instance->tenant?->isOnTrial()) {
+            return response()->json([
+                'message' => __('ui.controller_messages.instance_delete_blocked_trial'),
+            ], 403);
+        }
+
         if ($instance->gateway_instance_id) {
             try {
                 $this->gateway($instance)->deleteInstance($instance->gateway_instance_id);

@@ -260,6 +260,24 @@ class InstanceWebController extends Controller
     {
         $this->ensureInstanceAccess($instance);
 
+        // Trial tenants cannot delete the workspace's WhatsApp instance. The
+        // trial exists so a prospect can evaluate the product end-to-end, and
+        // removing the only channel mid-trial breaks the demo — instances are
+        // also part of the plan-quota accounting and destroying-then-recreating
+        // is a way to churn through create limits. Super-admins bypass since
+        // they operate above the tenant subscription.
+        $actor = $request->user();
+        if (! $actor->isSuperAdmin() && $instance->tenant?->isOnTrial()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('ui.controller_messages.instance_delete_blocked_trial'),
+                ], 403);
+            }
+            return back()->withErrors([
+                'general' => __('ui.controller_messages.instance_delete_blocked_trial'),
+            ]);
+        }
+
         // The gateway name is deterministic (wa-<tenant>-<id>), so a row whose
         // gateway_instance_id is null may still have a stale entry on the
         // gateway from a previous connect attempt. Try both keys so the name

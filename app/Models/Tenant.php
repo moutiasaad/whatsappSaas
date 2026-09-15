@@ -97,6 +97,18 @@ class Tenant extends Model
         }
     }
 
+    /**
+     * True when the workspace is on a trial, regardless of whether the trial
+     * has expired. Callers that care about "trial and still usable" should
+     * combine this with `isActive()`. The bare status is what gates feature
+     * lockouts (e.g. instance deletion during trial), because the point of
+     * that gate is that a trial tenant never gets there in the first place.
+     */
+    public function isOnTrial(): bool
+    {
+        return $this->subscription_status === 'trial';
+    }
+
     public function isActive(): bool
     {
         if (!$this->is_active) return false;

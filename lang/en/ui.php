@@ -765,6 +765,7 @@ Always:
         'delete_prompt' => 'Delete :name?',
         'delete_warning' => 'This will permanently remove the instance and all associated data.',
         'delete_instance' => 'Delete Instance',
+        'delete_blocked_trial' => 'Deleting this instance is disabled during the trial. Upgrade to a paid plan to remove it.',
         'save_changes' => 'Save Changes',
     ],
     'platform_tenants_page' => [
@@ -1153,6 +1154,7 @@ Always:
         'instance_created' => 'Instance ":name" created.',
         'instance_updated' => 'Instance updated.',
         'instance_deleted' => 'Instance ":name" deleted.',
+        'instance_delete_blocked_trial' => 'Trial workspaces cannot delete their WhatsApp instance. Upgrade to a paid plan first.',
         'instance_limit_reached' => 'Your account is limited to one WhatsApp instance.',
         'user_limit_reached'     => 'Your plan allows :count user(s).',
         'knowledge_created' => 'Knowledge entry created.',

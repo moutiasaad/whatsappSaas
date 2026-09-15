@@ -73,11 +73,19 @@
             </div>
             @endif
 
+            @php($_tenantOnTrial = optional($instance->tenant)->isOnTrial() && !auth()->user()->isSuperAdmin())
             <div class="card">
                 <div style="padding:1rem 1.25rem;border-left:3px solid #ef4444;border-radius:0 var(--radius-lg) var(--radius-lg) 0">
                     <div style="font-size:.875rem;font-weight:600;color:#ef4444;margin-bottom:.375rem">{{ __('ui.instance_edit_page.danger_zone') }}</div>
-                    <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:.875rem">{{ __('ui.instance_edit_page.delete_message') }}</div>
-                    <button type="button" onclick="confirmDelete('{{ route('admin.instances.destroy', $instance) }}', { title: @js(__('ui.instance_edit_page.delete_prompt', ['name' => $instance->name])), message: @js(__('ui.instance_edit_page.delete_warning')) })" class="btn btn-danger btn-sm">{{ __('ui.instance_edit_page.delete_instance') }}</button>
+                    @if($_tenantOnTrial)
+                        {{-- Trial tenants can't destroy the workspace's channel — the button is
+                             hidden and a short note explains why. Server-side guard in
+                             InstanceWebController::destroy is the source of truth; this is UI only. --}}
+                        <div style="font-size:.8125rem;color:var(--text-muted)">{{ __('ui.instance_edit_page.delete_blocked_trial') }}</div>
+                    @else
+                        <div style="font-size:.8125rem;color:var(--text-muted);margin-bottom:.875rem">{{ __('ui.instance_edit_page.delete_message') }}</div>
+                        <button type="button" onclick="confirmDelete('{{ route('admin.instances.destroy', $instance) }}', { title: @js(__('ui.instance_edit_page.delete_prompt', ['name' => $instance->name])), message: @js(__('ui.instance_edit_page.delete_warning')) })" class="btn btn-danger btn-sm">{{ __('ui.instance_edit_page.delete_instance') }}</button>
+                    @endif
                 </div>
             </div>
         </div>

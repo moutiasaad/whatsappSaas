@@ -765,6 +765,7 @@ Toujours :
         'delete_prompt' => 'Supprimer :name ?',
         'delete_warning' => 'Cela supprimera définitivement l’instance et toutes les données associées.',
         'delete_instance' => "Supprimer l'instance",
+        'delete_blocked_trial' => "La suppression de cette instance est désactivée pendant la période d'essai. Passez à un plan payant pour la retirer.",
         'save_changes' => 'Enregistrer les modifications',
     ],
     'platform_tenants_page' => [
@@ -1153,6 +1154,7 @@ Toujours :
         'instance_created' => 'Instance ":name" créée.',
         'instance_updated' => 'Instance mise à jour.',
         'instance_deleted' => 'Instance ":name" supprimée.',
+        'instance_delete_blocked_trial' => "Les espaces en période d'essai ne peuvent pas supprimer leur instance WhatsApp. Passez à un plan payant.",
         'instance_limit_reached' => 'Votre compte est limité à une seule instance WhatsApp.',
         'user_limit_reached'     => 'Votre plan autorise :count utilisateur(s).',
         'knowledge_created' => 'Entrée de connaissance créée.',
