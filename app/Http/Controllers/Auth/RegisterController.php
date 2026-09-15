@@ -7,6 +7,9 @@ use App\Models\AuditLog;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Auth\SsoHandoffCode;
+use App\Services\WavadeskApi;
+use App\Support\Wavadesk;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
@@ -55,6 +59,13 @@ class RegisterController extends Controller
 
     public function store(Request $request)
     {
+        // wavadesk.com owns no identity: the same form posts to the same route,
+        // but the row is created in the core app's database over HTTP and the
+        // browser is handed off to app.wavadesk.com already signed in.
+        if (Wavadesk::isMarketing()) {
+            return $this->storeViaCoreApi($request);
+        }
+
         $request->validate([
             'company_name' => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
@@ -205,6 +216,113 @@ class RegisterController extends Controller
             'tenant'  => $tenant->id,
             'plan_id' => $plan->id,
         ]);
+    }
+
+    // ── Marketing role (Server A / wavadesk.com) ─────────────────────────────
+
+    /**
+     * Proxy the register form to the core app, then hand the browser off.
+     *
+     * Validation here is deliberately the loose half: shape only (present, an
+     * email, long enough), with no `unique:users` and no `exists:plans` rule,
+     * because the marketing app is not the authority on either table. The core
+     * app re-validates against the database that actually owns those rows and
+     * its 422 comes back as field-level errors on this very form.
+     */
+    private function storeViaCoreApi(Request $request)
+    {
+        $data = $request->validate([
+            'company_name' => 'required|string|max:255',
+            'email'        => 'required|email|max:255',
+            'password'     => 'required|string|min:8',
+            'plan_id'      => 'nullable|integer',
+        ]);
+
+        $result = app(WavadeskApi::class)->register($data);
+
+        if (! $result['ok']) {
+            // A 422 from the core app is a real field error (email taken, weak
+            // password) and belongs on the field. Anything else is our problem,
+            // not the user's, so it renders as a generic retry message.
+            $this->rethrowCoreValidation($result);
+
+            Log::warning('Marketing -> core register failed', [
+                'status' => $result['status'],
+                'email'  => $data['email'],
+            ]);
+
+            return back()
+                ->withInput($request->except('password'))
+                ->withErrors(['general' => __('auth.register.server_error')]);
+        }
+
+        return $this->handoff($request, $result['body'])
+            ?? back()
+                ->withInput($request->except('password'))
+                ->withErrors(['general' => __('auth.register.server_error')]);
+    }
+
+    /**
+     * Stash the core app's token in the (encrypted, server-side) session and
+     * redirect through the single-use handoff code.
+     *
+     * Returns null when the response was well-formed JSON but missing the two
+     * fields the handoff needs, so the caller can render its own error rather
+     * than redirect to a code that cannot be minted.
+     */
+    private function handoff(Request $request, array $body)
+    {
+        $userId = (int) ($body['user']['id'] ?? 0);
+        $token  = (string) ($body['token'] ?? '');
+
+        if ($userId === 0 || $token === '') {
+            Log::error('Core app returned a register/login success with no token or user id');
+
+            return null;
+        }
+
+        // The PAT stays here, server-side, so later marketing-side pages
+        // (billing, account) can call the core app on the user's behalf. It is
+        // never put in a URL and never handed to the browser.
+        $request->session()->put(Wavadesk::SESSION_TOKEN,  $token);
+        $request->session()->put(Wavadesk::SESSION_USER,   $body['user'] ?? []);
+        $request->session()->put(Wavadesk::SESSION_TENANT, $body['tenant'] ?? []);
+
+        $code = app(SsoHandoffCode::class)->mint($userId);
+
+        // The plan the user clicked on the pricing page rides along unsigned,
+        // exactly as it does in the single-host flow's /register/plan?plan=N.
+        // It only pre-selects a card; the plan picker re-validates exists and
+        // is_active before granting anything, so a tampered value buys nothing.
+        $query = ['code' => $code];
+
+        if ($hint = (int) ($body['plan_hint'] ?? 0)) {
+            $query['plan'] = $hint;
+        }
+
+        return redirect()->away(
+            Wavadesk::coreUrlTo('/auth/sso') . '?' . http_build_query($query)
+        );
+    }
+
+    /**
+     * Re-raise the core app's 422 as a local ValidationException so an "email
+     * already taken" error lands on the email field exactly as it did when
+     * this form ran against a local database.
+     */
+    private function rethrowCoreValidation(array $result): void
+    {
+        if ($result['status'] !== 422) {
+            return;
+        }
+
+        $errors = $result['body']['errors'] ?? null;
+
+        if (! is_array($errors) || $errors === []) {
+            return;
+        }
+
+        throw ValidationException::withMessages($errors);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

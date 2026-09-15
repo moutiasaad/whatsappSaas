@@ -31,6 +31,7 @@ use App\Http\Controllers\Auth\SsoHandoffController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LocaleController;
+use App\Support\Wavadesk;
 use App\Http\Controllers\PaymentController;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Support\Facades\Route;
@@ -64,9 +65,15 @@ Route::middleware('guest')->group(function () {
 // successful /api/v1/auth/register or /login round-trip. Rate-limit hard so a
 // leaked or spammed URL can't be brute-forced. Not inside `guest` on purpose:
 // a stale session on Server B should still be able to redeem a fresh code.
-Route::get('/auth/sso', [SsoHandoffController::class, 'redeem'])
-    ->middleware('throttle:30,1')
-    ->name('auth.sso.redeem');
+//
+// Core-only. Both hosts hold the same signing secret, so a marketing host that
+// also exposed this route could redeem its own codes and open a local session
+// on wavadesk.com — the exact session the split exists to stop it from having.
+if (Wavadesk::isCore()) {
+    Route::get('/auth/sso', [SsoHandoffController::class, 'redeem'])
+        ->middleware('throttle:30,1')
+        ->name('auth.sso.redeem');
+}
 
 // Step 2 of signup: the workspace and its admin already exist, the plan does
 // not. Deliberately outside the panel groups — no 'subscription' middleware
@@ -134,7 +141,13 @@ Route::middleware('guest')->group(function () {
     // Previous URL — kept so old bookmarks land on the new form.
     Route::get('/superadmin/login', fn () => redirect()->route('superadmin.login', [], 301));
 });
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
+// The marketing host has no local auth guard to sit behind — its "session" is
+// the core app's token stashed in the session bag, not an Auth::login(). Left
+// under 'auth' there, /logout would bounce every caller to the login page and
+// the stashed token could never be cleared.
+Route::post('/logout', [LoginController::class, 'logout'])
+    ->name('logout')
+    ->middleware(Wavadesk::isMarketing() ? [] : ['auth']);
 
 // Email verification (PROC-024) — Laravel's signed-link flow. Verified admins
 // created by other admins skip this because UserController + super-admin flows

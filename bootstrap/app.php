@@ -51,6 +51,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'module'       => \App\Http\Middleware\CheckPlanModule::class,
             'api.key'      => \App\Http\Middleware\AuthenticateWithApiKey::class,
+            // Server-to-server guard on /api/v1/auth/*: only the marketing app
+            // on wavadesk.com, proving itself with the shared secret, gets in.
+            'wavadesk.caller' => \App\Http\Middleware\EnsureMarketingCaller::class,
             'webchat.widget'  => \App\Http\Middleware\WebChat\ResolveWebChatWidget::class,
             'webchat.domain'  => \App\Http\Middleware\WebChat\WebChatDomainGuard::class,
             'webchat.visitor' => \App\Http\Middleware\WebChat\WebChatVisitorAuth::class,

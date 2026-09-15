@@ -9,12 +9,10 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -48,10 +46,16 @@ class AuthApiController extends Controller
             'company_name' => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
             'password'     => 'required|string|min:8',
-            // plan_id is a hint only — never persisted on the tenant here, same
-            // as the web signup. Retired plans are rejected so a stale id from
-            // an old landing-page link cannot slip through.
-            'plan_id'      => ['nullable', Rule::exists('plans', 'id')->where('is_active', true)],
+            // plan_id is a hint only. It is never persisted on the tenant here
+            // (same as the web signup) and is handed straight back so the
+            // caller can pre-select that card on the plan picker.
+            //
+            // Deliberately NOT validated against the plans table: the caller is
+            // the marketing site, whose pricing page may list an id this
+            // database has since retired. Rejecting it would fail an otherwise
+            // valid signup over a value nothing acts on. The plan picker
+            // re-validates exists+is_active before anything is granted.
+            'plan_id'      => ['nullable', 'integer'],
         ]);
 
         $tenant = null;
@@ -100,6 +104,9 @@ class AuthApiController extends Controller
             // straight to the panel. Registration always lands on 'plan' since
             // plan_id is NULL by design; login can return 'dashboard'.
             'next_step' => 'plan',
+            // Echoed so the handoff can carry the card the user clicked on the
+            // pricing page through to the plan picker. A hint, not a grant.
+            'plan_hint' => isset($data['plan_id']) ? (int) $data['plan_id'] : null,
         ], 201);
     }
 
@@ -116,17 +123,21 @@ class AuthApiController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        // Checked by hand rather than with Auth::attempt(). routes/api.php is
+        // loaded inside the `web` middleware group, so attempt() would open a
+        // real session on this host for the caller's throwaway cookie jar and
+        // then need logging out again on every rejection branch below. The
+        // caller wants a token, not a session.
+        /** @var User|null $user */
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => __('auth.errors.credentials_mismatch'),
             ])->status(422);
         }
 
-        /** @var User $user */
-        $user = Auth::user();
-
         if (! $user->is_active) {
-            Auth::logout();
             return response()->json(['message' => 'Account disabled.'], 403);
         }
 
@@ -134,7 +145,6 @@ class AuthApiController extends Controller
         // super-admin has a dedicated portal on Server B and never signs in
         // through wavadesk.com. Rejecting here keeps the two doors separate.
         if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
-            Auth::logout();
             return response()->json([
                 'message' => __('auth.errors.use_control_panel_login'),
             ], 403);
@@ -145,6 +155,7 @@ class AuthApiController extends Controller
             'user'      => $this->userPayload($user),
             'tenant'    => $this->tenantPayload($user->tenant),
             'next_step' => $user->tenant?->plan_id ? 'dashboard' : 'plan',
+            'plan_hint' => null,
         ]);
     }
 

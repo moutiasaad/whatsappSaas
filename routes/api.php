@@ -17,29 +17,39 @@ use App\Http\Controllers\WebChat\BroadcastAuthController as WebChatBroadcastAuth
 use App\Http\Controllers\WebChat\Public\ConversationController as WebChatPublicConversationController;
 use App\Http\Controllers\WebChat\Public\MessageController as WebChatPublicMessageController;
 use App\Http\Controllers\WebChat\Public\SessionController as WebChatPublicSessionController;
+use App\Support\Wavadesk;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
 
 // ─── v1 Auth API (called by the marketing app on wavadesk.com) ───────────────
-// Register + login are public with a hard rate-limit; me/logout are protected
-// by the Sanctum token they just handed back. CORS for these paths is opened
-// in config/cors.php to WAVADESK_MARKETING_ORIGIN only.
-Route::prefix('v1/auth')->group(function () {
-    Route::post('/register', [AuthApiController::class, 'register'])
-        ->middleware('throttle:5,1')
-        ->name('api.v1.auth.register');
+// Server-to-server only: wavadesk.com's php-fpm calls these, never a browser.
+// That is why there is no CORS entry for them (see config/cors.php) and why
+// every route sits behind `wavadesk.caller`, which demands the shared secret.
+// Without that guard /api/v1/auth/login would be an open credential oracle.
+//
+// Registered only on the core app. On the marketing host these endpoints do
+// not exist at all — it has no identity database to serve them from.
+if (Wavadesk::isCore()) {
+    Route::prefix('v1/auth')->middleware('wavadesk.caller')->group(function () {
+        // Rate limits still apply behind the caller guard: they bound the blast
+        // radius if the shared secret ever leaks, and they stop a bug in the
+        // marketing app from hammering the database in a retry loop.
+        Route::post('/register', [AuthApiController::class, 'register'])
+            ->middleware('throttle:5,1')
+            ->name('api.v1.auth.register');
 
-    Route::post('/login', [AuthApiController::class, 'login'])
-        ->middleware('throttle:10,1')
-        ->name('api.v1.auth.login');
+        Route::post('/login', [AuthApiController::class, 'login'])
+            ->middleware('throttle:10,1')
+            ->name('api.v1.auth.login');
 
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/me',      [AuthApiController::class, 'me'])->name('api.v1.auth.me');
-        Route::post('/logout', [AuthApiController::class, 'logout'])->name('api.v1.auth.logout');
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('/me',      [AuthApiController::class, 'me'])->name('api.v1.auth.me');
+            Route::post('/logout', [AuthApiController::class, 'logout'])->name('api.v1.auth.logout');
+        });
     });
-});
+}
 
 // ─── Web Live-Chat public widget API ─────────────────────────────────────────
 // Cross-origin. Auth via widget public_key + visitor bearer token — NOT web

@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -52,7 +53,7 @@ class SsoHandoffCode
 
         $payload = [
             'uid' => $userId,
-            'exp' => time() + $ttl,
+            'exp' => $this->now() + $ttl,
             'n'   => Str::random(16),
         ];
 
@@ -93,7 +94,7 @@ class SsoHandoffCode
             throw new \InvalidArgumentException('payload');
         }
 
-        if ((int) $payload['exp'] < time()) {
+        if ((int) $payload['exp'] < $this->now()) {
             throw new \InvalidArgumentException('expired');
         }
 
@@ -104,9 +105,21 @@ class SsoHandoffCode
         if (Cache::has($key)) {
             throw new \InvalidArgumentException('replayed');
         }
-        Cache::put($key, 1, ((int) $payload['exp'] - time()) + 30);
+        Cache::put($key, 1, ((int) $payload['exp'] - $this->now()) + 30);
 
         return (int) $payload['uid'];
+    }
+
+    /**
+     * Wall clock as a unix timestamp.
+     *
+     * Carbon rather than time() so the clock is the one Laravel controls: the
+     * two hosts agree on UTC either way, and expiry becomes something a test
+     * can travel past instead of having to sleep through.
+     */
+    private function now(): int
+    {
+        return Carbon::now()->getTimestamp();
     }
 
     private function base64UrlEncode(string $bin): string

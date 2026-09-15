@@ -8,8 +8,10 @@ use App\Models\Conversation;
 use App\Models\WhatsAppInstance;
 use App\Policies\ConversationPolicy;
 use App\Services\Auth\SsoHandoffCode;
+use App\Services\WavadeskApi;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use App\Services\WhatsApp\Gateway\GatewayClientInterface;
+use App\Support\Wavadesk;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,11 +32,26 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // SSO handoff between wavadesk.com (marketing) and app.wavadesk.com
-        // (this app). The secret is shared by both apps via env, deployed by
-        // CI/CD to stay in lockstep. Not resolvable without a secret set —
-        // fails loudly at first use rather than silently accepting any code.
+        // (core). Both hosts run this codebase and share one secret, so the
+        // same class mints on one side and verifies on the other — there is no
+        // second copy to drift out of lockstep.
+        //
+        // Read from config, never env(): `artisan config:cache` stops Laravel
+        // loading .env at all, so an env()-bound secret is null in production
+        // and every handoff 500s while working perfectly in dev.
         $this->app->singleton(SsoHandoffCode::class, function () {
-            return new SsoHandoffCode((string) env('WAVADESK_SHARED_SECRET', ''));
+            return new SsoHandoffCode(Wavadesk::sharedSecret());
+        });
+
+        // Marketing-side client for the core app's v1 auth API. Bound lazily:
+        // a core box never resolves it, so it costs nothing there and does not
+        // need WAVADESK_CORE_URL set.
+        $this->app->singleton(WavadeskApi::class, function () {
+            return new WavadeskApi(
+                Wavadesk::coreUrl(),
+                Wavadesk::sharedSecret(),
+                (float) config('wavadesk.api_timeout', 5),
+            );
         });
     }
 

@@ -74,7 +74,12 @@ class SsoHandoffController extends Controller
         // here — the API login already refuses them — so no branch needed.
         $tenant = $user->tenant;
         if ($tenant && ! $tenant->plan_id) {
-            return redirect()->route('register.plan');
+            // Carry the pricing-page choice through. Unsigned and untrusted:
+            // RegisterController::plan() only uses it to pre-select a card and
+            // choosePlan() re-validates it against active plans.
+            return redirect()->route('register.plan', array_filter([
+                'plan' => (int) $request->query('plan') ?: null,
+            ]));
         }
 
         return redirect()->route(
