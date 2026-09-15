@@ -47,13 +47,13 @@ bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh /root/wa
 
 ## Three things that bite before anything else
 
-1. **You cannot clone your way to a working gateway.** `origin` is
-   `moutiasaad/whatsappBoot`, pushed 2026-09-15, so the native_flow fix
-   (`9b9c1e3`) is now on GitHub. What is *still* only on the production disk is
-   the ~9 uncommitted working-tree files on top of it — notably the
-   `package.json` pinning Baileys back to stable 6.7.23. Clone and you get a
-   gateway that renders buttons but runs the wrong Baileys; restore from the
-   bundle, which carries the patch too.
+1. **The gateway is on GitHub now.** As of 2026-09-15 `moutiasaad/whatsappBoot`
+   carries the whole running source: the native_flow fix (`9b9c1e3`), the
+   `sendListMessage`/`sendButtons` endpoints, the Baileys 6.7.23 pin and the QR
+   websocket fix. The working tree here is clean, so `export-bundle.sh` now
+   produces an empty `working-tree.patch` and a clone gets you the same code the
+   bundle does. Restoring from the bundle is still the default — it pins the
+   exact commit and needs no network — but a clone is no longer a trap.
 2. **The app runs an unpushed branch too.** Production `wavadesk.com` sits on
    `feat/marketing-i18n-mobile-nav-paypal-cards`, two commits ahead of
    `origin/main` and on no remote branch at all. A plain `git clone` gives you

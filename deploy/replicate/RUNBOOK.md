@@ -40,16 +40,14 @@ appear and nothing errors visibly.
 
 **`git clone` alone cannot reproduce this stack.** Four things live outside git:
 
-1. **The gateway's code.** `origin` points at the operator's fork
+1. **The gateway's code.** `origin` is the operator's fork
    `moutiasaad/whatsappBoot` (formerly upstream `code-chat-br/whatsapp-api`).
-   As of 2026-09-15 that fork **has been pushed** and does carry `9b9c1e3 feat:
-   render native-flow interactive messages (buttons + lists)`, the commit that
-   makes interactive buttons and lists render as tappable. It still does **not**
-   carry the ~9 uncommitted working-tree files the running gateway depends on —
-   including the `package.json` that pins Baileys back to stable 6.7.23. So a
-   clone gets you closer than before but is still not the running gateway; keep
-   restoring from the bundle, which carries the history, the working-tree patch
-   and the real origin URL.
+   As of 2026-09-15 it carries the complete running source — `9b9c1e3` native
+   flow, the `sendListMessage`/`sendButtons` endpoints, the Baileys 6.7.23 pin,
+   the QR websocket fix — and the production working tree is clean, so this is
+   no longer a thing git fails to carry. The bundle still restores the gateway
+   by default because it pins the exact commit without needing network or
+   credentials, but cloning the fork is now a valid alternative.
 2. **Both `.env` files.** `APP_KEY`, DB passwords, `WHATSAPP_API_KEY`,
    Reverb keys, Anthropic, PayPal, Mailtrap.
 3. **Two databases**, in two different engines.
