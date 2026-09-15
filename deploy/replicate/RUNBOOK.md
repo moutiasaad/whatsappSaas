@@ -40,16 +40,14 @@ appear and nothing errors visibly.
 
 **`git clone` alone cannot reproduce this stack.** Four things live outside git:
 
-1. **The gateway's code.** `origin` now points at the operator's own fork,
-   `moutiasaad/whatsappBoot` (it used to be upstream `code-chat-br/whatsapp-api`).
-   As of this writing **nothing has been pushed there yet**, so the fork is empty
-   and cloning it gives you nothing. The running copy carries unpushed commits —
-   `9b9c1e3 feat: render native-flow interactive messages (buttons + lists)` —
-   plus ~9 modified files on top. Clone either remote today and you get a gateway
-   that accepts interactive messages and silently fails to render them as tappable
-   buttons. `export-bundle.sh` captures this as a git bundle + a patch, and
-   records the real origin URL, so replication does not depend on that push
-   ever happening.
+1. **The gateway's code.** `origin` is the operator's fork
+   `moutiasaad/whatsappBoot` (formerly upstream `code-chat-br/whatsapp-api`).
+   As of 2026-09-15 it carries the complete running source — `9b9c1e3` native
+   flow, the `sendListMessage`/`sendButtons` endpoints, the Baileys 6.7.23 pin,
+   the QR websocket fix — and the production working tree is clean, so this is
+   no longer a thing git fails to carry. The bundle still restores the gateway
+   by default because it pins the exact commit without needing network or
+   credentials, but cloning the fork is now a valid alternative.
 2. **Both `.env` files.** `APP_KEY`, DB passwords, `WHATSAPP_API_KEY`,
    Reverb keys, Anthropic, PayPal, Mailtrap.
 3. **Two databases**, in two different engines.
@@ -245,6 +243,23 @@ Rows whose `gateway_url` is the hosted SaaS (`https://api.whatstshl.online`)
 belong to someone else's account entirely — repoint those too, or delete them
 on the copy. Then re-pair only the test numbers you actually want, by QR.
 
+**And the gateway has webhooks of its own.** The SQL above fixes the *app* side.
+The gateway keeps a separate `"Webhook"` table in its Postgres database, and
+every restored row is `enabled` and points at the **live** app — 26 of them on
+the current source. That is a second, independent path for a parallel copy to
+inject real inbound WhatsApp traffic into production, and step 4b above does
+nothing about it. `import-bundle.sh --parallel` now disables them automatically;
+verify, because it is silent if the table is empty:
+
+```bash
+sudo -u postgres psql -d whatsapp_api -c \
+  'SELECT enabled, COUNT(*) FROM "Webhook" GROUP BY enabled;'
+# a parallel copy wants: enabled = f for every row
+```
+
+Re-enable one row at a time, pointed at the copy's own domain, only for the
+instances you are actually testing.
+
 > The same argument applies to anything else in the restored database that
 > reaches the outside world on its own: mail, PayPal, and the deploy webhook.
 > A trial copy should have `MAIL_MAILER=log` and `PAYPAL_MODE=sandbox`.
@@ -310,12 +325,19 @@ A 502 here means the node process is not up yet — that is step 6.
 
 ```bash
 APP=/www/wwwroot/public/wavadesk.com
+# This is a FILESYSTEM PATH, not a hostname. Keep the v1 name even on a copy
+# that will be served at xapi-prod-v2: it is import-bundle.sh's GW_PATH default,
+# so changing it here without also exporting GW_PATH=... for the import leaves
+# supervisor pointed at an empty directory. Only the vhost ServerName in step 5
+# becomes v2.
 GW=/www/wwwroot/public/xapi-prod-v1.wavadesk.com
 T=$APP/deploy/replicate/templates
 
 sed "s#__APP_PATH__#$APP#g" $T/supervisor-wavadesk.conf > /etc/supervisor/conf.d/wavadesk.conf
 sed "s#__APP_PATH__#$APP#g" $T/supervisor-reverb.conf   > /etc/supervisor/conf.d/reverb.conf
-sed "s#__GW_PATH__#$GW#g"   $T/supervisor-gateway.conf  > /etc/supervisor/conf.d/wavadesk-gateway.conf
+NODE_BIN="$(command -v node)"   # /usr/bin/node on NodeSource, /usr/local/bin/node on a tarball install
+sed -e "s#__GW_PATH__#$GW#g" -e "s#__NODE_BIN__#$NODE_BIN#g" \
+    $T/supervisor-gateway.conf  > /etc/supervisor/conf.d/wavadesk-gateway.conf
 
 supervisorctl reread && supervisorctl update && supervisorctl status
 ```
