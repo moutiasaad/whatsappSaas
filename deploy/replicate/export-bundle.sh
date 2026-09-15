@@ -67,13 +67,35 @@ PG_DB="$(sed -E 's#.*/([^/?]+)(\?.*)?$#\1#' <<<"$PG_URL")"
 sudo -u postgres pg_dump --no-owner --no-acl -Fc "$PG_DB" > "$WORK/db/gateway-postgres.dump"
 echo "$PG_DB" > "$WORK/db/pg-dbname.txt"
 
-echo "→ [4/7] gateway source (git bundle + working-tree diff)"
+echo "→ [4/7] app source (git bundle — production runs an UNPUSHED branch)"
+# The app's production HEAD is not on any remote branch: cloning GitHub gives you
+# origin/main, which is behind. Bundle the real thing, same as the gateway.
+mkdir -p "$WORK/app"
+git -C "$APP_PATH" bundle create "$WORK/app/app-repo.bundle" --all
+git -C "$APP_PATH" rev-parse HEAD        > "$WORK/app/HEAD.txt"
+git -C "$APP_PATH" branch --show-current > "$WORK/app/branch.txt"
+git -C "$APP_PATH" remote get-url origin > "$WORK/app/origin-url.txt" 2>/dev/null || true
+git -C "$APP_PATH" diff                  > "$WORK/app/working-tree.patch" || true
+git -C "$APP_PATH" status --short        > "$WORK/app/status.txt" || true
+
+echo "→ [4b/7] gateway source (git bundle + working-tree diff)"
 git -C "$GW_PATH" bundle create "$WORK/gateway/gateway-repo.bundle" --all
 git -C "$GW_PATH" rev-parse HEAD > "$WORK/gateway/HEAD.txt"
 git -C "$GW_PATH" branch --show-current > "$WORK/gateway/branch.txt"
 # Uncommitted edits, captured as a patch so nothing silently disappears.
 git -C "$GW_PATH" diff > "$WORK/gateway/working-tree.patch" || true
 git -C "$GW_PATH" status --short > "$WORK/gateway/status.txt" || true
+# Capture the real origin URL so the import does not have to guess it. The
+# gateway's remote moved off upstream to the operator's own fork; hardcoding
+# either one here goes stale the next time it moves.
+git -C "$GW_PATH" remote get-url origin > "$WORK/gateway/origin-url.txt" 2>/dev/null || true
+# `git diff` covers TRACKED edits only. The gateway also carries untracked files
+# the vhost depends on (.htaccess, .user.ini, .well-known/). Take those too, but
+# skip the stray build archives and node_modules that live in the same dir.
+git -C "$GW_PATH" ls-files --others --exclude-standard -z \
+  | grep -zEv '\.(tar\.gz|tgz|zip)$' \
+  | tar -C "$GW_PATH" --null -T - -czf "$WORK/gateway/untracked.tar.gz" 2>/dev/null \
+  || echo "   (no untracked files captured)"
 
 echo "→ [5/7] gateway instances/ (Baileys auth — skip this and every number re-scans a QR)"
 tar -C "$GW_PATH" -czf "$WORK/gateway/instances.tar.gz" instances 2>/dev/null || echo "   (no instances/ dir)"

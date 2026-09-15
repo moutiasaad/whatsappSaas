@@ -20,7 +20,7 @@ Two separate applications that only work together:
 | Database | MariaDB `whatsapp-saas` | PostgreSQL `whatsapp_api` |
 | Listens on | php-fpm socket + Reverb `:8080` | `:8084` |
 | Public URL | `https://wavadesk.com` | `https://xapi-prod-v1.wavadesk.com` |
-| Process mgr | Supervisor | pm2 on the source; Supervisor recommended |
+| Process mgr | Supervisor | **nothing** on the source (bare detached `start.sh`); Supervisor recommended |
 
 They talk to each other **over the public internet, in both directions**:
 
@@ -40,13 +40,16 @@ appear and nothing errors visibly.
 
 **`git clone` alone cannot reproduce this stack.** Four things live outside git:
 
-1. **The gateway's code.** Its `origin` points at the *upstream* project,
-   `code-chat-br/whatsapp-api`. The running copy carries one commit that was
-   never pushed anywhere — `9b9c1e3 feat: render native-flow interactive
-   messages (buttons + lists)` — plus ~9 modified files on top of it. Clone
-   upstream and you get a gateway that accepts interactive messages and silently
-   fails to render them as tappable buttons. `export-bundle.sh` captures this as
-   a git bundle + a patch.
+1. **The gateway's code.** `origin` now points at the operator's own fork,
+   `moutiasaad/whatsappBoot` (it used to be upstream `code-chat-br/whatsapp-api`).
+   As of this writing **nothing has been pushed there yet**, so the fork is empty
+   and cloning it gives you nothing. The running copy carries unpushed commits —
+   `9b9c1e3 feat: render native-flow interactive messages (buttons + lists)` —
+   plus ~9 modified files on top. Clone either remote today and you get a gateway
+   that accepts interactive messages and silently fails to render them as tappable
+   buttons. `export-bundle.sh` captures this as a git bundle + a patch, and
+   records the real origin URL, so replication does not depend on that push
+   ever happening.
 2. **Both `.env` files.** `APP_KEY`, DB passwords, `WHATSAPP_API_KEY`,
    Reverb keys, Anthropic, PayPal, Mailtrap.
 3. **Two databases**, in two different engines.
@@ -74,9 +77,16 @@ old services. Simplest, and the WhatsApp sessions keep working.
 > ⚠ **Baileys allows one live socket per paired device.** In a parallel copy,
 > both gateways hold the same credentials from `instances/`, and each reconnect
 > kicks the other off — you get two half-working servers and customers seeing
-> "disconnected". For a parallel copy you must either (a) leave the new
-> gateway's instances empty and re-pair fresh test numbers, or (b) keep the new
-> gateway stopped until the old one is stopped for good.
+> "disconnected". This takes down the **old, live** server too, not just the copy.
+>
+> **So for a parallel copy, run step 3 with `--parallel`.** That skips
+> `instances/` entirely, and the new gateway comes up with no WhatsApp
+> credentials — it cannot claim the pairing even by accident. Each number you
+> want to test on the copy then scans a fresh QR from its instances page.
+>
+> The Baileys credentials live *only* in `instances/<name>/creds.json` on disk.
+> The gateway's Postgres `Auth` table holds per-instance **API tokens**, not
+> WhatsApp sessions, so restoring that database in parallel mode is harmless.
 
 ---
 
@@ -140,28 +150,42 @@ comes out of the bundle:
 mkdir -p /www/wwwroot/public
 git clone https://github.com/moutiasaad/whatsappSaas.git /www/wwwroot/public/wavadesk.com
 cd /www/wwwroot/public/wavadesk.com
-git checkout main
+# NOT main. Production runs a feature branch; main is behind it.
+git checkout feat/marketing-i18n-mobile-nav-paypal-cards
 chown -R www:www /www/wwwroot/public/wavadesk.com
 ```
 
 **Check:** `git log --oneline -1` matches `app commit:` in the bundle's
-`SOURCE-FINGERPRINT.txt`. If it does not, the old server was running unpushed
-work — go back and push it before continuing.
+`SOURCE-FINGERPRINT.txt`. If it does not, do not hand-fix it here — step 0 of
+`import-bundle.sh` fetches the bundled history and checks out the exact source
+commit anyway. The clone exists only to give it a repo to fetch into.
 
 ---
 
 ## Step 3 — Restore
+
+**Cutover (option A)** — the old server will be stopped:
 
 ```bash
 bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh \
      /root/wavadesk-bundle-<stamp>.tar.gz
 ```
 
+**Parallel copy (option B)** — the old server stays live. Use this one:
+
+```bash
+bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh \
+     /root/wavadesk-bundle-<stamp>.tar.gz --parallel
+```
+
 This restores both `.env` files, creates and loads both databases and their
-users, reconstructs the gateway from the bundle (commit + working-tree patch),
-restores `instances/` and tenant uploads, then runs `composer install`,
-`npm ci && npm run build`, `prisma generate` and the gateway's `npm run build`.
-It deliberately starts **no services**.
+users, reconstructs the gateway from the bundle (commit + working-tree patch +
+untracked files such as `.htaccess` / `.user.ini`), restores tenant uploads,
+then runs `composer install`, `npm ci && npm run build`, `prisma generate` and
+the gateway's `npm run build`. It deliberately starts **no services**.
+
+`instances/` (the Baileys auth) is restored **only without `--parallel`**. See
+step 0 for why that matters.
 
 Re-running it is safe; it refuses to overwrite a database that already has
 tables unless you add `--force-db`.
@@ -195,6 +219,35 @@ sudo -u www php artisan migrate:status
 | `PAYPAL_MODE` | still `sandbox` on the source — set `live` only deliberately |
 
 And in the gateway's `.env`: `WEBHOOK_GLOBAL_URL` if it is set to a wavadesk URL.
+
+### 4b — Repoint the instances in the database (parallel copy only)
+
+**`.env` is not enough.** Each row of `whatsapp_instances` carries its own
+`gateway_url` and `gateway_api_key`, and the restored database still points them
+at the **old, live** gateway. Left alone, the copy drives production: it sends
+real WhatsApp messages from real customer numbers, and the moment it refreshes
+an instance it re-registers that instance's webhook to the copy's URL — which
+takes inbound traffic *away* from the live server. Nothing warns you.
+
+Do this before starting any service on the new box:
+
+```sql
+-- point every instance at the NEW gateway, and stop them re-registering webhooks
+UPDATE whatsapp_instances
+   SET gateway_url     = 'https://<new-gateway-domain>',
+       webhook_enabled = 0,
+       webhook_url     = NULL,
+       status          = 'disconnected',
+       phone_number    = NULL;
+```
+
+Rows whose `gateway_url` is the hosted SaaS (`https://api.whatstshl.online`)
+belong to someone else's account entirely — repoint those too, or delete them
+on the copy. Then re-pair only the test numbers you actually want, by QR.
+
+> The same argument applies to anything else in the restored database that
+> reaches the outside world on its own: mail, PayPal, and the deploy webhook.
+> A trial copy should have `MAIL_MAILER=log` and `PAYPAL_MODE=sandbox`.
 
 > `WHATSAPP_WEBHOOK_BASE_URL` pointing at localhost is the single most common
 > cause of "gateway says connected, but no message ever reaches /conversations".
@@ -279,8 +332,13 @@ Two things the source server does that you should **not** copy:
   `schedule:work`. Watch `/var/log/supervisor/wavadesk-scheduler.log` on first
   run — scheduled work that has never executed in production may surprise you.
 
-The gateway on the source runs under pm2 (`npm run start:prod`). The supervisor
-program above runs `node dist/src/main.js` directly instead, because
+The gateway on the source runs under **no process manager at all**: it is a
+bare `bash start.sh` → `node ./dist/src/main.js` chain, started detached and
+orphaned to init, with nothing to restart it on crash or reboot. (Two stale PM2
+God Daemons are alive on the box, but the `pm2` CLI is not on `PATH` and the
+listener on `:8084` is not one of their children — do not expect `pm2 stop` to
+do anything.) To stop it: `pkill -f 'node ./dist/src/main.js'; pkill -f 'bash start.sh'`.
+The supervisor program above runs `node dist/src/main.js` directly instead, because
 `start.sh` does `rm -rf dist && npm run build` on every start — fine by hand,
 but under an autorestarting supervisor a crash loop becomes a rebuild loop.
 Run one or the other, never both: they both bind `:8084`.
@@ -361,4 +419,5 @@ the one on your laptop.
 | Sender unknown / conversation not matched | inbound payload carries `keyLid` (`@lid`) rather than `keyRemoteJid` | already handled in app code; if it regresses, check the id-extraction path |
 | A new feature 500s right after deploy | migrations skipped | `sudo -u www php artisan migrate:status \| grep -i pending` |
 | `.env` edited but nothing changed | config cache stale | `config:clear && config:cache`; for `VITE_*`/`REVERB_*` also `npm run build` |
-| Both servers' WhatsApp keep dropping | two gateways sharing one `instances/` | stop one — see step 0 |
+| Both servers' WhatsApp keep dropping | two gateways sharing one `instances/` | stop one — see step 0; re-import with `--parallel` |
+| Copy sends messages from real customer numbers, or production stops receiving inbound | `whatsapp_instances.gateway_url` still points at the live gateway | step 4b — repoint the rows, don't rely on `.env` |

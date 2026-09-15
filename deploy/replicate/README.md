@@ -23,7 +23,7 @@ So the deterministic parts are scripted and the judgement parts are documented:
 
 | File | Runs where | Does |
 |---|---|---|
-| `export-bundle.sh` | **old** server, as root | Packages everything git does not carry: both `.env`s, the MariaDB dump, the Postgres dump, the gateway's git bundle **plus its unpushed commit and uncommitted edits**, `instances/` (Baileys auth), tenant uploads, and the live Apache/Supervisor config. |
+| `export-bundle.sh` | **old** server, as root | Packages everything git does not carry: both `.env`s, the MariaDB dump, the Postgres dump, git bundles of **both** repos (each running an unpushed commit) plus their uncommitted edits, `instances/` (Baileys auth), tenant uploads, and the live Apache/Supervisor config. |
 | `import-bundle.sh` | **new** server, as root | Restores all of it, creates both databases and their users, rebuilds both apps' dependencies. Idempotent; starts no services on purpose. |
 | `RUNBOOK.md` | read by you or Claude Code | Provisioning, the cutover-vs-parallel decision, domain/`.env` rewrite, vhosts, supervisor, an ordered verification sequence, and a table of every trap this stack has actually hit. |
 | `templates/` | copied on the new server | Supervisor programs for the workers, scheduler, Reverb and the gateway; the Apache proxy snippets for `wss://` and for `:8084`. |
@@ -41,21 +41,30 @@ scp wavadesk-bundle-*.tar.gz root@NEW:/root/
 # on the NEW server
 git clone https://github.com/moutiasaad/whatsappSaas.git /www/wwwroot/public/wavadesk.com
 bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh /root/wavadesk-bundle-*.tar.gz
+#   ↑ add --parallel if the OLD server is staying live (skips instances/)
 # then RUNBOOK.md from step 4 — domains, vhosts, services, verification
 ```
 
-## Two things that bite before anything else
+## Three things that bite before anything else
 
 1. **You cannot clone your way to a working gateway.** The WhatsApp gateway's
-   `origin` is the upstream project, `code-chat-br/whatsapp-api`. The copy in
-   production carries a commit that was never pushed anywhere — the native_flow
-   fix that makes interactive buttons and lists render as tappable — plus about
-   nine modified files on top. `export-bundle.sh` captures that; cloning
-   upstream throws it away and the breakage is silent.
-2. **One WhatsApp pairing, one live socket.** Both servers restoring the same
-   `instances/` will fight over every connection and knock each other offline.
-   Step 0 of the runbook makes you choose cutover or parallel before this can
-   happen.
+   `origin` now points at `moutiasaad/whatsappBoot`, which **is still empty** —
+   nothing has been pushed to it yet. The copy in production carries a commit
+   that exists nowhere else — the native_flow fix that makes interactive buttons
+   and lists render as tappable — plus about nine modified files on top.
+   `export-bundle.sh` captures that and records the real origin URL; cloning
+   either remote today throws the fix away and the breakage is silent.
+2. **The app runs an unpushed branch too.** Production `wavadesk.com` sits on
+   `feat/marketing-i18n-mobile-nav-paypal-cards`, two commits ahead of
+   `origin/main` and on no remote branch at all. A plain `git clone` gives you
+   `main` and silently drops them — including this runbook. `import-bundle.sh`
+   step 0 fetches the bundled history and checks out the exact commit; the clone
+   below is only there to give it a repo to fetch into.
+3. **One WhatsApp pairing, one live socket.** Both servers restoring the same
+   `instances/` will fight over every connection and knock each other offline —
+   including the old, live one. Step 0 of the runbook makes you choose cutover
+   or parallel before this can happen; in parallel, pass `--parallel` to
+   `import-bundle.sh` so the new gateway never gets the credentials at all.
 
 ## Related
 
