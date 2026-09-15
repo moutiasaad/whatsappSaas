@@ -85,9 +85,14 @@ php -r "echo bin2hex(random_bytes(32)) . PHP_EOL;"
 
 ```dotenv
 WAVADESK_ROLE=core
-WAVADESK_MARKETING_ORIGIN=https://wavadesk.com
 WAVADESK_SHARED_SECRET=<the 64 hex chars from step 1>
 ```
+
+`WAVADESK_MARKETING_ORIGIN` is deliberately not in that list: nothing reads it
+yet. `Wavadesk::marketingOrigin()` exists but has no callers — its only one was
+the CORS allow-list, dropped when `/api/v1/auth/*` became server-to-server.
+Set it if you like; it will change nothing until the logout-return and billing
+follow-ups below are built.
 
 `wavadesk.com/.env` — the marketing app:
 

@@ -32,9 +32,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | core_url is where Server A sends its /api/v1/auth/* calls and where it
-    | redirects the browser to finish the handoff. marketing_origin is the only
-    | origin Server B will accept an /api/v1/auth/* call from, and the public
-    | face users are sent back to on logout.
+    | redirects the browser to finish the handoff. It is the one value the
+    | marketing host cannot work without.
+    |
+    | marketing_origin is NOT read by anything yet. Its only consumer was the
+    | CORS allow-list, which was removed when /api/v1/auth/* stopped being a
+    | browser-facing surface (it is server-to-server, guarded by the shared
+    | secret instead). It is kept because the documented follow-ups — sending a
+    | user back to the marketing site on logout, and the billing API — both
+    | need it. Setting it today changes no behaviour.
     |
     */
 
