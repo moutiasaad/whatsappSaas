@@ -58,6 +58,38 @@ as_app()  { sudo -u "$APP_USER" -H "$@"; }
 
 echo "── source fingerprint ─────────────────────────────"; cat "$B/SOURCE-FINGERPRINT.txt"; echo "───────────────────────────────────────────────────"; echo
 
+# ── 0. app source ────────────────────────────────────────────────────────────
+# Production runs a branch that was never pushed, so `git clone` from GitHub
+# lands you behind HEAD. Fetch the bundled history over whatever was cloned and
+# check out the exact commit the source box was running.
+echo "→ [0/8] app source (sync to the source commit)"
+if [ -s "$B/app/app-repo.bundle" ] && [ -d "$APP_PATH/.git" ]; then
+    APP_HEAD="$(cat "$B/app/HEAD.txt")"
+    APP_BRANCH="$(cat "$B/app/branch.txt")"
+    if [ -n "$(git -C "$APP_PATH" status --porcelain --untracked-files=no)" ]; then
+        echo "   ⚠ working tree has tracked modifications — NOT touching it."
+        echo "     Resolve by hand, then re-run. Source HEAD was $APP_HEAD ($APP_BRANCH)."
+    else
+        git -C "$APP_PATH" fetch "$B/app/app-repo.bundle" \
+            "+refs/heads/*:refs/remotes/bundle/*" --tags 2>/dev/null || true
+        if git -C "$APP_PATH" cat-file -e "$APP_HEAD^{commit}" 2>/dev/null; then
+            git -C "$APP_PATH" checkout -B "$APP_BRANCH" "$APP_HEAD"
+            echo "   checked out $APP_BRANCH @ $APP_HEAD"
+            if [ -s "$B/app/working-tree.patch" ]; then
+                git -C "$APP_PATH" apply "$B/app/working-tree.patch" \
+                    && echo "   working-tree edits applied"
+            fi
+            chown -R "$APP_USER:$APP_USER" "$APP_PATH/.git"
+        else
+            echo "   ✗ commit $APP_HEAD missing after fetch — check the bundle" >&2
+        fi
+    fi
+elif [ ! -d "$APP_PATH/.git" ]; then
+    echo "   ✗ $APP_PATH is not a git checkout — clone it first (see README)" >&2; exit 1
+else
+    echo "   (bundle predates app-repo capture — skipping; verify the commit by hand)"
+fi
+
 # ── 1. app .env ──────────────────────────────────────────────────────────────
 echo "→ [1/8] app .env"
 if [ -f "$APP_PATH/.env" ]; then
@@ -110,7 +142,24 @@ if [ ! -d "$GW_PATH/.git" ]; then
     git clone "$B/gateway/gateway-repo.bundle" "$GW_PATH"
     git -C "$GW_PATH" checkout "$(cat "$B/gateway/branch.txt")" 2>/dev/null || \
     git -C "$GW_PATH" checkout "$(cat "$B/gateway/HEAD.txt")"
-    git -C "$GW_PATH" remote set-url origin https://github.com/code-chat-br/whatsapp-api.git
+    # Restore whatever origin the source actually used; fall back to upstream
+    # only if the bundle predates origin-url.txt.
+    if [ -s "$B/gateway/origin-url.txt" ]; then
+        GW_ORIGIN="$(cat "$B/gateway/origin-url.txt")"
+        # The source uses a per-repo ssh Host alias (github-whatsappboot) defined
+        # only in ITS ~/.ssh/config. That alias does not resolve here, so rewrite
+        # it to the canonical host; set up a key for this box separately.
+        case "$GW_ORIGIN" in
+            *github-whatsappboot:*)
+                GW_ORIGIN="${GW_ORIGIN/github-whatsappboot:/github.com:}"
+                echo "   origin alias rewritten to canonical host: $GW_ORIGIN"
+                echo "   ⚠ this box needs its own deploy key/PAT before it can fetch or push"
+                ;;
+        esac
+        git -C "$GW_PATH" remote set-url origin "$GW_ORIGIN"
+    else
+        git -C "$GW_PATH" remote set-url origin https://github.com/code-chat-br/whatsapp-api.git
+    fi
     if [ -s "$B/gateway/working-tree.patch" ]; then
         git -C "$GW_PATH" apply "$B/gateway/working-tree.patch" && echo "   working-tree edits applied"
     fi
@@ -129,7 +178,11 @@ elif [ -f "$B/gateway/instances.tar.gz" ]; then
     chown -R "$APP_USER:$APP_USER" "$GW_PATH/instances"
     echo "   restored — paired numbers should reconnect without a new QR"
     echo "   ⚠ CUTOVER ONLY. If the old server is still running, stop its gateway NOW"
-    echo "     (pm2 stop \"CodeChat Api\") or the two will log each other out."
+    echo "     or the two will log each other out. On the source box the gateway is"
+    echo "     NOT under a process manager - it is a bare detached 'bash start.sh'"
+    echo "     chain orphaned to init, so there is no pm2/supervisorctl stop for it:"
+    echo "       ssh root@OLD \"pkill -f 'node ./dist/src/main.js'; pkill -f 'bash start.sh'\""
+    echo "     Then confirm nothing still listens:  ssh root@OLD \"ss -lntp | grep 8084\""
 fi
 
 if [ -f "$B/gateway/untracked.tar.gz" ]; then

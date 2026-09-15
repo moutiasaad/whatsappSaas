@@ -20,7 +20,7 @@ Two separate applications that only work together:
 | Database | MariaDB `whatsapp-saas` | PostgreSQL `whatsapp_api` |
 | Listens on | php-fpm socket + Reverb `:8080` | `:8084` |
 | Public URL | `https://wavadesk.com` | `https://xapi-prod-v1.wavadesk.com` |
-| Process mgr | Supervisor | pm2 on the source; Supervisor recommended |
+| Process mgr | Supervisor | **nothing** on the source (bare detached `start.sh`); Supervisor recommended |
 
 They talk to each other **over the public internet, in both directions**:
 
@@ -40,13 +40,16 @@ appear and nothing errors visibly.
 
 **`git clone` alone cannot reproduce this stack.** Four things live outside git:
 
-1. **The gateway's code.** Its `origin` points at the *upstream* project,
-   `code-chat-br/whatsapp-api`. The running copy carries one commit that was
-   never pushed anywhere — `9b9c1e3 feat: render native-flow interactive
-   messages (buttons + lists)` — plus ~9 modified files on top of it. Clone
-   upstream and you get a gateway that accepts interactive messages and silently
-   fails to render them as tappable buttons. `export-bundle.sh` captures this as
-   a git bundle + a patch.
+1. **The gateway's code.** `origin` now points at the operator's own fork,
+   `moutiasaad/whatsappBoot` (it used to be upstream `code-chat-br/whatsapp-api`).
+   As of this writing **nothing has been pushed there yet**, so the fork is empty
+   and cloning it gives you nothing. The running copy carries unpushed commits —
+   `9b9c1e3 feat: render native-flow interactive messages (buttons + lists)` —
+   plus ~9 modified files on top. Clone either remote today and you get a gateway
+   that accepts interactive messages and silently fails to render them as tappable
+   buttons. `export-bundle.sh` captures this as a git bundle + a patch, and
+   records the real origin URL, so replication does not depend on that push
+   ever happening.
 2. **Both `.env` files.** `APP_KEY`, DB passwords, `WHATSAPP_API_KEY`,
    Reverb keys, Anthropic, PayPal, Mailtrap.
 3. **Two databases**, in two different engines.
@@ -327,8 +330,13 @@ Two things the source server does that you should **not** copy:
   `schedule:work`. Watch `/var/log/supervisor/wavadesk-scheduler.log` on first
   run — scheduled work that has never executed in production may surprise you.
 
-The gateway on the source runs under pm2 (`npm run start:prod`). The supervisor
-program above runs `node dist/src/main.js` directly instead, because
+The gateway on the source runs under **no process manager at all**: it is a
+bare `bash start.sh` → `node ./dist/src/main.js` chain, started detached and
+orphaned to init, with nothing to restart it on crash or reboot. (Two stale PM2
+God Daemons are alive on the box, but the `pm2` CLI is not on `PATH` and the
+listener on `:8084` is not one of their children — do not expect `pm2 stop` to
+do anything.) To stop it: `pkill -f 'node ./dist/src/main.js'; pkill -f 'bash start.sh'`.
+The supervisor program above runs `node dist/src/main.js` directly instead, because
 `start.sh` does `rm -rf dist && npm run build` on every start — fine by hand,
 but under an autorestarting supervisor a crash loop becomes a rebuild loop.
 Run one or the other, never both: they both bind `:8084`.
