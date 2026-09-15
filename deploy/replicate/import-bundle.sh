@@ -134,6 +134,20 @@ else
     echo "   restored"
 fi
 
+# ── 3b. neutralise the gateway's OWN webhooks on a parallel copy ─────────────
+# RUNBOOK step 4b repoints whatsapp_instances in MariaDB — that is the APP side.
+# The GATEWAY keeps its own "Webhook" table in Postgres, and every row restored
+# here points at the LIVE app and is enabled. Leave it and the copy POSTs real
+# inbound WhatsApp traffic straight into production the moment an instance
+# connects. Disable them; re-enable per instance by hand when you mean to.
+if [ "$SKIP_INSTANCES" -eq 1 ]; then
+    WH_BEFORE="$(sudo -u postgres psql -tAd "$PG_DB" -c 'SELECT COUNT(*) FROM "Webhook" WHERE enabled;' 2>/dev/null || echo 0)"
+    if [ "${WH_BEFORE:-0}" -gt 0 ]; then
+        sudo -u postgres psql -qd "$PG_DB" -c 'UPDATE "Webhook" SET enabled = false;' >/dev/null 2>&1 \
+            && echo "   ⚠ parallel copy: disabled $WH_BEFORE gateway webhook(s) that pointed at the live app"
+    fi
+fi
+
 # ── 4. gateway source ────────────────────────────────────────────────────────
 echo "→ [4/8] gateway source"
 if [ ! -d "$GW_PATH/.git" ]; then

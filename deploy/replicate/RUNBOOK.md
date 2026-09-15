@@ -245,6 +245,23 @@ Rows whose `gateway_url` is the hosted SaaS (`https://api.whatstshl.online`)
 belong to someone else's account entirely — repoint those too, or delete them
 on the copy. Then re-pair only the test numbers you actually want, by QR.
 
+**And the gateway has webhooks of its own.** The SQL above fixes the *app* side.
+The gateway keeps a separate `"Webhook"` table in its Postgres database, and
+every restored row is `enabled` and points at the **live** app — 26 of them on
+the current source. That is a second, independent path for a parallel copy to
+inject real inbound WhatsApp traffic into production, and step 4b above does
+nothing about it. `import-bundle.sh --parallel` now disables them automatically;
+verify, because it is silent if the table is empty:
+
+```bash
+sudo -u postgres psql -d whatsapp_api -c \
+  'SELECT enabled, COUNT(*) FROM "Webhook" GROUP BY enabled;'
+# a parallel copy wants: enabled = f for every row
+```
+
+Re-enable one row at a time, pointed at the copy's own domain, only for the
+instances you are actually testing.
+
 > The same argument applies to anything else in the restored database that
 > reaches the outside world on its own: mail, PayPal, and the deploy webhook.
 > A trial copy should have `MAIL_MAILER=log` and `PAYPAL_MODE=sandbox`.
