@@ -74,6 +74,13 @@ git -C "$GW_PATH" branch --show-current > "$WORK/gateway/branch.txt"
 # Uncommitted edits, captured as a patch so nothing silently disappears.
 git -C "$GW_PATH" diff > "$WORK/gateway/working-tree.patch" || true
 git -C "$GW_PATH" status --short > "$WORK/gateway/status.txt" || true
+# `git diff` covers TRACKED edits only. The gateway also carries untracked files
+# the vhost depends on (.htaccess, .user.ini, .well-known/). Take those too, but
+# skip the stray build archives and node_modules that live in the same dir.
+git -C "$GW_PATH" ls-files --others --exclude-standard -z \
+  | grep -zEv '\.(tar\.gz|tgz|zip)$' \
+  | tar -C "$GW_PATH" --null -T - -czf "$WORK/gateway/untracked.tar.gz" 2>/dev/null \
+  || echo "   (no untracked files captured)"
 
 echo "→ [5/7] gateway instances/ (Baileys auth — skip this and every number re-scans a QR)"
 tar -C "$GW_PATH" -czf "$WORK/gateway/instances.tar.gz" instances 2>/dev/null || echo "   (no instances/ dir)"

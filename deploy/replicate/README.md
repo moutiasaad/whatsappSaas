@@ -41,6 +41,7 @@ scp wavadesk-bundle-*.tar.gz root@NEW:/root/
 # on the NEW server
 git clone https://github.com/moutiasaad/whatsappSaas.git /www/wwwroot/public/wavadesk.com
 bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh /root/wavadesk-bundle-*.tar.gz
+#   ↑ add --parallel if the OLD server is staying live (skips instances/)
 # then RUNBOOK.md from step 4 — domains, vhosts, services, verification
 ```
 
@@ -53,9 +54,10 @@ bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh /root/wa
    nine modified files on top. `export-bundle.sh` captures that; cloning
    upstream throws it away and the breakage is silent.
 2. **One WhatsApp pairing, one live socket.** Both servers restoring the same
-   `instances/` will fight over every connection and knock each other offline.
-   Step 0 of the runbook makes you choose cutover or parallel before this can
-   happen.
+   `instances/` will fight over every connection and knock each other offline —
+   including the old, live one. Step 0 of the runbook makes you choose cutover
+   or parallel before this can happen; in parallel, pass `--parallel` to
+   `import-bundle.sh` so the new gateway never gets the credentials at all.
 
 ## Related
 

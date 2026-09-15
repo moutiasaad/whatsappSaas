@@ -74,9 +74,16 @@ old services. Simplest, and the WhatsApp sessions keep working.
 > ⚠ **Baileys allows one live socket per paired device.** In a parallel copy,
 > both gateways hold the same credentials from `instances/`, and each reconnect
 > kicks the other off — you get two half-working servers and customers seeing
-> "disconnected". For a parallel copy you must either (a) leave the new
-> gateway's instances empty and re-pair fresh test numbers, or (b) keep the new
-> gateway stopped until the old one is stopped for good.
+> "disconnected". This takes down the **old, live** server too, not just the copy.
+>
+> **So for a parallel copy, run step 3 with `--parallel`.** That skips
+> `instances/` entirely, and the new gateway comes up with no WhatsApp
+> credentials — it cannot claim the pairing even by accident. Each number you
+> want to test on the copy then scans a fresh QR from its instances page.
+>
+> The Baileys credentials live *only* in `instances/<name>/creds.json` on disk.
+> The gateway's Postgres `Auth` table holds per-instance **API tokens**, not
+> WhatsApp sessions, so restoring that database in parallel mode is harmless.
 
 ---
 
@@ -152,16 +159,28 @@ work — go back and push it before continuing.
 
 ## Step 3 — Restore
 
+**Cutover (option A)** — the old server will be stopped:
+
 ```bash
 bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh \
      /root/wavadesk-bundle-<stamp>.tar.gz
 ```
 
+**Parallel copy (option B)** — the old server stays live. Use this one:
+
+```bash
+bash /www/wwwroot/public/wavadesk.com/deploy/replicate/import-bundle.sh \
+     /root/wavadesk-bundle-<stamp>.tar.gz --parallel
+```
+
 This restores both `.env` files, creates and loads both databases and their
-users, reconstructs the gateway from the bundle (commit + working-tree patch),
-restores `instances/` and tenant uploads, then runs `composer install`,
-`npm ci && npm run build`, `prisma generate` and the gateway's `npm run build`.
-It deliberately starts **no services**.
+users, reconstructs the gateway from the bundle (commit + working-tree patch +
+untracked files such as `.htaccess` / `.user.ini`), restores tenant uploads,
+then runs `composer install`, `npm ci && npm run build`, `prisma generate` and
+the gateway's `npm run build`. It deliberately starts **no services**.
+
+`instances/` (the Baileys auth) is restored **only without `--parallel`**. See
+step 0 for why that matters.
 
 Re-running it is safe; it refuses to overwrite a database that already has
 tables unless you add `--force-db`.
