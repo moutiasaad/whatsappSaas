@@ -40,16 +40,16 @@ appear and nothing errors visibly.
 
 **`git clone` alone cannot reproduce this stack.** Four things live outside git:
 
-1. **The gateway's code.** `origin` now points at the operator's own fork,
-   `moutiasaad/whatsappBoot` (it used to be upstream `code-chat-br/whatsapp-api`).
-   As of this writing **nothing has been pushed there yet**, so the fork is empty
-   and cloning it gives you nothing. The running copy carries unpushed commits —
-   `9b9c1e3 feat: render native-flow interactive messages (buttons + lists)` —
-   plus ~9 modified files on top. Clone either remote today and you get a gateway
-   that accepts interactive messages and silently fails to render them as tappable
-   buttons. `export-bundle.sh` captures this as a git bundle + a patch, and
-   records the real origin URL, so replication does not depend on that push
-   ever happening.
+1. **The gateway's code.** `origin` points at the operator's fork
+   `moutiasaad/whatsappBoot` (formerly upstream `code-chat-br/whatsapp-api`).
+   As of 2026-09-15 that fork **has been pushed** and does carry `9b9c1e3 feat:
+   render native-flow interactive messages (buttons + lists)`, the commit that
+   makes interactive buttons and lists render as tappable. It still does **not**
+   carry the ~9 uncommitted working-tree files the running gateway depends on —
+   including the `package.json` that pins Baileys back to stable 6.7.23. So a
+   clone gets you closer than before but is still not the running gateway; keep
+   restoring from the bundle, which carries the history, the working-tree patch
+   and the real origin URL.
 2. **Both `.env` files.** `APP_KEY`, DB passwords, `WHATSAPP_API_KEY`,
    Reverb keys, Anthropic, PayPal, Mailtrap.
 3. **Two databases**, in two different engines.
@@ -327,6 +327,11 @@ A 502 here means the node process is not up yet — that is step 6.
 
 ```bash
 APP=/www/wwwroot/public/wavadesk.com
+# This is a FILESYSTEM PATH, not a hostname. Keep the v1 name even on a copy
+# that will be served at xapi-prod-v2: it is import-bundle.sh's GW_PATH default,
+# so changing it here without also exporting GW_PATH=... for the import leaves
+# supervisor pointed at an empty directory. Only the vhost ServerName in step 5
+# becomes v2.
 GW=/www/wwwroot/public/xapi-prod-v1.wavadesk.com
 T=$APP/deploy/replicate/templates
 
