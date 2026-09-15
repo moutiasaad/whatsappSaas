@@ -215,6 +215,35 @@ sudo -u www php artisan migrate:status
 
 And in the gateway's `.env`: `WEBHOOK_GLOBAL_URL` if it is set to a wavadesk URL.
 
+### 4b — Repoint the instances in the database (parallel copy only)
+
+**`.env` is not enough.** Each row of `whatsapp_instances` carries its own
+`gateway_url` and `gateway_api_key`, and the restored database still points them
+at the **old, live** gateway. Left alone, the copy drives production: it sends
+real WhatsApp messages from real customer numbers, and the moment it refreshes
+an instance it re-registers that instance's webhook to the copy's URL — which
+takes inbound traffic *away* from the live server. Nothing warns you.
+
+Do this before starting any service on the new box:
+
+```sql
+-- point every instance at the NEW gateway, and stop them re-registering webhooks
+UPDATE whatsapp_instances
+   SET gateway_url     = 'https://<new-gateway-domain>',
+       webhook_enabled = 0,
+       webhook_url     = NULL,
+       status          = 'disconnected',
+       phone_number    = NULL;
+```
+
+Rows whose `gateway_url` is the hosted SaaS (`https://api.whatstshl.online`)
+belong to someone else's account entirely — repoint those too, or delete them
+on the copy. Then re-pair only the test numbers you actually want, by QR.
+
+> The same argument applies to anything else in the restored database that
+> reaches the outside world on its own: mail, PayPal, and the deploy webhook.
+> A trial copy should have `MAIL_MAILER=log` and `PAYPAL_MODE=sandbox`.
+
 > `WHATSAPP_WEBHOOK_BASE_URL` pointing at localhost is the single most common
 > cause of "gateway says connected, but no message ever reaches /conversations".
 > The gateway calls that URL from its own process — it must resolve publicly.
@@ -380,4 +409,5 @@ the one on your laptop.
 | Sender unknown / conversation not matched | inbound payload carries `keyLid` (`@lid`) rather than `keyRemoteJid` | already handled in app code; if it regresses, check the id-extraction path |
 | A new feature 500s right after deploy | migrations skipped | `sudo -u www php artisan migrate:status \| grep -i pending` |
 | `.env` edited but nothing changed | config cache stale | `config:clear && config:cache`; for `VITE_*`/`REVERB_*` also `npm run build` |
-| Both servers' WhatsApp keep dropping | two gateways sharing one `instances/` | stop one — see step 0 |
+| Both servers' WhatsApp keep dropping | two gateways sharing one `instances/` | stop one — see step 0; re-import with `--parallel` |
+| Copy sends messages from real customer numbers, or production stops receiving inbound | `whatsapp_instances.gateway_url` still points at the live gateway | step 4b — repoint the rows, don't rely on `.env` |
