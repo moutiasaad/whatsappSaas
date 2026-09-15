@@ -7,6 +7,7 @@ use App\Mail\Transport\MailtrapApiTransport;
 use App\Models\Conversation;
 use App\Models\WhatsAppInstance;
 use App\Policies\ConversationPolicy;
+use App\Services\Auth\SsoHandoffCode;
 use App\Services\WhatsApp\Gateway\EvolutionApiClient;
 use App\Services\WhatsApp\Gateway\GatewayClientInterface;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -26,6 +27,14 @@ class AppServiceProvider extends ServiceProvider
                 throw new \InvalidArgumentException('GatewayClientInterface requires an instance parameter');
             }
             return new EvolutionApiClient($instance->effectiveGatewayUrl(), $instance->effectiveGatewayApiKey());
+        });
+
+        // SSO handoff between wavadesk.com (marketing) and app.wavadesk.com
+        // (this app). The secret is shared by both apps via env, deployed by
+        // CI/CD to stay in lockstep. Not resolvable without a secret set —
+        // fails loudly at first use rather than silently accepting any code.
+        $this->app->singleton(SsoHandoffCode::class, function () {
+            return new SsoHandoffCode((string) env('WAVADESK_SHARED_SECRET', ''));
         });
     }
 

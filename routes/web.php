@@ -27,6 +27,7 @@ use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
 use App\Http\Controllers\WebChat\WidgetSettingsController as WebChatWidgetSettingsController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\SsoHandoffController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LocaleController;
@@ -57,6 +58,15 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->middleware('throttle:5,1')->name('register.store');
 });
+
+// SSO handoff from the marketing app (wavadesk.com / Server A). The `code` is
+// a short-lived, single-use, HMAC-signed handoff minted by Server A after a
+// successful /api/v1/auth/register or /login round-trip. Rate-limit hard so a
+// leaked or spammed URL can't be brute-forced. Not inside `guest` on purpose:
+// a stale session on Server B should still be able to redeem a fresh code.
+Route::get('/auth/sso', [SsoHandoffController::class, 'redeem'])
+    ->middleware('throttle:30,1')
+    ->name('auth.sso.redeem');
 
 // Step 2 of signup: the workspace and its admin already exist, the plan does
 // not. Deliberately outside the panel groups — no 'subscription' middleware

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Auth\AuthApiController;
 use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\SingleInstanceController;
 use App\Http\Controllers\Api\AgentPresenceController;
@@ -20,6 +21,25 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
+
+// ─── v1 Auth API (called by the marketing app on wavadesk.com) ───────────────
+// Register + login are public with a hard rate-limit; me/logout are protected
+// by the Sanctum token they just handed back. CORS for these paths is opened
+// in config/cors.php to WAVADESK_MARKETING_ORIGIN only.
+Route::prefix('v1/auth')->group(function () {
+    Route::post('/register', [AuthApiController::class, 'register'])
+        ->middleware('throttle:5,1')
+        ->name('api.v1.auth.register');
+
+    Route::post('/login', [AuthApiController::class, 'login'])
+        ->middleware('throttle:10,1')
+        ->name('api.v1.auth.login');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me',      [AuthApiController::class, 'me'])->name('api.v1.auth.me');
+        Route::post('/logout', [AuthApiController::class, 'logout'])->name('api.v1.auth.logout');
+    });
+});
 
 // ─── Web Live-Chat public widget API ─────────────────────────────────────────
 // Cross-origin. Auth via widget public_key + visitor bearer token — NOT web
