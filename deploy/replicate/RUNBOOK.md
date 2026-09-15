@@ -335,7 +335,9 @@ T=$APP/deploy/replicate/templates
 
 sed "s#__APP_PATH__#$APP#g" $T/supervisor-wavadesk.conf > /etc/supervisor/conf.d/wavadesk.conf
 sed "s#__APP_PATH__#$APP#g" $T/supervisor-reverb.conf   > /etc/supervisor/conf.d/reverb.conf
-sed "s#__GW_PATH__#$GW#g"   $T/supervisor-gateway.conf  > /etc/supervisor/conf.d/wavadesk-gateway.conf
+NODE_BIN="$(command -v node)"   # /usr/bin/node on NodeSource, /usr/local/bin/node on a tarball install
+sed -e "s#__GW_PATH__#$GW#g" -e "s#__NODE_BIN__#$NODE_BIN#g" \
+    $T/supervisor-gateway.conf  > /etc/supervisor/conf.d/wavadesk-gateway.conf
 
 supervisorctl reread && supervisorctl update && supervisorctl status
 ```

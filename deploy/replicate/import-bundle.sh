@@ -129,9 +129,29 @@ PG_TABLES="$(sudo -u postgres psql -tAd "$PG_DB" -c "SELECT COUNT(*) FROM inform
 if [ "$PG_TABLES" -gt 0 ] && [ "$FORCE_DB" -eq 0 ]; then
     echo "   ⚠ '$PG_DB' already has $PG_TABLES tables — skipping. Re-run with --force-db to overwrite."
 else
-    sudo -u postgres pg_restore --no-owner --no-acl --clean --if-exists -d "$PG_DB" "$B/db/gateway-postgres.dump" || true
+    # The bundle unpacks under a 0700 /root/wavadesk-restore.XXXX owned by root,
+    # and the dump itself is 0600 — the `postgres` user cannot read either, so
+    # pg_restore fails with "could not open input file: Permission denied".
+    # Stage it somewhere postgres can actually reach before restoring.
+    PG_STAGE="$(mktemp -d /tmp/pgrestore.XXXXXX)"
+    install -m 644 "$B/db/gateway-postgres.dump" "$PG_STAGE/dump"
+    chmod 755 "$PG_STAGE"
+    # No `|| true` here. A failed restore used to print "restored" and leave an
+    # empty schema, which then made the webhook disable below a silent no-op —
+    # the copy came up looking correct and still wired to production.
+    if ! sudo -u postgres pg_restore --no-owner --no-acl --clean --if-exists \
+            -d "$PG_DB" "$PG_STAGE/dump"; then
+        rm -rf "$PG_STAGE"
+        echo "✗ pg_restore failed — the gateway database is NOT restored." >&2
+        echo "  Do not start services: an empty schema means the webhook" >&2
+        echo "  neutralisation below cannot run and the copy is not isolated." >&2
+        exit 1
+    fi
+    rm -rf "$PG_STAGE"
     sudo -u postgres psql -d "$PG_DB" -c "GRANT ALL ON SCHEMA public TO \"$PG_USER\"; GRANT ALL ON ALL TABLES IN SCHEMA public TO \"$PG_USER\"; GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO \"$PG_USER\";"
-    echo "   restored"
+    PG_RESTORED="$(sudo -u postgres psql -tAd "$PG_DB" -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")"
+    [ "${PG_RESTORED:-0}" -gt 0 ] || { echo "✗ pg_restore reported success but the schema is empty" >&2; exit 1; }
+    echo "   restored ($PG_RESTORED tables)"
 fi
 
 # ── 3b. neutralise the gateway's OWN webhooks on a parallel copy ─────────────
@@ -141,11 +161,20 @@ fi
 # inbound WhatsApp traffic straight into production the moment an instance
 # connects. Disable them; re-enable per instance by hand when you mean to.
 if [ "$SKIP_INSTANCES" -eq 1 ]; then
-    WH_BEFORE="$(sudo -u postgres psql -tAd "$PG_DB" -c 'SELECT COUNT(*) FROM "Webhook" WHERE enabled;' 2>/dev/null || echo 0)"
-    if [ "${WH_BEFORE:-0}" -gt 0 ]; then
-        sudo -u postgres psql -qd "$PG_DB" -c 'UPDATE "Webhook" SET enabled = false;' >/dev/null 2>&1 \
-            && echo "   ⚠ parallel copy: disabled $WH_BEFORE gateway webhook(s) that pointed at the live app"
+    # Absence of the table is NOT success. If it is missing the restore did not
+    # land, and staying quiet here is what let a copy come up still pointed at
+    # production. Fail loudly instead.
+    if ! sudo -u postgres psql -tAd "$PG_DB" -c 'SELECT to_regclass('"'"'public."Webhook"'"'"');' \
+         | grep -q Webhook; then
+        echo "✗ no \"Webhook\" table in '$PG_DB' — the gateway restore did not land." >&2
+        echo "  Refusing to continue: this copy would keep the live webhooks." >&2
+        exit 1
     fi
+    WH_BEFORE="$(sudo -u postgres psql -tAd "$PG_DB" -c 'SELECT COUNT(*) FROM "Webhook" WHERE enabled;')"
+    sudo -u postgres psql -qd "$PG_DB" -c 'UPDATE "Webhook" SET enabled = false;' >/dev/null
+    WH_AFTER="$(sudo -u postgres psql -tAd "$PG_DB" -c 'SELECT COUNT(*) FROM "Webhook" WHERE enabled;')"
+    [ "${WH_AFTER:-1}" -eq 0 ] || { echo "✗ $WH_AFTER webhook(s) still enabled after the update" >&2; exit 1; }
+    echo "   ⚠ parallel copy: disabled ${WH_BEFORE:-0} gateway webhook(s) that pointed at the live app (now 0 enabled)"
 fi
 
 # ── 4. gateway source ────────────────────────────────────────────────────────
