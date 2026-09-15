@@ -150,13 +150,15 @@ comes out of the bundle:
 mkdir -p /www/wwwroot/public
 git clone https://github.com/moutiasaad/whatsappSaas.git /www/wwwroot/public/wavadesk.com
 cd /www/wwwroot/public/wavadesk.com
-git checkout main
+# NOT main. Production runs a feature branch; main is behind it.
+git checkout feat/marketing-i18n-mobile-nav-paypal-cards
 chown -R www:www /www/wwwroot/public/wavadesk.com
 ```
 
 **Check:** `git log --oneline -1` matches `app commit:` in the bundle's
-`SOURCE-FINGERPRINT.txt`. If it does not, the old server was running unpushed
-work — go back and push it before continuing.
+`SOURCE-FINGERPRINT.txt`. If it does not, do not hand-fix it here — step 0 of
+`import-bundle.sh` fetches the bundled history and checks out the exact source
+commit anyway. The clone exists only to give it a repo to fetch into.
 
 ---
 
