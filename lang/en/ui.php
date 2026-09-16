@@ -1100,6 +1100,8 @@ Always:
         'plan' => 'Plan',
         'subscription_status' => 'Subscription Status',
         'trial_ends_at' => 'Trial Ends At',
+        'expire_trial_now' => 'Expire trial now',
+        'expire_trial_confirm' => 'Back-date the trial for ":name" to yesterday? This lets you test post-trial behavior immediately. Reversible from the tenant edit page.',
         'stripe_customer_id' => 'Stripe Customer ID',
         'not_set' => 'Not set',
         'settings_json' => 'Settings JSON',
@@ -1165,6 +1167,8 @@ Always:
     'controller_messages' => [
         'ai_quota_exhausted' => 'This month\'s AI reply allowance is used up. It resets at the start of the next period.',
         'trial_started' => 'Free trial started on :plan — you have :days days before any payment is due.',
+        'trial_expired' => 'Trial for :name is now expired (back-dated to yesterday). Reload the tenant to test post-trial behavior.',
+        'trial_expire_not_on_trial' => ':name is not currently on trial, so there is nothing to back-date.',
         'module_not_in_plan' => 'Your plan does not include this module. Contact the platform team to upgrade.',
         'unauthorized' => 'Unauthorized.',
         'not_allowed_to_manage_team' => 'You are not allowed to manage this team.',

@@ -87,8 +87,21 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ __('ui.platform_tenants_show_page.trial_ends_at') }}</label>
-                        <div class="form-control" style="display:flex;align-items:center;">
-                            {{ $tenant->trial_ends_at?->format('M j, Y') ?? __('ui.platform_tenants_show_page.not_set') }}
+                        <div class="form-control" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <span>{{ $tenant->trial_ends_at?->format('M j, Y') ?? __('ui.platform_tenants_show_page.not_set') }}</span>
+                            {{-- QA-only lever: back-date trial_ends_at to
+                                 yesterday so post-trial behavior can be
+                                 tested immediately. Only rendered when the
+                                 tenant is actually on trial. --}}
+                            @if($tenant->isOnTrial())
+                                <form method="POST" action="{{ route('super_admin.platform.tenants.expire-trial', $tenant) }}" onsubmit="return confirm(@js(__('ui.platform_tenants_show_page.expire_trial_confirm', ['name' => $tenant->name])))" style="margin:0;">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline" style="padding:2px 10px;font-size:12px;color:#b91c1c;border-color:#fecaca;">
+                                        <i class="ri-time-line"></i>
+                                        {{ __('ui.platform_tenants_show_page.expire_trial_now') }}
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                     <div class="form-group">

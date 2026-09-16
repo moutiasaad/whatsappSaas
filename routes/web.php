@@ -605,6 +605,12 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // semantic split.
             Route::patch('/platform/tenants/{tenant}/toggle-archive', [SuperAdminPlatformController::class, 'toggleTenantArchive'])
                 ->name('platform.tenants.toggle-archive');
+            // Test-only lever: back-date the trial to yesterday so QA can
+            // check what the app does after a trial expires without waiting
+            // for the real end date. No-op unless the tenant is currently
+            // on trial. See SuperAdminPlatformController::expireTrial.
+            Route::post('/platform/tenants/{tenant}/expire-trial', [SuperAdminPlatformController::class, 'expireTrial'])
+                ->name('platform.tenants.expire-trial');
 
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');

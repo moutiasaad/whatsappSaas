@@ -1100,6 +1100,8 @@ Toujours :
         'plan' => 'Forfait',
         'subscription_status' => 'Statut de l’abonnement',
         'trial_ends_at' => 'Fin de l’essai',
+        'expire_trial_now' => 'Terminer l’essai',
+        'expire_trial_confirm' => 'Antidater l’essai de « :name » à hier ? Cela permet de tester immédiatement le comportement post-essai. Réversible depuis la page d’édition du locataire.',
         'stripe_customer_id' => 'ID client Stripe',
         'not_set' => 'Non défini',
         'settings_json' => 'JSON des paramètres',
@@ -1165,6 +1167,8 @@ Toujours :
     'controller_messages' => [
         'ai_quota_exhausted' => 'Le quota de réponses IA de ce mois est épuisé. Il se réinitialise au début de la période suivante.',
         'trial_started' => 'Essai gratuit démarré sur :plan — vous avez :days jours avant tout paiement.',
+        'trial_expired' => 'L’essai de :name est désormais expiré (antidaté à hier). Rechargez le locataire pour tester le comportement post-essai.',
+        'trial_expire_not_on_trial' => ':name n’est pas actuellement en essai, il n’y a donc rien à antidater.',
         'module_not_in_plan' => 'Votre offre n\'inclut pas ce module. Contactez l\'équipe plateforme pour évoluer.',
         'unauthorized' => 'Non autorisé.',
         'not_allowed_to_manage_team' => 'Vous n’êtes pas autorisé à gérer cette équipe.',

@@ -431,6 +431,39 @@ class SuperAdminPlatformController extends Controller
         return back()->with('success', $message);
     }
 
+    /**
+     * Back-date trial_ends_at to yesterday so QA can immediately test the
+     * post-trial behavior (panel gate, AI throttling, etc) without waiting
+     * for the real end date. No-op unless the tenant is currently on trial:
+     * an active/expired tenant has nothing here to back-date.
+     */
+    public function expireTrial(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        if (! $tenant->isOnTrial()) {
+            return back()->with('error', __('ui.controller_messages.trial_expire_not_on_trial', [
+                'name' => $tenant->name,
+            ]));
+        }
+
+        $previous = $tenant->trial_ends_at?->toIso8601String();
+
+        $tenant->forceFill([
+            'trial_ends_at' => now()->subDay(),
+        ])->save();
+
+        AuditLog::record('tenant.trial_expired_manually', $tenant, [
+            'source'   => 'platform.tenants',
+            'previous' => $previous,
+            'new'      => $tenant->trial_ends_at?->toIso8601String(),
+        ]);
+
+        return back()->with('success', __('ui.controller_messages.trial_expired', [
+            'name' => $tenant->name,
+        ]));
+    }
+
     public function bulkTenants(Request $request)
     {
         $data = $request->validate([
