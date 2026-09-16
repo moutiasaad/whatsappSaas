@@ -130,17 +130,16 @@ class BillingController extends Controller
     /**
      * Extract payer identity from a payment's gateway_response.
      *
-     * Three shapes to handle. Each provider's response format is stable
-     * enough to hard-code the paths, and a missing field just returns null
-     * rather than throwing — the UI hides the row when nothing is there.
+     * PayPal's v2 API has shifted where the payer sits over the last two
+     * years — sometimes on the order under `payer`, sometimes under
+     * `payment_source.paypal`, and often only on the CAPTURE (not the
+     * order). The order is checked first because that's what the "get
+     * order" call returns; the capture is checked as a fallback for
+     * approve-and-capture flows where the order body was captured without
+     * the payer having filled in email yet.
      *
-     *   PayPal REST     → gateway_response.order.payer.email_address
-     *                   + gateway_response.order.payer.name.{given_name,surname}
-     *   PayPal Standard → gateway_response.ipn.payer_email
-     *                   + gateway_response.ipn.{first_name,last_name}
-     *   Stripe          → gateway_response.customer_details.email
-     *                   + gateway_response.customer_details.name
-     *                     (or gateway_response.customer_email as a fallback)
+     * A missing field just returns null rather than throwing — the UI
+     * hides the row when nothing is there.
      *
      * @return array{email: string|null, name: string|null}
      */
@@ -148,16 +147,36 @@ class BillingController extends Controller
     {
         $raw = is_array($p->gateway_response) ? $p->gateway_response : [];
 
-        // PayPal REST — order.payer.*
-        if ($email = data_get($raw, 'order.payer.email_address')) {
-            $given   = data_get($raw, 'order.payer.name.given_name');
-            $surname = data_get($raw, 'order.payer.name.surname');
+        // PayPal REST — check every shape v2 has produced. Fall through the
+        // list; first hit wins. Order matters: the order's own `payer` block
+        // is authoritative when populated, then payment_source (newer API
+        // shape), then the capture object's copies.
+        $paypalPaths = [
+            // Order-level (classic v2 field)
+            ['order.payer.email_address',                                   'order.payer.name.given_name',                                   'order.payer.name.surname'],
+            // Order-level (newer v2 field — PayPal moved payer to payment_source)
+            ['order.payment_source.paypal.email_address',                   'order.payment_source.paypal.name.given_name',                   'order.payment_source.paypal.name.surname'],
+            // Capture-level fallbacks — for approve-and-capture flows where
+            // the payer only surfaced after capture completed.
+            ['capture.payer.email_address',                                 'capture.payer.name.given_name',                                 'capture.payer.name.surname'],
+            ['capture.payment_source.paypal.email_address',                 'capture.payment_source.paypal.name.given_name',                 'capture.payment_source.paypal.name.surname'],
+        ];
+
+        foreach ($paypalPaths as [$emailPath, $givenPath, $surnamePath]) {
+            $email = data_get($raw, $emailPath);
+            if (! $email) {
+                continue;
+            }
+
+            $given   = data_get($raw, $givenPath);
+            $surname = data_get($raw, $surnamePath);
             $name    = trim(($given ?? '') . ' ' . ($surname ?? '')) ?: null;
 
             return ['email' => $email, 'name' => $name];
         }
 
-        // PayPal Standard — IPN body under `ipn`.
+        // PayPal Standard — IPN body merged under `ipn` at capture time
+        // (PaymentController::paypalIpn at line ~750). Different keys entirely.
         if ($email = data_get($raw, 'ipn.payer_email')) {
             $first = data_get($raw, 'ipn.first_name');
             $last  = data_get($raw, 'ipn.last_name');

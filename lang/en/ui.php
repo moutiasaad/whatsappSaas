@@ -1713,6 +1713,13 @@ Always:
         'filter_method_stripe'=> 'Stripe',
         'filter_method_paypal'=> 'PayPal',
         'payer_label'         => 'Payer (from gateway)',
+        // These three read via __('ui.payments_page.<key>', ['default' => '...'])
+        // in payment-show.blade.php — the `default` arg is Laravel's PLACEHOLDER
+        // substitution, not a fallback (feedback_blade_translation_fallback_trap.md).
+        // Missing → raw UI.PAYMENTS_PAGE.<KEY> renders. Add here so the label shows.
+        'payment_method'      => 'Payment method',
+        'paypal_order_id'     => 'PayPal order ID',
+        'paypal_capture_id'   => 'PayPal capture ID',
         'col_tenant'          => 'Tenant',
         'col_plan'            => 'Plan',
         'col_amount'          => 'Amount',
