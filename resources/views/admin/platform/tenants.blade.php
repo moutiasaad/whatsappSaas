@@ -20,6 +20,12 @@
         'delete_selected_confirm'=> __('ui.platform_tenants_page.delete_selected_confirm'),
         'impersonate_prompt'     => __('ui.platform_tenants_page.impersonate_prompt'),
         'impersonate_confirm'    => __('ui.platform_tenants_page.impersonate_confirm'),
+        'block'                  => __('ui.platform_tenants_page.block'),
+        'unblock'                => __('ui.platform_tenants_page.unblock'),
+        'block_prompt'           => __('ui.platform_tenants_page.block_prompt'),
+        'unblock_prompt'         => __('ui.platform_tenants_page.unblock_prompt'),
+        'block_message'          => __('ui.platform_tenants_page.block_message'),
+        'unblock_message'        => __('ui.platform_tenants_page.unblock_message'),
         'deleted_toast'          => __('ui.controller_messages.tenant_deleted'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
@@ -181,6 +187,14 @@
                                                 class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}">
                                             <i class="ri-login-box-line"></i>
                                         </button>
+                                        {{-- Block / unblock the whole tenant. Icon + tooltip flip
+                                             based on current state so a single button covers both
+                                             actions without needing to duplicate a row. --}}
+                                        <button type="button" @click="openBlockModal(tenant.id, tenant.name, tenant.is_active)"
+                                                class="action-btn"
+                                                :title="tenant.is_active ? i18n.block : i18n.unblock">
+                                            <i :class="tenant.is_active ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
+                                        </button>
                                         <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"
                                                 class="action-btn danger" title="{{ __('ui.platform_tenants_page.delete') }}">
                                             <i class="ri-delete-bin-line"></i>
@@ -266,6 +280,36 @@
         </div>
     </div>
 
+    {{-- Block / Unblock Modal — one modal handles both directions. Icon + copy
+         + confirm-button variant swap based on the tenant's CURRENT state so
+         we don't need two near-duplicate modals. --}}
+    <div class="modal-overlay" :class="blockModal.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="blockModal.show = false" @keydown.escape.window="blockModal.show = false">
+        <div class="modal-box" style="max-width:460px">
+            <div class="modal-icon" :class="blockModal.currentlyActive ? 'danger' : ''"
+                 :style="blockModal.currentlyActive ? '' : 'color:var(--brand);background:rgba(16,185,129,.15)'">
+                <i :class="blockModal.currentlyActive ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
+            </div>
+            <h3 x-text="(blockModal.currentlyActive ? i18n.block_prompt : i18n.unblock_prompt).replace(':name', blockModal.name)"></h3>
+            <p x-text="blockModal.currentlyActive ? i18n.block_message : i18n.unblock_message"></p>
+            <div class="modal-actions">
+                <button type="button" @click="blockModal.show = false" class="btn btn-outline">
+                    {{ __('ui.cancel') }}
+                </button>
+                <button type="button" @click="confirmBlockToggle()" :disabled="blockModal.saving"
+                        :class="blockModal.currentlyActive ? 'btn btn-danger' : 'btn btn-primary'">
+                    <span x-show="!blockModal.saving">
+                        <i :class="blockModal.currentlyActive ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
+                        <span x-text="blockModal.currentlyActive ? i18n.block : i18n.unblock"></span>
+                    </span>
+                    <span x-show="blockModal.saving">
+                        <span class="btn-spinner"></span> {{ __('ui.processing') }}
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -278,6 +322,7 @@ function tenantsPage() {
         editUrlTpl:        @json(route('super_admin.platform.tenants.edit',   ['tenant' => '__ID__'])),
         destroyUrlTpl:     @json(route('super_admin.platform.tenants.destroy', ['tenant' => '__ID__'])),
         impersonateUrlTpl: @json(route('super_admin.platform.tenants.impersonate-admin', ['tenant' => '__ID__'])),
+        toggleActiveUrlTpl:@json(route('super_admin.platform.tenants.toggle-active',     ['tenant' => '__ID__'])),
         bulkUrl:     @json(route('super_admin.platform.tenants.bulk')),
 
         tenants:     [],
@@ -296,6 +341,7 @@ function tenantsPage() {
 
         deleteModal:      { show: false, id: null, name: '', saving: false },
         impersonateModal: { show: false, id: null, name: '', url: '' },
+        blockModal:       { show: false, id: null, name: '', currentlyActive: true, saving: false },
 
         init() {
             this.loadData();
@@ -395,6 +441,37 @@ function tenantsPage() {
             // exactly like the row's own button, and no JS is required
             // between click and navigation.
             this.impersonateModal = { show: true, id, name, url: this.impersonateUrl(id) };
+        },
+
+        openBlockModal(id, name, currentlyActive) {
+            // `currentlyActive` is captured at open time so the modal's
+            // labels/colors don't flip mid-confirmation if another tab
+            // toggles the tenant while this modal is open.
+            this.blockModal = { show: true, id, name, currentlyActive: !!currentlyActive, saving: false };
+        },
+
+        async confirmBlockToggle() {
+            this.blockModal.saving = true;
+            try {
+                const res = await fetch(this.toggleActiveUrlTpl.replace('__ID__', String(this.blockModal.id)), {
+                    method: 'PATCH',
+                    headers: {
+                        'Accept':       'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                this.blockModal.show = false;
+                // Refresh the table so the row's icon/tooltip flip to reflect
+                // the new state without a hard page reload.
+                this.loadData();
+            } catch (e) {
+                console.error('Toggle tenant active failed:', e);
+            } finally {
+                this.blockModal.saving = false;
+            }
         },
 
         async confirmDelete() {

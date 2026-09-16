@@ -579,6 +579,13 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // which is for admin / tenant-admin / supervisor / agent panels.
             Route::get('/platform/tenants/{tenant}/impersonate-admin', [SuperAdminPlatformController::class, 'impersonateTenantAdmin'])
                 ->name('platform.tenants.impersonate-admin');
+            // Per-row block/unblock. Toggles tenants.is_active, which the
+            // CheckSubscription middleware reads via Tenant::isActive() —
+            // when false, every user of that tenant is blocked at the next
+            // panel request. Mirrors what the bulk `disable` action does
+            // but as a single-tenant one-shot from the table row.
+            Route::patch('/platform/tenants/{tenant}/toggle-active', [SuperAdminPlatformController::class, 'toggleTenantActive'])
+                ->name('platform.tenants.toggle-active');
 
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');

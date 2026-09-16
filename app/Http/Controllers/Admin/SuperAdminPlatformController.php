@@ -309,6 +309,48 @@ class SuperAdminPlatformController extends Controller
         return redirect()->route($admin->homeRouteName());
     }
 
+    /**
+     * Block / unblock an entire tenant in one click.
+     *
+     * Flips tenants.is_active. When false, Tenant::isActive() returns false
+     * and CheckSubscription (line ~41) denies every panel request for that
+     * tenant's users — effectively logging them all out on their next hop.
+     * When flipped back to true, the previous subscription_status decides
+     * whether they can immediately resume (active/trial) or need to renew
+     * (suspended/cancelled).
+     *
+     * subscription_status is deliberately NOT touched: block is orthogonal
+     * to "is this tenant currently paying". A super-admin can block a paid
+     * customer during an incident and unblock them without churning their
+     * subscription lifecycle.
+     */
+    public function toggleTenantActive(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $wasActive = (bool) $tenant->is_active;
+        $tenant->update(['is_active' => ! $wasActive]);
+
+        AuditLog::record(
+            $wasActive ? 'tenant.blocked' : 'tenant.unblocked',
+            $tenant,
+            ['source' => 'platform.tenants']
+        );
+
+        $message = $wasActive
+            ? __('ui.controller_messages.tenant_blocked',   ['name' => $tenant->name])
+            : __('ui.controller_messages.tenant_unblocked', ['name' => $tenant->name]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'   => $message,
+                'is_active' => (bool) $tenant->is_active,
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function bulkTenants(Request $request)
     {
         $data = $request->validate([
