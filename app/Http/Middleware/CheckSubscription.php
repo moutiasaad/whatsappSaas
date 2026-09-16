@@ -38,6 +38,23 @@ class CheckSubscription
                 'This workspace has no plan yet. Ask your administrator to choose one.');
         }
 
+        // Manual block by super-admin (tenants.is_active=false while
+        // subscription_status is still active/trial) is a policy action, not
+        // a billing problem. Distinguish it from a lapsed subscription so:
+        //   - The admin is LOGGED OUT rather than deflected to /billing —
+        //     otherwise the "Renew" button suggests they can pay their way
+        //     around the block, which defeats the super-admin's intent.
+        //   - The message names the actual cause ("suspended by an
+        //     administrator") instead of the misleading "subscription
+        //     inactive" that a paying customer would see under the same
+        //     is_active=false condition.
+        // Distinct code (workspace_blocked) so the login page + API callers
+        // can render an appropriate copy rather than a stale renewal prompt.
+        if ($tenant && ! $tenant->is_active
+            && in_array($tenant->subscription_status, ['active', 'trial'], true)) {
+            return $this->denyBlocked($request);
+        }
+
         if (!$tenant || !$tenant->isActive()) {
             return $this->deny($request, $user, 'subscription_inactive',
                 'Your subscription is inactive. Please renew your plan to continue.');
@@ -62,6 +79,30 @@ class CheckSubscription
         }
 
         return $next($request);
+    }
+
+    /**
+     * Manual super-admin block: kill the session regardless of role and land
+     * the user on /login with a "workspace suspended" flash. Admins get no
+     * /billing off-ramp because paying doesn't lift a policy block — only
+     * the super-admin unblocking does.
+     */
+    private function denyBlocked(Request $request): Response
+    {
+        $message = __('auth.errors.workspace_blocked');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'code'    => 'workspace_blocked',
+            ], 403);
+        }
+
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->with('error', $message);
     }
 
     /**

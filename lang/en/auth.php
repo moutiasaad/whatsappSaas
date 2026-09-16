@@ -181,6 +181,7 @@ return [
         'credentials_mismatch' => 'These credentials do not match our records.',
         'super_admin_only' => 'This portal is only for super admins.',
         'use_control_panel_login' => 'Platform accounts sign in from the control panel, not from this form.',
+        'workspace_blocked' => 'This workspace has been suspended by an administrator. Contact support if you believe this is a mistake — a subscription renewal will not lift the block.',
         'admin_only' => 'This portal is only for tenant admins.',
         'supervisor_only' => 'This portal is only for supervisors.',
         'agent_only' => 'This portal is only for support agents.',
