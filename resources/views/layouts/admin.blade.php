@@ -1874,9 +1874,14 @@
                             ['route' => 'reservations.index',    'match' => ['reservations.*'],   'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),   'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
                             ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],        'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),      'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
                             // API Access — teaser module; shows locked to plans that lack it,
-                            // exactly like reservations/webchat above. Available to all roles
-                            // (keys are per-user), not just admin.
-                            ['route' => 'api-access.show',       'match' => ['api-access.*'],     'icon' => 'ri-code-s-slash-line',   'label' => __('ui.sidebar.api_access'),     'show' => $modShow('api_access'), 'locked' => $teased('api_access')],
+                            // exactly like reservations/webchat above. Available to all tenant
+                            // roles (keys are per-user), but hidden for super_admin: they're a
+                            // platform account with no tenant/plan, and no super_admin.api-access
+                            // route exists in the separate super_admin block. Without this
+                            // guard the whole super_admin panel 500s because the sidebar
+                            // eagerly calls route('super_admin.api-access.show') and it doesn't
+                            // resolve. See feedback_routes_super_admin_split.md.
+                            ['route' => 'api-access.show',       'match' => ['api-access.*'],     'icon' => 'ri-code-s-slash-line',   'label' => __('ui.sidebar.api_access'),     'show' => !$u->isSuperAdmin() && $modShow('api_access'), 'locked' => $teased('api_access')],
                         ],
                     ],
 
