@@ -282,8 +282,17 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                         ->name('messages.store');
                 });
 
-            // Impersonation leave route (when admin is currently impersonating)
-            Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
+            // Impersonation leave route (when admin is currently impersonating).
+            // Exempt from the subscription gate: middleware runs BEFORE the
+            // controller can flip Auth back to the original user, so
+            // CheckSubscription sees the (possibly lapsed / trial-ended)
+            // impersonated tenant and blocks the route — trapping the
+            // super-admin inside the impersonation with no way out short
+            // of clearing cookies. Also exempt from `verified` so an
+            // unverified admin doesn't get locked in either.
+            Route::withoutMiddleware([\App\Http\Middleware\CheckSubscription::class, \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class])->group(function () {
+                Route::get('/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
+            });
 
             // Profile — all roles. Exempted from the subscription gate so a
             // lapsed tenant's users can still see and manage their own account.
