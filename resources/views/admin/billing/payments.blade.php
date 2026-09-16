@@ -67,7 +67,12 @@ $i18n = [
             <option value="pending">{{ __('ui.payments_page.status_pending') }}</option>
             <option value="failed">{{ __('ui.payments_page.status_failed') }}</option>
         </select>
-        <button type="button" x-show="search || filters.status" @click="clearFilters()" class="btn btn-ghost btn-sm">
+        <select x-model="filters.payment_method" @change="reload()" class="toolbar-select">
+            <option value="">{{ __('ui.payments_page.filter_method_all') }}</option>
+            <option value="stripe">{{ __('ui.payments_page.filter_method_stripe') }}</option>
+            <option value="paypal">{{ __('ui.payments_page.filter_method_paypal') }}</option>
+        </select>
+        <button type="button" x-show="search || filters.status || filters.payment_method" @click="clearFilters()" class="btn btn-ghost btn-sm">
             <i class="ri-close-line"></i> {{ __('ui.clear') }}
         </button>
     </div>
@@ -113,7 +118,17 @@ $i18n = [
                                              x-text="row.tenant_initial"></div>
                                         <div>
                                             <div style="font-weight:600;font-size:.875rem;" x-text="row.tenant_name ?? '—'"></div>
-                                            <div style="font-size:.75rem;color:var(--text-muted);" x-text="row.tenant_slug ?? ''"></div>
+                                            {{-- Payer email under the tenant name when the gateway told us who paid.
+                                                 Falls back to the slug if there's no payer info — same shape as before. --}}
+                                            <template x-if="row.payer_email">
+                                                <div style="font-size:.75rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
+                                                    <i :class="row.payment_method === 'paypal' ? 'ri-paypal-line' : 'ri-bank-card-line'" style="font-size:.75rem;"></i>
+                                                    <span x-text="row.payer_email"></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="!row.payer_email">
+                                                <div style="font-size:.75rem;color:var(--text-muted);" x-text="row.tenant_slug ?? ''"></div>
+                                            </template>
                                         </div>
                                     </div>
                                 </td>
@@ -190,7 +205,7 @@ function paymentsPage() {
         detailUrlTpl:  @json(route('super_admin.billing.payment.show', ['payment' => '__ID__'])),
 
         search:     '',
-        filters:    { status: '' },
+        filters:    { status: '', payment_method: '' },
         loading:    true,
         rows:       [],
         stats:      { total_revenue: 0, total: 0, completed: 0, pending: 0, failed: 0 },
@@ -208,8 +223,9 @@ function paymentsPage() {
         },
 
         clearFilters() {
-            this.search        = '';
-            this.filters.status = '';
+            this.search                 = '';
+            this.filters.status         = '';
+            this.filters.payment_method = '';
             document.querySelectorAll('.table-toolbar .ss-wrap').forEach(wrap => {
                 const inp = wrap.querySelector('.ss-input');
                 if (inp) inp.value = '';
@@ -222,8 +238,9 @@ function paymentsPage() {
         buildParams() {
             const p = new URLSearchParams();
             p.set('page', String(this._page));
-            if (this.search.trim())   p.set('search', this.search.trim());
-            if (this.filters.status)  p.set('status', this.filters.status);
+            if (this.search.trim())          p.set('search', this.search.trim());
+            if (this.filters.status)         p.set('status', this.filters.status);
+            if (this.filters.payment_method) p.set('payment_method', this.filters.payment_method);
             return p;
         },
 

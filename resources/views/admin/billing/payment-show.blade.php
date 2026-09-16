@@ -116,6 +116,24 @@
                     </div>
                 </div>
 
+                {{-- Payer identity from the provider's own response.
+                     Reconciliation with PayPal/Stripe dashboards keys on this,
+                     and it's often different from the workspace admin (someone
+                     else's card, family PayPal account, etc.). Only rendered
+                     when the response actually carries it. --}}
+                @if(!empty($payer['email']))
+                <div class="detail-item" style="grid-column:1/-1;">
+                    <div class="detail-label">{{ __('ui.payments_page.payer_label') }}</div>
+                    <div class="detail-value" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                        <i class="{{ ($payment->payment_method ?? 'stripe') === 'paypal' ? 'ri-paypal-line' : 'ri-bank-card-line' }}" style="color:var(--text-muted)"></i>
+                        <span style="font-weight:500;">{{ $payer['email'] }}</span>
+                        @if(!empty($payer['name']))
+                            <span style="color:var(--text-muted);font-size:.8125rem;">({{ $payer['name'] }})</span>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
                 @if($payment->stripe_session_id)
                 <div class="detail-item" style="grid-column:1/-1;">
                     <div class="detail-label">{{ __('ui.payments_page.col_session') }}</div>

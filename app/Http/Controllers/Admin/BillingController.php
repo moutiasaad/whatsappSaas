@@ -67,6 +67,13 @@ class BillingController extends Controller
 
         $query = TenantPayment::with('tenant', 'plan')
             ->when($request->status, fn($q, $s) => $q->where('status', $s))
+            // Provider filter. Validated inline rather than via
+            // $request->validate() so a garbage value falls back to "all"
+            // instead of 422-ing the AJAX table.
+            ->when(
+                in_array($request->query('payment_method'), ['stripe', 'paypal'], true),
+                fn ($q) => $q->where('payment_method', $request->query('payment_method'))
+            )
             ->when($request->search, function ($q, $s) {
                 $q->whereHas('tenant', fn($tq) => $tq->where('name', 'like', "%{$s}%"));
             })
@@ -79,23 +86,32 @@ class BillingController extends Controller
                 ->groupBy('status')->pluck('cnt', 'status');
 
             $result              = $payments->toArray();
-            $result['data']      = $payments->map(fn($p) => [
-                'id'               => $p->id,
-                'tenant_name'      => $p->tenant?->name,
-                'tenant_slug'      => $p->tenant?->slug,
-                'tenant_initial'   => strtoupper(substr($p->tenant?->name ?? '?', 0, 1)),
-                'plan_name'        => $p->plan?->name ?? '—',
-                'amount'           => number_format((float) $p->amount, 2),
-                'currency'         => $p->currency ?? 'USD',
-                'status'           => $p->status,
-                'is_completed'     => $p->isCompleted(),
-                'paid_at_date'     => $p->paid_at?->format('d M Y'),
-                'paid_at_time'     => $p->paid_at?->format('H:i'),
-                'created_at_date'  => $p->created_at?->format('d M Y'),
-                'payment_method'   => $p->payment_method ?? 'stripe',
-                'stripe_session_id'=> $p->stripe_session_id ? Str::limit($p->stripe_session_id, 24) : null,
-                'paypal_order_id'  => $p->paypal_order_id ? Str::limit($p->paypal_order_id, 24) : null,
-            ])->toArray();
+            $result['data']      = $payments->map(function ($p) {
+                $payer = $this->payerFromPayment($p);
+
+                return [
+                    'id'               => $p->id,
+                    'tenant_name'      => $p->tenant?->name,
+                    'tenant_slug'      => $p->tenant?->slug,
+                    'tenant_initial'   => strtoupper(substr($p->tenant?->name ?? '?', 0, 1)),
+                    'plan_name'        => $p->plan?->name ?? '—',
+                    'amount'           => number_format((float) $p->amount, 2),
+                    'currency'         => $p->currency ?? 'USD',
+                    'status'           => $p->status,
+                    'is_completed'     => $p->isCompleted(),
+                    'paid_at_date'     => $p->paid_at?->format('d M Y'),
+                    'paid_at_time'     => $p->paid_at?->format('H:i'),
+                    'created_at_date'  => $p->created_at?->format('d M Y'),
+                    'payment_method'   => $p->payment_method ?? 'stripe',
+                    'stripe_session_id'=> $p->stripe_session_id ? Str::limit($p->stripe_session_id, 24) : null,
+                    'paypal_order_id'  => $p->paypal_order_id ? Str::limit($p->paypal_order_id, 24) : null,
+                    // Payer identity extracted from the provider's own
+                    // response. PayPal REST + Standard + Stripe all live in
+                    // different JSON shapes; payerFromPayment normalises them.
+                    'payer_email'      => $payer['email'],
+                    'payer_name'       => $payer['name'],
+                ];
+            })->toArray();
             $result['stats'] = [
                 'total_revenue' => (float) TenantPayment::where('status', 'completed')->sum('amount'),
                 'total'         => TenantPayment::count(),
@@ -109,6 +125,63 @@ class BillingController extends Controller
         }
 
         return view('admin.billing.payments');
+    }
+
+    /**
+     * Extract payer identity from a payment's gateway_response.
+     *
+     * Three shapes to handle. Each provider's response format is stable
+     * enough to hard-code the paths, and a missing field just returns null
+     * rather than throwing — the UI hides the row when nothing is there.
+     *
+     *   PayPal REST     → gateway_response.order.payer.email_address
+     *                   + gateway_response.order.payer.name.{given_name,surname}
+     *   PayPal Standard → gateway_response.ipn.payer_email
+     *                   + gateway_response.ipn.{first_name,last_name}
+     *   Stripe          → gateway_response.customer_details.email
+     *                   + gateway_response.customer_details.name
+     *                     (or gateway_response.customer_email as a fallback)
+     *
+     * @return array{email: string|null, name: string|null}
+     */
+    private function payerFromPayment(TenantPayment $p): array
+    {
+        $raw = is_array($p->gateway_response) ? $p->gateway_response : [];
+
+        // PayPal REST — order.payer.*
+        if ($email = data_get($raw, 'order.payer.email_address')) {
+            $given   = data_get($raw, 'order.payer.name.given_name');
+            $surname = data_get($raw, 'order.payer.name.surname');
+            $name    = trim(($given ?? '') . ' ' . ($surname ?? '')) ?: null;
+
+            return ['email' => $email, 'name' => $name];
+        }
+
+        // PayPal Standard — IPN body under `ipn`.
+        if ($email = data_get($raw, 'ipn.payer_email')) {
+            $first = data_get($raw, 'ipn.first_name');
+            $last  = data_get($raw, 'ipn.last_name');
+            $name  = trim(($first ?? '') . ' ' . ($last ?? '')) ?: null;
+
+            return ['email' => $email, 'name' => $name];
+        }
+
+        // Stripe — populated by processPayment() when the session is retrieved.
+        // Falls back to customer_email (also on the session object) if
+        // customer_details isn't populated (guest checkout with a receipt-only
+        // email lands there instead).
+        if ($email = data_get($raw, 'customer_details.email')) {
+            return [
+                'email' => $email,
+                'name'  => data_get($raw, 'customer_details.name'),
+            ];
+        }
+
+        if ($email = data_get($raw, 'customer_email')) {
+            return ['email' => $email, 'name' => null];
+        }
+
+        return ['email' => null, 'name' => null];
     }
 
     public function showPayment(TenantPayment $payment)
@@ -126,6 +199,12 @@ class BillingController extends Controller
             ? TenantPayment::where('tenant_id', $tenant->id)->count()
             : 0;
 
-        return view('admin.billing.payment-show', compact('payment', 'tenant', 'adminUser', 'totalPaid', 'paymentsCount'));
+        // Who actually paid us. Distinct from $adminUser (the tenant's
+        // registered admin) — a workspace admin can hand a PayPal login or
+        // a credit card entered under someone else's name to the checkout,
+        // and reconciliation with the gateway needs the gateway's own view.
+        $payer = $this->payerFromPayment($payment);
+
+        return view('admin.billing.payment-show', compact('payment', 'tenant', 'adminUser', 'totalPaid', 'paymentsCount', 'payer'));
     }
 }
