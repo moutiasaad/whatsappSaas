@@ -150,6 +150,23 @@ class AuthApiController extends Controller
             ], 403);
         }
 
+        // Tenant blocked by a super-admin — refuse before minting a token.
+        // Same rule the core-role LoginController and CheckSubscription
+        // middleware use: is_active=false while subscription_status is
+        // still active/trial → policy block, not a subscription lapse.
+        // Marketing's attemptLoginViaCoreApi renders the 403 message as
+        // the email field's error, so the "workspace suspended" copy
+        // shows on wavadesk.com/login without extra plumbing.
+        $tenant = $user->tenant;
+        if ($tenant
+            && ! $tenant->is_active
+            && in_array($tenant->subscription_status, ['active', 'trial'], true)) {
+            return response()->json([
+                'message' => __('auth.errors.workspace_blocked'),
+                'code'    => 'workspace_blocked',
+            ], 403);
+        }
+
         return response()->json([
             'token'     => $user->createToken('sso:marketing')->plainTextToken,
             'user'      => $this->userPayload($user),
