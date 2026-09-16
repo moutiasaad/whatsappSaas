@@ -18,6 +18,7 @@
         'delete_prompt'          => __('ui.platform_tenants_page.delete_prompt'),
         'delete_message'         => __('ui.platform_tenants_page.delete_message'),
         'delete_selected_confirm'=> __('ui.platform_tenants_page.delete_selected_confirm'),
+        'impersonate_prompt'     => __('ui.platform_tenants_page.impersonate_prompt'),
         'impersonate_confirm'    => __('ui.platform_tenants_page.impersonate_confirm'),
         'deleted_toast'          => __('ui.controller_messages.tenant_deleted'),
         'selected_items'         => __('ui.selected_items'),
@@ -171,21 +172,15 @@
                                         <a :href="editUrl(tenant.id)" class="action-btn" title="{{ __('ui.platform_tenants_page.edit') }}">
                                             <i class="ri-pencil-line"></i>
                                         </a>
-                                        {{-- One-click "log in as this tenant". Server-side confirms
-                                             super_admin, resolves the tenant's active admin, and hands off
-                                             through the same ImpersonationLog path the users-list button uses,
-                                             so /impersonate/leave restores this session.
-
-                                             confirm() goes through @click, not the HTML `onclick=""`
-                                             attribute: the copy has apostrophes (English possessive,
-                                             French "l'"), and inside onclick="" they collide with the
-                                             attribute quotes and break the handler client-side. Alpine's
-                                             @click receives the string as a plain JS literal so no
-                                             quote-escape gymnastics needed. --}}
-                                        <a :href="impersonateUrl(tenant.id)" class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}"
-                                           @click="if (!confirm(i18n.impersonate_confirm)) { $event.preventDefault(); }">
+                                        {{-- One-click "log in as this tenant". Opens the styled
+                                             modal below rather than a native browser confirm — the
+                                             copy has apostrophes that would collide with onclick=""
+                                             attribute quotes, and the delete-modal-adjacent look
+                                             matches what the rest of the platform panel uses. --}}
+                                        <button type="button" @click="openImpersonateModal(tenant.id, tenant.name)"
+                                                class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}">
                                             <i class="ri-login-box-line"></i>
-                                        </a>
+                                        </button>
                                         <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"
                                                 class="action-btn danger" title="{{ __('ui.platform_tenants_page.delete') }}">
                                             <i class="ri-delete-bin-line"></i>
@@ -251,6 +246,26 @@
         </div>
     </div>
 
+    {{-- Impersonate Modal — mirrors the delete-modal shape so both live in the
+         same visual family. Confirming navigates to the impersonation URL; the
+         server does the actual role switch. --}}
+    <div class="modal-overlay" :class="impersonateModal.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="impersonateModal.show = false" @keydown.escape.window="impersonateModal.show = false">
+        <div class="modal-box" style="max-width:460px">
+            <div class="modal-icon" style="color:var(--brand);background:rgba(16,185,129,.15)"><i class="ri-login-box-line"></i></div>
+            <h3 x-text="i18n.impersonate_prompt.replace(':name', impersonateModal.name)"></h3>
+            <p x-text="i18n.impersonate_confirm"></p>
+            <div class="modal-actions">
+                <button type="button" @click="impersonateModal.show = false" class="btn btn-outline">
+                    {{ __('ui.cancel') }}
+                </button>
+                <a :href="impersonateModal.url" class="btn btn-primary">
+                    <i class="ri-login-box-line"></i> {{ __('ui.platform_tenants_page.impersonate') }}
+                </a>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -279,7 +294,8 @@ function tenantsPage() {
         bulkAction: 'enable',
         bulkSaving: false,
 
-        deleteModal: { show: false, id: null, name: '', saving: false },
+        deleteModal:      { show: false, id: null, name: '', saving: false },
+        impersonateModal: { show: false, id: null, name: '', url: '' },
 
         init() {
             this.loadData();
@@ -371,6 +387,14 @@ function tenantsPage() {
 
         openDeleteModal(id, name) {
             this.deleteModal = { show: true, id, name, saving: false };
+        },
+
+        openImpersonateModal(id, name) {
+            // URL is resolved here so the modal's Confirm button is a real
+            // <a href="..."> — right-click "open in new tab" then works
+            // exactly like the row's own button, and no JS is required
+            // between click and navigation.
+            this.impersonateModal = { show: true, id, name, url: this.impersonateUrl(id) };
         },
 
         async confirmDelete() {

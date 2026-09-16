@@ -802,6 +802,7 @@ Toujours :
         'view' => 'Voir',
         'edit' => 'Modifier',
         'impersonate' => 'Se connecter en tant que ce tenant',
+        'impersonate_prompt' => 'Se connecter en tant que :name ?',
         'impersonate_confirm' => "Se connecter en tant qu'administrateur de ce tenant ? Toutes vos actions seront attribuées à ce compte jusqu'à ce que vous quittiez l'usurpation.",
         'delete' => 'Supprimer',
         'delete_prompt' => 'Supprimer :name ?',

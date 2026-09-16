@@ -802,6 +802,7 @@ Always:
         'view' => 'View',
         'edit' => 'Edit',
         'impersonate' => 'Log in as this tenant',
+        'impersonate_prompt' => 'Log in as :name?',
         'impersonate_confirm' => 'Log in as this tenant\'s admin? Anything you do will be attributed to that account until you leave impersonation.',
         'delete' => 'Delete',
         'delete_prompt' => 'Delete :name?',
