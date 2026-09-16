@@ -802,6 +802,7 @@ return [
         'users' => 'المستخدمون',
         'teams' => 'الفرق',
         'instances' => 'النسخ',
+        'plan_period' => 'فترة الخطة',
         'created' => 'تم الإنشاء',
         'no_plan' => 'لا توجد خطة',
         'inactive' => 'غير نشط',

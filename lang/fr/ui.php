@@ -805,6 +805,7 @@ Toujours :
         'users' => 'Utilisateurs',
         'teams' => 'Équipes',
         'instances' => 'Instances',
+        'plan_period' => 'Période du forfait',
         'created' => 'Créé',
         'no_plan' => 'Aucun forfait',
         'inactive' => 'Inactif',

@@ -805,6 +805,7 @@ Always:
         'users' => 'Users',
         'teams' => 'Teams',
         'instances' => 'Instances',
+        'plan_period' => 'Plan period',
         'created' => 'Created',
         'no_plan' => 'No plan',
         'inactive' => 'Inactive',

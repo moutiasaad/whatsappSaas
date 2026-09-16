@@ -146,8 +146,7 @@
                             <th>{{ __('ui.platform_tenants_page.plan') }}</th>
                             <th>{{ __('ui.platform_tenants_page.status') }}</th>
                             <th>{{ __('ui.platform_tenants_page.users') }}</th>
-                            <th>{{ __('ui.platform_tenants_page.teams') }}</th>
-                            <th>{{ __('ui.platform_tenants_page.instances') }}</th>
+                            <th>{{ __('ui.platform_tenants_page.plan_period') }}</th>
                             <th>{{ __('ui.platform_tenants_page.created') }}</th>
                             <th style="width:120px"></th>
                         </tr>
@@ -179,8 +178,18 @@
                                     </template>
                                 </td>
                                 <td x-text="tenant.users_count ?? 0"></td>
-                                <td x-text="tenant.teams_count ?? 0"></td>
-                                <td x-text="tenant.instances_count ?? 0"></td>
+                                {{-- Plan period: for a trial workspace, from tenant creation to
+                                     trial_ends_at. For an active/paid workspace, from
+                                     subscription_starts_at to subscription_ends_at. Rendered by
+                                     planPeriod() so the branching stays out of the template. --}}
+                                <td>
+                                    <template x-if="planPeriod(tenant)">
+                                        <span style="font-size:.8125rem;color:var(--text-secondary);white-space:nowrap;" x-text="planPeriod(tenant)"></span>
+                                    </template>
+                                    <template x-if="!planPeriod(tenant)">
+                                        <span style="color:var(--text-muted)">—</span>
+                                    </template>
+                                </td>
                                 <td>
                                     <span style="font-size:.8125rem;color:var(--text-muted)" x-text="formatDate(tenant.created_at)"></span>
                                 </td>
@@ -624,6 +633,35 @@ function tenantsPage() {
         formatDate(ts) {
             if (!ts) return '-';
             return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        },
+
+        // "Plan period" = the window the tenant is currently billed/trialing
+        // for. Trial uses trial_ends_at (set at register), paid uses
+        // subscription_ends_at (set on capture). Start is subscription_starts_at
+        // for paid, or the tenant's created_at for trial since the trial begins
+        // at signup. Returns "" when there's no meaningful window (e.g. a
+        // suspended tenant with no future date on either column) — caller
+        // renders an em-dash in that case.
+        planPeriod(tenant) {
+            const status = tenant.subscription_status;
+            let start = null, end = null;
+
+            if (status === 'trial') {
+                start = tenant.subscription_starts_at ?? tenant.created_at;
+                end   = tenant.trial_ends_at;
+            } else if (status === 'active') {
+                start = tenant.subscription_starts_at ?? tenant.created_at;
+                end   = tenant.subscription_ends_at;
+            } else {
+                // suspended / cancelled — show the last-known window if we
+                // still have both dates, otherwise nothing (the row's
+                // status badge already tells the story).
+                start = tenant.subscription_starts_at;
+                end   = tenant.subscription_ends_at ?? tenant.trial_ends_at;
+            }
+
+            if (!start || !end) return '';
+            return `${this.formatDate(start)} → ${this.formatDate(end)}`;
         },
 
         showUrl(id)        { return this.showUrlTpl.replace('__ID__', String(id)); },
