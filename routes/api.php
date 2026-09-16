@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthApiController;
+use App\Http\Controllers\Api\V1\BillingApiController;
 use App\Http\Controllers\Api\V1\PlansApiController;
 use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\SingleInstanceController;
@@ -64,6 +65,18 @@ if (Wavadesk::isCore()) {
         Route::post('/choose', [PlansApiController::class, 'choose'])
             ->middleware(['auth:sanctum', 'throttle:10,1'])
             ->name('api.v1.plans.choose');
+    });
+
+    // ─── v1 Billing API (called by the marketing checkout button) ──────────
+    // Auth via user's PAT: the tenant to bill is derived from the token, so
+    // a caller cannot name a workspace they do not own. Callback URLs live
+    // on this host — the provider (Stripe/PayPal) needs a stable callback
+    // that owns the tenant row, and the browser lands on the panel (also
+    // here) once the payment captures.
+    Route::prefix('v1/billing')->middleware('wavadesk.caller')->group(function () {
+        Route::post('/checkout', [BillingApiController::class, 'checkout'])
+            ->middleware(['auth:sanctum', 'throttle:10,1'])
+            ->name('api.v1.billing.checkout');
     });
 }
 
