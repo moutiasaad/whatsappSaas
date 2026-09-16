@@ -35,18 +35,21 @@ return [
     | redirects the browser to finish the handoff. It is the one value the
     | marketing host cannot work without.
     |
-    | marketing_origin is NOT read by anything yet. Its only consumer was the
-    | CORS allow-list, which was removed when /api/v1/auth/* stopped being a
-    | browser-facing surface (it is server-to-server, guarded by the shared
-    | secret instead). It is kept because the documented follow-ups — sending a
-    | user back to the marketing site on logout, and the billing API — both
-    | need it. Setting it today changes no behaviour.
+    | marketing_origin is what the CORE host uses to hand the public pages —
+    | landing, login, register — back to the marketing site instead of serving
+    | its own copies (App\Http\Middleware\SplitHostingRedirect).
+    |
+    | It is deliberately EMPTY by default. Unset, a core box behaves exactly as
+    | the monolith always has, which is what a dev machine, a replica, or a
+    | marketing host rolled back to `core` needs. Set it only on the real core
+    | host, app.wavadesk.com, and only to the other host's origin: pointing it
+    | at itself is ignored rather than served as a redirect loop.
     |
     */
 
     'core_url' => rtrim((string) env('WAVADESK_CORE_URL', 'https://app.wavadesk.com'), '/'),
 
-    'marketing_origin' => rtrim((string) env('WAVADESK_MARKETING_ORIGIN', 'https://wavadesk.com'), '/'),
+    'marketing_origin' => rtrim((string) env('WAVADESK_MARKETING_ORIGIN', ''), '/'),
 
     /*
     |--------------------------------------------------------------------------

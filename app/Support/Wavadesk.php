@@ -75,4 +75,49 @@ final class Wavadesk
     {
         return self::coreUrl() . '/' . ltrim($path, '/');
     }
+
+    /** Absolute URL on the marketing site, e.g. marketingUrlTo('/login'). */
+    public static function marketingUrlTo(string $path): string
+    {
+        return self::marketingOrigin() . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * Should this core host hand the public pages back to the marketing site?
+     *
+     * Requires WAVADESK_MARKETING_ORIGIN to name a host that is not this one.
+     * Unset means "behave as the monolith always has", which keeps dev boxes
+     * and replicas serving their own landing and auth pages. The host check is
+     * what makes a rollback safe: a marketing box put back on `core` still has
+     * the origin in its .env, and without the check it would redirect /login
+     * to itself forever.
+     */
+    public static function delegatesToMarketing(string $host): bool
+    {
+        return self::isCore() && self::peerIsElsewhere(self::marketingOrigin(), $host);
+    }
+
+    /**
+     * Should this marketing host hand the application pages to the core app?
+     *
+     * True whenever the split is on, because the marketing box has no business
+     * answering for a panel, a payment or an API: its database is not the one
+     * those pages mean.
+     */
+    public static function delegatesToCore(string $host): bool
+    {
+        return self::isMarketing() && self::peerIsElsewhere(self::coreUrl(), $host);
+    }
+
+    /** A peer we can redirect to: configured, parseable, and not us. */
+    private static function peerIsElsewhere(string $origin, string $host): bool
+    {
+        if ($origin === '') {
+            return false;
+        }
+
+        $peer = parse_url($origin, PHP_URL_HOST);
+
+        return is_string($peer) && $peer !== '' && strcasecmp($peer, $host) !== 0;
+    }
 }

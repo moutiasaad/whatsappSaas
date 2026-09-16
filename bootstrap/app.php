@@ -20,7 +20,28 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            // Split hosting: each host answers only for the pages it owns, so
+            // core stops serving its inherited landing/login/register copies
+            // and marketing stops answering for panels, payment and the APIs.
+            // No-ops on an un-split box.
+            \App\Http\Middleware\SplitHostingRedirect::class,
         ]);
+
+        // `auth` is in Laravel's priority list and SplitHostingRedirect is not,
+        // so by default authentication sorts ahead of it: a guest asking
+        // wavadesk.com for /payment/order was bounced to the marketing login
+        // instead of being sent to the host that owns the order. Slot the
+        // redirect in just before it — still after StartSession, so it can
+        // tell a signed-in user from a guest.
+        //
+        // The anchor is the CONTRACT, not \Illuminate\Auth\Middleware\
+        // Authenticate: the priority list holds the interface, and naming the
+        // concrete class matches nothing, which appends to the end of the list
+        // and silently leaves the original ordering in place.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: \App\Http\Middleware\SplitHostingRedirect::class,
+        );
 
         // PROC-008: resolve the tenant BEFORE route-model binding. SubstituteBindings
         // is in Laravel's priority list and ResolveTenant is not, so by default bindings
