@@ -182,6 +182,7 @@ return [
         'super_admin_only' => 'This portal is only for super admins.',
         'use_control_panel_login' => 'Platform accounts sign in from the control panel, not from this form.',
         'workspace_blocked' => 'This workspace has been suspended by an administrator. Contact support if you believe this is a mistake — a subscription renewal will not lift the block.',
+        'workspace_archived' => 'This workspace has been archived. Contact support if you need it restored.',
         'admin_only' => 'This portal is only for tenant admins.',
         'supervisor_only' => 'This portal is only for supervisors.',
         'agent_only' => 'This portal is only for support agents.',

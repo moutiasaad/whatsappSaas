@@ -32,7 +32,15 @@ class SuperAdminPlatformController extends Controller
             })
             ->when($request->status,  fn ($q, $status) => $q->where('subscription_status', $status))
             ->when($request->plan_id, fn ($q, $planId) => $q->where('plan_id', $planId))
-            ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active === '1'));
+            ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active === '1'))
+            // Archived filter: default (unset) → hide archived rows.
+            // ?archived=1 → only archived. ?archived=all → both.
+            ->when(true, function ($q) use ($request) {
+                $filter = (string) $request->query('archived', '');
+                if ($filter === '1')   { $q->whereNotNull('archived_at'); return; }
+                if ($filter === 'all') { return; }
+                $q->whereNull('archived_at');
+            });
 
         $stats = [
             'total'    => (clone $baseQuery)->count(),
@@ -345,6 +353,47 @@ class SuperAdminPlatformController extends Controller
             return response()->json([
                 'message'   => $message,
                 'is_active' => (bool) $tenant->is_active,
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Archive / restore an entire tenant.
+     *
+     * Different semantic from block:
+     *   block     = temporary suspension, tenant stays in the main list,
+     *               "suspended by administrator" copy
+     *   archive   = long-term shelved, hidden from the main list (filter
+     *               to view), "workspace archived" copy
+     *
+     * Both prevent login. Both preserve data. Both are reversible. Neither
+     * touches subscription_status. Distinct columns so a tenant can be
+     * blocked AND archived independently; the login/deny messages
+     * prioritise archive since it's the more terminal state.
+     */
+    public function toggleTenantArchive(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $wasArchived = $tenant->isArchived();
+        $wasArchived ? $tenant->restoreFromArchive() : $tenant->archive();
+
+        AuditLog::record(
+            $wasArchived ? 'tenant.unarchived' : 'tenant.archived',
+            $tenant,
+            ['source' => 'platform.tenants']
+        );
+
+        $message = $wasArchived
+            ? __('ui.controller_messages.tenant_unarchived', ['name' => $tenant->name])
+            : __('ui.controller_messages.tenant_archived',   ['name' => $tenant->name]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'  => $message,
+                'archived' => $tenant->isArchived(),
             ]);
         }
 

@@ -12,7 +12,7 @@ class Tenant extends Model
     protected $fillable = [
         'name', 'slug', 'subscription_status', 'subscription_starts_at', 'subscription_ends_at',
         'plan_id', 'trial_ends_at', 'stripe_id', 'settings', 'timezone', 'is_active',
-        'trialed_plan_ids', 'extra_seats',
+        'trialed_plan_ids', 'extra_seats', 'archived_at',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class Tenant extends Model
         'trial_ends_at'          => 'datetime',
         'subscription_starts_at' => 'datetime',
         'subscription_ends_at'   => 'datetime',
+        'archived_at'            => 'datetime',
         'is_active'              => 'boolean',
         'trialed_plan_ids'       => 'array',
     ];
@@ -107,6 +108,30 @@ class Tenant extends Model
     public function isOnTrial(): bool
     {
         return $this->subscription_status === 'trial';
+    }
+
+    /**
+     * Archived tenants are shelved long-term — hidden from the main tenants
+     * list, blocked from all access, but data preserved. Distinct from
+     * `is_active` (block): a workspace can be blocked AND archived, and
+     * "restore" clears only archived_at, leaving is_active untouched.
+     */
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function archive(): void
+    {
+        $this->forceFill(['archived_at' => now()])->save();
+    }
+
+    public function restoreFromArchive(): void
+    {
+        // Not called restore() because that name collides with Eloquent's
+        // SoftDeletes restore(). This model doesn't use SoftDeletes, but
+        // future-proofing against someone adding it later.
+        $this->forceFill(['archived_at' => null])->save();
     }
 
     public function isActive(): bool

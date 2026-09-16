@@ -26,6 +26,12 @@
         'unblock_prompt'         => __('ui.platform_tenants_page.unblock_prompt'),
         'block_message'          => __('ui.platform_tenants_page.block_message'),
         'unblock_message'        => __('ui.platform_tenants_page.unblock_message'),
+        'archive'                => __('ui.platform_tenants_page.archive'),
+        'restore'                => __('ui.platform_tenants_page.restore'),
+        'archive_prompt'         => __('ui.platform_tenants_page.archive_prompt'),
+        'restore_prompt'         => __('ui.platform_tenants_page.restore_prompt'),
+        'archive_message'        => __('ui.platform_tenants_page.archive_message'),
+        'restore_message'        => __('ui.platform_tenants_page.restore_message'),
         'deleted_toast'          => __('ui.controller_messages.tenant_deleted'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
@@ -95,6 +101,14 @@
             <option value="">{{ __('ui.platform_tenants_page.active_inactive') }}</option>
             <option value="1">{{ __('ui.platform_tenants_page.active_only') }}</option>
             <option value="0">{{ __('ui.platform_tenants_page.inactive_only') }}</option>
+        </select>
+
+        {{-- Archive filter. Default (blank) hides archived rows from the main list.
+             "1" shows only archived. "all" shows both. --}}
+        <select x-model="filters.archived" @change="reload()" class="toolbar-select">
+            <option value="">{{ __('ui.platform_tenants_page.archive_hide') }}</option>
+            <option value="1">{{ __('ui.platform_tenants_page.archive_only') }}</option>
+            <option value="all">{{ __('ui.platform_tenants_page.archive_all') }}</option>
         </select>
 
         <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">{{ __('ui.platform_tenants_page.clear') }}</button>
@@ -195,6 +209,14 @@
                                                 :title="tenant.is_active ? i18n.block : i18n.unblock">
                                             <i :class="tenant.is_active ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
                                         </button>
+                                        {{-- Archive / restore. Uses `!!tenant.archived_at` so the
+                                             icon flips based on presence, not the exact string value
+                                             (the API returns an ISO timestamp when archived, null when not). --}}
+                                        <button type="button" @click="openArchiveModal(tenant.id, tenant.name, !!tenant.archived_at)"
+                                                class="action-btn"
+                                                :title="!!tenant.archived_at ? i18n.restore : i18n.archive">
+                                            <i :class="!!tenant.archived_at ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+                                        </button>
                                         <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"
                                                 class="action-btn danger" title="{{ __('ui.platform_tenants_page.delete') }}">
                                             <i class="ri-delete-bin-line"></i>
@@ -280,6 +302,34 @@
         </div>
     </div>
 
+    {{-- Archive / Restore Modal — same one-modal-two-directions shape as block. --}}
+    <div class="modal-overlay" :class="archiveModal.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="archiveModal.show = false" @keydown.escape.window="archiveModal.show = false">
+        <div class="modal-box" style="max-width:460px">
+            <div class="modal-icon" :class="archiveModal.currentlyArchived ? '' : 'danger'"
+                 :style="archiveModal.currentlyArchived ? 'color:var(--brand);background:rgba(16,185,129,.15)' : ''">
+                <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+            </div>
+            <h3 x-text="(archiveModal.currentlyArchived ? i18n.restore_prompt : i18n.archive_prompt).replace(':name', archiveModal.name)"></h3>
+            <p x-text="archiveModal.currentlyArchived ? i18n.restore_message : i18n.archive_message"></p>
+            <div class="modal-actions">
+                <button type="button" @click="archiveModal.show = false" class="btn btn-outline">
+                    {{ __('ui.cancel') }}
+                </button>
+                <button type="button" @click="confirmArchiveToggle()" :disabled="archiveModal.saving"
+                        :class="archiveModal.currentlyArchived ? 'btn btn-primary' : 'btn btn-danger'">
+                    <span x-show="!archiveModal.saving">
+                        <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+                        <span x-text="archiveModal.currentlyArchived ? i18n.restore : i18n.archive"></span>
+                    </span>
+                    <span x-show="archiveModal.saving">
+                        <span class="btn-spinner"></span> {{ __('ui.processing') }}
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Block / Unblock Modal — one modal handles both directions. Icon + copy
          + confirm-button variant swap based on the tenant's CURRENT state so
          we don't need two near-duplicate modals. --}}
@@ -323,6 +373,7 @@ function tenantsPage() {
         destroyUrlTpl:     @json(route('super_admin.platform.tenants.destroy', ['tenant' => '__ID__'])),
         impersonateUrlTpl: @json(route('super_admin.platform.tenants.impersonate-admin', ['tenant' => '__ID__'])),
         toggleActiveUrlTpl:@json(route('super_admin.platform.tenants.toggle-active',     ['tenant' => '__ID__'])),
+        toggleArchiveUrlTpl:@json(route('super_admin.platform.tenants.toggle-archive',   ['tenant' => '__ID__'])),
         bulkUrl:     @json(route('super_admin.platform.tenants.bulk')),
 
         tenants:     [],
@@ -333,7 +384,7 @@ function tenantsPage() {
         total:       0,
 
         search:     '',
-        filters:    { plan_id: '', status: '', is_active: '' },
+        filters:    { plan_id: '', status: '', is_active: '', archived: '' },
 
         selected:   [],
         bulkAction: 'enable',
@@ -342,6 +393,7 @@ function tenantsPage() {
         deleteModal:      { show: false, id: null, name: '', saving: false },
         impersonateModal: { show: false, id: null, name: '', url: '' },
         blockModal:       { show: false, id: null, name: '', currentlyActive: true, saving: false },
+        archiveModal:     { show: false, id: null, name: '', currentlyArchived: false, saving: false },
 
         init() {
             this.loadData();
@@ -364,6 +416,7 @@ function tenantsPage() {
             if (this.filters.plan_id)      p.set('plan_id',   this.filters.plan_id);
             if (this.filters.status)       p.set('status',    this.filters.status);
             if (this.filters.is_active !== '') p.set('is_active', this.filters.is_active);
+            if (this.filters.archived)          p.set('archived',  this.filters.archived);
             return p;
         },
 
@@ -416,7 +469,7 @@ function tenantsPage() {
 
         clearFilters() {
             this.search  = '';
-            this.filters = { plan_id: '', status: '', is_active: '' };
+            this.filters = { plan_id: '', status: '', is_active: '', archived: '' };
             this.reload();
         },
 
@@ -471,6 +524,37 @@ function tenantsPage() {
                 console.error('Toggle tenant active failed:', e);
             } finally {
                 this.blockModal.saving = false;
+            }
+        },
+
+        openArchiveModal(id, name, currentlyArchived) {
+            this.archiveModal = { show: true, id, name, currentlyArchived: !!currentlyArchived, saving: false };
+        },
+
+        async confirmArchiveToggle() {
+            this.archiveModal.saving = true;
+            try {
+                const res = await fetch(this.toggleArchiveUrlTpl.replace('__ID__', String(this.archiveModal.id)), {
+                    method: 'PATCH',
+                    headers: {
+                        'Accept':       'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                this.archiveModal.show = false;
+                // If we just archived a tenant while viewing the default list
+                // (which hides archived), the row will disappear on reload —
+                // that's the correct behavior. If viewing "archived only",
+                // an unarchive will similarly hide it. Either way, reload
+                // reflects the truth.
+                this.loadData();
+            } catch (e) {
+                console.error('Toggle tenant archive failed:', e);
+            } finally {
+                this.archiveModal.saving = false;
             }
         },
 

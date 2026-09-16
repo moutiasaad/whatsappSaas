@@ -38,6 +38,13 @@ class CheckSubscription
                 'This workspace has no plan yet. Ask your administrator to choose one.');
         }
 
+        // Archived tenant — long-term shelved, hidden from the tenants list,
+        // no way in for any user. Checked before the block branch because
+        // it's the more terminal state (archive implies block).
+        if ($tenant && $tenant->archived_at) {
+            return $this->denyArchived($request);
+        }
+
         // Manual block by super-admin (tenants.is_active=false while
         // subscription_status is still active/trial) is a policy action, not
         // a billing problem. Distinguish it from a lapsed subscription so:
@@ -87,6 +94,29 @@ class CheckSubscription
      * /billing off-ramp because paying doesn't lift a policy block — only
      * the super-admin unblocking does.
      */
+    /**
+     * Archived tenant — same lockout shape as denyBlocked, distinct copy
+     * so the login page names the actual cause instead of the misleading
+     * "suspended by administrator" line meant for a live block.
+     */
+    private function denyArchived(Request $request): Response
+    {
+        $message = __('auth.errors.workspace_archived');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'code'    => 'workspace_archived',
+            ], 403);
+        }
+
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->withErrors(['email' => $message]);
+    }
+
     private function denyBlocked(Request $request): Response
     {
         $message = __('auth.errors.workspace_blocked');

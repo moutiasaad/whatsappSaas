@@ -147,15 +147,25 @@ class LoginController extends Controller
             // fragile across drivers). Same rule CheckSubscription uses:
             // tenants.is_active=false while subscription_status is still
             // active/trial → super-admin block, not a subscription lapse.
-            if (!$user->isSuperAdmin()
-                && ($tenant = $user->tenant)
-                && ! $tenant->is_active
-                && in_array($tenant->subscription_status, ['active', 'trial'], true)) {
-                return $this->rejectPortalLogin(
-                    $request,
-                    __('auth.errors.workspace_blocked'),
-                    $superAdminOnly ? 'superadmin.login' : 'login'
-                );
+            if (!$user->isSuperAdmin() && ($tenant = $user->tenant)) {
+                // Archive check first — more terminal than block. A tenant
+                // can be blocked AND archived; archive wins the message.
+                if ($tenant->archived_at) {
+                    return $this->rejectPortalLogin(
+                        $request,
+                        __('auth.errors.workspace_archived'),
+                        $superAdminOnly ? 'superadmin.login' : 'login'
+                    );
+                }
+
+                if (! $tenant->is_active
+                    && in_array($tenant->subscription_status, ['active', 'trial'], true)) {
+                    return $this->rejectPortalLogin(
+                        $request,
+                        __('auth.errors.workspace_blocked'),
+                        $superAdminOnly ? 'superadmin.login' : 'login'
+                    );
+                }
             }
 
             if ($superAdminOnly) {

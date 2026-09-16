@@ -586,6 +586,13 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // but as a single-tenant one-shot from the table row.
             Route::patch('/platform/tenants/{tenant}/toggle-active', [SuperAdminPlatformController::class, 'toggleTenantActive'])
                 ->name('platform.tenants.toggle-active');
+            // Archive / restore. Distinct from block: archive hides the
+            // tenant from the main list and reads as long-term shelving,
+            // block is a live suspension that stays visible. See
+            // SuperAdminPlatformController::toggleTenantArchive for the
+            // semantic split.
+            Route::patch('/platform/tenants/{tenant}/toggle-archive', [SuperAdminPlatformController::class, 'toggleTenantArchive'])
+                ->name('platform.tenants.toggle-archive');
 
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
