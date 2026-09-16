@@ -79,12 +79,23 @@ if (Wavadesk::isCore()) {
 // not. Deliberately outside the panel groups — no 'subscription' middleware
 // (a plan-less tenant is exactly who this page is for) and no 'verified'
 // gate, so an admin whose verification mail never arrived can still subscribe.
-Route::middleware(['auth', ResolveTenant::class, 'role:admin'])->group(function () {
+if (Wavadesk::isMarketing()) {
+    // Marketing has no Laravel Auth user for the signup flow (identity lives
+    // on core); the controller guards on the session PAT itself and 302s to
+    // /register if it is missing. `auth` middleware here would misclassify a
+    // mid-signup visitor as a guest and bounce them off the picker.
     Route::get('/register/plan', [RegisterController::class, 'plan'])->name('register.plan');
     Route::post('/register/plan', [RegisterController::class, 'choosePlan'])
         ->middleware('throttle:10,1')
         ->name('register.plan.store');
-});
+} else {
+    Route::middleware(['auth', ResolveTenant::class, 'role:admin'])->group(function () {
+        Route::get('/register/plan', [RegisterController::class, 'plan'])->name('register.plan');
+        Route::post('/register/plan', [RegisterController::class, 'choosePlan'])
+            ->middleware('throttle:10,1')
+            ->name('register.plan.store');
+    });
+}
 
 // Payment (Stripe + PayPal)
 Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');

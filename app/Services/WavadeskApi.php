@@ -83,6 +83,51 @@ class WavadeskApi
     }
 
     /**
+     * GET /api/v1/plans — active-plan catalog for the marketing plan picker.
+     * No user token: the catalog has nothing per-user in it.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function plans(): array
+    {
+        return $this->call('get', '/api/v1/plans');
+    }
+
+    /**
+     * POST /api/v1/plans/choose — commit the tenant's plan pick.
+     *
+     * Needs the user's PAT (from Wavadesk::SESSION_TOKEN). The response's
+     * `next_step` field routes the caller:
+     *   'dashboard' → plan granted, hand the browser off to core.
+     *   'checkout'  → paid plan, needs hosted checkout.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function choosePlan(string $token, int $planId): array
+    {
+        return $this->call('post', '/api/v1/plans/choose', ['plan_id' => $planId], $token);
+    }
+
+    /**
+     * POST /api/v1/billing/checkout — mint a Stripe or PayPal checkout URL.
+     *
+     * On the PayPal Standard branch the response also carries `redirect_form`
+     * + `method:"POST"` because Standard is a form POST, not a straight 302.
+     * The caller is expected to render an auto-submit form when method is
+     * "POST"; otherwise a plain redirect to `redirect_url` is enough.
+     *
+     * @param  'stripe'|'paypal'  $provider
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function billingCheckout(string $token, int $planId, string $provider): array
+    {
+        return $this->call('post', '/api/v1/billing/checkout', [
+            'plan_id'  => $planId,
+            'provider' => $provider,
+        ], $token);
+    }
+
+    /**
      * @return array{ok: bool, status: int, body: array}
      */
     private function call(string $method, string $path, array $payload = [], ?string $token = null): array

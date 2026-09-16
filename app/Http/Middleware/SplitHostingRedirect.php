@@ -63,6 +63,11 @@ class SplitHostingRedirect
         '/',
         'login',
         'register',
+        // Step 2 of signup now runs on marketing: the picker calls the core
+        // /api/v1/plans/choose API with the session PAT rather than reading
+        // /writing this box's own tenant tables. Paid picks still hop to
+        // core for the payment flow (Session 2b will move that too).
+        'register/plan',
         'logout',
         'locale',
         'up',

@@ -218,6 +218,14 @@ class LoginController extends Controller
         $request->session()->put(Wavadesk::SESSION_USER,   $body['user'] ?? []);
         $request->session()->put(Wavadesk::SESSION_TENANT, $body['tenant'] ?? []);
 
+        // A user whose workspace has no plan yet needs the picker before the
+        // panel, and the picker now lives on wavadesk.com — keep them here
+        // instead of a two-hop wavadesk.com → app.wavadesk.com → wavadesk.com.
+        // Everyone else (dashboard) hands off to core signed in.
+        if (($body['next_step'] ?? null) === 'plan') {
+            return redirect()->route('register.plan');
+        }
+
         $code = app(SsoHandoffCode::class)->mint($userId);
 
         return redirect()->away(

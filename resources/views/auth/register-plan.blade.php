@@ -53,7 +53,10 @@
     <div class="av">{{ mb_strtoupper(mb_substr($tenant->name, 0, 1)) }}</div>
     <div class="m">
         <div class="n">{{ $tenant->name }}</div>
-        <div class="e">{{ auth()->user()->email }}</div>
+        {{-- On the marketing host the signed-in user lives on the core app,
+             so the controller passes $currentUserEmail explicitly. The
+             Auth fallback keeps the single-host flow unchanged. --}}
+        <div class="e">{{ $currentUserEmail ?? auth()->user()?->email }}</div>
     </div>
     <form method="POST" action="{{ route('logout') }}" style="margin:0" class="signout-wrap">
         @csrf

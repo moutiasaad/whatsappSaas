@@ -133,6 +133,14 @@ class RegisterController extends Controller
 
     public function plan(Request $request)
     {
+        // On the marketing host the signed-in user lives on the core app; this
+        // side only has the PAT and the tenant snapshot in session. The rest of
+        // this method reads $request->user() and $user->tenant, both of which
+        // are core-shaped, so the marketing branch has its own path.
+        if (Wavadesk::isMarketing()) {
+            return $this->planViaCoreApi($request);
+        }
+
         $user   = $request->user();
         $tenant = $user->tenant;
 
@@ -163,6 +171,14 @@ class RegisterController extends Controller
      */
     public function choosePlan(Request $request)
     {
+        // Marketing has no local user/tenant to mutate — the pick is proxied
+        // to the core app's /api/v1/plans/choose, which returns either
+        // 'dashboard' (free/trial granted, hand off to core) or 'checkout'
+        // (paid, needs a payment step).
+        if (Wavadesk::isMarketing()) {
+            return $this->choosePlanViaCoreApi($request);
+        }
+
         $request->validate([
             // PROC-025: retired plans (is_active=false) must not be selectable
             // at signup even if their id is guessed or reused from an old link.
@@ -256,49 +272,185 @@ class RegisterController extends Controller
                 ->withErrors(['general' => __('auth.register.server_error')]);
         }
 
-        return $this->handoff($request, $result['body'])
-            ?? back()
-                ->withInput($request->except('password'))
-                ->withErrors(['general' => __('auth.register.server_error')]);
-    }
-
-    /**
-     * Stash the core app's token in the (encrypted, server-side) session and
-     * redirect through the single-use handoff code.
-     *
-     * Returns null when the response was well-formed JSON but missing the two
-     * fields the handoff needs, so the caller can render its own error rather
-     * than redirect to a code that cannot be minted.
-     */
-    private function handoff(Request $request, array $body)
-    {
+        // Stash PAT + user + tenant BEFORE the plan pick — the marketing plan
+        // picker reads them from session to identify who is choosing. The
+        // browser stays on wavadesk.com through this step; the SSO handoff
+        // to core happens later, either after the plan is granted (free /
+        // trial) or after the payment captures (paid).
+        $body   = $result['body'];
         $userId = (int) ($body['user']['id'] ?? 0);
         $token  = (string) ($body['token'] ?? '');
 
         if ($userId === 0 || $token === '') {
-            Log::error('Core app returned a register/login success with no token or user id');
+            Log::error('Core app returned a register success with no token or user id');
 
-            return null;
+            return back()
+                ->withInput($request->except('password'))
+                ->withErrors(['general' => __('auth.register.server_error')]);
         }
 
-        // The PAT stays here, server-side, so later marketing-side pages
-        // (billing, account) can call the core app on the user's behalf. It is
-        // never put in a URL and never handed to the browser.
         $request->session()->put(Wavadesk::SESSION_TOKEN,  $token);
         $request->session()->put(Wavadesk::SESSION_USER,   $body['user'] ?? []);
         $request->session()->put(Wavadesk::SESSION_TENANT, $body['tenant'] ?? []);
 
-        $code = app(SsoHandoffCode::class)->mint($userId);
-
-        // The plan the user clicked on the pricing page rides along unsigned,
-        // exactly as it does in the single-host flow's /register/plan?plan=N.
-        // It only pre-selects a card; the plan picker re-validates exists and
-        // is_active before granting anything, so a tampered value buys nothing.
-        $query = ['code' => $code];
-
+        // Plan hint from the pricing card the user clicked — pre-selects the
+        // matching card on step 2. Unsigned, re-validated at choose time.
+        $query = [];
         if ($hint = (int) ($body['plan_hint'] ?? 0)) {
             $query['plan'] = $hint;
         }
+
+        return redirect()->route('register.plan', $query)
+            ->with('success', __('auth.register.account_created'));
+    }
+
+    // ── Marketing role: step 2 (plan pick) ──────────────────────────────────
+
+    /**
+     * The marketing plan picker.
+     *
+     * Reads the tenant snapshot from session (stashed by storeViaCoreApi
+     * after register) and renders the same view the single-host flow uses.
+     * Plans come from the marketing side's local `plans` table — the doc's
+     * follow-up work ("A genuinely database-less marketing host needs a
+     * GET /api/v1/plans endpoint first") is available on core but the local
+     * read stays authoritative for the picker until we're ready to flip it.
+     * Either way, `POST /api/v1/plans/choose` re-validates before granting,
+     * so a card the picker shows that core has since retired fails at the
+     * boundary rather than granting a phantom plan.
+     */
+    private function planViaCoreApi(Request $request)
+    {
+        $token      = (string) session(Wavadesk::SESSION_TOKEN, '');
+        $userData   = (array)  session(Wavadesk::SESSION_USER, []);
+        $tenantData = (array)  session(Wavadesk::SESSION_TENANT, []);
+
+        // Session lost or never established: bounce to the register form
+        // rather than 500 on an empty PAT downstream.
+        if ($token === '' || empty($userData['id']) || empty($tenantData['id'])) {
+            return redirect()->route('register');
+        }
+
+        // Plan already granted for this workspace: nothing to pick here.
+        // Send them on to core signed in via a fresh handoff — the browser
+        // has not been to core yet, so a raw redirect would land as a guest.
+        if (! empty($tenantData['plan_id'])) {
+            return $this->mintHandoffAndRedirect((int) $userData['id']);
+        }
+
+        $plans = Plan::where('is_active', true)->orderBy('id')->get();
+
+        abort_if($plans->isEmpty(), 404);
+
+        $selectedPlan = $plans->firstWhere('id', (int) $request->get('plan'))
+            ?? $plans->first(fn (Plan $p) => $p->hasTrial())
+            ?? $plans->first();
+
+        // Wrap the session tenant into a stdClass so the view's `$tenant->id`
+        // and `$tenant->name` access work with no Blade changes.
+        $tenant = (object) [
+            'id'   => (int)    $tenantData['id'],
+            'name' => (string) ($tenantData['name'] ?? ''),
+        ];
+
+        // The view reads auth()->user()->email on the whoami card. On
+        // marketing the signed-in user lives on the core app, so pass the
+        // email explicitly and let the view fall back to Auth for the
+        // single-host case.
+        $currentUserEmail = (string) ($userData['email'] ?? '');
+
+        return view('auth.register-plan', compact('plans', 'selectedPlan', 'tenant', 'currentUserEmail'));
+    }
+
+    /**
+     * Commit the marketing plan pick.
+     *
+     * Proxies to POST /api/v1/plans/choose. The response's `next_step`
+     * decides where the browser goes:
+     *   'dashboard' → free/trial granted, mint an SSO handoff and land on
+     *                 core signed in. Session tenant is refreshed with the
+     *                 fresh plan_id so a back button to /register/plan
+     *                 short-circuits.
+     *   'checkout'  → paid, no trial left. Hand the browser off to core so
+     *                 the existing payment flow can run there — the
+     *                 marketing checkout page is a follow-up commit
+     *                 (Session 2b). Includes ?plan= so core pre-selects.
+     * A 422 from core is re-raised as a local field error so a retired
+     * plan id lands on the plan_id field.
+     */
+    private function choosePlanViaCoreApi(Request $request)
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer'],
+        ]);
+
+        $token    = (string) session(Wavadesk::SESSION_TOKEN, '');
+        $userData = (array)  session(Wavadesk::SESSION_USER, []);
+
+        if ($token === '' || empty($userData['id'])) {
+            return redirect()->route('register');
+        }
+
+        $result = app(WavadeskApi::class)->choosePlan($token, (int) $data['plan_id']);
+
+        if (! $result['ok']) {
+            // A 422 from core is a field error — retired plan or an id that
+            // the picker showed but core has since dropped. Land it back on
+            // the plan_id field so the picker can re-render the alert.
+            $this->rethrowCoreValidation($result);
+
+            if ($result['status'] === 409) {
+                // Plan already settled server-side (concurrent hop through
+                // a second tab). Not an error worth showing — just hand
+                // them off to core.
+                return $this->mintHandoffAndRedirect((int) $userData['id']);
+            }
+
+            Log::warning('Marketing -> core plans/choose failed', [
+                'status'  => $result['status'],
+                'user_id' => $userData['id'],
+            ]);
+
+            return back()->withErrors(['general' => __('auth.register.server_error')]);
+        }
+
+        $body = $result['body'];
+
+        // Refresh the session tenant with the granted plan so the plan
+        // picker short-circuits on a back button — otherwise a browser back
+        // would re-POST the pick and the API would 409.
+        if (! empty($body['tenant'])) {
+            $request->session()->put(Wavadesk::SESSION_TENANT, $body['tenant']);
+        }
+
+        if (($body['next_step'] ?? null) === 'checkout') {
+            // Paid plan with no trial left. The full marketing-side
+            // checkout page is Session 2b; for now hand off to core so
+            // the existing checkout controller can render there.
+            $userId = (int) $userData['id'];
+            $planId = (int) ($body['plan_id'] ?? $data['plan_id']);
+
+            return $this->mintHandoffAndRedirect($userId, ['plan' => $planId]);
+        }
+
+        // next_step === 'dashboard' — plan granted. Land the user on core
+        // signed in; core reads user->homeRouteName() itself and redirects.
+        return $this->mintHandoffAndRedirect((int) $userData['id']);
+    }
+
+    /**
+     * Mint a single-use SSO handoff code and 302 to the core app's redemption
+     * endpoint. Same shape the register/login flow used to produce inline —
+     * factored out so it can also be called from post-plan-pick paths.
+     *
+     * Extra query params (like `plan` for the checkout hop) tag along
+     * unsigned; they are hints only and the receiving core route
+     * re-validates. Never put anything security-sensitive here.
+     */
+    private function mintHandoffAndRedirect(int $userId, array $extraQuery = []): \Illuminate\Http\RedirectResponse
+    {
+        $code  = app(SsoHandoffCode::class)->mint($userId);
+        $query = array_merge(['code' => $code], $extraQuery);
 
         return redirect()->away(
             Wavadesk::coreUrlTo('/auth/sso') . '?' . http_build_query($query)

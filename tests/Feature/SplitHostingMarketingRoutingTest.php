@@ -63,10 +63,15 @@ class SplitHostingMarketingRoutingTest extends TestCase
             ->assertRedirect(self::CORE . '/admin/billing');
     }
 
-    public function test_step_two_of_signup_goes_to_core(): void
+    public function test_step_two_of_signup_stays_on_marketing(): void
     {
+        // Since Session 2 the plan picker runs on marketing itself and calls
+        // core's /api/v1/plans/choose. A visitor with no session PAT (the
+        // case here — no register has fired) gets bounced to /register by
+        // the controller's own guard, NOT to the core app's copy of the
+        // page. That's what "step 2 lives here now" looks like.
         $this->get(self::MARKETING_HOST . '/register/plan')
-            ->assertRedirect(self::CORE . '/register/plan');
+            ->assertRedirect(self::MARKETING_HOST . '/register');
     }
 
     /**
