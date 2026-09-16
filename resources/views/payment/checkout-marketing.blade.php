@@ -1,8 +1,16 @@
 @php
-    $isRtl    = (bool) data_get(config('locales.supported', []), app()->getLocale() . '.rtl');
-    $backUrl  = $backUrl ?? url('/register/plan');
-    $homeUrl  = url('/');
-    $currency = config('services.paypal.currency', 'USD');
+    $isRtl       = (bool) data_get(config('locales.supported', []), app()->getLocale() . '.rtl');
+    $backUrl     = $backUrl ?? url('/register/plan');
+    $homeUrl     = url('/');
+    $currency    = config('services.paypal.currency', 'USD');
+    // Same SDK decisions as the core checkout view. `sdkReady` is passed
+    // from the controller; when true the client-side SDK renders the
+    // inline card fields and the PayPal button. clientToken is optional
+    // for CardFields — passing it just improves the SDK's rate-limit
+    // handling.
+    $sdkReady    = (bool) ($sdkReady ?? false);
+    $clientToken = $clientToken ?? null;
+    $ready       = $sdkReady;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
@@ -24,7 +32,7 @@
             --ink:#0d1417;--ink-2:#161e22;
             --text:#0f172a;--muted:#64748b;--muted-2:#94a3b8;
             --border:#e6ebf0;--border-2:#cbd5e1;--soft:#f7f9fa;
-            --red:#dc2626;--red-50:#fef2f2;
+            --red:#dc2626;--red-50:#fef2f2;--amber:#d97706;--amber-50:#fef3e2;
         }
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Outfit',system-ui,sans-serif;background:var(--soft);color:var(--text);min-height:100vh;display:flex;flex-direction:column;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -49,7 +57,6 @@
         main{flex:1;display:flex;justify-content:center;padding:32px 20px 56px}
         .shell{width:100%;max-width:940px}
 
-        /* Step rail */
         .steps{display:flex;align-items:center;gap:0;margin-bottom:26px;max-width:620px;margin-inline:auto}
         .stp{display:flex;align-items:center;gap:10px;flex-shrink:0}
         .stp .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;background:#fff;border:1.5px solid var(--border);color:var(--muted-2);flex-shrink:0;transition:.2s}
@@ -68,7 +75,6 @@
         .ch p{font-size:12.5px;color:var(--muted);margin-top:3px}
         .cb{padding:20px}
 
-        /* What you get */
         .buy{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid var(--border);border-radius:13px;background:var(--soft)}
         .buy .ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex-shrink:0;font-size:22px;background:var(--teal-50);color:var(--teal)}
         .buy .m{flex:1;min-width:0}
@@ -83,7 +89,6 @@
         .note{background:var(--teal-50);border:1px solid var(--teal-100);border-radius:11px;padding:12px 14px;margin-top:18px;display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--teal-d);line-height:1.5}
         .note i{flex-shrink:0;font-size:15px;line-height:1.3}
 
-        /* Pay */
         .paysplit{display:flex;align-items:center;gap:14px;margin:30px 0 20px;color:var(--muted-2);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
         .paysplit::before,.paysplit::after{content:"";flex:1;height:1px;background:var(--border)}
 
@@ -109,6 +114,21 @@
         .btn-card.primary:hover{background:var(--teal-d);border-color:var(--teal-d)}
         .btn-card.primary i{color:#fff;font-size:17px}
 
+        .cardhead{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-bottom:13px}
+        .cardhead i{font-size:17px;color:var(--teal)}
+
+        .cardskel .sk{height:46px;border-radius:10px;margin-bottom:13px;background:linear-gradient(90deg,var(--soft) 25%,#eef2f5 37%,var(--soft) 63%);background-size:400% 100%;animation:skel 1.4s ease infinite}
+        .cardskel .sk-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+        .cardskel .sk-note{font-size:12px;color:var(--muted);text-align:center;margin-top:2px}
+        @keyframes skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
+        @media (prefers-reduced-motion:reduce){.cardskel .sk{animation:none}}
+
+        .cardform{display:flex;flex-direction:column;gap:0}
+        .cf-l{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block}
+        .cf{margin-bottom:4px}
+        .cf-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+        #cf-submit{margin-top:4px}
+
         .paysep{display:flex;align-items:center;gap:12px;margin:12px 0;color:var(--muted-2);font-size:12px;font-weight:600}
         .paysep::before,.paysep::after{content:"";flex:1;height:1px;background:var(--border)}
 
@@ -120,12 +140,18 @@
         .paybrand .s{font-size:12px;color:var(--muted);margin-top:1px}
         .paybrand .tick{color:var(--teal);font-size:18px}
 
+        #paypal-button-container{min-height:52px}
         .payhint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
 
         .errbox{background:var(--red-50);border:1px solid #fecaca;border-radius:11px;padding:12px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:flex;gap:9px;align-items:flex-start;line-height:1.45}
         .errbox i{flex-shrink:0;font-size:15px;line-height:1.3}
 
-        /* Summary */
+        .working{display:none;align-items:center;justify-content:center;gap:10px;padding:18px;font-size:13.5px;color:var(--muted);font-weight:500}
+        .working.on{display:flex}
+        .spin{width:17px;height:17px;border:2.2px solid var(--teal-100);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite}
+        @keyframes sp{to{transform:rotate(360deg)}}
+        @media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}}
+
         .sum{position:sticky;top:18px;background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
         .sum .sh{padding:16px 18px;border-bottom:1px solid var(--border)}
         .sum .sh h3{font-size:15px;font-weight:700;letter-spacing:-.015em}
@@ -183,19 +209,18 @@
 <main>
 <div class="shell">
 
-    {{-- Step rail --}}
-    <div class="steps">
-        <div class="stp done">
+    <div class="steps" id="steps">
+        <div class="stp done" data-step="1">
             <span class="dot"><i class="ri-check-line"></i></span>
             <span class="lb">{{ __('ui.payment_page.step_choose') }}</span>
         </div>
         <span class="stpline done"></span>
-        <div class="stp on">
+        <div class="stp on" data-step="2">
             <span class="dot">2</span>
             <span class="lb">{{ __('ui.payment_page.step_pay') }}</span>
         </div>
-        <span class="stpline"></span>
-        <div class="stp">
+        <span class="stpline" id="line3"></span>
+        <div class="stp" data-step="3">
             <span class="dot">3</span>
             <span class="lb">{{ __('ui.payment_page.step_done') }}</span>
         </div>
@@ -203,7 +228,7 @@
 
     <div class="grid">
 
-        {{-- LEFT: order + pay --}}
+        {{-- LEFT --}}
         <div class="card">
             <div class="ch">
                 <h2>{{ __('ui.payment_page.plan_title') }}</h2>
@@ -245,18 +270,14 @@
                     <div>{{ __('ui.payment_page.plan_note') }}</div>
                 </div>
 
-                {{-- Pay: card first (primary), PayPal second. Each button is
-                     its own form that POSTs to a marketing initiate route
-                     which proxies to /api/v1/billing/checkout on core and
-                     302s to the hosted gateway. --}}
                 <div class="paysplit"><span>{{ __('ui.payment_page.pay_divider') }}</span></div>
 
                 <div class="paybox">
                     <div class="paybrand">
-                        <div class="lg"><i class="ri-bank-card-line"></i></div>
+                        <div class="lg"><i class="ri-paypal-fill"></i></div>
                         <div class="m">
-                            <div class="n">{{ __('ui.payment_page.pay_card_title') }}</div>
-                            <div class="s">{{ __('ui.payment_page.cards_accepted') }}</div>
+                            <div class="n">{{ __('ui.payment_page.paypal_name') }}</div>
+                            <div class="s">{{ __('ui.payment_page.paypal_sub') }}</div>
                         </div>
                         <i class="ri-checkbox-circle-fill tick"></i>
                     </div>
@@ -265,36 +286,89 @@
                         <span class="cm visa" aria-label="Visa">VISA</span>
                         <span class="cm mc" aria-hidden="true"><i></i><i></i></span>
                         <span class="cm amex" aria-label="American Express">AMEX</span>
+                        <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    <form method="POST" action="{{ route('payment.initiate') }}" data-spin>
-                        @csrf
-                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                        <button type="submit" class="btn-card primary">
-                            <i class="ri-lock-line"></i>
-                            {{ __('ui.payment_page.pay_by_card_amount', ['amount' => '$' . number_format($amount, 2)]) }}
-                        </button>
-                    </form>
+                    <div id="paypal-error" class="errbox" style="display:none">
+                        <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
+                    </div>
 
-                    <div class="paysep"><span>{{ __('ui.payment_page.or_paypal') }}</span></div>
+                    @if($sdkReady)
+                        <div id="card-block" style="display:none">
+                            <div class="cardhead">
+                                <i class="ri-bank-card-line"></i>
+                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
+                            </div>
 
-                    <form method="POST" action="{{ route('payment.paypal.initiate') }}" data-spin>
-                        @csrf
-                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                        <button type="submit" class="btn-paypal">
-                            <i class="ri-paypal-fill"></i>
-                            {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
-                        </button>
-                    </form>
+                            <div class="cardform">
+                                <label class="cf-l" for="cf-name">{{ __('ui.payment_page.card_name') }}</label>
+                                <div id="cf-name" class="cf"></div>
 
-                    <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
+                                <label class="cf-l" for="cf-number">{{ __('ui.payment_page.card_number') }}</label>
+                                <div id="cf-number" class="cf"></div>
+
+                                <div class="cf-row">
+                                    <div>
+                                        <label class="cf-l" for="cf-exp">{{ __('ui.payment_page.card_expiry') }}</label>
+                                        <div id="cf-exp" class="cf"></div>
+                                    </div>
+                                    <div>
+                                        <label class="cf-l" for="cf-cvv">{{ __('ui.payment_page.card_cvv') }}</label>
+                                        <div id="cf-cvv" class="cf"></div>
+                                    </div>
+                                </div>
+
+                                <button type="button" id="cf-submit" class="btn-card primary">
+                                    <i class="ri-lock-line"></i>
+                                    {{ __('ui.payment_page.pay_by_card_amount', ['amount' => '$' . number_format($amount, 2)]) }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="card-loading" class="cardskel">
+                            <div class="cardhead">
+                                <i class="ri-bank-card-line"></i>
+                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
+                            </div>
+                            <div class="sk"></div><div class="sk"></div>
+                            <div class="sk-row"><div class="sk"></div><div class="sk"></div></div>
+                            <div class="sk-note">{{ __('ui.payment_page.card_loading') }}</div>
+                        </div>
+
+                        <div id="card-fallback" style="display:none"></div>
+
+                        <div id="pay-or" class="paysep" style="display:none">
+                            <span>{{ __('ui.payment_page.or_paypal') }}</span>
+                        </div>
+
+                        <div id="paypal-button-container"></div>
+
+                        <div class="working" id="working">
+                            <span class="spin"></span>{{ __('ui.payment_page.finalising') }}
+                        </div>
+                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
+                    @else
+                        {{-- No SDK available on this box — fall back to the
+                             hosted-checkout redirect flow (form submit to
+                             /payment/initiate). Same shape as the Stripe
+                             button just above it. --}}
+                        <form method="POST" action="{{ route('payment.paypal.initiate') }}" onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                            @csrf
+                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                            <button type="submit" class="btn-paypal">
+                                <i class="ri-paypal-fill"></i>
+                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
+                            </button>
+                        </form>
+                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
+                    @endif
                 </div>
 
                 <a href="{{ $backUrl }}" class="backlink">← {{ __('ui.payment_page.back_cancel') }}</a>
             </div>
         </div>
 
-        {{-- RIGHT: summary --}}
+        {{-- RIGHT --}}
         <div>
             <div class="sum">
                 <div class="sh"><h3>{{ __('ui.payment_page.summary') }}</h3></div>
@@ -334,15 +408,182 @@
 </div>
 </main>
 
+@if($ready)
+{{-- Same PayPal SDK bootstrap as the core view. The `createOrder` and
+     `onApprove` fetches hit /payment/paypal/create-order and
+     /payment/paypal/capture-order/{id} on THIS host — the marketing
+     PaymentController branches proxy them to core with the session PAT. --}}
+<script src="https://www.paypal.com/sdk/js?client-id={{ urlencode(config('services.paypal.client_id')) }}&currency={{ urlencode($currency) }}&intent=capture&enable-funding=card&components=buttons,card-fields"
+        @if($clientToken) data-client-token="{{ $clientToken }}" @endif
+        data-partner-attribution-id="wavadesk_saas"
+        onerror="window.__ppFail && window.__ppFail()"></script>
 <script>
-    // Disable-on-submit so a nervous double-click doesn't double-POST. The
-    // server response is a 302 to the gateway, so the button stays disabled
-    // through the navigation.
-    document.querySelectorAll('form[data-spin]').forEach((form) => {
-        form.addEventListener('submit', () => {
-            form.querySelectorAll('button').forEach((b) => (b.disabled = true));
+(function () {
+    const errBox  = document.getElementById('paypal-error');
+    const errText = document.getElementById('paypal-error-text');
+    const working = document.getElementById('working');
+
+    function showError(msg) {
+        errBox.style.display = 'flex';
+        errText.textContent = msg;
+        working.classList.remove('on');
+        const skel = document.getElementById('card-loading');
+        if (skel) skel.style.display = 'none';
+    }
+    window.__ppFail = function () { showError(@js(__('ui.payment_page.sdk_failed'))); };
+
+    function markFinalising() {
+        working.classList.add('on');
+        document.getElementById('line3').classList.add('done');
+        const s2 = document.querySelector('.stp[data-step="2"]');
+        const s3 = document.querySelector('.stp[data-step="3"]');
+        s2.classList.remove('on'); s2.classList.add('done');
+        s2.querySelector('.dot').innerHTML = '<i class="ri-check-line"></i>';
+        s3.classList.add('on');
+    }
+
+    if (typeof paypal === 'undefined') { window.__ppFail(); return; }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // Marketing sends just the plan id — tenant is derived server-side
+    // from the session PAT that the marketing controller forwards to core.
+    const ORDER_BODY = @js(['plan_id' => (int) ($plan->id ?? 0)]);
+
+    async function createOrder() {
+        errBox.style.display = 'none';
+        const res = await fetch(@js(route('payment.paypal.create-order')), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(ORDER_BODY),
         });
+        const data = res.ok ? await res.json() : null;
+        if (!data || !data.id) {
+            showError(@js(__('ui.payment_page.start_failed')));
+            throw new Error('create-order failed');
+        }
+        return data.id;
+    }
+
+    async function onApprove(data) {
+        markFinalising();
+        try {
+            const res = await fetch('/payment/paypal/capture-order/' + encodeURIComponent(data.orderID), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const result = await res.json();
+            if (result.success && result.redirect) {
+                window.location.href = result.redirect;
+                return;
+            }
+            showError(@js(__('ui.payment_page.capture_failed')));
+        } catch (e) {
+            showError(@js(__('ui.payment_page.capture_failed')));
+        }
+    }
+
+    function onCancel() { working.classList.remove('on'); }
+
+    function onError(err) {
+        console.error('[PayPal]', err);
+        showError(@js(__('ui.payment_page.gateway_error')));
+    }
+
+    const cardBlock    = document.getElementById('card-block');
+    const cardLoading  = document.getElementById('card-loading');
+    const cardFallback = document.getElementById('card-fallback');
+    const payOr        = document.getElementById('pay-or');
+
+    function revealSeparator() { payOr.style.display = 'flex'; }
+
+    const cardFields = typeof paypal.CardFields === 'function'
+        ? paypal.CardFields({
+            createOrder: createOrder,
+            onApprove: onApprove,
+            onError: function (err) {
+                console.error('[PayPal CardFields]', err);
+                showError(@js(__('ui.payment_page.card_failed')));
+            },
+        })
+        : null;
+
+    function renderHostedCardButton() {
+        if (!paypal.FUNDING || !paypal.FUNDING.CARD) return;
+
+        const btn = paypal.Buttons({
+            fundingSource: paypal.FUNDING.CARD,
+            style: { layout: 'vertical', shape: 'rect', height: 48 },
+            createOrder: createOrder,
+            onApprove: onApprove,
+            onCancel: onCancel,
+            onError: onError,
+        });
+
+        if (!btn.isEligible()) return;
+
+        cardFallback.style.display = 'block';
+        btn.render('#card-fallback').then(revealSeparator).catch(function () {
+            cardFallback.style.display = 'none';
+        });
+    }
+
+    if (cardFields && cardFields.isEligible()) {
+        Promise.all([
+            cardFields.NameField().render('#cf-name'),
+            cardFields.NumberField().render('#cf-number'),
+            cardFields.ExpiryField().render('#cf-exp'),
+            cardFields.CVVField().render('#cf-cvv'),
+        ]).then(function () {
+            cardLoading.style.display = 'none';
+            cardBlock.style.display = 'block';
+            revealSeparator();
+        }).catch(function (e) {
+            console.error('[PayPal CardFields] render', e);
+            cardLoading.style.display = 'none';
+            renderHostedCardButton();
+        });
+
+        const cfBtn = document.getElementById('cf-submit');
+        cfBtn.addEventListener('click', async function () {
+            cfBtn.disabled = true;
+            try {
+                await cardFields.submit();
+            } catch (e) {
+                console.error('[PayPal CardFields] submit', e);
+                showError(@js(__('ui.payment_page.card_failed')));
+            } finally {
+                cfBtn.disabled = false;
+            }
+        });
+    } else {
+        cardLoading.style.display = 'none';
+        renderHostedCardButton();
+    }
+
+    paypal.Buttons({
+        fundingSource: paypal.FUNDING.PAYPAL,
+        style: { layout: 'vertical', shape: 'rect', label: 'paypal', height: 48 },
+        createOrder: createOrder,
+        onApprove: onApprove,
+        onCancel: onCancel,
+        onError: onError,
+    }).render('#paypal-button-container').catch(function () {
+        showError(@js(__('ui.payment_page.render_failed')));
     });
+
+})();
 </script>
+@endif
 </body>
 </html>

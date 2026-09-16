@@ -294,4 +294,217 @@ class BillingApiController extends Controller
             'amount'        => $amount,
         ]);
     }
+
+    /**
+     * POST /api/v1/billing/paypal/create-order
+     *
+     * Marketing-side PayPal SDK create-order proxy. The marketing checkout
+     * page mounts the same PayPal SDK the core view does; the SDK's
+     * createOrder() hits marketing's /payment/paypal/create-order, which
+     * proxies to here. Returns the PayPal order id the SDK needs to
+     * authorise the payment on the buyer's browser.
+     *
+     * Body: { plan_id: int }
+     * Returns 200 { id: str, payment_id: int }
+     */
+    public function paypalCreateOrder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer', Rule::exists('plans', 'id')->where('is_active', true)],
+        ]);
+
+        $user   = $request->user();
+        $tenant = $user?->tenant;
+
+        if (! $tenant) {
+            return response()->json(['message' => 'No workspace attached to this token.'], 403);
+        }
+
+        $plan = Plan::findOrFail($data['plan_id']);
+
+        if (! $plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return response()->json([
+                'errors' => ['plan_id' => ['This plan is free — use /api/v1/plans/choose instead of billing/paypal/create-order.']],
+            ], 422);
+        }
+
+        $amount = (float) $plan->price_monthly;
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $plan->name . ' — ' . $tenant->name,
+                // Not actually used by the SDK flow — the browser stays put
+                // and the capture round-trips via /capture-order — but PayPal
+                // still requires these on the order body.
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'tenant_' . $tenant->id . '_' . time(),
+                    'source'     => 'api.v1.billing.paypal.create-order',
+                ],
+            );
+
+            $payment = TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $plan->id,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'sdk', 'order' => $order],
+            ]);
+
+            return response()->json([
+                'id'         => $order['id'] ?? null,
+                'payment_id' => $payment->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API v1 billing/paypal create-order failed', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $plan->id,
+                'error'     => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Payment initiation failed.'], 502);
+        }
+    }
+
+    /**
+     * POST /api/v1/billing/paypal/capture-order/{orderId}
+     *
+     * Marketing-side PayPal SDK capture-order proxy. Called via
+     * /payment/paypal/capture-order/{id} on marketing after the buyer
+     * approves the payment on the SDK's inline card fields or PayPal button.
+     * Captures the order, activates the subscription, and returns a
+     * redirect URL back to core's success page with an SSO handoff code so
+     * the browser lands on core auto-logged-in.
+     *
+     * Returns 200 { success: true, redirect: str } on capture.
+     */
+    public function paypalCaptureOrder(Request $request, string $orderId): JsonResponse
+    {
+        $user   = $request->user();
+        $tenant = $user?->tenant;
+
+        if (! $tenant) {
+            return response()->json(['success' => false, 'error' => 'no_tenant'], 403);
+        }
+
+        $payment = TenantPayment::where('paypal_order_id', $orderId)->first();
+        if (! $payment) {
+            return response()->json(['success' => false, 'error' => 'payment_not_found'], 404);
+        }
+
+        // The token drives who the payment belongs to; a caller cannot
+        // capture an order that belongs to another workspace.
+        if ((int) $payment->tenant_id !== (int) $tenant->id) {
+            return response()->json(['success' => false, 'error' => 'forbidden'], 403);
+        }
+
+        try {
+            $this->capturePaypalPayment($payment);
+            $payment->refresh();
+
+            if (! $payment->isCompleted()) {
+                return response()->json(['success' => false, 'error' => 'not_completed'], 402);
+            }
+
+            // Redirect back to core's /payment/success with an SSO code so
+            // the buyer is auto-logged-in the moment they land. 30 min TTL
+            // matches the checkout window used by /billing/checkout.
+            $sso = app(SsoHandoffCode::class)->mint((int) $user->id, 1800);
+            $redirect = route('payment.success', ['token' => $orderId, 'sso' => $sso]);
+
+            return response()->json([
+                'success'  => true,
+                'redirect' => $redirect,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API v1 billing/paypal capture-order failed', [
+                'tenant_id' => $tenant->id,
+                'order_id'  => $orderId,
+                'error'     => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => 'capture_failed'], 500);
+        }
+    }
+
+    /**
+     * Capture a pending PayPal order and, on completion, activate the
+     * tenant's subscription. Mirrors PaymentController::capturePaypalPayment
+     * + activateTenantSubscription so the API path applies the same effect
+     * as the web SDK path — plan updated, dates rolled, quota re-synced.
+     */
+    private function capturePaypalPayment(TenantPayment $payment): void
+    {
+        $orderId = $payment->paypal_order_id;
+        if (! $orderId) {
+            return;
+        }
+
+        $order = $this->paypal->getOrder($orderId);
+
+        // Only capture if approved but not yet captured.
+        $capture = ($order['status'] ?? null) === 'APPROVED'
+            ? $this->paypal->captureOrder($orderId)
+            : $order;
+
+        if (! $this->paypal->isCompleted($capture)) {
+            return;
+        }
+
+        $payment->update([
+            'status'            => 'completed',
+            'paid_at'           => now(),
+            'paypal_capture_id' => $this->paypal->extractCaptureId($capture),
+            'gateway_response'  => ['order' => $order, 'capture' => $capture],
+        ]);
+
+        $this->activateTenantSubscription($payment);
+
+        Log::info('Tenant activated via PayPal API', [
+            'tenant_id' => $payment->tenant_id,
+            'plan_id'   => $payment->plan_id,
+            'order_id'  => $orderId,
+        ]);
+    }
+
+    /**
+     * Copy of PaymentController::activateTenantSubscription. Duplicated
+     * because that method is private and this API path lands here without
+     * hopping through the web controller. Any change to the fulfilment
+     * shape has to be made in both.
+     */
+    private function activateTenantSubscription(TenantPayment $payment): void
+    {
+        $tenant = $payment->tenant;
+        if (! $tenant) {
+            return;
+        }
+
+        $currentEnd    = $tenant->subscription_ends_at;
+        $hasLivePeriod = $currentEnd && $currentEnd->isFuture();
+        $base          = $hasLivePeriod ? $currentEnd : now();
+
+        $previousPlanId = $tenant->plan_id;
+
+        $tenant->update([
+            'plan_id'                => $payment->plan_id,
+            'subscription_status'    => 'active',
+            'subscription_starts_at' => $hasLivePeriod ? $tenant->subscription_starts_at : now(),
+            'subscription_ends_at'   => $base->copy()->addMonthNoOverflow(),
+            'is_active'              => true,
+        ]);
+
+        if ($previousPlanId !== $payment->plan_id && $tenant->aiSettings) {
+            $newPlan = $tenant->plan()->first();
+            $tenant->aiSettings->update([
+                'monthly_message_quota' => $newPlan?->ai_message_quota,
+            ]);
+        }
+    }
 }

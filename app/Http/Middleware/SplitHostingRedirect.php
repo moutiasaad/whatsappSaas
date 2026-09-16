@@ -77,6 +77,13 @@ class SplitHostingRedirect
         'payment/checkout',
         'payment/initiate',
         'payment/paypal/initiate',
+        // PayPal SDK create-order / capture-order callbacks from the inline
+        // card fields + PayPal button on the marketing checkout view. Both
+        // proxy to /api/v1/billing/paypal/* on core via WavadeskApi so the
+        // buyer's browser never leaves the marketing domain during the
+        // approval; only the final onApprove redirect points back at core.
+        'payment/paypal/create-order',
+        'payment/paypal/capture-order/*',
         'logout',
         'locale',
         'up',

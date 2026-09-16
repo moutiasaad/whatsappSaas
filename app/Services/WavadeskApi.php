@@ -128,6 +128,43 @@ class WavadeskApi
     }
 
     /**
+     * POST /api/v1/billing/paypal/create-order — SDK create-order proxy.
+     *
+     * The marketing checkout page mounts PayPal's SDK; the SDK's
+     * createOrder() posts to /payment/paypal/create-order on this box,
+     * which calls this method to hand the order creation to core. Returns
+     * the PayPal order id the SDK then hands to the buyer's browser.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function paypalCreateOrder(string $token, int $planId): array
+    {
+        return $this->call('post', '/api/v1/billing/paypal/create-order', [
+            'plan_id' => $planId,
+        ], $token);
+    }
+
+    /**
+     * POST /api/v1/billing/paypal/capture-order/{orderId} — SDK capture proxy.
+     *
+     * The SDK's onApprove() posts to /payment/paypal/capture-order/{id} on
+     * this box; that endpoint calls this method. Core captures, fulfils
+     * the subscription, and returns a redirect URL back to the core
+     * success page with an SSO handoff code so the buyer auto-logs-in.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function paypalCaptureOrder(string $token, string $orderId): array
+    {
+        return $this->call(
+            'post',
+            '/api/v1/billing/paypal/capture-order/' . rawurlencode($orderId),
+            [],
+            $token,
+        );
+    }
+
+    /**
      * @return array{ok: bool, status: int, body: array}
      */
     private function call(string $method, string $path, array $payload = [], ?string $token = null): array

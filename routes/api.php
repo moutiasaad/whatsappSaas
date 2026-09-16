@@ -77,6 +77,21 @@ if (Wavadesk::isCore()) {
         Route::post('/checkout', [BillingApiController::class, 'checkout'])
             ->middleware(['auth:sanctum', 'throttle:10,1'])
             ->name('api.v1.billing.checkout');
+
+        // PayPal SDK create-order / capture-order proxies for the marketing
+        // checkout page. The SDK on wavadesk.com posts to
+        // /payment/paypal/create-order and /payment/paypal/capture-order/{id}
+        // there; marketing proxies both to these endpoints with the user's
+        // PAT. Throttle is higher than /checkout because the SDK can retry
+        // the pair a couple of times during a single approval (network
+        // blips, card 3DS re-auth).
+        Route::post('/paypal/create-order', [BillingApiController::class, 'paypalCreateOrder'])
+            ->middleware(['auth:sanctum', 'throttle:20,1'])
+            ->name('api.v1.billing.paypal.create-order');
+
+        Route::post('/paypal/capture-order/{orderId}', [BillingApiController::class, 'paypalCaptureOrder'])
+            ->middleware(['auth:sanctum', 'throttle:20,1'])
+            ->name('api.v1.billing.paypal.capture-order');
     });
 }
 

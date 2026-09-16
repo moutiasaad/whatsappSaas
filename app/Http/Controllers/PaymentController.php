@@ -770,6 +770,14 @@ class PaymentController extends Controller
 
     public function createPaypalOrder(Request $request)
     {
+        // Marketing branch — the PayPal SDK's createOrder() call landed
+        // here. Proxy to core's /api/v1/billing/paypal/create-order using
+        // the session PAT; the response shape ({id}) is what the SDK
+        // expects to hand to the buyer's browser.
+        if (\App\Support\Wavadesk::isMarketing()) {
+            return $this->createPaypalOrderViaCoreApi($request);
+        }
+
         // An AI pack is priced from config and billed to the signed-in admin's
         // own tenant — never from a client-supplied amount or tenant id.
         if ($request->input('kind') === TenantPayment::KIND_AI_PACK) {
@@ -992,6 +1000,15 @@ class PaymentController extends Controller
 
     public function capturePaypalOrder(Request $request, string $orderId)
     {
+        // Marketing branch — SDK's onApprove() called our /capture-order,
+        // which just forwards to core. Core does the actual capture +
+        // fulfilment and returns {success, redirect}. The redirect points
+        // back at core with an SSO code so the buyer auto-logs-in on
+        // landing, same as the /billing/checkout return path.
+        if (\App\Support\Wavadesk::isMarketing()) {
+            return $this->capturePaypalOrderViaCoreApi($request, $orderId);
+        }
+
         $payment = TenantPayment::where('paypal_order_id', $orderId)->first();
         if (!$payment) {
             return response()->json(['error' => 'payment_not_found'], 404);
@@ -1191,21 +1208,108 @@ class PaymentController extends Controller
             'email' => (string) ($userData['email'] ?? ''),
         ];
 
-        // Dedicated marketing view — the core `payment.checkout` view loads
-        // the PayPal SDK and calls local endpoints (createPaypalOrder, the
-        // Standard-form paypalStandardStart, etc.) that need a Laravel Auth
-        // user and a tenant in this box's DB. Neither of those exists on
-        // marketing (identity lives on core, marketing carries a session
-        // PAT snapshot). Simpler: render two buttons that submit to the
-        // marketing initiate routes, which proxy to /api/v1/billing/checkout
-        // per Session 2b, no SDK involvement.
+        // Render the same rich two-column checkout the core view uses. The
+        // PayPal SDK's createOrder / onApprove callbacks land on marketing
+        // routes /payment/paypal/create-order + /payment/paypal/capture-order,
+        // which proxy to /api/v1/billing/paypal/* on core carrying the
+        // session PAT — see createPaypalOrderViaCoreApi() /
+        // capturePaypalOrderViaCoreApi(). CardFields eligibility requires
+        // wavadesk.com to be whitelisted in developer.paypal.com; without
+        // that, the SDK falls back to the hosted card button.
+        $sdkReady = (bool) config('services.paypal.client_id');
+
+        // Optional client token for CardFields; only fetched when the REST
+        // credentials work. A failure here just skips the token — the SDK
+        // still renders in test mode without it.
+        $clientToken = null;
+        if ($sdkReady) {
+            try {
+                if ($this->paypal->credentialsValid()) {
+                    $clientToken = $this->paypal->clientToken();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Marketing checkout: PayPal client-token fetch failed', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return view('payment.checkout-marketing', [
-            'tenant'  => $tenant,
-            'plan'    => $plan,
-            'admin'   => $admin,
-            'amount'  => (float) $plan->price_monthly,
-            'backUrl' => route('register.plan'),
+            'tenant'      => $tenant,
+            'plan'        => $plan,
+            'admin'       => $admin,
+            'amount'      => (float) $plan->price_monthly,
+            'backUrl'     => route('register.plan'),
+            'sdkReady'    => $sdkReady,
+            'clientToken' => $clientToken,
         ]);
+    }
+
+    /**
+     * Marketing branch of /payment/paypal/create-order.
+     *
+     * Forwards to /api/v1/billing/paypal/create-order on core with the
+     * session PAT. Returns the response body unchanged — the PayPal SDK
+     * needs {id: <order id>} to hand to the buyer's browser.
+     */
+    private function createPaypalOrderViaCoreApi(Request $request)
+    {
+        $token = (string) session(\App\Support\Wavadesk::SESSION_TOKEN, '');
+        if ($token === '') {
+            return response()->json(['error' => 'session_expired'], 401);
+        }
+
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer'],
+        ]);
+
+        $result = app(\App\Services\WavadeskApi::class)
+            ->paypalCreateOrder($token, (int) $data['plan_id']);
+
+        if (! $result['ok']) {
+            Log::warning('Marketing -> core paypal/create-order failed', [
+                'status' => $result['status'],
+            ]);
+
+            return response()->json(
+                ['error' => 'create_order_failed', 'body' => $result['body']],
+                $result['status'] > 0 ? $result['status'] : 502,
+            );
+        }
+
+        return response()->json($result['body']);
+    }
+
+    /**
+     * Marketing branch of /payment/paypal/capture-order/{orderId}.
+     *
+     * Forwards to /api/v1/billing/paypal/capture-order/{id} on core with
+     * the session PAT. Returns the response body unchanged — the SDK
+     * expects {success, redirect} to navigate to the core success page.
+     */
+    private function capturePaypalOrderViaCoreApi(Request $request, string $orderId)
+    {
+        $token = (string) session(\App\Support\Wavadesk::SESSION_TOKEN, '');
+        if ($token === '') {
+            return response()->json(['success' => false, 'error' => 'session_expired'], 401);
+        }
+
+        $result = app(\App\Services\WavadeskApi::class)
+            ->paypalCaptureOrder($token, $orderId);
+
+        if (! $result['ok']) {
+            Log::warning('Marketing -> core paypal/capture-order failed', [
+                'status'   => $result['status'],
+                'order_id' => $orderId,
+            ]);
+
+            return response()->json(
+                ['success' => false, 'error' => 'capture_failed', 'body' => $result['body']],
+                $result['status'] > 0 ? $result['status'] : 502,
+            );
+        }
+
+        return response()->json($result['body']);
     }
 
     /**
