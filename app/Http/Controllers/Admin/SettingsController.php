@@ -75,7 +75,14 @@ class SettingsController extends Controller
     private function usage($tenant, ?AiSettings $ai): array
     {
         $seatLimit = (int) ($tenant->plan?->max_users ?: 0) + (int) $tenant->extra_seats;
-        $quota     = $ai ? $ai->monthly_message_quota : $tenant->plan?->ai_message_quota;
+        // effectiveQuota() enforces the trial cap; when the AiSettings row
+        // hasn't been seeded yet, fall back to the trial cap for trial
+        // tenants and the plan's quota otherwise.
+        $quota     = $ai
+            ? $ai->effectiveQuota()
+            : ($tenant->isOnTrial()
+                ? (int) config('app.trial_ai_message_quota', 100)
+                : $tenant->plan?->ai_message_quota);
 
         return [
             'seats_used'   => User::where('tenant_id', $tenant->id)->count(),

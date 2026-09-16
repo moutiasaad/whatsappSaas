@@ -545,6 +545,7 @@ Toujours :
         'usage_unlimited'  => 'Illimité',
         'usage_ai_off'     => 'IA désactivée sur ce forfait',
         'usage_resets_on'  => 'Réinitialisation le :date',
+        'usage_trial_cap_hint' => "Les espaces d'essai sont limités à :n réponses IA pour toute la durée de l'essai. Passez à un forfait payant pour débloquer l'allocation complète.",
         'save_settings' => 'Enregistrer les paramètres',
         'ai_mode_hint' => "Choisissez comment l'IA assiste votre équipe de support",
         'ai_disabled' => "L'IA est désactivée",

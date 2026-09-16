@@ -37,7 +37,9 @@ class BillingController extends Controller
             'user_limit'  => (int) ($tenant->plan?->max_users ?: 0) + (int) $tenant->extra_seats,
             'extra_seats' => (int) $tenant->extra_seats,
             'ai_used'     => (int) ($ai?->ai_messages_used_this_period ?? 0),
-            'ai_quota'    => $ai ? $ai->monthly_message_quota : $tenant->plan?->ai_message_quota,
+            // effectiveQuota() enforces the trial cap; falls back to the
+            // plan's quota when the AiSettings row hasn't been seeded yet.
+            'ai_quota'    => $ai ? $ai->effectiveQuota() : ($tenant->isOnTrial() ? (int) config('app.trial_ai_message_quota', 100) : $tenant->plan?->ai_message_quota),
             'ai_credits'  => (int) ($ai?->extra_message_credits ?? 0),
             'ai_resets_at'=> $ai?->quota_reset_at,
         ];

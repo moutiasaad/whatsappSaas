@@ -206,7 +206,7 @@ class AutoReplyService
 
     private function disableAndNotify($tenant): void
     {
-        $quota = (int) ($tenant->aiSettings?->monthly_message_quota ?? 0);
+        $quota = (int) ($tenant->aiSettings?->effectiveQuota() ?? 0);
 
         $tenant->aiSettings()->update(['mode' => 'off']);
 

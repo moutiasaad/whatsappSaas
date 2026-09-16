@@ -540,6 +540,7 @@ return [
         'usage_unlimited'  => 'غير محدود',
         'usage_ai_off'     => 'الذكاء الاصطناعي معطّل على هذه الخطة',
         'usage_resets_on'  => 'إعادة التعيين في :date',
+        'usage_trial_cap_hint' => 'المساحات التجريبية محدودة بـ :n رد ذكاء اصطناعي طوال الفترة التجريبية. قم بالترقية لفتح الحد الكامل لخطتك.',
         'save_settings' => 'حفظ الإعدادات',
         // UI-004: added for locale parity — the AI-settings page was the
         // primary Arabic gap.

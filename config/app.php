@@ -81,6 +81,22 @@ return [
     'trial_days' => (int) env('TRIAL_DAYS', 7),
 
     /*
+    |--------------------------------------------------------------------------
+    | Trial AI Message Cap
+    |--------------------------------------------------------------------------
+    |
+    | Hard cap on AI replies while a workspace is on trial, regardless of what
+    | the picked plan's `ai_message_quota` would normally allow. Enforced at
+    | read time through AiSettings::effectiveQuota() so it activates and
+    | deactivates automatically as `tenant.subscription_status` transitions
+    | between `trial` and `active`. Extra message credits are ignored while
+    | on trial — the cap is meant to bound the demo, not be top-up-able.
+    |
+    */
+
+    'trial_ai_message_quota' => (int) env('TRIAL_AI_MESSAGE_QUOTA', 100),
+
+    /*
      * URL prefix for the platform control panel (super admin only). The route
      * *name* prefix stays `super_admin.` regardless — only the path changes.
      */
