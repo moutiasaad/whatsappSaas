@@ -222,9 +222,26 @@ class AutoReplyService
 
     private function disableAndNotify($tenant): void
     {
-        $quota = (int) ($tenant->aiSettings?->effectiveQuota() ?? 0);
+        $settings = $tenant->aiSettings;
+        if (! $settings) {
+            return;
+        }
 
-        $tenant->aiSettings()->update(['mode' => 'off']);
+        $quota = (int) $settings->effectiveQuota();
+
+        // Remember the mode we're auto-flipping from, so a top-up pack
+        // (AiSettings::creditMessages) or a fresh billing period
+        // (AiSettings::rolloverIfDue) can restore it. Without the shadow
+        // value, the tenant's paid top-up sits inert on a mode='off' row.
+        // Do NOT overwrite an existing shadow value: two consecutive
+        // exhaustions in the same period would otherwise stamp 'off' over
+        // the real previous mode, losing the restore target.
+        if ($settings->mode !== 'off') {
+            $tenant->aiSettings()->update([
+                'mode_before_auto_off' => $settings->mode,
+                'mode'                 => 'off',
+            ]);
+        }
 
         // Previously this only wrote a log line, so the tenant was never told the
         // AI had stopped answering their customers.

@@ -12,7 +12,7 @@ class AiSettings extends Model
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id', 'mode', 'whatsapp_enabled', 'webchat_enabled',
+        'tenant_id', 'mode', 'mode_before_auto_off', 'whatsapp_enabled', 'webchat_enabled',
         'reply_language', 'suggestion_count', 'reply_when_claimed',
         'system_prompt', 'escalation_keywords',
         'monthly_message_quota', 'ai_messages_used_this_period', 'quota_reset_at',
@@ -120,9 +120,18 @@ class AiSettings extends Model
      */
     public function creditMessages(int $messages): void
     {
-        if ($messages > 0) {
-            $this->increment('extra_message_credits', $messages);
+        if ($messages <= 0) {
+            return;
         }
+
+        $this->increment('extra_message_credits', $messages);
+
+        // A top-up pack has to actually resume AI, otherwise the tenant
+        // has fresh paid credits sitting on a mode='off' row and the
+        // customer's next message goes unanswered. If quota exhaustion
+        // was what flipped mode to off, restore it now that credits give
+        // hasQuota() something to hand out.
+        $this->restoreModeAfterAutoOff();
     }
 
     /**
@@ -224,9 +233,47 @@ class AiSettings extends Model
         if ($affected) {
             $this->ai_messages_used_this_period = 0;
             $this->quota_reset_at               = $next;
+
+            // Fresh period == fresh allowance: if the last one ran out
+            // and disableAndNotify auto-flipped mode to off, restore it.
+            $this->restoreModeAfterAutoOff();
         } else {
             $this->refresh();
         }
+    }
+
+    /**
+     * Undo the mode='off' that disableAndNotify wrote when quota ran out,
+     * once the tenant has a live allowance again. Silent no-op unless
+     * mode_before_auto_off is set — an admin who manually turned AI off
+     * (mode='off' with no shadow value) stays off.
+     *
+     * Called from creditMessages (top-up pack settled) and rolloverIfDue
+     * (period boundary crossed). Not called at check time — hasQuota is
+     * on the reply path, and doing an UPDATE from a read would fight
+     * with itself under concurrency.
+     */
+    private function restoreModeAfterAutoOff(): void
+    {
+        if ($this->mode !== 'off' || ! $this->mode_before_auto_off) {
+            return;
+        }
+
+        // hasQuota() internally runs rolloverIfDue, but the reset-branch
+        // has already set quota_reset_at to a future value by the time we
+        // reach here, so rolloverIfDue short-circuits and there is no
+        // recursion. Trial cap still returns false hard — no restore on
+        // an in-trial tenant with a hard-capped counter, credits inert.
+        if (! $this->hasQuota()) {
+            return;
+        }
+
+        $previous = $this->mode_before_auto_off;
+
+        $this->update([
+            'mode'                 => $previous,
+            'mode_before_auto_off' => null,
+        ]);
     }
 
     public function remainingQuota(): ?int
