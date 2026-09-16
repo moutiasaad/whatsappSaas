@@ -2762,6 +2762,7 @@ Always:
         'usage_subtitle'    => 'Two lines to get you started.',
         'usage_header_line' => 'Send this header on every API request:',
         'usage_curl_line'   => 'Or with curl, to confirm the key works:',
+        'full_docs_cta'     => 'Read the full API documentation',
     ],
 ];
 

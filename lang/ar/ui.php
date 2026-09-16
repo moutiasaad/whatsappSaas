@@ -2749,5 +2749,6 @@ return [
         'usage_subtitle'    => 'سطران للبدء.',
         'usage_header_line' => 'أرسل هذه الترويسة في كل طلب API:',
         'usage_curl_line'   => 'أو باستخدام curl للتحقق من عمل المفتاح:',
+        'full_docs_cta'     => 'اقرأ توثيق API الكامل',
     ],
 ];

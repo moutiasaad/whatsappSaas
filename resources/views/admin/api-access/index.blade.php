@@ -85,8 +85,19 @@
             <p style="font-size:.875rem;color:var(--text-secondary,#334155);margin:0 0 .5rem;">
                 {{ __('ui.api_access_page.usage_curl_line') }}
             </p>
-            <pre style="background:var(--bg-secondary,#f8fafc);border:1px solid var(--border-color,#e2e8f0);border-radius:.5rem;padding:.75rem 1rem;font-size:.8125rem;color:var(--text-primary,#1e293b);overflow-x:auto;margin:0;"><code>curl -H "X-Api-Key: <span x-text="key"></span>" \
+            <pre style="background:var(--bg-secondary,#f8fafc);border:1px solid var(--border-color,#e2e8f0);border-radius:.5rem;padding:.75rem 1rem;font-size:.8125rem;color:var(--text-primary,#1e293b);overflow-x:auto;margin:0 0 1.25rem;"><code>curl -H "X-Api-Key: <span x-text="key"></span>" \
      {{ url('/api/instance') }}</code></pre>
+
+            {{-- Full docs link — used to be a separate sidebar item, moved
+                 here so you see the docs right where you generate the key.
+                 Opens in a new tab because docs/api.html is a static file
+                 that doesn't share the panel layout. --}}
+            <a href="{{ route('docs.api') }}" target="_blank" rel="noopener"
+               style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .875rem;background:rgba(91,106,240,.08);border:1px solid rgba(91,106,240,.25);border-radius:.5rem;color:#5b6af0;font-size:.875rem;font-weight:600;text-decoration:none;">
+                <i class="ri-book-open-line"></i>
+                {{ __('ui.api_access_page.full_docs_cta') }}
+                <i class="ri-external-link-line" style="font-size:.8125rem;opacity:.7;"></i>
+            </a>
         </div>
     </div>
 

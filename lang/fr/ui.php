@@ -2755,6 +2755,7 @@ Toujours :
         'usage_subtitle'    => 'Deux lignes pour démarrer.',
         'usage_header_line' => 'Envoyez cet en-tête à chaque requête API :',
         'usage_curl_line'   => 'Ou avec curl, pour vérifier que la clé fonctionne :',
+        'full_docs_cta'     => 'Lire la documentation API complète',
     ],
 ];
 

@@ -1911,7 +1911,12 @@
                             $isSA
                                 ? ['route' => 'profile.show',   'match' => ['profile.*'],  'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings')]
                                 : ['route' => 'settings.index', 'match' => ['settings.*'], 'icon' => 'ri-settings-3-line', 'label' => __('ui.sidebar.settings'), 'show' => $u->isAdmin()],
-                            ['url' => '/docs/api', 'icon' => 'ri-code-s-slash-line', 'label' => __('ui.sidebar.api_docs'), 'external' => true],
+                            // API Docs used to live here as a pinned bottom link.
+                            // Moved into the API Access page proper (see
+                            // resources/views/admin/api-access/index.blade.php)
+                            // so it sits next to the key — you generate the key
+                            // and immediately see the docs that use it, instead
+                            // of hunting for the docs in a separate rail item.
                         ],
                     ],
                 ];
