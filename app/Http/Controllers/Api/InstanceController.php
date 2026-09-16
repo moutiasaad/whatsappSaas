@@ -205,19 +205,61 @@ class InstanceController extends Controller
 
             $previousPhone = $instance->phone_number;
 
+            // Duplicate-number hard block: WhatsApp only allows one active
+            // session per number, so if this phone is already bound to a
+            // DIFFERENT tenant's instance, letting this connect finish would
+            // silently kick the other tenant. Refuse it here instead — tear
+            // down our end on the gateway, keep the local record clean,
+            // record a TenantLink for the super-admin's audit trail, and
+            // surface a 409 the frontend can render.
+            if ($phoneNumber && $phoneNumber !== $previousPhone) {
+                $otherOwnerTenantId = WhatsAppInstance::query()
+                    ->where('phone_number', $phoneNumber)
+                    ->where('tenant_id', '!=', $instance->tenant_id)
+                    ->value('tenant_id');
+
+                if ($otherOwnerTenantId) {
+                    // Record the attempt first — super-admin sees WHO tried
+                    // even if the block itself succeeds silently.
+                    $this->recordTenantLinksForPhone($instance->tenant_id, (int) $instance->id, $phoneNumber);
+
+                    // Best-effort gateway teardown. If it fails the local
+                    // state below still clears out so the user isn't stuck
+                    // with a phantom "connected" instance.
+                    rescue(fn () => $gateway->logout($instance->gateway_instance_id), null, false);
+
+                    // Wipe local state to match: no phone (we refuse to
+                    // record it), no QR (session is dead), no gateway id
+                    // (next connect starts fresh). paired update:
+                    // last_status_at bumped so the polling UI reflects the
+                    // freshest known state.
+                    $instance->update([
+                        'status'              => 'disconnected',
+                        'phone_number'        => null,
+                        'qr_code'             => null,
+                        'gateway_instance_id' => null,
+                        'last_status_at'      => now(),
+                    ]);
+
+                    broadcast(new InstanceStatusChanged($instance->fresh()));
+
+                    return response()->json([
+                        'message' => __('ui.controller_messages.instance_phone_already_used', ['phone' => $phoneNumber]),
+                        'code'    => 'phone_already_used',
+                    ], 409);
+                }
+            }
+
             $instance->update(array_filter([
                 'status'         => $status,
                 'phone_number'   => $phoneNumber ?: $instance->phone_number,
                 'last_status_at' => now(),
             ], fn($v) => $v !== null));
 
-            // Trial-abuse detection: whenever we learn (or re-learn) which
-            // WhatsApp number this instance is bound to, check for another
-            // tenant using the same number. If found, materialise a
-            // TenantLink row so the super-admin's linked-accounts view
-            // shows the two side by side. Only runs when phone_number is
-            // actually populated AND has just been (re)learned — quiet
-            // no-op on every subsequent status poll.
+            // Cross-tenant detection kept for the (rare) case where the
+            // block above didn't fire — e.g. two tenants racing to
+            // connect the same number in the same second. The link row
+            // is still valuable for audit.
             if ($phoneNumber && $phoneNumber !== $previousPhone) {
                 $this->recordTenantLinksForPhone($instance->tenant_id, (int) $instance->id, $phoneNumber);
             }

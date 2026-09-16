@@ -1226,6 +1226,7 @@ return [
         'assignee_not_eligible'        => 'الوكيل المختار لا يمكنه استلام هذه المحادثة.',
         'webhook_reprocessed'          => 'تمت المعالجة بنجاح.',
         'instance_disconnected'        => 'تم قطع اتصال النسخة.',
+        'instance_phone_already_used'  => 'رقم واتساب هذا (:phone) متصل بالفعل بمساحة عمل Wavadesk أخرى. اتصل بالدعم إذا كنت بحاجة إلى نقله — إعادة الاتصال هنا ستُبعد المساحة الأخرى بصمت.',
         'reservation_status_unchanged' => 'الحالة دون تغيير.',
         'reservation_slot_full'        => 'هذا الموعد مكتمل — لا يمكن إعادة تفعيل هذا الحجز.',
         'reservation_status_updated'   => 'تم تحديث الحالة.',

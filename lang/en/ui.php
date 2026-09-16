@@ -1231,6 +1231,7 @@ Always:
         'assignee_not_eligible'        => 'The selected assignee cannot take this conversation.',
         'webhook_reprocessed'          => 'Processed successfully.',
         'instance_disconnected'        => 'Instance disconnected.',
+        'instance_phone_already_used'  => 'This WhatsApp number (:phone) is already connected to another Wavadesk workspace. Contact support if you need to move it — reconnecting here would silently kick the other workspace off.',
         'reservation_status_unchanged' => 'Status unchanged.',
         'reservation_slot_full'        => 'This slot is at capacity — cannot reinstate this reservation.',
         'reservation_status_updated'   => 'Status updated.',

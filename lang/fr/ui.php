@@ -1229,6 +1229,7 @@ Toujours :
         'assignee_not_eligible'        => 'L\'agent sélectionné ne peut pas prendre cette conversation.',
         'webhook_reprocessed'          => 'Traité avec succès.',
         'instance_disconnected'        => 'Instance déconnectée.',
+        'instance_phone_already_used'  => "Ce numéro WhatsApp (:phone) est déjà connecté à un autre espace Wavadesk. Contactez le support si vous avez besoin de le transférer — le reconnecter ici déconnecterait silencieusement l'autre espace.",
         'reservation_status_unchanged' => 'Statut inchangé.',
         'reservation_slot_full'        => 'Ce créneau est complet — impossible de rétablir cette réservation.',
         'reservation_status_updated'   => 'Statut mis à jour.',
