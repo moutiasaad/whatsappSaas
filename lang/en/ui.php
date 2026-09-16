@@ -1534,6 +1534,7 @@ Always:
         'archive' => 'Archive',
         'live_chat_settings' => 'Live Chat Settings',
         'otp_service' => 'OTP Service',
+        'api_access' => 'API Access',
         'teams' => 'Teams',
         'whatsapp_instances' => 'WhatsApp Instances',
         'agents_users' => 'Agents & Users',
@@ -2742,6 +2743,24 @@ Always:
         'idle_hint'       => 'Only conversations the AI bot is handling on its own are closed. A thread an agent has claimed, one waiting in the human queue, and one escalated by keyword are all left alone. The clock runs from the customer\'s last message, so the bot replying does not restart it.',
         'save'            => 'Save',
         'saved'           => 'Conversation automation settings saved.',
+    ],
+
+    'api_access_page' => [
+        'title'             => 'API Access',
+        'subtitle'          => 'Generate and rotate the API key that lets your integrations talk to Wavadesk on this account\'s behalf.',
+        'card_title'        => 'Your API key',
+        'card_subtitle'     => 'Send this on every request as the <code>X-Api-Key</code> header. Do not share it — anyone with this key can act as you.',
+        'secret_hint'       => 'Treat this like a password. If it leaks, click Regenerate below to invalidate it immediately.',
+        'copy'              => 'Copy',
+        'copied'            => 'Copied',
+        'regenerate'        => 'Regenerate key',
+        'regenerating'      => 'Regenerating…',
+        'regenerate_hint'   => 'Regenerating instantly invalidates the old key. Anything using it will start returning 401 until updated.',
+        'regenerate_confirm'=> 'Regenerate this API key? Any integrations using the current key will stop working immediately.',
+        'usage_title'       => 'How to use it',
+        'usage_subtitle'    => 'Two lines to get you started.',
+        'usage_header_line' => 'Send this header on every API request:',
+        'usage_curl_line'   => 'Or with curl, to confirm the key works:',
     ],
 ];
 

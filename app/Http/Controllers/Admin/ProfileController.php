@@ -18,31 +18,10 @@ class ProfileController extends Controller
 
     public function show()
     {
-        $user = Auth::user();
-
-        if (!$user->api_key) {
-            $user->update(['api_key' => $this->freshKey()]);
-            $user->refresh();
-        }
-
-        return view('admin.profile.index', ['apiKey' => $user->api_key]);
-    }
-
-    public function regenerateApiKey()
-    {
-        $user = Auth::user();
-        $user->update(['api_key' => $this->freshKey()]);
-
-        return response()->json(['api_key' => $user->fresh()->api_key]);
-    }
-
-    private function freshKey(): string
-    {
-        do {
-            $key = 'wvd_' . Str::random(48);
-        } while (\App\Models\User::where('api_key', $key)->exists());
-
-        return $key;
+        // API-key management moved out of profile into its own gated section
+        // (App\Http\Controllers\Admin\ApiAccessController + /api-access) so
+        // it can be sold as a plan module (see plan_modules.php).
+        return view('admin.profile.index');
     }
 
     public function updatePassword(Request $request)

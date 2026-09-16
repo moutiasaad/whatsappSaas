@@ -1532,6 +1532,7 @@ Toujours :
         'archive' => 'Archive',
         'live_chat_settings' => 'Paramètres du chat',
         'otp_service' => 'Service OTP',
+        'api_access' => 'Accès API',
         'teams' => 'Équipes',
         'whatsapp_instances' => 'Instances WhatsApp',
         'agents_users' => 'Agents & Utilisateurs',
@@ -2735,6 +2736,24 @@ Toujours :
         'idle_hint'       => 'Seules les conversations gérées seules par l\'IA sont fermées. Un fil pris en charge par un agent, un fil en attente dans la file humaine et un fil escaladé par mot-clé sont laissés intacts. Le délai part du dernier message du client : les réponses du bot ne le réinitialisent pas.',
         'save'            => 'Enregistrer',
         'saved'           => 'Paramètres d\'automatisation enregistrés.',
+    ],
+
+    'api_access_page' => [
+        'title'             => 'Accès API',
+        'subtitle'          => "Générez et faites tourner la clé API qui permet à vos intégrations de communiquer avec Wavadesk pour ce compte.",
+        'card_title'        => 'Votre clé API',
+        'card_subtitle'     => "Envoyez-la à chaque requête via l'en-tête <code>X-Api-Key</code>. Ne la partagez pas — quiconque possède cette clé peut agir en votre nom.",
+        'secret_hint'       => "Traitez-la comme un mot de passe. En cas de fuite, cliquez sur Régénérer ci-dessous pour l'invalider immédiatement.",
+        'copy'              => 'Copier',
+        'copied'            => 'Copié',
+        'regenerate'        => 'Régénérer la clé',
+        'regenerating'      => 'Régénération…',
+        'regenerate_hint'   => "Régénérer invalide immédiatement l'ancienne clé. Toute intégration qui l'utilise commencera à recevoir 401 jusqu'à mise à jour.",
+        'regenerate_confirm'=> "Régénérer cette clé API ? Toutes les intégrations utilisant la clé actuelle cesseront de fonctionner immédiatement.",
+        'usage_title'       => 'Comment l\'utiliser',
+        'usage_subtitle'    => 'Deux lignes pour démarrer.',
+        'usage_header_line' => 'Envoyez cet en-tête à chaque requête API :',
+        'usage_curl_line'   => 'Ou avec curl, pour vérifier que la clé fonctionne :',
     ],
 ];
 

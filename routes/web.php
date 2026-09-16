@@ -303,7 +303,15 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
                 Route::post('/profile/email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.email-change');
                 Route::post('/profile/email-verify', [ProfileController::class, 'verifyEmailChange'])->name('profile.email-verify');
-                Route::post('/profile/regenerate-api-key', [ProfileController::class, 'regenerateApiKey'])->name('profile.regenerate-api-key');
+            });
+
+            // API Access — its own section, gated by the api_access plan module
+            // so tenants on lower tiers see the locked upgrade preview (same
+            // treatment Reservations and Live Chat get). Available to all
+            // panel roles — keys are per-user, not per-tenant.
+            Route::middleware('module:api_access')->group(function () {
+                Route::get('/api-access', [\App\Http\Controllers\Admin\ApiAccessController::class, 'show'])->name('api-access.show');
+                Route::post('/api-access/regenerate', [\App\Http\Controllers\Admin\ApiAccessController::class, 'regenerate'])->name('api-access.regenerate');
             });
 
             if (!$includeManagement && in_array('supervisor', $roles, true)) {

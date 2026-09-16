@@ -27,5 +27,5 @@ return [
     'teams'          => ['icon' => 'ri-team-line',           'group' => 'workspace',  'teaser' => true],
     'reports'        => ['icon' => 'ri-bar-chart-2-line',    'group' => 'insights'],
     'audit_log'      => ['icon' => 'ri-file-list-3-line',    'group' => 'insights'],
-    'api_access'     => ['icon' => 'ri-code-s-slash-line',   'group' => 'insights'],
+    'api_access'     => ['icon' => 'ri-code-s-slash-line',   'group' => 'modules',    'teaser' => true],
 ];

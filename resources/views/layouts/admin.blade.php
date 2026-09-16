@@ -1873,6 +1873,10 @@
                             ['route' => 'otp-service.show',      'match' => ['otp-service.*'],    'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),    'show' => $u->isAdmin() && $mod('otp_service')],
                             ['route' => 'reservations.index',    'match' => ['reservations.*'],   'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),   'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
                             ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],        'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),      'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
+                            // API Access — teaser module; shows locked to plans that lack it,
+                            // exactly like reservations/webchat above. Available to all roles
+                            // (keys are per-user), not just admin.
+                            ['route' => 'api-access.show',       'match' => ['api-access.*'],     'icon' => 'ri-code-s-slash-line',   'label' => __('ui.sidebar.api_access'),     'show' => $modShow('api_access'), 'locked' => $teased('api_access')],
                         ],
                     ],
 
