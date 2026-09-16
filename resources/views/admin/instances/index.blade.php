@@ -445,6 +445,29 @@ function instancesPage() {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json' },
                 });
+
+                // 409 with code:'phone_already_used' means the server refused
+                // this connection because the phone number is bound to another
+                // tenant. Server has already torn down our end + cleared the
+                // instance row; the frontend just needs to close the modal
+                // and tell the user why. Without this branch, the 4xx fell
+                // into `if (!res.ok) return` and the user saw nothing.
+                if (res.status === 409) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.code === 'phone_already_used') {
+                        this.stopQrPoll();
+                        this.closeQr();
+                        window.showToast?.('error', data.message || 'Phone number already in use.');
+                        const inst = this.getInst(this.qr.instanceId);
+                        if (inst) {
+                            inst.status = 'disconnected';
+                            inst.phone_number = null;
+                            this.recalcStats();
+                        }
+                        return;
+                    }
+                }
+
                 if (!res.ok) return;
                 const data = await res.json();
                 if (!this.qr.show) return this.stopQrPoll();
@@ -500,6 +523,23 @@ function instancesPage() {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json' },
                 });
+
+                // Duplicate-number block — see pollQr() for full rationale.
+                if (res.status === 409) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.code === 'phone_already_used') {
+                        this.closeQr();
+                        window.showToast?.('error', data.message || 'Phone number already in use.');
+                        const inst = this.getInst(this.qr.instanceId);
+                        if (inst) {
+                            inst.status = 'disconnected';
+                            inst.phone_number = null;
+                            this.recalcStats();
+                        }
+                        return;
+                    }
+                }
+
                 if (!res.ok) throw new Error();
                 const data = await res.json();
                 const inst = this.getInst(this.qr.instanceId);
@@ -529,7 +569,22 @@ function instancesPage() {
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json' }
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
+
+            // Duplicate-number block from the server. This row-level "Refresh"
+            // button hits the same status endpoint, so a stale connected-
+            // looking row can flip to disconnected + a toast if the server
+            // decides the phone was reused elsewhere.
+            if (res.status === 409 && data.code === 'phone_already_used') {
+                window.showToast?.('error', data.message || 'Phone number already in use.');
+                if (inst) {
+                    inst.status = 'disconnected';
+                    inst.phone_number = null;
+                    this.recalcStats();
+                }
+                return;
+            }
+
             if (inst) {
                 inst.status = data.status;
                 if (data.phone_number) inst.phone_number = data.phone_number;
