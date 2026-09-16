@@ -1191,7 +1191,15 @@ class PaymentController extends Controller
             'email' => (string) ($userData['email'] ?? ''),
         ];
 
-        return view('payment.checkout', [
+        // Dedicated marketing view — the core `payment.checkout` view loads
+        // the PayPal SDK and calls local endpoints (createPaypalOrder, the
+        // Standard-form paypalStandardStart, etc.) that need a Laravel Auth
+        // user and a tenant in this box's DB. Neither of those exists on
+        // marketing (identity lives on core, marketing carries a session
+        // PAT snapshot). Simpler: render two buttons that submit to the
+        // marketing initiate routes, which proxy to /api/v1/billing/checkout
+        // per Session 2b, no SDK involvement.
+        return view('payment.checkout-marketing', [
             'tenant'  => $tenant,
             'plan'    => $plan,
             'admin'   => $admin,
