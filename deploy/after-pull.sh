@@ -60,6 +60,38 @@ echo "→ Restarting queue workers gracefully..."
 as_app "$PHP_BIN" artisan queue:restart
 # Workers finish their current job, exit, then Supervisor restarts them.
 
+echo "→ Building frontend assets..."
+# /public/build is gitignored, so a pull that changes resources/js or
+# resources/css lands the PHP and leaves yesterday's compiled bundle live.
+# Nothing errors — the page half-updates — which is why this runs on every
+# deploy instead of trying to guess when it matters. Last, deliberately: a
+# broken build should leave a working database with stale assets, never a
+# migrated-but-unmigrated app.
+if [ "${WAVADESK_SKIP_ASSETS:-0}" = "1" ]; then
+    echo "    WAVADESK_SKIP_ASSETS=1 — skipped"
+elif [ ! -f package.json ]; then
+    echo "    no package.json — skipped"
+elif ! command -v npm >/dev/null 2>&1; then
+    # Loud rather than quietly skipped: a host with no npm cannot serve current
+    # assets, and learning that from a user's screenshot is worse than here.
+    echo "✗ npm not found — cannot rebuild assets on this host." >&2
+    echo "  Install Node, or set WAVADESK_SKIP_ASSETS=1 if this box serves no pages." >&2
+    exit 1
+else
+    as_app npm ci --no-audit --no-fund
+    as_app npm run build
+    # The build already runs as APP_USER, but a stray root-owned file under
+    # public/build 403s every asset request through php-fpm.
+    #
+    # Guarded on the directory existing: under `set -e` a chown of a missing
+    # path aborts the deploy *after* a successful build, which would turn a
+    # vite config that writes somewhere else into a failed deploy with no
+    # useful error.
+    if [ "$(id -u)" -eq 0 ] && [ -d public/build ]; then
+        chown -R "$APP_USER:$APP_USER" public/build
+    fi
+fi
+
 # Fail the deploy loudly if anything still needs a migration.
 if as_app "$PHP_BIN" artisan migrate:status | grep -qi pending; then
     echo "✗ Deploy finished but migrations are STILL pending — check the output above." >&2

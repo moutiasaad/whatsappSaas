@@ -17,8 +17,17 @@ fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Only auto-deploy on the production checkout. Elsewhere the pull is just a pull.
-if [ "$REPO_ROOT" != "/www/wwwroot/public/wavadesk.com" ]; then
+# Only auto-deploy on a checkout that is a deploy target. A marker file, created
+# once per server and gitignored, rather than a hardcoded path: the two hosts of
+# the split live at different paths, and a laptop clone must stay a plain pull.
+#
+#   touch .wavadesk-deploy      # on a server, once
+#
+# The old hardcoded path is still honoured so an existing box keeps deploying
+# through the release that introduces the marker — without it, this very commit
+# would be the last one that ever deployed itself.
+if [ ! -f "$REPO_ROOT/.wavadesk-deploy" ] \
+   && [ "$REPO_ROOT" != "/www/wwwroot/public/wavadesk.com" ]; then
     exit 0
 fi
 

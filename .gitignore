@@ -53,3 +53,7 @@ Thumbs.db
 wavadesk-bundle-*.tar.gz
 /wavadesk-migration/
 .env.bak.*
+
+# Marks a checkout as a deploy target for deploy/githooks/post-merge. One per
+# server, never committed: a clone on a laptop must stay a plain `git pull`.
+/.wavadesk-deploy
