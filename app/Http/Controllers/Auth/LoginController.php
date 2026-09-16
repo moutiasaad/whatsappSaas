@@ -139,6 +139,25 @@ class LoginController extends Controller
                 );
             }
 
+            // Belt-and-suspenders: block-checked at login-time too, so the
+            // "workspace suspended" message renders on the SAME response
+            // instead of via a flash-through-redirect chain (CheckSubscription
+            // would also catch this on the very next panel request, but the
+            // flash surviving auth-logout + session-regenerate has been
+            // fragile across drivers). Same rule CheckSubscription uses:
+            // tenants.is_active=false while subscription_status is still
+            // active/trial → super-admin block, not a subscription lapse.
+            if (!$user->isSuperAdmin()
+                && ($tenant = $user->tenant)
+                && ! $tenant->is_active
+                && in_array($tenant->subscription_status, ['active', 'trial'], true)) {
+                return $this->rejectPortalLogin(
+                    $request,
+                    __('auth.errors.workspace_blocked'),
+                    $superAdminOnly ? 'superadmin.login' : 'login'
+                );
+            }
+
             if ($superAdminOnly) {
                 $target = route('super_admin.dashboard');
             } else {

@@ -98,11 +98,18 @@ class CheckSubscription
             ], 403);
         }
 
+        // Same logout+invalidate+regenerate shape LoginController's
+        // rejectPortalLogin uses for the "super_admin_only" /
+        // "use_control_panel_login" flashes, which are known to render on
+        // the target login page. withErrors() (not with('error', …)) is
+        // the piece that was missing — the login view reads $errors->first()
+        // at the top of the form but has no reader for a plain
+        // session('error') flash.
         auth()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('error', $message);
+        return redirect()->route('login')->withErrors(['email' => $message]);
     }
 
     /**
