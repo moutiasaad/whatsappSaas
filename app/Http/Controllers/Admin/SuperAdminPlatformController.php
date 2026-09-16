@@ -254,26 +254,41 @@ class SuperAdminPlatformController extends Controller
     /**
      * One-click "log in as this tenant" from the tenants list.
      *
-     * Resolves the tenant's primary admin (first active admin user) and
-     * runs the impersonation exactly the way UserController::impersonate
-     * does — same ImpersonationLog row shape, same `impersonating` session
+     * Resolves the tenant's primary admin (oldest admin user, matching
+     * how editTenant identifies "the tenant admin") and runs the
+     * impersonation exactly the way UserController::impersonate does —
+     * same ImpersonationLog row shape, same `impersonating` session
      * key, same AuditLog entry — so `/impersonate/leave` restores this
      * super-admin back to their own session with no extra plumbing.
+     *
+     * `is_active` on the admin is deliberately NOT part of the filter:
+     * a tenant admin who's been disabled is exactly the case where a
+     * super-admin most often needs to log in as them (to see what they
+     * saw, or to re-enable them). editTenant's tenantAdmin lookup uses
+     * the same shape — one source of truth for "who's the admin here".
      */
     public function impersonateTenantAdmin(Tenant $tenant)
     {
         abort_unless(auth()->user()->isSuperAdmin(), 403);
 
+        // Same query shape as editTenant()'s $tenantAdmin lookup so both
+        // paths agree on who "the admin" is — never a footgun where
+        // this button skips a row the edit form shows.
         $admin = User::where('tenant_id', $tenant->id)
             ->where('role', 'admin')
-            ->where('is_active', true)
             ->orderBy('id')
             ->first();
 
-        // No active admin to become. Blocking rather than falling back to a
-        // supervisor / agent because the tenants list button says "log in as
-        // admin" — silently landing as a lower role would misrepresent
-        // what the super-admin just did.
+        // Fallback for tenants with no admin row at all — shouldn't happen
+        // in normal flow (register always creates one) but a super-admin
+        // needs a way in regardless. Take the oldest user of any role
+        // rather than 404-ing.
+        if (! $admin) {
+            $admin = User::where('tenant_id', $tenant->id)
+                ->orderBy('id')
+                ->first();
+        }
+
         if (! $admin) {
             return back()->with('error', __('ui.controller_messages.tenant_has_no_active_admin'));
         }
