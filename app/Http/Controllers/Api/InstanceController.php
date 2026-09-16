@@ -205,6 +205,24 @@ class InstanceController extends Controller
 
             $previousPhone = $instance->phone_number;
 
+            // Don't accept "connected" without a phone number.
+            //
+            // The gateway can flip to status=connected a poll or two BEFORE
+            // it learns which WhatsApp number is on the other end. The
+            // frontend stops polling as soon as it sees connected (and
+            // closes the QR modal), so if we accept that first-connected
+            // state the duplicate-number block below never gets a phone
+            // to check against — resulting in a "connected / No number"
+            // row that quietly steals another tenant's session anyway.
+            // Downgrade to connecting so the poll loop continues; on the
+            // next tick the gateway will have the phone and the block
+            // will either let the connection finalise or refuse it
+            // cleanly with a 409.
+            $effectiveNextPhone = $phoneNumber ?: $instance->phone_number;
+            if ($status === 'connected' && !$effectiveNextPhone) {
+                $status = 'connecting';
+            }
+
             // Duplicate-number hard block: WhatsApp only allows one active
             // session per number, so if this phone is already bound to a
             // DIFFERENT tenant's instance, letting this connect finish would
