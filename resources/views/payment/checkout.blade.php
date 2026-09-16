@@ -726,7 +726,18 @@
        them. The inputs are PayPal-hosted iframes, so the card number never
        reaches this origin, but the buyer types it here and is never asked to
        sign in to PayPal. */
-    const cardFields = typeof paypal.CardFields === 'function'
+    // On marketing (wavadesk.com) PayPal's Advanced Card Fields SDK fails
+    // eligibility per-domain even though the same merchant credentials work
+    // on core (app.wavadesk.com) — fixing it properly means whitelisting
+    // wavadesk.com in the PayPal developer dashboard, which we don't own.
+    // Meanwhile the SDK fires onError during setup and the buyer sees
+    // "That card could not be processed" even though they haven't touched
+    // the form yet. Skip CardFields entirely on marketing and fall straight
+    // through to renderHostedCardButton() below — buyers get PayPal's own
+    // hosted card page instead of inline fields, which uses the same
+    // account+creds and works reliably.
+    const skipCardFields = @js(\App\Support\Wavadesk::isMarketing());
+    const cardFields = (!skipCardFields && typeof paypal.CardFields === 'function')
         ? paypal.CardFields({
             createOrder: createOrder,
             onApprove: onApprove,
