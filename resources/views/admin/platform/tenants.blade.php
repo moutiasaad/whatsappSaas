@@ -18,6 +18,7 @@
         'delete_prompt'          => __('ui.platform_tenants_page.delete_prompt'),
         'delete_message'         => __('ui.platform_tenants_page.delete_message'),
         'delete_selected_confirm'=> __('ui.platform_tenants_page.delete_selected_confirm'),
+        'impersonate_confirm'    => __('ui.platform_tenants_page.impersonate_confirm'),
         'deleted_toast'          => __('ui.controller_messages.tenant_deleted'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
@@ -173,9 +174,16 @@
                                         {{-- One-click "log in as this tenant". Server-side confirms
                                              super_admin, resolves the tenant's active admin, and hands off
                                              through the same ImpersonationLog path the users-list button uses,
-                                             so /impersonate/leave restores this session. --}}
+                                             so /impersonate/leave restores this session.
+
+                                             confirm() goes through @click, not the HTML `onclick=""`
+                                             attribute: the copy has apostrophes (English possessive,
+                                             French "l'"), and inside onclick="" they collide with the
+                                             attribute quotes and break the handler client-side. Alpine's
+                                             @click receives the string as a plain JS literal so no
+                                             quote-escape gymnastics needed. --}}
                                         <a :href="impersonateUrl(tenant.id)" class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}"
-                                           onclick="return confirm('{{ __('ui.platform_tenants_page.impersonate_confirm') }}')">
+                                           @click="if (!confirm(i18n.impersonate_confirm)) { $event.preventDefault(); }">
                                             <i class="ri-login-box-line"></i>
                                         </a>
                                         <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"

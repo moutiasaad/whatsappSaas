@@ -438,12 +438,6 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::put('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'updateTenant'])->name('platform.tenants.update');
                 Route::delete('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'destroyTenant'])->name('platform.tenants.destroy');
                 Route::post('/platform/tenants/bulk', [SuperAdminPlatformController::class, 'bulkTenants'])->name('platform.tenants.bulk');
-                // One-click "log in as this tenant" — resolves the tenant's
-                // primary admin and delegates to the existing user
-                // impersonation flow so ImpersonationLog + /impersonate/leave
-                // work identically to the users-list impersonate button.
-                Route::get('/platform/tenants/{tenant}/impersonate-admin', [SuperAdminPlatformController::class, 'impersonateTenantAdmin'])
-                    ->name('platform.tenants.impersonate-admin');
                 Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
                 Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
                 Route::post('/platform/plans', [SuperAdminPlatformController::class, 'storePlan'])->name('platform.plans.store');
@@ -567,6 +561,15 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             Route::put('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'updateTenant'])->name('platform.tenants.update');
             Route::delete('/platform/tenants/{tenant}', [SuperAdminPlatformController::class, 'destroyTenant'])->name('platform.tenants.destroy');
             Route::post('/platform/tenants/bulk', [SuperAdminPlatformController::class, 'bulkTenants'])->name('platform.tenants.bulk');
+            // One-click "log in as this tenant" — resolves the tenant's
+            // primary active admin and reuses the ImpersonationLog +
+            // session['impersonating'] machinery so /impersonate/leave
+            // restores this super-admin's session with no extra plumbing.
+            // Belongs in THIS block (the separate super_admin registration
+            // that owns admin-control-panel/* URLs), not $registerPanelRoutes
+            // which is for admin / tenant-admin / supervisor / agent panels.
+            Route::get('/platform/tenants/{tenant}/impersonate-admin', [SuperAdminPlatformController::class, 'impersonateTenantAdmin'])
+                ->name('platform.tenants.impersonate-admin');
 
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
