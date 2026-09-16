@@ -114,6 +114,41 @@
         <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">{{ __('ui.platform_tenants_page.clear') }}</button>
     </div>
 
+    {{-- Second row: date-range filters + one-click presets. Compact styling
+         so it doesn't compete visually with the main toolbar above. --}}
+    <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);margin-bottom:1rem;padding:.625rem .875rem;display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;font-size:.8125rem;">
+        <div style="display:flex;align-items:center;gap:.375rem;">
+            <label style="color:var(--text-muted);font-weight:500;">{{ __('ui.platform_tenants_page.filter_created') }}</label>
+            <input type="date" x-model="filters.created_from" @change="reload()"
+                   class="filter-input" style="padding:.375rem .5rem;min-width:9rem;">
+            <span style="color:var(--text-muted);">–</span>
+            <input type="date" x-model="filters.created_to" @change="reload()"
+                   class="filter-input" style="padding:.375rem .5rem;min-width:9rem;">
+        </div>
+
+        <div style="display:flex;align-items:center;gap:.375rem;">
+            <label style="color:var(--text-muted);font-weight:500;">{{ __('ui.platform_tenants_page.filter_ends') }}</label>
+            <input type="date" x-model="filters.ends_from" @change="reload()"
+                   class="filter-input" style="padding:.375rem .5rem;min-width:9rem;">
+            <span style="color:var(--text-muted);">–</span>
+            <input type="date" x-model="filters.ends_to" @change="reload()"
+                   class="filter-input" style="padding:.375rem .5rem;min-width:9rem;">
+        </div>
+
+        <div style="display:flex;align-items:center;gap:.375rem;margin-left:auto;flex-wrap:wrap;">
+            <span style="color:var(--text-muted);font-weight:500;">{{ __('ui.platform_tenants_page.presets_label') }}</span>
+            <button type="button" @click="applyPreset('trials_ending_soon')" class="btn btn-outline btn-sm">
+                {{ __('ui.platform_tenants_page.preset_trials_ending_soon') }}
+            </button>
+            <button type="button" @click="applyPreset('renewing_this_month')" class="btn btn-outline btn-sm">
+                {{ __('ui.platform_tenants_page.preset_renewing_this_month') }}
+            </button>
+            <button type="button" @click="applyPreset('new_this_week')" class="btn btn-outline btn-sm">
+                {{ __('ui.platform_tenants_page.preset_new_this_week') }}
+            </button>
+        </div>
+    </div>
+
     {{-- Loading --}}
     <div x-show="loading" class="spinner-wrap" style="min-height:200px">
         <div>
@@ -393,7 +428,7 @@ function tenantsPage() {
         total:       0,
 
         search:     '',
-        filters:    { plan_id: '', status: '', is_active: '', archived: '' },
+        filters:    { plan_id: '', status: '', is_active: '', archived: '', created_from: '', created_to: '', ends_from: '', ends_to: '' },
 
         selected:   [],
         bulkAction: 'enable',
@@ -426,6 +461,10 @@ function tenantsPage() {
             if (this.filters.status)       p.set('status',    this.filters.status);
             if (this.filters.is_active !== '') p.set('is_active', this.filters.is_active);
             if (this.filters.archived)          p.set('archived',  this.filters.archived);
+            if (this.filters.created_from)      p.set('created_from', this.filters.created_from);
+            if (this.filters.created_to)        p.set('created_to',   this.filters.created_to);
+            if (this.filters.ends_from)         p.set('ends_from',    this.filters.ends_from);
+            if (this.filters.ends_to)           p.set('ends_to',      this.filters.ends_to);
             return p;
         },
 
@@ -478,7 +517,47 @@ function tenantsPage() {
 
         clearFilters() {
             this.search  = '';
-            this.filters = { plan_id: '', status: '', is_active: '', archived: '' };
+            this.filters = { plan_id: '', status: '', is_active: '', archived: '', created_from: '', created_to: '', ends_from: '', ends_to: '' };
+            this.reload();
+        },
+
+        // Preset chips. Each rebuilds the filters state from scratch (rather
+        // than layering on top of whatever the user had) so clicking a
+        // preset always yields a predictable result.
+        applyPreset(name) {
+            const today = new Date();
+            const iso   = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+            const plus  = (days) => { const d = new Date(today); d.setDate(d.getDate() + days); return d; };
+            const minus = (days) => { const d = new Date(today); d.setDate(d.getDate() - days); return d; };
+
+            // Blank slate first — presets are exclusive, not additive.
+            this.search  = '';
+            this.filters = { plan_id: '', status: '', is_active: '', archived: '', created_from: '', created_to: '', ends_from: '', ends_to: '' };
+
+            switch (name) {
+                case 'trials_ending_soon':
+                    // Trials whose 7-day (or however long) window ends
+                    // between today and 7 days from now.
+                    this.filters.status    = 'trial';
+                    this.filters.ends_from = iso(today);
+                    this.filters.ends_to   = iso(plus(7));
+                    break;
+
+                case 'renewing_this_month':
+                    // Paid subscriptions whose renewal date falls in the
+                    // next 30 days — the "who needs a heads-up email"
+                    // bucket.
+                    this.filters.status    = 'active';
+                    this.filters.ends_from = iso(today);
+                    this.filters.ends_to   = iso(plus(30));
+                    break;
+
+                case 'new_this_week':
+                    this.filters.created_from = iso(minus(7));
+                    this.filters.created_to   = iso(today);
+                    break;
+            }
+
             this.reload();
         },
 

@@ -33,6 +33,31 @@ class SuperAdminPlatformController extends Controller
             ->when($request->status,  fn ($q, $status) => $q->where('subscription_status', $status))
             ->when($request->plan_id, fn ($q, $planId) => $q->where('plan_id', $planId))
             ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active === '1'))
+            // Created-date range. Inclusive on both ends via whereDate so
+            // typing "2026-09-16" matches rows created that day regardless
+            // of the timestamp's HH:MM:SS.
+            ->when($request->filled('created_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->query('created_from')))
+            ->when($request->filled('created_to'),   fn ($q) => $q->whereDate('created_at', '<=', $request->query('created_to')))
+            // Plan-ends range. Which column matters depends on subscription
+            // lifecycle (trial_ends_at for trials, subscription_ends_at for
+            // paid) — same split project_trial_lifecycle_semantics.md
+            // documents. Query mirrors that so a "renewing in 30 days"
+            // preset doesn't pick up trial expiries by accident.
+            ->when($request->filled('ends_from') || $request->filled('ends_to'), function ($q) use ($request) {
+                $from = $request->query('ends_from');
+                $to   = $request->query('ends_to');
+                $q->where(function ($outer) use ($from, $to) {
+                    $outer->where(function ($qq) use ($from, $to) {
+                        $qq->where('subscription_status', 'trial');
+                        if ($from) $qq->whereDate('trial_ends_at', '>=', $from);
+                        if ($to)   $qq->whereDate('trial_ends_at', '<=', $to);
+                    })->orWhere(function ($qq) use ($from, $to) {
+                        $qq->where('subscription_status', 'active');
+                        if ($from) $qq->whereDate('subscription_ends_at', '>=', $from);
+                        if ($to)   $qq->whereDate('subscription_ends_at', '<=', $to);
+                    });
+                });
+            })
             // Archived filter: default (unset) → hide archived rows.
             // ?archived=1 → only archived. ?archived=all → both.
             ->when(true, function ($q) use ($request) {
