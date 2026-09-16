@@ -134,6 +134,35 @@ class Tenant extends Model
         $this->forceFill(['archived_at' => null])->save();
     }
 
+    /**
+     * Every other tenant linked to this one, regardless of which side of
+     * the tenant_links pair this tenant sits on. Each returned Tenant
+     * carries a `pivot_link` attribute with the TenantLink row so the UI
+     * can render reason + evidence + when-detected without a second lookup.
+     *
+     * Not a proper Eloquent BelongsToMany because the link table is
+     * asymmetric-stored (a<b) but semantically symmetric — the standard
+     * pivot machinery would need two relations and a union to cover both
+     * sides. Simpler to build the collection by hand here.
+     */
+    public function linkedTenants()
+    {
+        $links = TenantLink::query()
+            ->with(['tenantA', 'tenantB'])
+            ->where(function ($q) {
+                $q->where('tenant_a_id', $this->id)->orWhere('tenant_b_id', $this->id);
+            })
+            ->get();
+
+        return $links->map(function (TenantLink $link) {
+            $other = $link->tenant_a_id === $this->id ? $link->tenantB : $link->tenantA;
+            if ($other) {
+                $other->setAttribute('pivot_link', $link);
+            }
+            return $other;
+        })->filter()->values();
+    }
+
     public function isActive(): bool
     {
         if (!$this->is_active) return false;

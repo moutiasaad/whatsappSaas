@@ -123,7 +123,13 @@ class SuperAdminPlatformController extends Controller
             ->limit(20)
             ->get();
 
-        return view('admin.platform.tenants-show', compact('tenant', 'payments'));
+        // Fraud-detection sidebar: other tenants this one shares a WhatsApp
+        // number with (or, in future, an email domain / payment card /
+        // signup IP). See TenantLink model + InstanceController::recordTenantLinksForPhone
+        // for how these rows get written.
+        $linkedTenants = $tenant->linkedTenants();
+
+        return view('admin.platform.tenants-show', compact('tenant', 'payments', 'linkedTenants'));
     }
 
     public function editTenant(Tenant $tenant)

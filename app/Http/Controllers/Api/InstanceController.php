@@ -203,11 +203,24 @@ class InstanceController extends Controller
                 $this->ensureWebhookRegistered($gateway, $instance);
             }
 
+            $previousPhone = $instance->phone_number;
+
             $instance->update(array_filter([
                 'status'         => $status,
                 'phone_number'   => $phoneNumber ?: $instance->phone_number,
                 'last_status_at' => now(),
             ], fn($v) => $v !== null));
+
+            // Trial-abuse detection: whenever we learn (or re-learn) which
+            // WhatsApp number this instance is bound to, check for another
+            // tenant using the same number. If found, materialise a
+            // TenantLink row so the super-admin's linked-accounts view
+            // shows the two side by side. Only runs when phone_number is
+            // actually populated AND has just been (re)learned — quiet
+            // no-op on every subsequent status poll.
+            if ($phoneNumber && $phoneNumber !== $previousPhone) {
+                $this->recordTenantLinksForPhone($instance->tenant_id, (int) $instance->id, $phoneNumber);
+            }
 
             broadcast(new InstanceStatusChanged($instance->fresh()));
 
@@ -446,5 +459,37 @@ class InstanceController extends Controller
         return str_contains($candidate, '@')
             ? preg_replace('/@.*$/', '', $candidate)
             : $candidate;
+    }
+
+    /**
+     * Trial-abuse detector: for every OTHER tenant that has ever bound an
+     * instance to this phone number, materialise a TenantLink row so the
+     * super-admin sees the two tenants connected under "Linked accounts".
+     *
+     * Wrapped in rescue() because a failure here must NOT break the
+     * status endpoint the whole instances UI polls. Detection is a nice-
+     * to-have on the hot path; the migration's backfill will catch any
+     * link we drop.
+     */
+    private function recordTenantLinksForPhone(int $tenantId, int $instanceId, string $phoneNumber): void
+    {
+        rescue(function () use ($tenantId, $instanceId, $phoneNumber) {
+            $otherTenantIds = WhatsAppInstance::query()
+                ->where('phone_number', $phoneNumber)
+                ->where('tenant_id', '!=', $tenantId)
+                ->pluck('tenant_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            foreach ($otherTenantIds as $otherId) {
+                \App\Models\TenantLink::link(
+                    $tenantId,
+                    (int) $otherId,
+                    \App\Models\TenantLink::REASON_SHARED_WHATSAPP_INSTANCE,
+                    ['phone_numbers' => [$phoneNumber]],
+                );
+            }
+        }, null, false); // report:false — logged only, no visible error
     }
 }

@@ -155,6 +155,53 @@
         </div>
     </div>
 
+    {{-- Linked accounts (fraud / abuse detection) — other tenants that
+         share a WhatsApp number (or, in future, other signals) with this
+         one. Empty state kept quiet: most tenants have zero linkages, and
+         a wall of "no links found" clutters every profile. --}}
+    @if($linkedTenants->isNotEmpty())
+    <div class="card" style="margin-top:1.25rem;border-left:3px solid #f59e0b;">
+        <div class="card-header">
+            <div class="card-title" style="display:flex;align-items:center;gap:.5rem;">
+                <i class="ri-links-line" style="color:#f59e0b;"></i>
+                {{ __('ui.platform_tenants_show_page.linked_accounts') }}
+            </div>
+            <span style="font-size:12px;color:var(--text-muted);">
+                {{ $linkedTenants->count() }} {{ __('ui.platform_tenants_show_page.linked_accounts_count') }}
+            </span>
+        </div>
+        <div style="padding:8px 20px 20px;">
+            <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">
+                {{ __('ui.platform_tenants_show_page.linked_accounts_hint') }}
+            </p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                @foreach($linkedTenants as $linked)
+                    @php $link = $linked->pivot_link; @endphp
+                    <a href="{{ route('super_admin.platform.tenants.show', $linked) }}"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--card-border);border-radius:8px;text-decoration:none;color:inherit;background:var(--page-bg);">
+                        <div style="width:32px;height:32px;border-radius:6px;background:rgba(245,158,11,.15);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                            {{ mb_strtoupper(mb_substr($linked->name ?? '?', 0, 1)) }}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:14px;">{{ $linked->name }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">
+                                {{ __('ui.platform_tenants_show_page.linked_reason_' . $link->reason) }}
+                                @php $phones = data_get($link->evidence, 'phone_numbers', []); @endphp
+                                @if(!empty($phones))
+                                    &middot; <code style="font-family:inherit;background:none;padding:0;">{{ implode(', ', $phones) }}</code>
+                                @endif
+                                &middot; {{ __('ui.platform_tenants_show_page.linked_first_detected') }}
+                                {{ $link->first_detected_at?->diffForHumans() }}
+                            </div>
+                        </div>
+                        <i class="ri-arrow-right-s-line" style="color:var(--text-muted);font-size:18px;flex-shrink:0;"></i>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Payment history --}}
     <div class="card" style="margin-top:1.25rem;">
         <div class="card-header">
