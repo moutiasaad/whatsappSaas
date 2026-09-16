@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthApiController;
+use App\Http\Controllers\Api\V1\PlansApiController;
 use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\SingleInstanceController;
 use App\Http\Controllers\Api\AgentPresenceController;
@@ -48,6 +49,21 @@ if (Wavadesk::isCore()) {
             Route::get('/me',      [AuthApiController::class, 'me'])->name('api.v1.auth.me');
             Route::post('/logout', [AuthApiController::class, 'logout'])->name('api.v1.auth.logout');
         });
+    });
+
+    // ─── v1 Plans API (called by the marketing plan picker) ────────────────
+    // GET is public within the caller-gated group — the marketing site needs
+    // the catalog to render the picker before the user is signed in on this
+    // side. POST /choose commits a pick and needs the user's PAT so the
+    // trial gets attached to the right workspace.
+    Route::prefix('v1/plans')->middleware('wavadesk.caller')->group(function () {
+        Route::get('/', [PlansApiController::class, 'index'])
+            ->middleware('throttle:60,1')
+            ->name('api.v1.plans.index');
+
+        Route::post('/choose', [PlansApiController::class, 'choose'])
+            ->middleware(['auth:sanctum', 'throttle:10,1'])
+            ->name('api.v1.plans.choose');
     });
 }
 

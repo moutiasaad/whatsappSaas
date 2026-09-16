@@ -51,6 +51,17 @@ return Application::configure(basePath: dirname(__DIR__))
             prepend: \App\Http\Middleware\ResolveTenant::class,
         );
 
+        // Same trap as SplitHostingRedirect above: `auth:sanctum` implements
+        // AuthenticatesRequests, which IS in Laravel's priority list, so it
+        // sorts ahead of any middleware that isn't — including the shared-
+        // secret gate. Without this line an authenticated /api/v1/* endpoint
+        // 401s on a missing PAT before EnsureMarketingCaller can 404 on the
+        // missing secret, which leaks the endpoint's existence.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: \App\Http\Middleware\EnsureMarketingCaller::class,
+        );
+
         // All /api/* routes are protected by auth:sanctum — no CSRF needed.
         // Logout is exempted so an expired session (stale form token) still lets
         // the user sign out cleanly instead of hitting a 419 PAGE EXPIRED wall.
