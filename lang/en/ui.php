@@ -545,6 +545,7 @@ Always:
         'usage_unlimited'  => 'Unlimited',
         'usage_ai_off'     => 'AI disabled on this plan',
         'usage_resets_on'  => 'Resets on :date',
+        'usage_trial_cap_hint' => 'Trial workspaces are capped at :n AI replies for the whole trial. Upgrade to unlock your plan\'s full allowance.',
         'save_settings' => 'Save Settings',
         'ai_mode_hint' => 'Choose how the AI assists your support team',
         'ai_disabled' => 'AI is disabled',

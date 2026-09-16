@@ -62,10 +62,13 @@
 
     // Read-only allowance, in AI replies per month. Set by the plan:
     // null = unlimited, 0 = AI off on this plan, N = hard cap.
-    $quota      = $settings->monthly_message_quota;
+    // Trial workspaces are hard-capped by config('app.trial_ai_message_quota')
+    // regardless of the plan — effectiveQuota() resolves that.
+    $quota      = $settings->effectiveQuota();
     $used       = (int) $settings->ai_messages_used_this_period;
     $quotaPct   = $settings->quotaPercentage();
     $quotaReset = $settings->quota_reset_at;
+    $onTrial    = (bool) optional($settings->tenant)->isOnTrial();
 
     $i18n = [
         'modeLabels' => [
@@ -392,7 +395,10 @@
                             <div class="bar"><i style="width:{{ min(100, max(0, $quotaPct)) }}%;background:{{ $barColor }}"></i></div>
                         @endif
 
-                        @if ($quotaReset && !is_null($quota) && $quota !== 0)
+                        @if ($onTrial && !is_null($quota) && $quota !== 0)
+                            {{-- Trial cap doesn't roll over: the whole trial shares one allowance. --}}
+                            <div class="foot">{{ __('ui.ai_settings_page.usage_trial_cap_hint', ['n' => number_format($quota)]) }}</div>
+                        @elseif ($quotaReset && !is_null($quota) && $quota !== 0)
                             <div class="foot">{{ __('ui.ai_settings_page.usage_resets_on', ['date' => $quotaReset->format('Y-m-d')]) }}</div>
                         @endif
                     </div>

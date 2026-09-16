@@ -47,28 +47,63 @@ class AiSettings extends Model
         };
     }
 
+    /**
+     * The cap actually in force right now.
+     *
+     * A tenant on trial is capped at `config('app.trial_ai_message_quota')`
+     * regardless of what the picked plan would normally allow — the trial is
+     * a bounded demo, not the plan's real allowance. Once the tenant converts
+     * to `active`, this transparently returns to `monthly_message_quota` (the
+     * plan-synced value stored on the row), so no data migration is needed on
+     * conversion.
+     *
+     * null = unlimited, 0 = off, positive N = hard cap of N replies.
+     */
+    public function effectiveQuota(): ?int
+    {
+        if (optional($this->tenant)->isOnTrial()) {
+            return (int) config('app.trial_ai_message_quota', 100);
+        }
+
+        return $this->monthly_message_quota;
+    }
+
     public function hasQuota(): bool
     {
         // Unified semantics (see migration 2026_09_10_090000):
         //   null       = unlimited  → always has quota
         //   0          = AI off      → never has quota
         //   positive N = hard cap of N AI replies per period
-        if ($this->monthly_message_quota === null) return true;
-        if ($this->monthly_message_quota === 0)    return false;
+        $quota = $this->effectiveQuota();
+
+        if ($quota === null) return true;
+        if ($quota === 0)    return false;
 
         $this->rolloverIfDue();
 
-        if ($this->ai_messages_used_this_period < $this->monthly_message_quota) {
+        if ($this->ai_messages_used_this_period < $quota) {
             return true;
         }
 
-        // Monthly allowance spent — fall through to purchased top-up messages.
+        // Trial cap is a hard ceiling: purchased top-ups don't extend it —
+        // the demo shouldn't be growable. Paid tenants fall through to
+        // credits as before.
+        if (optional($this->tenant)->isOnTrial()) {
+            return false;
+        }
+
         return $this->extra_message_credits > 0;
     }
 
     /** Is the tenant currently answering out of purchased credits? */
     public function isOnPurchasedCredits(): bool
     {
+        // Trial tenants can't spend credits (the cap is hard). Same short-circuit
+        // for unlimited / off — no allowance boundary to cross.
+        if (optional($this->tenant)->isOnTrial()) {
+            return false;
+        }
+
         if ($this->monthly_message_quota === null || $this->monthly_message_quota === 0) {
             return false;
         }
@@ -99,6 +134,13 @@ class AiSettings extends Model
     public function consumeReply(int $count = 1): void
     {
         $this->rolloverIfDue();
+
+        // Trial: hard-count only, never touch purchased credits — they're
+        // inert while on trial. Falls through the plan-vs-credit split below.
+        if (optional($this->tenant)->isOnTrial()) {
+            $this->increment('ai_messages_used_this_period', $count);
+            return;
+        }
 
         // Spend the monthly allowance first; only the overflow touches
         // purchased credits, so a top-up is never burnt while plan messages
@@ -142,6 +184,14 @@ class AiSettings extends Model
      */
     protected function rolloverIfDue(): void
     {
+        // Trial tenants get one allowance for the whole trial, not one per
+        // calendar month. Skipping rollover here means a trial that crosses a
+        // month boundary (register Aug 30, trial ends Sep 6) still totals 100
+        // AI replies instead of resetting to 100 fresh on Sep 1.
+        if (optional($this->tenant)->isOnTrial()) {
+            return;
+        }
+
         $current = $this->quota_reset_at
             ?: ($this->updated_at ?? now())->copy()->startOfMonth();
 
@@ -181,19 +231,30 @@ class AiSettings extends Model
 
     public function remainingQuota(): ?int
     {
-        // null = unlimited → no remainder to report; caller renders "∞".
-        if ($this->monthly_message_quota === null) return null;
+        $quota = $this->effectiveQuota();
 
-        return max(0, $this->monthly_message_quota - $this->ai_messages_used_this_period)
+        // null = unlimited → no remainder to report; caller renders "∞".
+        if ($quota === null) return null;
+
+        // Trial cap is hard — credits are inert. Paid tenants get the credit
+        // top-up added on top so the number they see reflects everything they
+        // can actually spend.
+        if (optional($this->tenant)->isOnTrial()) {
+            return max(0, $quota - $this->ai_messages_used_this_period);
+        }
+
+        return max(0, $quota - $this->ai_messages_used_this_period)
             + $this->extra_message_credits;
     }
 
     public function quotaPercentage(): int
     {
+        $quota = $this->effectiveQuota();
+
         // Unlimited → nothing consumed relative to infinity → 0%.
         // OFF       → the bar is by definition full (all "N of 0" used).
-        if ($this->monthly_message_quota === null) return 0;
-        if ($this->monthly_message_quota === 0)    return 100;
-        return (int) round(($this->ai_messages_used_this_period / $this->monthly_message_quota) * 100);
+        if ($quota === null) return 0;
+        if ($quota === 0)    return 100;
+        return (int) round(($this->ai_messages_used_this_period / $quota) * 100);
     }
 }

@@ -81,7 +81,9 @@ class AiController extends Controller
             return response()->json([
                 'answer'          => $response->content[0]->text ?? '',
                 'replies_used'    => $settings?->ai_messages_used_this_period,
-                'replies_allowed' => $settings?->monthly_message_quota,
+                // effectiveQuota() honours the trial cap; the raw column
+                // would show the plan's post-trial value here and mislead.
+                'replies_allowed' => $settings?->effectiveQuota(),
             ]);
 
         } catch (\Throwable $e) {
