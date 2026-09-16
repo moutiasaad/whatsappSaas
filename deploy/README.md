@@ -85,11 +85,26 @@ the code it deploys.
 ## Setup on a new box
 
 ```bash
+node -v && npm -v               # the deploy builds assets; no npm, no deploy
 touch .wavadesk-deploy          # marks this checkout as a deploy target
 git config core.hooksPath deploy/githooks
-install -m 644 deploy/systemd/wavadesk-deploy.* /etc/systemd/system/
+
+# The systemd unit is the ONE file that has to name an absolute path.
+# Everything else resolves from the checkout, so stamp this box's path in as
+# you install it rather than editing the tracked file (which would leave the
+# tree dirty and `merge --ff-only` would then refuse to deploy).
+sed "s|/www/wwwroot/public/wavadesk.com|$(pwd)|" \
+    deploy/systemd/wavadesk-deploy.service > /etc/systemd/system/wavadesk-deploy.service
+install -m 644 deploy/systemd/wavadesk-deploy.timer /etc/systemd/system/
+
 systemctl daemon-reload && systemctl enable --now wavadesk-deploy.timer
 ```
 
 Then set `GITHUB_WEBHOOK_SECRET` in `.env` and point a GitHub webhook at
 `/deploy-webhook.php` with the same secret and content type `application/json`.
+
+Verify end to end rather than trusting the timer: push something, then watch
+`journalctl -u wavadesk-deploy.service -f`. A webhook that never fires and a
+watcher that finds no trigger look identical from the outside — both are
+silence — so confirm GitHub's Recent Deliveries shows a 2xx *and* that the
+service actually ran.

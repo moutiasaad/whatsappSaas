@@ -7,7 +7,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
+# Derived from this script's own location so the same checkout works at any
+# path on any host. APP_PATH in the environment still wins.
+APP_PATH="${APP_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 APP_USER="${APP_USER:-www}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 LOG="$APP_PATH/storage/logs/deploy.log"

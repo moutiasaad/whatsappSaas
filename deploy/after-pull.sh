@@ -12,7 +12,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-APP_PATH="${APP_PATH:-/www/wwwroot/public/wavadesk.com}"
+# Derived from this script's own location so the same checkout works at any
+# path on any host. APP_PATH in the environment still wins.
+APP_PATH="${APP_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 APP_USER="${APP_USER:-www}"
 PHP_BIN="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
 COMPOSER_BIN="${COMPOSER_BIN:-$(command -v composer || echo /usr/bin/composer)}"
