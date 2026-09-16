@@ -141,6 +141,17 @@ class AuthApiController extends Controller
             return response()->json(['message' => 'Account disabled.'], 403);
         }
 
+        // Archived user — same treatment as blocked tenant on the marketing
+        // side: 403 with a distinct code so client apps can tell them apart.
+        // Marketing's attemptLoginViaCoreApi renders the message on the
+        // email field of wavadesk.com/login.
+        if (method_exists($user, 'isArchived') && $user->isArchived()) {
+            return response()->json([
+                'message' => __('auth.errors.account_archived'),
+                'code'    => 'account_archived',
+            ], 403);
+        }
+
         // Marketing-origin logins are always workspace logins — the platform
         // super-admin has a dedicated portal on Server B and never signs in
         // through wavadesk.com. Rejecting here keeps the two doors separate.

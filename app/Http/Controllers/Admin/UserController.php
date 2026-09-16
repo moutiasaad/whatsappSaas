@@ -87,6 +87,14 @@ class UserController extends Controller
             ->when($request->role,             fn ($q, $r) => $q->where('role', $r))
             ->when($request->status === 'active',   fn ($q) => $q->where('is_active', true))
             ->when($request->status === 'inactive', fn ($q) => $q->where('is_active', false))
+            // Archived filter: default hides archived rows from the main
+            // list. ?archived=1 → only archived. ?archived=all → both.
+            ->when(true, function ($q) use ($request) {
+                $filter = (string) $request->query('archived', '');
+                if ($filter === '1')   { $q->whereNotNull('archived_at'); return; }
+                if ($filter === 'all') { return; }
+                $q->whereNull('archived_at');
+            })
             ->orderBy('name');
 
         if ($request->expectsJson()) {
@@ -239,6 +247,40 @@ class UserController extends Controller
 
         return redirect()->route($this->actor()->routeNamePrefix() . '.users.index')
             ->with('success', __('ui.controller_messages.user_deleted', ['name' => $user->name]));
+    }
+
+    /**
+     * Archive / restore a single user. Distinct from disable (is_active):
+     * an archived user is hidden from the tenant admin's users list AND
+     * cannot log in; a disabled user stays visible on the list, marked
+     * inactive. Use archive for people who've left the org — data
+     * preserved (conversations, audit trail, etc.) but out of the way.
+     */
+    public function toggleArchive(Request $request, User $user)
+    {
+        $this->assertCanManageUser($user);
+
+        $wasArchived = $user->isArchived();
+        $wasArchived ? $user->restoreFromArchive() : $user->archive();
+
+        AuditLog::record(
+            $wasArchived ? 'user.unarchived' : 'user.archived',
+            $user,
+            ['name' => $user->name, 'email' => $user->email]
+        );
+
+        $message = $wasArchived
+            ? __('ui.controller_messages.user_unarchived', ['name' => $user->name])
+            : __('ui.controller_messages.user_archived',   ['name' => $user->name]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message'  => $message,
+                'archived' => $user->isArchived(),
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function bulk(Request $request)

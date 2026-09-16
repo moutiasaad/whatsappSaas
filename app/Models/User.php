@@ -20,7 +20,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'tenant_id', 'name', 'email', 'email_verified_at', 'password', 'role',
         'is_active', 'last_login_at', 'avatar_url', 'api_key',
-        'sidebar_permissions',
+        'sidebar_permissions', 'archived_at',
     ];
 
     protected $hidden = ['password', 'remember_token', 'api_key'];
@@ -31,10 +31,34 @@ class User extends Authenticatable implements MustVerifyEmail
             'tenant_id'           => 'integer',
             'email_verified_at'   => 'datetime',
             'last_login_at'       => 'datetime',
+            'archived_at'         => 'datetime',
             'password'            => 'hashed',
             'is_active'           => 'boolean',
             'sidebar_permissions' => 'array',
         ];
+    }
+
+    /**
+     * Archived users are hidden from the users list, cannot log in, but
+     * data is preserved. Distinct from is_active (disabled) which stays
+     * visible on the list — archive is for people who've left the company
+     * (or long-inactive) that a tenant admin wants out of the way.
+     */
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function archive(): void
+    {
+        $this->forceFill(['archived_at' => now()])->save();
+    }
+
+    public function restoreFromArchive(): void
+    {
+        // Not called restore() — same reason as Tenant::restoreFromArchive:
+        // avoid a name collision with Eloquent's SoftDeletes restore().
+        $this->forceFill(['archived_at' => null])->save();
     }
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }

@@ -23,6 +23,14 @@
         'delete_user_message'    => __('ui.users_page.delete_user_message'),
         'delete_selected_confirm'=> __('ui.users_page.delete_selected_confirm'),
         'deleted_toast'          => __('ui.controller_messages.user_deleted'),
+        'archive'                => __('ui.users_page.archive'),
+        'restore'                => __('ui.users_page.restore'),
+        'archive_user_prompt'    => __('ui.users_page.archive_user_prompt'),
+        'restore_user_prompt'    => __('ui.users_page.restore_user_prompt'),
+        'archive_user_message'   => __('ui.users_page.archive_user_message'),
+        'restore_user_message'   => __('ui.users_page.restore_user_message'),
+        'archived_toast'         => __('ui.controller_messages.user_archived'),
+        'unarchived_toast'       => __('ui.controller_messages.user_unarchived'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
         'roles'                  => __('ui.roles'),
@@ -63,6 +71,12 @@
             <option value="">{{ __('ui.users_page.all_status') }}</option>
             <option value="active">{{ __('ui.users_page.active') }}</option>
             <option value="inactive">{{ __('ui.users_page.inactive') }}</option>
+        </select>
+        {{-- Archive filter — default hides archived rows. --}}
+        <select x-model="filters.archived" @change="reload()" class="toolbar-select">
+            <option value="">{{ __('ui.users_page.archive_hide') }}</option>
+            <option value="1">{{ __('ui.users_page.archive_only') }}</option>
+            <option value="all">{{ __('ui.users_page.archive_all') }}</option>
         </select>
         <button type="button" @click="clearFilters()" class="btn btn-ghost btn-sm">{{ __('ui.users_page.clear') }}</button>
     </div>
@@ -158,6 +172,13 @@
                                                 <i class="ri-user-shared-line"></i>
                                             </a>
                                         </template>
+                                        {{-- Archive / restore. Same icon set as the tenants list uses,
+                                             so the two features look like siblings across the app. --}}
+                                        <button type="button" @click="openArchiveModal(user.id, user.name, !!user.archived_at)"
+                                                class="action-btn"
+                                                :title="!!user.archived_at ? i18n.restore : i18n.archive">
+                                            <i :class="!!user.archived_at ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+                                        </button>
                                         <button type="button" @click="openDeleteModal(user.id, user.name)"
                                                 class="action-btn danger" title="{{ __('ui.users_page.delete') }}">
                                             <i class="ri-delete-bin-line"></i>
@@ -223,6 +244,35 @@
         </div>
     </div>
 
+    {{-- Archive / Restore User Modal — one modal handles both directions
+         based on archiveModal.currentlyArchived captured at open time. --}}
+    <div class="modal-overlay" :class="archiveModal.show ? 'show' : ''" role="dialog" aria-modal="true"
+         @click.self="archiveModal.show = false" @keydown.escape.window="archiveModal.show = false">
+        <div class="modal-box" style="max-width:460px">
+            <div class="modal-icon" :class="archiveModal.currentlyArchived ? '' : 'danger'"
+                 :style="archiveModal.currentlyArchived ? 'color:var(--brand);background:rgba(16,185,129,.15)' : ''">
+                <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+            </div>
+            <h3 x-text="(archiveModal.currentlyArchived ? i18n.restore_user_prompt : i18n.archive_user_prompt).replace(':name', archiveModal.name)"></h3>
+            <p x-text="archiveModal.currentlyArchived ? i18n.restore_user_message : i18n.archive_user_message"></p>
+            <div class="modal-actions">
+                <button type="button" @click="archiveModal.show = false" class="btn btn-outline">
+                    {{ __('ui.cancel') }}
+                </button>
+                <button type="button" @click="confirmArchiveToggle()" :disabled="archiveModal.saving"
+                        :class="archiveModal.currentlyArchived ? 'btn btn-primary' : 'btn btn-danger'">
+                    <span x-show="!archiveModal.saving">
+                        <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
+                        <span x-text="archiveModal.currentlyArchived ? i18n.restore : i18n.archive"></span>
+                    </span>
+                    <span x-show="archiveModal.saving">
+                        <span class="btn-spinner"></span> {{ __('ui.processing') }}
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -234,6 +284,7 @@ function usersPage() {
         editUrlTpl:        @json(route($panelPrefix . '.users.edit',        ['user' => '__ID__'])),
         destroyUrlTpl:     @json(route($panelPrefix . '.users.destroy',     ['user' => '__ID__'])),
         impersonateUrlTpl: @json(route($panelPrefix . '.users.impersonate', ['user' => '__ID__'])),
+        toggleArchiveUrlTpl:@json(route($panelPrefix . '.users.toggle-archive', ['user' => '__ID__'])),
         bulkUrl:           @json(route($panelPrefix . '.users.bulk')),
 
         users:       [],
@@ -243,13 +294,14 @@ function usersPage() {
         total:       0,
 
         search:     '',
-        filters:    { role: '', status: '' },
+        filters:    { role: '', status: '', archived: '' },
 
         selected:   [],
         bulkAction: 'activate',
         bulkSaving: false,
 
-        deleteModal: { show: false, id: null, name: '', saving: false },
+        deleteModal:  { show: false, id: null, name: '', saving: false },
+        archiveModal: { show: false, id: null, name: '', currentlyArchived: false, saving: false },
 
         init() {
             this.loadData();
@@ -269,8 +321,9 @@ function usersPage() {
             p.set('per_page', '20');
             p.set('page', String(this.page));
             if (this.search.trim())  p.set('search', this.search.trim());
-            if (this.filters.role)   p.set('role',   this.filters.role);
-            if (this.filters.status) p.set('status', this.filters.status);
+            if (this.filters.role)     p.set('role',     this.filters.role);
+            if (this.filters.status)   p.set('status',   this.filters.status);
+            if (this.filters.archived) p.set('archived', this.filters.archived);
             return p;
         },
 
@@ -322,12 +375,12 @@ function usersPage() {
 
         clearFilters() {
             this.search  = '';
-            this.filters = { role: '', status: '' };
+            this.filters = { role: '', status: '', archived: '' };
             this.reload();
         },
 
         hasFilters() {
-            return this.search.trim() !== '' || this.filters.role !== '' || this.filters.status !== '';
+            return this.search.trim() !== '' || this.filters.role !== '' || this.filters.status !== '' || this.filters.archived !== '';
         },
 
         isSelected(id)    { return this.selected.includes(id); },
@@ -378,6 +431,35 @@ function usersPage() {
             } catch {
                 window.showToast?.('error', 'Erreur lors de la suppression.');
                 this.deleteModal.saving = false;
+            }
+        },
+
+        openArchiveModal(id, name, currentlyArchived) {
+            this.archiveModal = { show: true, id, name, currentlyArchived: !!currentlyArchived, saving: false };
+        },
+
+        async confirmArchiveToggle() {
+            this.archiveModal.saving = true;
+            try {
+                const res = await fetch(this.toggleArchiveUrlTpl.replace('__ID__', String(this.archiveModal.id)), {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept':       'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                });
+                if (!res.ok) throw new Error();
+                const wasArchived = this.archiveModal.currentlyArchived;
+                const name = this.archiveModal.name;
+                this.archiveModal.show = false;
+                window.showToast?.('success',
+                    (wasArchived ? this.i18n.unarchived_toast : this.i18n.archived_toast).replace(':name', name));
+                this.reload();
+            } catch {
+                window.showToast?.('error', 'Erreur.');
+                this.archiveModal.saving = false;
             }
         },
 

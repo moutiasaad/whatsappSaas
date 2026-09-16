@@ -186,6 +186,7 @@ return [
         'use_control_panel_login' => 'Les comptes plateforme se connectent depuis le panneau de contrôle, pas depuis ce formulaire.',
         'workspace_blocked' => "Cet espace de travail a été suspendu par un administrateur. Contactez le support si vous pensez qu'il s'agit d'une erreur — le renouvellement d'un abonnement ne lèvera pas le blocage.",
         'workspace_archived' => 'Cet espace de travail a été archivé. Contactez le support si vous avez besoin de le restaurer.',
+        'account_archived' => "Ce compte a été archivé. Contactez l'administrateur de votre espace de travail pour le restaurer.",
         'admin_only' => 'Ce portail est réservé aux admins tenant.',
         'supervisor_only' => 'Ce portail est réservé aux superviseurs.',
         'agent_only' => 'Ce portail est réservé aux agents support.',

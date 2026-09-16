@@ -339,6 +339,10 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                 Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
                 Route::post('/users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
                 Route::get('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
+                // Archive / restore a single user. Distinct from delete: data
+                // preserved, user hidden from the main list, cannot log in.
+                // See UserController::toggleArchive for the semantic split.
+                Route::patch('/users/{user}/toggle-archive', [UserController::class, 'toggleArchive'])->name('users.toggle-archive');
 
                 // Teams — plan module.
                 Route::middleware('module:teams')->group(function () {

@@ -119,6 +119,18 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $user = $request->user();
 
+            // Archived user — refuse before landing them anywhere. Distinct
+            // from is_active (disabled), which currently isn't enforced
+            // here either but has different semantics (disabled = temporary
+            // block, still visible to admins).
+            if ($user->isArchived()) {
+                return $this->rejectPortalLogin(
+                    $request,
+                    __('auth.errors.account_archived'),
+                    $superAdminOnly ? 'superadmin.login' : 'login'
+                );
+            }
+
             if ($superAdminOnly && !$user->isSuperAdmin()) {
                 return $this->rejectPortalLogin(
                     $request,
