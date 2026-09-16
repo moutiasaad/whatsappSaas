@@ -251,6 +251,49 @@ class SuperAdminPlatformController extends Controller
             ->with('success', __('ui.controller_messages.tenant_deleted', ['name' => $tenantName]));
     }
 
+    /**
+     * One-click "log in as this tenant" from the tenants list.
+     *
+     * Resolves the tenant's primary admin (first active admin user) and
+     * runs the impersonation exactly the way UserController::impersonate
+     * does — same ImpersonationLog row shape, same `impersonating` session
+     * key, same AuditLog entry — so `/impersonate/leave` restores this
+     * super-admin back to their own session with no extra plumbing.
+     */
+    public function impersonateTenantAdmin(Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $admin = User::where('tenant_id', $tenant->id)
+            ->where('role', 'admin')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
+
+        // No active admin to become. Blocking rather than falling back to a
+        // supervisor / agent because the tenants list button says "log in as
+        // admin" — silently landing as a lower role would misrepresent
+        // what the super-admin just did.
+        if (! $admin) {
+            return back()->with('error', __('ui.controller_messages.tenant_has_no_active_admin'));
+        }
+
+        \App\Models\ImpersonationLog::create([
+            'impersonator_user_id' => auth()->id(),
+            'impersonated_user_id' => $admin->id,
+            'tenant_id'            => $tenant->id,
+            'started_at'           => now(),
+            'ip_address'           => request()->ip(),
+        ]);
+
+        AuditLog::record('user.impersonated', $admin, ['source' => 'platform.tenants']);
+
+        session(['impersonating' => auth()->id()]);
+        auth()->login($admin);
+
+        return redirect()->route($admin->homeRouteName());
+    }
+
     public function bulkTenants(Request $request)
     {
         $data = $request->validate([

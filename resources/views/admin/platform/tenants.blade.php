@@ -170,6 +170,14 @@
                                         <a :href="editUrl(tenant.id)" class="action-btn" title="{{ __('ui.platform_tenants_page.edit') }}">
                                             <i class="ri-pencil-line"></i>
                                         </a>
+                                        {{-- One-click "log in as this tenant". Server-side confirms
+                                             super_admin, resolves the tenant's active admin, and hands off
+                                             through the same ImpersonationLog path the users-list button uses,
+                                             so /impersonate/leave restores this session. --}}
+                                        <a :href="impersonateUrl(tenant.id)" class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}"
+                                           onclick="return confirm('{{ __('ui.platform_tenants_page.impersonate_confirm') }}')">
+                                            <i class="ri-login-box-line"></i>
+                                        </a>
                                         <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"
                                                 class="action-btn danger" title="{{ __('ui.platform_tenants_page.delete') }}">
                                             <i class="ri-delete-bin-line"></i>
@@ -243,9 +251,10 @@ function tenantsPage() {
         i18n:        @json($i18n),
         plans:       @json($plans),
         indexUrl:    @json(route('super_admin.platform.tenants')),
-        showUrlTpl:  @json(route('super_admin.platform.tenants.show',   ['tenant' => '__ID__'])),
-        editUrlTpl:  @json(route('super_admin.platform.tenants.edit',   ['tenant' => '__ID__'])),
-        destroyUrlTpl: @json(route('super_admin.platform.tenants.destroy', ['tenant' => '__ID__'])),
+        showUrlTpl:        @json(route('super_admin.platform.tenants.show',   ['tenant' => '__ID__'])),
+        editUrlTpl:        @json(route('super_admin.platform.tenants.edit',   ['tenant' => '__ID__'])),
+        destroyUrlTpl:     @json(route('super_admin.platform.tenants.destroy', ['tenant' => '__ID__'])),
+        impersonateUrlTpl: @json(route('super_admin.platform.tenants.impersonate-admin', ['tenant' => '__ID__'])),
         bulkUrl:     @json(route('super_admin.platform.tenants.bulk')),
 
         tenants:     [],
@@ -424,8 +433,9 @@ function tenantsPage() {
             return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
         },
 
-        showUrl(id)    { return this.showUrlTpl.replace('__ID__', String(id)); },
-        editUrl(id)    { return this.editUrlTpl.replace('__ID__', String(id)); },
+        showUrl(id)        { return this.showUrlTpl.replace('__ID__', String(id)); },
+        editUrl(id)        { return this.editUrlTpl.replace('__ID__', String(id)); },
+        impersonateUrl(id) { return this.impersonateUrlTpl.replace('__ID__', String(id)); },
     };
 }
 </script>
