@@ -404,6 +404,20 @@ class BillingApiController extends Controller
             return response()->json(['success' => false, 'error' => 'forbidden'], 403);
         }
 
+        // Idempotent: if the previous capture already completed (browser
+        // reloaded, marketing timed out and retried, webhook raced ahead),
+        // return the same success shape without another round-trip to
+        // PayPal. Without this, a retry lands on capture_failed even
+        // though the money is already ours and the plan is already active.
+        if ($payment->isCompleted()) {
+            $sso = app(SsoHandoffCode::class)->mint((int) $user->id, 1800);
+
+            return response()->json([
+                'success'  => true,
+                'redirect' => route('payment.success', ['token' => $orderId, 'sso' => $sso]),
+            ]);
+        }
+
         try {
             $this->capturePaypalPayment($payment);
             $payment->refresh();

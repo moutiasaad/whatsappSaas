@@ -23,6 +23,16 @@ use Illuminate\Support\Facades\Log;
  */
 class WavadeskApi
 {
+    /**
+     * PayPal create-order and capture-order round-trip through core to
+     * PayPal and back, activate the tenant subscription and mint an SSO
+     * handoff code. The default 5s timeout that suits auth/register is
+     * too short here — a real capture routinely takes 6-15s. Timing out
+     * mid-capture makes the browser think the payment failed while
+     * PayPal has already taken the money.
+     */
+    private const PAYPAL_TIMEOUT_SECONDS = 30.0;
+
     public function __construct(
         private readonly string $baseUrl,
         private readonly string $callerSecret,
@@ -139,9 +149,13 @@ class WavadeskApi
      */
     public function paypalCreateOrder(string $token, int $planId): array
     {
-        return $this->call('post', '/api/v1/billing/paypal/create-order', [
-            'plan_id' => $planId,
-        ], $token);
+        return $this->call(
+            'post',
+            '/api/v1/billing/paypal/create-order',
+            ['plan_id' => $planId],
+            $token,
+            self::PAYPAL_TIMEOUT_SECONDS,
+        );
     }
 
     /**
@@ -161,15 +175,20 @@ class WavadeskApi
             '/api/v1/billing/paypal/capture-order/' . rawurlencode($orderId),
             [],
             $token,
+            self::PAYPAL_TIMEOUT_SECONDS,
         );
     }
 
     /**
+     * @param  float|null  $timeoutOverride  Seconds to wait; falls back to the
+     *   constructor default when null. PayPal capture / create-order pass
+     *   a longer value because the round-trip involves an external call
+     *   the auth API never has to make.
      * @return array{ok: bool, status: int, body: array}
      */
-    private function call(string $method, string $path, array $payload = [], ?string $token = null): array
+    private function call(string $method, string $path, array $payload = [], ?string $token = null, ?float $timeoutOverride = null): array
     {
-        $request = $this->client();
+        $request = $this->client($timeoutOverride);
 
         if ($token !== null && $token !== '') {
             $request = $request->withToken($token);
@@ -205,14 +224,20 @@ class WavadeskApi
         ];
     }
 
-    private function client(): PendingRequest
+    private function client(?float $timeoutOverride = null): PendingRequest
     {
+        $timeout = $timeoutOverride ?? $this->timeoutSeconds;
+
         return Http::baseUrl($this->baseUrl)
-            ->timeout($this->timeoutSeconds)
+            ->timeout($timeout)
             // No retries on purpose: a register POST that timed out may well
             // have succeeded, and replaying it would answer the user with a
             // duplicate-email error for the account they just created.
-            ->connectTimeout(min(3.0, $this->timeoutSeconds))
+            //
+            // The connect timeout stays short even for long-total-timeout
+            // calls: DNS/TCP failure is fast to detect and there's no reason
+            // to wait 30s to confirm the box is down.
+            ->connectTimeout(min(3.0, $timeout))
             ->acceptJson()
             ->asJson()
             ->withHeaders([
