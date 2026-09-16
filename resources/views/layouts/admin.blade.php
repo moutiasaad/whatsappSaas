@@ -1711,10 +1711,27 @@
         /* ============================================================
            RESPONSIVE
         ============================================================ */
+        /* Sidebar backdrop — hidden by default, only relevant on mobile.
+           z-index sits between the topbar (default) and the sidebar itself,
+           so the sidebar stays tappable while the backdrop dims + intercepts
+           taps on the exposed page area. */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 90;
+            opacity: 0;
+            transition: opacity .2s ease;
+        }
+
         @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); }
+            .sidebar { transform: translateX(-100%); z-index: 100; }
             html[dir="rtl"] .sidebar { transform: translateX(100%); }
             .sidebar.open { transform: translateX(0); }
+            /* Backdrop only turns on with the sidebar, so it doesn't block
+               taps on the topbar toggle button when the sidebar is closed. */
+            .sidebar.open ~ .sidebar-backdrop { display: block; opacity: 1; }
             .main-wrap { margin-left: 0 !important; }
             html[dir="rtl"] .main-wrap { margin-right: 0 !important; }
             .page-content { padding: 16px; }
@@ -1998,6 +2015,12 @@
         @endauth
     </aside>
 
+    {{-- SIDEBAR BACKDROP — mobile only. On <1024px the sidebar overlays the
+         topbar, so the toggle button that opens it becomes unreachable once
+         it's open. Tapping the backdrop closes the sidebar. Fades in/out
+         with the .open class via CSS. --}}
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
     {{-- MAIN WRAPPER --}}
     <div class="main-wrap" id="mainWrap">
 
@@ -2202,6 +2225,33 @@
     }
 
     toggleBtn?.addEventListener('click', () => setSidebar(!sidebarOpen));
+
+    /* Mobile close paths — the topbar toggle sits behind the sidebar when
+       it's open, so without these the user gets trapped with a full-screen
+       sidebar and no way out.
+
+       1. Backdrop tap → close. Uses the sibling backdrop element rendered
+          right after the </aside>, so its z-index sits below the sidebar
+          and above the topbar.
+       2. Escape key → close. Standard modal-adjacent affordance.
+       3. Nav-link tap → close. Once the user picks a destination, keeping
+          the sidebar open would just cover the page they wanted to see.
+          Only fires on mobile widths so desktop users don't lose their rail. */
+    document.getElementById('sidebarBackdrop')?.addEventListener('click', () => {
+        if (window.innerWidth < 1024) setSidebar(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebarOpen && window.innerWidth < 1024) {
+            setSidebar(false);
+        }
+    });
+
+    sidebar?.querySelectorAll('.sidebar-nav a').forEach((link) => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 1024) setSidebar(false);
+        });
+    });
 
     function scrollSidebarActiveIntoView() {
         const active = sidebar?.querySelector('.sidebar-nav a.active');
