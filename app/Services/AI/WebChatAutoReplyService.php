@@ -26,6 +26,24 @@ class WebChatAutoReplyService
         }
 
         $tenant   = $conversation->tenant;
+
+        // Defence in depth — a blocked/archived/expired tenant must not
+        // have the AI reply on their behalf. Promote to `pending` for
+        // consistency with the other refusal paths: if the tenant is
+        // later restored, an agent still has the pending conversation
+        // in their queue instead of a silently dropped visitor question.
+        if ($tenant && ! $tenant->canRunAutomations()) {
+            Log::channel('webchat')->info('AI: skipped — tenant not eligible for automations', [
+                'tenant_id'           => $tenant->id,
+                'is_active'           => (bool) $tenant->is_active,
+                'archived'            => $tenant->isArchived(),
+                'subscription_status' => $tenant->subscription_status,
+                'conversation_id'     => $conversation->id,
+            ]);
+            $this->promoteToPending($conversation, 'tenant_ineligible');
+            return null;
+        }
+
         $settings = $tenant?->aiSettings;
 
         if (!$settings || $settings->mode === 'off') {

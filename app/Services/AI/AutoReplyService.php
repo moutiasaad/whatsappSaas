@@ -13,6 +13,22 @@ class AutoReplyService
 
     public function maybeReply(Conversation $conversation, Message $incoming): ?Message
     {
+        // Defence in depth — ProcessIncomingMessage also gates on this,
+        // but any other caller that bypasses the job (a manual dispatch
+        // from tinker, a future replay tool) must not be able to trigger
+        // an AI reply on a blocked/archived/expired tenant.
+        $tenant = $conversation->tenant;
+        if ($tenant && ! $tenant->canRunAutomations()) {
+            Log::channel('whatsapp')->info('AI: skipped — tenant not eligible for automations', [
+                'tenant_id'           => $tenant->id,
+                'is_active'           => (bool) $tenant->is_active,
+                'archived'            => $tenant->isArchived(),
+                'subscription_status' => $tenant->subscription_status,
+                'conversation_id'     => $conversation->id,
+            ]);
+            return null;
+        }
+
         $settings = $conversation->tenant->aiSettings;
 
         if (!$settings || $settings->mode === 'off') {

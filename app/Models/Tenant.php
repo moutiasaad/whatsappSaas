@@ -187,6 +187,22 @@ class Tenant extends Model
         return $endsAt !== null && $endsAt->isPast();
     }
 
+    /**
+     * Gate for background automation triggered by inbound events —
+     * WhatsApp AI auto-reply, WhatsApp reservation bot, web-chat AI.
+     *
+     * A blocked, archived, cancelled, or trial-expired tenant must not
+     * have automations continue to fire on their behalf: the panel is
+     * already gated by CheckSubscription for that reason, and the
+     * inbound handlers need the same treatment. Message rows still get
+     * persisted so history is preserved when the tenant is restored;
+     * only the automatic outbound reply is suppressed.
+     */
+    public function canRunAutomations(): bool
+    {
+        return $this->isActive() && ! $this->isArchived();
+    }
+
     public function daysUntilExpiry(): ?int
     {
         $endsAt = $this->subscription_status === 'trial'

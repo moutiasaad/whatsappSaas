@@ -143,6 +143,26 @@ class ProcessIncomingMessage implements ShouldQueue
             ]);
         }
 
+        // Automations gate — a blocked, archived, cancelled, or
+        // trial-expired tenant must not have the reservation bot or the
+        // AI reply on their behalf. The panel is already blocked by
+        // CheckSubscription for the same reason; the inbound path had
+        // been running through unchecked, so an AI/bot reply would still
+        // go out on a tenant a super-admin had just blocked. The message
+        // is already persisted above so no history is lost — only the
+        // automatic outbound reply is skipped.
+        $tenant = $conversation->tenant;
+        if ($tenant && ! $tenant->canRunAutomations()) {
+            Log::channel('whatsapp')->info('Automations skipped — tenant not eligible', [
+                'tenant_id'           => $tenant->id,
+                'is_active'           => (bool) $tenant->is_active,
+                'archived'            => $tenant->isArchived(),
+                'subscription_status' => $tenant->subscription_status,
+                'conversation_id'     => $conversation->id,
+            ]);
+            return;
+        }
+
         // Reservation bot intercepts text messages when the module is active on this tenant's plan
         if ($body !== null && $body !== '') {
             $resvSettings = ReservationSetting::where('tenant_id', $instance->tenant_id)
