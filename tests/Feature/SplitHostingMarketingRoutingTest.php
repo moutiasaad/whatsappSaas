@@ -74,6 +74,17 @@ class SplitHostingMarketingRoutingTest extends TestCase
             ->assertRedirect(self::MARKETING_HOST . '/register');
     }
 
+    public function test_payment_checkout_page_stays_on_marketing(): void
+    {
+        // Session 2b: the pay-with-Stripe/PayPal button page lives on
+        // marketing too. A visitor with no session PAT hits the
+        // controller's own guard → /register bounce, NOT a redirect to
+        // core's copy of the checkout page. Same shape as the step 2
+        // check above.
+        $this->get(self::MARKETING_HOST . '/payment/checkout?plan_id=3')
+            ->assertRedirect(self::MARKETING_HOST . '/register');
+    }
+
     /**
      * routes/api.php is loaded under the `web` group, so all 57 of the app's
      * API routes exist on the marketing host too. They read the wrong

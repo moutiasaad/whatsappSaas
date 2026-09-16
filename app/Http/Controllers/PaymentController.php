@@ -243,6 +243,13 @@ class PaymentController extends Controller
 
     public function checkout(Request $request, Tenant $tenant)
     {
+        // Marketing branch is a different route (no {tenant} model binding —
+        // marketing's local tenants table is stale). Dispatched from the
+        // route file, so this method still owns the single-host path.
+        if (\App\Support\Wavadesk::isMarketing()) {
+            return $this->checkoutMarketing($request);
+        }
+
         $plan = $this->resolveIntendedPlan($request, $tenant);
 
         // Free plan — authenticated admin goes to their dashboard, guest goes to register
@@ -272,6 +279,10 @@ class PaymentController extends Controller
 
     public function initiate(Request $request)
     {
+        if (\App\Support\Wavadesk::isMarketing()) {
+            return $this->initiateViaCoreApi($request, 'stripe');
+        }
+
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
@@ -364,9 +375,31 @@ class PaymentController extends Controller
 
         if ($payment?->isCompleted()) {
             if (!Auth::check()) {
-                $userId = session()->pull('_pending_register_user');
-                if ($userId && ($user = User::find($userId))) {
-                    Auth::login($user);
+                // Split-hosting path: BillingApiController mints a signed
+                // handoff code and embeds it in the success_url so the buyer
+                // is auto-logged-in on the core app they never opened a
+                // session on. Try that first; fall back to the older
+                // single-host session key for the monolith flow.
+                if ($sso = (string) $request->query('sso', '')) {
+                    try {
+                        $userId = app(\App\Services\Auth\SsoHandoffCode::class)->verify($sso);
+                        if ($user = User::find($userId)) {
+                            Auth::login($user);
+                            $request->session()->regenerate();
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('payment.success SSO redemption failed', [
+                            'reason' => $e->getMessage(),
+                        ]);
+                        // Fall through — the user can log in manually.
+                    }
+                }
+
+                if (!Auth::check()) {
+                    $userId = session()->pull('_pending_register_user');
+                    if ($userId && ($user = User::find($userId))) {
+                        Auth::login($user);
+                    }
                 }
             }
 
@@ -463,6 +496,10 @@ class PaymentController extends Controller
 
     public function initiatePaypal(Request $request)
     {
+        if (\App\Support\Wavadesk::isMarketing()) {
+            return $this->initiateViaCoreApi($request, 'paypal');
+        }
+
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
@@ -1003,7 +1040,14 @@ class PaymentController extends Controller
         if (!$orderId) {
             return redirect()->route('payment.failed');
         }
-        return redirect()->route('payment.success', ['token' => $orderId]);
+        // Forward the split-hosting SSO handoff (if present) so the /success
+        // handler can auto-log-in the buyer from marketing-originated PayPal
+        // returns, same as the Stripe path.
+        $args = ['token' => $orderId];
+        if ($sso = (string) $request->query('sso', '')) {
+            $args['sso'] = $sso;
+        }
+        return redirect()->route('payment.success', $args);
     }
 
     public function paypalCancel(Request $request)
@@ -1095,6 +1139,118 @@ class PaymentController extends Controller
                 'error'      => $e->getMessage(),
             ]);
         }
+    }
+
+    // ── Marketing role (Server A / wavadesk.com) ────────────────────────────
+
+    /**
+     * Render the pay-with-Stripe/PayPal button page on the marketing host.
+     *
+     * Reads tenant + user snapshots from the session (stashed by
+     * RegisterController::storeViaCoreApi at register time). The view is the
+     * same auth/register-plan-adjacent payment.checkout blade the core role
+     * uses; tenant + plan get wrapped into stdClass so the view's property
+     * access works with no Blade changes.
+     */
+    private function checkoutMarketing(Request $request)
+    {
+        $token      = (string) session(\App\Support\Wavadesk::SESSION_TOKEN, '');
+        $userData   = (array)  session(\App\Support\Wavadesk::SESSION_USER, []);
+        $tenantData = (array)  session(\App\Support\Wavadesk::SESSION_TENANT, []);
+
+        if ($token === '' || empty($userData['id']) || empty($tenantData['id'])) {
+            return redirect()->route('register');
+        }
+
+        $planId = (int) $request->query('plan_id');
+        if (!$planId) {
+            // No plan on the URL — the user got here directly, without a
+            // pick. Send them back to the picker rather than 500.
+            return redirect()->route('register.plan');
+        }
+
+        $plan = Plan::where('id', $planId)->where('is_active', true)->first();
+        abort_unless($plan, 404);
+
+        // A free plan shouldn't reach checkout — /api/v1/plans/choose
+        // activates it directly. Guard the case anyway (e.g. a paid plan the
+        // super admin has since flipped to free between picker and pay).
+        if (!$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return redirect()->route('register.plan');
+        }
+
+        // View expects Model-like access on $tenant + $admin — wrap the
+        // session arrays so we don't have to touch the Blade.
+        $tenant = (object) [
+            'id'                  => (int)    $tenantData['id'],
+            'name'                => (string) ($tenantData['name'] ?? ''),
+            'subscription_status' => (string) ($tenantData['subscription_status'] ?? 'trial'),
+        ];
+
+        $admin = (object) [
+            'email' => (string) ($userData['email'] ?? ''),
+        ];
+
+        return view('payment.checkout', [
+            'tenant'  => $tenant,
+            'plan'    => $plan,
+            'admin'   => $admin,
+            'amount'  => (float) $plan->price_monthly,
+            'backUrl' => route('register.plan'),
+        ]);
+    }
+
+    /**
+     * Marketing branch for /payment/initiate and /payment/paypal/initiate.
+     *
+     * Proxies to POST /api/v1/billing/checkout with the session PAT, then
+     * 302s the browser to the returned hosted-checkout URL. For PayPal
+     * Standard (form POST rather than a straight 302), renders an
+     * auto-submit form the way the core initiatePaypalStandard does.
+     */
+    private function initiateViaCoreApi(Request $request, string $provider)
+    {
+        $token = (string) session(\App\Support\Wavadesk::SESSION_TOKEN, '');
+        if ($token === '') {
+            return redirect()->route('register');
+        }
+
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer'],
+        ]);
+
+        $result = app(\App\Services\WavadeskApi::class)
+            ->billingCheckout($token, (int) $data['plan_id'], $provider);
+
+        if (!$result['ok']) {
+            // 422 → field error (retired plan, provider mismatch). Anything
+            // else is our problem, not the buyer's, so show a generic retry.
+            if ($result['status'] === 422 && !empty($result['body']['errors'])) {
+                return back()->withErrors((array) $result['body']['errors']);
+            }
+
+            Log::warning('Marketing -> core billing/checkout failed', [
+                'status'   => $result['status'],
+                'provider' => $provider,
+            ]);
+
+            return back()->withErrors([
+                'payment' => __('auth.register.payment_init_failed'),
+            ]);
+        }
+
+        $body = $result['body'];
+
+        // PayPal Standard: form POST rather than 302 — render the
+        // auto-submit form on marketing exactly as core does.
+        if (($body['method'] ?? null) === 'POST' && !empty($body['redirect_form'])) {
+            return response()->view('payment.paypal-standard-redirect', [
+                'action' => (string) $body['redirect_url'],
+                'params' => (array)  $body['redirect_form'],
+            ]);
+        }
+
+        return redirect()->away((string) $body['redirect_url']);
     }
 
     /**

@@ -44,12 +44,18 @@ class SsoHandoffCode
     /**
      * Mint a signed handoff code for the given user id.
      *
+     * TTL cap was 300s (5 min) — enough for the register/login redirect chain.
+     * Split-hosting checkout landed on 2026-09-16 raises the cap to 1800s
+     * (30 min) so a code minted for a Stripe/PayPal success_url stays valid
+     * for the duration of a real hosted-checkout flow. Callers still pass the
+     * shortest lifetime that makes sense for their use.
+     *
      * @param  int  $userId
-     * @param  int  $ttlSeconds  Lifetime of the code, capped at 300s.
+     * @param  int  $ttlSeconds  Lifetime of the code, capped at 1800s.
      */
     public function mint(int $userId, int $ttlSeconds = self::DEFAULT_TTL): string
     {
-        $ttl = max(15, min(300, $ttlSeconds));
+        $ttl = max(15, min(1800, $ttlSeconds));
 
         $payload = [
             'uid' => $userId,

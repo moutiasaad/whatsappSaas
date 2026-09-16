@@ -65,9 +65,18 @@ class SplitHostingRedirect
         'register',
         // Step 2 of signup now runs on marketing: the picker calls the core
         // /api/v1/plans/choose API with the session PAT rather than reading
-        // /writing this box's own tenant tables. Paid picks still hop to
-        // core for the payment flow (Session 2b will move that too).
+        // /writing this box's own tenant tables.
         'register/plan',
+        // Session 2b: the pay-with-Stripe/PayPal button page also lives
+        // here now. The button submit calls /api/v1/billing/checkout via
+        // the /payment/initiate + /payment/paypal/initiate handlers below.
+        // Everything else under /payment/* (success, failed, webhooks,
+        // paypal return/cancel/ipn) stays on core — gateways need a
+        // stable callback owned by the app that also holds the tenant
+        // row and can activate the plan.
+        'payment/checkout',
+        'payment/initiate',
+        'payment/paypal/initiate',
         'logout',
         'locale',
         'up',

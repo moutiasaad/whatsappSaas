@@ -424,13 +424,15 @@ class RegisterController extends Controller
         }
 
         if (($body['next_step'] ?? null) === 'checkout') {
-            // Paid plan with no trial left. The full marketing-side
-            // checkout page is Session 2b; for now hand off to core so
-            // the existing checkout controller can render there.
-            $userId = (int) $userData['id'];
+            // Paid plan with no trial left. Since Session 2b the checkout
+            // button page lives on marketing too — redirect there. The user
+            // stays on wavadesk.com through the pay button; only the hosted
+            // gateway (Stripe / PayPal) takes them off-site, and the return
+            // to core after payment carries a signed SSO code that auto-
+            // logs them in there.
             $planId = (int) ($body['plan_id'] ?? $data['plan_id']);
 
-            return $this->mintHandoffAndRedirect($userId, ['plan' => $planId]);
+            return redirect()->route('payment.checkout', ['plan_id' => $planId]);
         }
 
         // next_step === 'dashboard' — plan granted. Land the user on core

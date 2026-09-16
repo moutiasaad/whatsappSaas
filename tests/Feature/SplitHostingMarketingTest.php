@@ -301,12 +301,14 @@ class SplitHostingMarketingTest extends TestCase
         $this->assertArrayNotHasKey('plan', $query);
     }
 
-    public function test_choose_plan_on_paid_needs_checkout_hands_off_to_core_with_plan_hint(): void
+    public function test_choose_plan_on_paid_needs_checkout_redirects_to_marketing_checkout_page(): void
     {
         // Core returned next_step=checkout — paid plan with no trial left.
-        // The marketing-side checkout page is Session 2b; for now hand off
-        // to core so its existing checkout flow can run there. The plan id
-        // rides along as ?plan= so core pre-selects the card.
+        // Since Session 2b the marketing-side checkout page exists; the user
+        // stays on wavadesk.com through the pay button. Only the hosted
+        // gateway (Stripe/PayPal) takes them off-site, and the return to
+        // core after payment carries a signed SSO code that auto-logs them
+        // in there — no more wavadesk → app.wavadesk → gateway triple-hop.
         Http::fake([
             self::CORE . '/api/v1/plans/choose' => Http::response([
                 'next_step' => 'checkout',
@@ -321,12 +323,11 @@ class SplitHostingMarketingTest extends TestCase
             Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
         ])->post('/register/plan', ['plan_id' => 3]);
 
+        // Stays on marketing — no SSO handoff URL.
         $location = $response->headers->get('Location');
-        $this->assertStringStartsWith(self::CORE . '/auth/sso?', $location);
-
-        parse_str(parse_url($location, PHP_URL_QUERY), $query);
-        $this->assertSame('3', (string) $query['plan']);
-        $this->assertSame(42, (new SsoHandoffCode(self::SHARED_SECRET))->verify($query['code']));
+        $this->assertStringNotContainsString('/auth/sso', $location);
+        $this->assertStringContainsString('/payment/checkout', $location);
+        $this->assertStringContainsString('plan_id=3', $location);
     }
 
     public function test_choose_plan_422_from_core_lands_on_the_plan_id_field(): void
@@ -380,5 +381,150 @@ class SplitHostingMarketingTest extends TestCase
              ->assertRedirect('/register');
 
         Http::assertNothingSent();
+    }
+
+    // ── Session 2b: the marketing payment button page ───────────────────────
+
+    public function test_payment_checkout_page_without_a_session_bounces_to_register(): void
+    {
+        // Same guard as the plan picker: no session PAT means nothing to
+        // pay for. Send them back to sign up.
+        $this->get('/payment/checkout?plan_id=3')->assertRedirect('/register');
+    }
+
+    public function test_payment_checkout_page_without_a_plan_id_bounces_to_the_picker(): void
+    {
+        // Session says they're registered, but they landed on the payment
+        // page with no plan chosen. Bounce back to the picker rather than
+        // 500 on a nonexistent plan lookup.
+        $this->withSession([
+            Wavadesk::SESSION_TOKEN  => 'live-pat',
+            Wavadesk::SESSION_USER   => ['id' => 42, 'email' => 'admin@example.com'],
+            Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
+        ])->get('/payment/checkout')
+          ->assertRedirect('/register/plan');
+    }
+
+    public function test_payment_initiate_stripe_calls_billing_api_and_redirects_to_hosted_url(): void
+    {
+        // The pay-with-Stripe button on the marketing checkout page posts
+        // here. This handler proxies to POST /api/v1/billing/checkout and
+        // 302s the browser to the hosted checkout URL the API returns.
+        Http::fake([
+            self::CORE . '/api/v1/billing/checkout' => Http::response([
+                'redirect_url' => 'https://checkout.stripe.com/pay/cs_test_XYZ',
+                'provider'     => 'stripe',
+                'payment_id'   => 99,
+                'currency'     => 'USD',
+                'amount'       => 19.00,
+            ], 200),
+        ]);
+
+        $response = $this->withSession([
+            Wavadesk::SESSION_TOKEN  => 'live-pat',
+            Wavadesk::SESSION_USER   => ['id' => 42, 'email' => 'admin@example.com'],
+            Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
+        ])->post('/payment/initiate', ['plan_id' => 3]);
+
+        // API call carried the session PAT + caller secret; body named the
+        // provider so core built the right kind of checkout session.
+        Http::assertSent(function ($request) {
+            return $request->url() === self::CORE . '/api/v1/billing/checkout'
+                && $request->hasHeader('Authorization', 'Bearer live-pat')
+                && $request->hasHeader(Wavadesk::CALLER_HEADER, self::SHARED_SECRET)
+                && $request['plan_id']  === 3
+                && $request['provider'] === 'stripe';
+        });
+
+        $response->assertRedirect('https://checkout.stripe.com/pay/cs_test_XYZ');
+    }
+
+    public function test_payment_paypal_initiate_selects_provider_paypal(): void
+    {
+        // PayPal button on the marketing checkout page posts to a different
+        // route (/payment/paypal/initiate) but calls the same API with
+        // provider=paypal. REST-mode PayPal returns a straight redirect_url;
+        // Standard mode returns a form to POST — tested separately below.
+        Http::fake([
+            self::CORE . '/api/v1/billing/checkout' => Http::response([
+                'redirect_url' => 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-42',
+                'provider'     => 'paypal',
+                'payment_id'   => 100,
+                'currency'     => 'USD',
+                'amount'       => 39.00,
+            ], 200),
+        ]);
+
+        $response = $this->withSession([
+            Wavadesk::SESSION_TOKEN  => 'live-pat',
+            Wavadesk::SESSION_USER   => ['id' => 42, 'email' => 'admin@example.com'],
+            Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
+        ])->post('/payment/paypal/initiate', ['plan_id' => 3]);
+
+        Http::assertSent(fn ($r) => $r['provider'] === 'paypal');
+
+        $response->assertRedirect('https://www.sandbox.paypal.com/checkoutnow?token=ORDER-42');
+    }
+
+    public function test_payment_paypal_standard_response_renders_auto_submit_form(): void
+    {
+        // Standard mode returns method=POST + a redirect_form map. A plain
+        // 302 would drop the fields, so the marketing controller renders
+        // an auto-submit form the same way core's initiatePaypalStandard
+        // does.
+        Http::fake([
+            self::CORE . '/api/v1/billing/checkout' => Http::response([
+                'redirect_url'  => 'https://www.paypal.com/cgi-bin/webscr',
+                'redirect_form' => ['business' => 'merchant@example.com', 'amount' => '19.00', 'invoice' => 'tenant_7_1'],
+                'method'        => 'POST',
+                'provider'      => 'paypal',
+                'payment_id'    => 101,
+                'currency'      => 'USD',
+                'amount'        => 19.00,
+            ], 200),
+        ]);
+
+        $response = $this->withSession([
+            Wavadesk::SESSION_TOKEN  => 'live-pat',
+            Wavadesk::SESSION_USER   => ['id' => 42, 'email' => 'admin@example.com'],
+            Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
+        ])->post('/payment/paypal/initiate', ['plan_id' => 3]);
+
+        $response->assertOk()
+            // The rendered form must post to PayPal, not to us.
+            ->assertSee('https://www.paypal.com/cgi-bin/webscr', false)
+            // And it must carry the form fields the API sent — a bare 302
+            // would have dropped these entirely.
+            ->assertSee('merchant@example.com', false)
+            ->assertSee('tenant_7_1', false);
+    }
+
+    public function test_payment_initiate_without_a_session_bounces_to_register(): void
+    {
+        $this->post('/payment/initiate', ['plan_id' => 3])
+             ->assertRedirect('/register');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_payment_initiate_relays_422_errors_from_the_api(): void
+    {
+        // Retired plan or an invalid provider: the API returns 422 with a
+        // field-shaped error body. Re-raise as local field errors so the
+        // marketing checkout page renders them inline.
+        Http::fake([
+            self::CORE . '/api/v1/billing/checkout' => Http::response([
+                'message' => 'The selected plan is invalid.',
+                'errors'  => ['plan_id' => ['The selected plan is invalid.']],
+            ], 422),
+        ]);
+
+        $this->withSession([
+            Wavadesk::SESSION_TOKEN  => 'live-pat',
+            Wavadesk::SESSION_USER   => ['id' => 42, 'email' => 'admin@example.com'],
+            Wavadesk::SESSION_TENANT => ['id' => 7, 'name' => 'Acme', 'plan_id' => null],
+        ])->from('/payment/checkout?plan_id=999')
+          ->post('/payment/initiate', ['plan_id' => 999])
+          ->assertSessionHasErrors('plan_id');
     }
 }

@@ -98,7 +98,14 @@ if (Wavadesk::isMarketing()) {
 }
 
 // Payment (Stripe + PayPal)
-Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
+// Route splits by role: marketing takes no {tenant} in the URL — its local
+// tenants table is stale, so the controller reads the workspace from the
+// session PAT snapshot instead. Same route name so callers stay uniform.
+if (Wavadesk::isMarketing()) {
+    Route::get('/payment/checkout', [PaymentController::class, 'checkout'])->name('payment.checkout');
+} else {
+    Route::get('/payment/checkout/{tenant}', [PaymentController::class, 'checkout'])->name('payment.checkout');
+}
 Route::post('/payment/initiate', [PaymentController::class, 'initiate'])->name('payment.initiate');
 Route::post('/payment/upgrade', [PaymentController::class, 'upgrade'])
     ->name('payment.upgrade')

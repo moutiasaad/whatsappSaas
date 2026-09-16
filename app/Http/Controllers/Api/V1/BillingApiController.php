@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\TenantPayment;
+use App\Services\Auth\SsoHandoffCode;
 use App\Services\PayPalService;
 use App\Services\PayPalStandardService;
 use App\Services\StripeService;
@@ -83,8 +84,8 @@ class BillingApiController extends Controller
         }
 
         return match ($data['provider']) {
-            'stripe' => $this->checkoutStripe($tenant, $plan),
-            'paypal' => $this->checkoutPaypal($tenant, $plan),
+            'stripe' => $this->checkoutStripe($tenant, $plan, (int) $user->id),
+            'paypal' => $this->checkoutPaypal($tenant, $plan, (int) $user->id),
         };
     }
 
@@ -93,7 +94,7 @@ class BillingApiController extends Controller
      * Checkout Session, one pending TenantPayment row keyed by the
      * session id so the webhook can settle it later.
      */
-    private function checkoutStripe($tenant, Plan $plan): JsonResponse
+    private function checkoutStripe($tenant, Plan $plan, int $userId): JsonResponse
     {
         $admin       = $tenant->users()->where('role', 'admin')->first();
         $amount      = (float) $plan->price_monthly;
@@ -118,7 +119,13 @@ class BillingApiController extends Controller
                 // Callbacks stay on core: Stripe expects a stable URL from the
                 // origin that created the session, and the fulfilment path
                 // (which writes tenants + activates the plan) already lives here.
-                'success_url'    => route('payment.success') . '?session_id={CHECKOUT_SESSION_ID}',
+                // The ?sso= code is what auto-logs the user in on the return —
+                // the marketing app never opened a session on core, so without
+                // it the user would land on /payment/success as a guest.
+                // 30 min gives realistic checkout latency (card 3DS, PayPal
+                // Standard IPN gap, "did I move my card" browsing pauses).
+                'success_url'    => route('payment.success') . '?session_id={CHECKOUT_SESSION_ID}&sso='
+                                    . urlencode(app(SsoHandoffCode::class)->mint($userId, 1800)),
                 'cancel_url'     => route('payment.failed'),
                 'metadata'       => [
                     'tenant_id' => (string) $tenant->id,
@@ -168,14 +175,14 @@ class BillingApiController extends Controller
      * PaymentController::initiatePaypal so a server configured for one
      * mode on the web flow behaves identically on the API.
      */
-    private function checkoutPaypal($tenant, Plan $plan): JsonResponse
+    private function checkoutPaypal($tenant, Plan $plan, int $userId): JsonResponse
     {
         if (config('services.paypal.client_id')) {
-            return $this->checkoutPaypalRest($tenant, $plan);
+            return $this->checkoutPaypalRest($tenant, $plan, $userId);
         }
 
         if ($this->paypalStd->isConfigured()) {
-            return $this->checkoutPaypalStandard($tenant, $plan);
+            return $this->checkoutPaypalStandard($tenant, $plan, $userId);
         }
 
         return response()->json([
@@ -183,15 +190,20 @@ class BillingApiController extends Controller
         ], 502);
     }
 
-    private function checkoutPaypalRest($tenant, Plan $plan): JsonResponse
+    private function checkoutPaypalRest($tenant, Plan $plan, int $userId): JsonResponse
     {
         $amount = (float) $plan->price_monthly;
+
+        // Same rationale as the Stripe branch: PayPal returns to core, and the
+        // marketing app never opened a session there, so bake an SSO code into
+        // the return URL to auto-log the buyer in on landing.
+        $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
 
         try {
             $order = $this->paypal->createOrder(
                 amount:      $amount,
                 description: $plan->name . ' — ' . $tenant->name,
-                returnUrl:   route('payment.paypal.return'),
+                returnUrl:   route('payment.paypal.return') . '?sso=' . urlencode($sso),
                 cancelUrl:   route('payment.paypal.cancel'),
                 metadata:    [
                     'tenant_id'  => $tenant->id,
@@ -241,7 +253,7 @@ class BillingApiController extends Controller
      * app to render its own auto-submit form. Mirrors what
      * PaymentController::initiatePaypalStandard renders inline.
      */
-    private function checkoutPaypalStandard($tenant, Plan $plan): JsonResponse
+    private function checkoutPaypalStandard($tenant, Plan $plan, int $userId): JsonResponse
     {
         $amount    = (float) $plan->price_monthly;
         $invoiceId = 'tenant_' . $tenant->id . '_' . time();
@@ -257,11 +269,13 @@ class BillingApiController extends Controller
             'gateway_response'=> ['mode' => 'standard'],
         ]);
 
+        $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
+
         $params = $this->paypalStd->buildCheckoutParams(
             amount:        $amount,
             itemName:      $plan->name . ' — ' . $tenant->name,
             invoiceId:     $invoiceId,
-            returnUrl:     route('payment.success', ['token' => $invoiceId]),
+            returnUrl:     route('payment.success', ['token' => $invoiceId, 'sso' => $sso]),
             cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
             notifyUrl:     route('payment.paypal.ipn'),
             customPayload: (string) $payment->id,
