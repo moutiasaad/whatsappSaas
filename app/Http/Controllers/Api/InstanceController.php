@@ -231,7 +231,15 @@ class InstanceController extends Controller
             // record a TenantLink for the super-admin's audit trail, and
             // surface a 409 the frontend can render.
             if ($phoneNumber && $phoneNumber !== $previousPhone) {
+                // withoutGlobalScope('tenant'): WhatsAppInstance uses
+                // BelongsToTenant, which auto-scopes every query to
+                // app('current_tenant_id'). Without this the query only
+                // sees the CURRENT tenant's rows — tenant A's row is
+                // invisible, the block never finds a collision, and the
+                // duplicate slips through. Cross-tenant lookups from
+                // inside a tenant-scoped controller always need this.
                 $otherOwnerTenantId = WhatsAppInstance::query()
+                    ->withoutGlobalScope('tenant')
                     ->where('phone_number', $phoneNumber)
                     ->where('tenant_id', '!=', $instance->tenant_id)
                     ->value('tenant_id');
@@ -534,7 +542,12 @@ class InstanceController extends Controller
     private function recordTenantLinksForPhone(int $tenantId, int $instanceId, string $phoneNumber): void
     {
         rescue(function () use ($tenantId, $instanceId, $phoneNumber) {
+            // Cross-tenant lookup — must escape BelongsToTenant's global
+            // scope or the query only sees the current tenant's rows and
+            // no link is ever created. See the sibling block in status()
+            // for the fuller explanation.
             $otherTenantIds = WhatsAppInstance::query()
+                ->withoutGlobalScope('tenant')
                 ->where('phone_number', $phoneNumber)
                 ->where('tenant_id', '!=', $tenantId)
                 ->pluck('tenant_id')
