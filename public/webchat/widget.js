@@ -115,6 +115,8 @@
             prechatStart:   'بدء المحادثة',
             prechatStarting:'جارٍ البدء…',
             couldNotConnect:'تعذّر الاتصال. حاول مرة أخرى.',
+            chatDomainBlocked:'هذه الدردشة غير مفعّلة على هذا الموقع.',
+            chatUnavailable:'الدردشة غير متاحة حاليًا.',
             failedSend:     'تعذّر الإرسال',
             branding:       'مدعوم من'
         },
@@ -168,6 +170,8 @@
             prechatStart:   'Start chat',
             prechatStarting:'Starting…',
             couldNotConnect:'Could not connect. Please try again.',
+            chatDomainBlocked:'Chat isn’t enabled on this site.',
+            chatUnavailable:'Chat isn’t available right now.',
             failedSend:     'Failed to send',
             branding:       'Powered by'
         },
@@ -221,6 +225,8 @@
             prechatStart:   'Commencer',
             prechatStarting:'Démarrage…',
             couldNotConnect:'Connexion impossible. Réessayez.',
+            chatDomainBlocked:'Ce chat n’est pas activé sur ce site.',
+            chatUnavailable:'Chat indisponible pour l’instant.',
             failedSend:     'Envoi impossible',
             branding:       'Propulsé par'
         }
@@ -270,6 +276,31 @@
     };
 
     // ── HTTP helper ───────────────────────────────────────────────────
+    // Maps a session-boot error to the visitor-facing message. Kept
+    // deliberately conservative: only 403 webchat_domain_not_allowed and 404
+    // webchat_widget_not_found earn their own text — those two are the
+    // fingerprints of a mis-configured embed, and a friendlier hint saves the
+    // site owner from opening devtools to diagnose. Everything else stays
+    // generic because it could be a transient network blip.
+    function sessionErrorText(e) {
+        var status = e && e.status;
+        var msg = e && e.body && typeof e.body === 'object' ? e.body.message : null;
+        if (status === 403 && msg === 'webchat_domain_not_allowed') return t().chatDomainBlocked;
+        if (status === 404 && msg === 'webchat_widget_not_found')  return t().chatUnavailable;
+        return t().couldNotConnect;
+    }
+
+    function logSessionFailure(e) {
+        var status = e && e.status;
+        var msg = e && e.body && typeof e.body === 'object' ? e.body.message : (e && e.body);
+        console.error('WavadeskChat: session failed', {
+            status: status || 'network',
+            reason: msg || (e && e.message) || 'unknown',
+            origin: location.origin,
+            endpoint: API_BASE + '/api/webchat/' + CONFIG.key + '/session'
+        });
+    }
+
     function api(path, opts) {
         opts = opts || {};
         var url = API_BASE + '/api/webchat/' + encodeURIComponent(CONFIG.key) + path;
@@ -349,7 +380,7 @@
             })
             .catch(function (e) {
                 S.booting = false;
-                console.error('WavadeskChat: session failed', e);
+                logSessionFailure(e);
                 throw e;
             });
         return S.bootingPromise;
@@ -1591,10 +1622,10 @@
         if (S.open) clearUnread();
         if (S.open && !S.booted && !S.booting) {
             render();
-            ensureSession().then(render).catch(function () {
+            ensureSession().then(render).catch(function (e) {
                 if (el.body) {
                     el.body.innerHTML = '';
-                    el.body.appendChild(_('div', { class: 'wvch-loading', text: t().couldNotConnect }));
+                    el.body.appendChild(_('div', { class: 'wvch-loading', text: sessionErrorText(e) }));
                 }
             });
         } else {
