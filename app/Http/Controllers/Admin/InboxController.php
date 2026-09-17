@@ -672,10 +672,24 @@ class InboxController extends Controller
         return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'agent']) ?? false;
     }
 
-    /** Same rule as WebChat: super-admins are not frontline agents. */
+    /**
+     * Same role rule as WebChat: super-admins are not frontline agents.
+     * ADDITIONALLY requires the plan to grant the messenger module —
+     * unlike WebChat, whose action routes are not module-gated. Without
+     * this check the unified inbox showed the Messenger tab + listed
+     * conversations for tenants whose plan doesn't include messenger,
+     * then every claim / reply / close 403'd on CheckPlanModule. The
+     * 2026-09-17 launch's second debug round chased exactly this
+     * mismatch — hide the channel here so the button never appears
+     * unless the actions will actually work.
+     */
     private function canUseMessenger(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'agent']) ?? false;
+        $user = auth()->user();
+        if (! $user?->hasAnyRole(['admin', 'supervisor', 'agent'])) {
+            return false;
+        }
+        return (bool) $user->tenant?->planAllows('messenger');
     }
 
     /** Conversation ids (of those given) that already carry an AI reply. */
