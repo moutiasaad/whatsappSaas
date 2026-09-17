@@ -66,6 +66,13 @@ return [
             'days'   => 7,
         ],
 
+        'messenger' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/messenger.log'),
+            'level'  => 'debug',
+            'days'   => 7,
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

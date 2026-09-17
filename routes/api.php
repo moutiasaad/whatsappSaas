@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\InstanceController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\OutboundConversationController;
 use App\Http\Controllers\Api\SavedReplyController;
+use App\Http\Controllers\Webhooks\MessengerWebhookController;
 use App\Http\Controllers\Webhooks\WhatsAppWebhookController;
 use App\Http\Controllers\WebChat\BroadcastAuthController as WebChatBroadcastAuthController;
 use App\Http\Controllers\WebChat\Public\ConversationController as WebChatPublicConversationController;
@@ -26,6 +27,20 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhooks.whatsapp');
+
+// ─── Meta / Facebook Messenger webhook ───────────────────────────────────────
+// Meta pushes events for every Page subscribed via /me/accounts. Both halves
+// of the contract live in MessengerWebhookController:
+//   GET  → subscription verification (hub_challenge echo)
+//   POST → event delivery (HMAC-SHA256 signed with the App Secret)
+// Registered only on the core box — the marketing box has no DB rows to
+// serve them from, and Meta must not be pointed at wavadesk.com anyway.
+if (Wavadesk::isCore()) {
+    Route::get('/webhooks/messenger',  [MessengerWebhookController::class, 'verify'])
+        ->name('webhooks.messenger.verify');
+    Route::post('/webhooks/messenger', [MessengerWebhookController::class, 'handle'])
+        ->name('webhooks.messenger.handle');
+}
 
 // ─── v1 Auth API (called by the marketing app on wavadesk.com) ───────────────
 // Server-to-server only: wavadesk.com's php-fpm calls these, never a browser.
