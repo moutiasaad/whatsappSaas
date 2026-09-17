@@ -31,8 +31,11 @@ class GraphApiClient
 
     public function __construct()
     {
-        $this->version   = (string) config('services.meta.graph_version', 'v21.0');
-        $this->appSecret = (string) config('services.meta.app_secret', '');
+        // Read via MetaConfig so a super-admin edit takes effect immediately —
+        // config('services.meta.*') alone reads from cached config and
+        // wouldn't reflect a runtime change.
+        $this->version   = MetaConfig::graphVersion();
+        $this->appSecret = MetaConfig::appSecret();
     }
 
     /**
@@ -102,7 +105,7 @@ class GraphApiClient
     public function exchangeCodeForUserToken(string $code, string $redirectUri): array
     {
         $response = Http::asJson()->get($this->url('/oauth/access_token'), [
-            'client_id'     => (string) config('services.meta.app_id'),
+            'client_id'     => MetaConfig::appId(),
             'client_secret' => $this->appSecret,
             'redirect_uri'  => $redirectUri,
             'code'          => $code,
@@ -134,7 +137,7 @@ class GraphApiClient
     {
         $response = Http::get($this->url('/oauth/access_token'), [
             'grant_type'        => 'fb_exchange_token',
-            'client_id'         => (string) config('services.meta.app_id'),
+            'client_id'         => MetaConfig::appId(),
             'client_secret'     => $this->appSecret,
             'fb_exchange_token' => $shortLivedToken,
         ]);

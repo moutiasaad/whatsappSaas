@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Messenger\Page;
 use App\Services\Messenger\GraphApiClient;
+use App\Services\Messenger\MetaConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -59,8 +60,7 @@ class MessengerConnectController extends Controller
             ->orderBy('id')
             ->get();
 
-        $canConnect = (bool) config('services.meta.app_id')
-            && (bool) config('services.meta.app_secret');
+        $canConnect = MetaConfig::appId() !== '' && MetaConfig::appSecret() !== '';
 
         return view('admin.messenger.settings', [
             'pages'      => $pages,
@@ -72,9 +72,9 @@ class MessengerConnectController extends Controller
 
     public function start(Request $request): RedirectResponse
     {
-        $appId = (string) config('services.meta.app_id');
+        $appId = MetaConfig::appId();
         if ($appId === '') {
-            return back()->with('error', 'Meta App ID is not configured on this box.');
+            return back()->with('error', 'Meta App ID is not configured. Ask your Wavadesk platform admin to set it in Super Admin → Platform → Meta Settings.');
         }
 
         // CSRF: single-use random state, echoed back by Facebook in the callback.
@@ -86,7 +86,7 @@ class MessengerConnectController extends Controller
 
         $redirect = route('tenant_admin.messenger.oauth.callback');
 
-        $url = 'https://www.facebook.com/' . config('services.meta.graph_version', 'v21.0') . '/dialog/oauth?' . http_build_query([
+        $url = 'https://www.facebook.com/' . MetaConfig::graphVersion() . '/dialog/oauth?' . http_build_query([
             'client_id'     => $appId,
             'redirect_uri'  => $redirect,
             'state'         => $state,
@@ -222,7 +222,7 @@ class MessengerConnectController extends Controller
             $this->graph->subscribePage($page->access_token, $page->page_id, []); // empty fields = still subscribed but 0 fields, benign
             // Real unsubscribe is DELETE /{page_id}/subscribed_apps; call it via a low-level HTTP request:
             \Illuminate\Support\Facades\Http::delete(
-                "https://graph.facebook.com/" . config('services.meta.graph_version', 'v21.0') . "/{$page->page_id}/subscribed_apps",
+                "https://graph.facebook.com/" . MetaConfig::graphVersion() . "/{$page->page_id}/subscribed_apps",
                 ['access_token' => $page->access_token]
             );
         } catch (\Throwable $e) {

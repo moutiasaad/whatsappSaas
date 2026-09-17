@@ -1825,6 +1825,10 @@
                             ['route' => 'platform.plans',             'match' => ['platform.plans*'],         'icon' => 'ri-price-tag-3-line',   'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
                             ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line', 'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
                             ['route' => 'platform.addons',            'match' => ['platform.addons*'],        'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
+                            // Meta / Facebook Messenger platform credentials — App ID, App
+                            // Secret, Verify Token, Graph version. Same permission gate as
+                            // system health (both are cross-tenant ops-owned config).
+                            ['route' => 'platform.meta-settings',     'match' => ['platform.meta-settings*'], 'icon' => 'ri-messenger-line',     'label' => 'Meta / Messenger',                  'show' => $sp('platform_system_health')],
                             ['route' => 'platform.system-health',     'match' => ['platform.system-health*'], 'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),      'show' => $sp('platform_system_health')],
                             ['route' => 'platform.legal-pages.index', 'match' => ['platform.legal-pages*'],   'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),        'show' => $sp('platform_legal_pages')],
                             ['route' => 'super-admins.index',         'match' => ['super-admins.*'],          'icon' => 'ri-shield-user-line',   'label' => __('ui.sidebar.super_admins'),       'show' => $u->isMasterSuperAdmin()],

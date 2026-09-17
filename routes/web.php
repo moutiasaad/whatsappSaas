@@ -658,6 +658,12 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             Route::get('/platform/addons', [SuperAdminPlatformController::class, 'addonSettings'])->name('platform.addons');
             Route::put('/platform/addons', [SuperAdminPlatformController::class, 'updateAddonSettings'])->name('platform.addons.update');
 
+            // Meta / Messenger credentials — App ID, App Secret, Verify Token,
+            // Graph version. Editable here so ops doesn't need SSH to rotate
+            // the secret. Secrets stored encrypted (Crypt) in platform_settings.
+            Route::get('/platform/meta-settings', [SuperAdminPlatformController::class, 'metaSettings'])->name('platform.meta-settings');
+            Route::put('/platform/meta-settings', [SuperAdminPlatformController::class, 'updateMetaSettings'])->name('platform.meta-settings.update');
+
             Route::get('/platform/system-health', [SuperAdminPlatformController::class, 'systemHealth'])->name('platform.system-health');
 
             Route::get('/platform/legal-pages', [LegalPageController::class, 'index'])->name('platform.legal-pages.index');

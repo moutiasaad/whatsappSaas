@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessMessengerIncomingMessage;
 use App\Models\Messenger\Page;
+use App\Services\Messenger\MetaConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +61,7 @@ class MessengerWebhookController extends Controller
         $token     = (string) $request->query('hub_verify_token', '');
         $challenge = (string) $request->query('hub_challenge', '');
 
-        $expected  = (string) config('services.meta.verify_token');
+        $expected  = MetaConfig::verifyToken();
 
         // hash_equals guards against timing side-channels on the compare.
         // Ordering hard-coded: guest input FIRST so the constant-time
@@ -89,12 +90,12 @@ class MessengerWebhookController extends Controller
      */
     public function handle(Request $request): Response
     {
-        $appSecret = (string) config('services.meta.app_secret');
+        $appSecret = MetaConfig::appSecret();
 
         if ($appSecret === '') {
             // Fail closed: without the secret we cannot verify. Log at
             // warning so a "why is this 202" thread is one grep away.
-            Log::channel('messenger')->warning('Webhook received but META_APP_SECRET is not set — dropping');
+            Log::channel('messenger')->warning('Webhook received but Meta app secret is not configured — dropping');
             return response('', 202);
         }
 

@@ -9,6 +9,7 @@ use App\Models\PlatformSetting;
 use App\Models\Tenant;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Messenger\MetaConfig;
 use App\Support\AddonPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -724,6 +725,81 @@ class SuperAdminPlatformController extends Controller
         );
 
         return back()->with('success', __('ui.platform_conversation_settings_page.saved'));
+    }
+
+    /**
+     * Meta / Facebook Messenger credentials the super admin can edit
+     * from the UI without SSHing to the box. Values sit in
+     * platform_settings (secrets encrypted with Crypt); a config/services.php
+     * fallback covers a fresh install and a rollback path.
+     *
+     * Two boxes stay separate on purpose: App ID + Graph version (public)
+     * are shown in plain text so ops can eyeball them; secrets are
+     * masked and only ever accepted as a NEW value on submit — the
+     * form never renders the current secret.
+     */
+    public function metaSettings()
+    {
+        return view('admin.platform.meta-settings', [
+            'appId'          => MetaConfig::appId(),
+            'graphVersion'   => MetaConfig::graphVersion(),
+            'appSecretSet'   => MetaConfig::appSecret() !== '',
+            'verifyTokenSet' => MetaConfig::verifyToken() !== '',
+            'appSecretMask'  => MetaConfig::maskSecret(MetaConfig::appSecret()),
+            'verifyTokenMask'=> MetaConfig::maskSecret(MetaConfig::verifyToken()),
+            'appIdInDb'      => MetaConfig::isStoredInDb(MetaConfig::KEY_APP_ID),
+            'appSecretInDb'  => MetaConfig::isStoredInDb(MetaConfig::KEY_APP_SECRET),
+            'verifyTokenInDb'=> MetaConfig::isStoredInDb(MetaConfig::KEY_VERIFY_TOKEN),
+            'graphVersionInDb' => MetaConfig::isStoredInDb(MetaConfig::KEY_GRAPH_VERSION),
+        ]);
+    }
+
+    public function updateMetaSettings(Request $request)
+    {
+        $data = $request->validate([
+            // Meta App ID is a 15–16 digit numeric string.
+            'app_id'         => ['nullable', 'string', 'regex:/^[0-9]{10,20}$/'],
+            // Graph version like v21.0, v20.0, etc.
+            'graph_version'  => ['nullable', 'string', 'regex:/^v\d+\.\d+$/'],
+            // Secrets: pass through only when the operator explicitly types a
+            // new value. Empty field leaves the stored value alone.
+            'app_secret'     => ['nullable', 'string', 'min:8', 'max:255'],
+            'verify_token'   => ['nullable', 'string', 'min:16', 'max:255'],
+        ], [
+            'app_id.regex'        => 'App ID should be a 10-20 digit numeric string.',
+            'graph_version.regex' => 'Graph version should look like v21.0.',
+            'app_secret.min'      => 'App Secret is too short — did you paste it fully?',
+            'verify_token.min'    => 'Verify Token should be at least 16 characters.',
+        ]);
+
+        // App ID + Graph version: writing an empty string clears the DB row
+        // and falls back to env. Only write when the operator actually typed
+        // something, so accidentally submitting an empty form doesn't wipe
+        // config.
+        if ($request->filled('app_id')) {
+            MetaConfig::setAppId($data['app_id']);
+        }
+        if ($request->filled('graph_version')) {
+            MetaConfig::setGraphVersion($data['graph_version']);
+        }
+        if ($request->filled('app_secret')) {
+            MetaConfig::setAppSecret($data['app_secret']);
+        }
+        if ($request->filled('verify_token')) {
+            MetaConfig::setVerifyToken($data['verify_token']);
+        }
+
+        AuditLog::record('platform.meta_settings.updated', null, [
+            'fields' => array_keys(array_filter([
+                'app_id'       => $request->filled('app_id'),
+                'app_secret'   => $request->filled('app_secret'),
+                'verify_token' => $request->filled('verify_token'),
+                'graph_version'=> $request->filled('graph_version'),
+            ])),
+        ]);
+
+        return redirect()->route('super_admin.platform.meta-settings')
+            ->with('success', 'Meta settings saved. The webhook and Send API pick up the new values on the next request.');
     }
 
     /**
