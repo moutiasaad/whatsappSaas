@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\Messenger\MessengerMessageSent;
 use App\Models\Messenger\Conversation;
 use App\Models\Messenger\Message;
 use App\Models\Messenger\Page;
@@ -165,7 +166,13 @@ class ProcessMessengerIncomingMessage implements ShouldQueue
             ProcessMessengerAiReply::dispatch($conversation->id, $message->id);
         }
 
-        // Phase 6 wires: broadcast to agent inbox via Reverb.
+        // Broadcast to the agent inbox in real time. Only fresh rows —
+        // a redelivered mid firstOrCreate'd back an existing row and
+        // rebroadcasting would just double-render the same bubble.
+        // Rescue: a Reverb outage must not fail the ingest job.
+        if ($message->wasRecentlyCreated) {
+            rescue(fn () => event(new MessengerMessageSent($message->fresh(['conversation']))));
+        }
     }
 
     public function failed(\Throwable $e): void

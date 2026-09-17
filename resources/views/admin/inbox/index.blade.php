@@ -1049,11 +1049,14 @@ function unifiedInbox() {
             const t = this.thread;
             if (!t || !window.Echo) return;
 
-            // A super admin has no tenant_id, so channel authorization rejects
-            // them on a tenant conversation; they stay on the poll.
+            // A super admin has no tenant_id, so WhatsApp channel authorization
+            // rejects them; they stay on the poll. Messenger + webchat authorize
+            // by tenant_id derived from the conversation, so super-admin works.
             const name = t.channel === 'whatsapp'
                 ? (t.tenant_id ? `tenant.${t.tenant_id}.conversation.${t.ref}` : null)
-                : `webchat.conversation.${t.ref}`;
+                : t.channel === 'messenger'
+                    ? `messenger.conversation.${t.ref}`
+                    : `webchat.conversation.${t.ref}`;
             if (!name) return;
 
             this._chan = name;
@@ -1061,6 +1064,8 @@ function unifiedInbox() {
             if (t.channel === 'whatsapp') {
                 ch.listen('.message.received', (e) => this.absorbWhatsApp(e))
                   .listen('.message.sent',     (e) => this.absorbWhatsApp(e));
+            } else if (t.channel === 'messenger') {
+                ch.listen('.messenger.message.sent', (e) => this.absorbMessenger(e));
             } else {
                 ch.listen('.webchat.message.sent', (e) => this.absorbWebChat(e));
             }
@@ -1114,6 +1119,30 @@ function unifiedInbox() {
                     name:   m.attachment.name,
                     inline: true,
                 } : null,
+            });
+        },
+
+        absorbMessenger(e) {
+            const m = e?.message;
+            if (!m || this.thread?.channel !== 'messenger') return;
+            if (m.conversation_uuid && m.conversation_uuid !== this.thread.ref) return;
+
+            // 'msg-' prefix must match what messengerThread() emits so the
+            // absorb() dedupe collapses this event onto the optimistic bubble
+            // (already rekeyed to 'msg-{id}' by send()) instead of appending
+            // a second copy. See the fix in 480fea5.
+            this.absorb({
+                id:         'msg-' + m.id,
+                kind:       m.sender_type === 'system' ? 'system' : 'text',
+                side:       m.sender_type === 'visitor' ? 'in' : 'out',
+                who:        m.sender_type === 'visitor'
+                                ? this.thread.header.name
+                                : (m.sender_type === 'bot'
+                                    ? this.labels.who_ai
+                                    : (this.thread.header.assignee?.name ?? this.labels.who_agent)),
+                body:       m.body,
+                created_at: m.created_at,
+                status:     'sent',
             });
         },
 

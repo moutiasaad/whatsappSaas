@@ -2,6 +2,7 @@
 
 namespace App\Services\Messenger;
 
+use App\Events\Messenger\MessengerMessageSent;
 use App\Models\Messenger\Conversation;
 use App\Models\Messenger\Message;
 use App\Models\Messenger\Page;
@@ -141,6 +142,15 @@ class MessengerService
             'mid'             => $result['mid'],
             'sender_type'     => $senderType,
         ]);
+
+        // Broadcast so the agent inbox renders the outbound bubble in
+        // real time. Only on a freshly created row — the firstOrCreate
+        // above would return an existing message on a retry, and
+        // rebroadcasting would double-render. Rescue keeps a Reverb
+        // outage from failing the send after Meta already accepted it.
+        if ($message->wasRecentlyCreated) {
+            rescue(fn () => event(new MessengerMessageSent($message->fresh(['conversation']))));
+        }
 
         return $message;
     }

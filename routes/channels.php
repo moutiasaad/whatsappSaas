@@ -65,3 +65,14 @@ Broadcast::channel('webchat.conversation.{uuid}', function ($user, $uuid) {
     if (!$conv) return false;
     return (string) $conv->tenant_id === (string) $user->tenant_id;
 });
+
+// Messenger — agent-only private stream. No visitor auth counterpart
+// because visitors receive Meta's own delivery via the Send API, not
+// through our Reverb sockets.
+Broadcast::channel('messenger.conversation.{uuid}', function ($user, $uuid) {
+    if (! $user?->hasAnyRole(['admin', 'supervisor', 'agent', 'super_admin'])) return false;
+    $conv = \App\Models\Messenger\Conversation::withoutGlobalScope('tenant')->where('uuid', $uuid)->first();
+    if (! $conv) return false;
+    // Super-admin can watch across tenants; other roles must own the tenant.
+    return $user->isSuperAdmin() || (string) $conv->tenant_id === (string) $user->tenant_id;
+});
