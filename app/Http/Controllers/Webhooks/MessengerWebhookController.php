@@ -120,8 +120,20 @@ class MessengerWebhookController extends Controller
         $payload = $request->json()->all();
 
         if (! is_array($payload) || ($payload['object'] ?? '') !== 'page') {
+            // Diagnostic (2026-09-17): messages arriving with object:null.
+            // Log raw body + content type + a decode retry so we can see
+            // whether Laravel's json parsing is missing something Meta is
+            // legitimately sending, or the body itself is empty.
+            $rawBody       = $request->getContent();
+            $decodedRetry  = json_decode($rawBody, true);
             Log::channel('messenger')->info('Webhook non-page object — ignoring', [
-                'object' => $payload['object'] ?? null,
+                'object'        => $payload['object'] ?? null,
+                'payload_keys'  => is_array($payload) ? array_keys($payload) : 'not-array',
+                'content_type'  => $request->header('Content-Type'),
+                'body_length'   => strlen($rawBody),
+                'body_head'     => substr($rawBody, 0, 400),
+                'retry_object'  => is_array($decodedRetry) ? ($decodedRetry['object'] ?? 'no-key') : 'not-array',
+                'json_error'    => json_last_error_msg(),
             ]);
             return response('EVENT_RECEIVED', 200);
         }
