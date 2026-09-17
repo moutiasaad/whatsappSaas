@@ -492,15 +492,23 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
         @endforeach
       </div>
     </div>
-    @if($isAuthed)
-      <a class="btn p" href="{{ $homeRoute }}">{{ __('landing.go_to_dashboard') }}</a>
-    @else
-      <a class="si" href="{{ route('login') }}">{{ __('landing.nav_login') }}</a>
-      <a class="btn p" href="{{ route('register') }}">{{ __('landing.hero_cta') }}</a>
-    @endif
+    {{-- Wrapping span lets partials/marketing-sso-nav-hydrate.blade.php swap
+         "Sign in / Start free trial" for "Go to dashboard" when the visitor
+         is already signed in on app.wavadesk.com. On core $isAuthed drives
+         the SSR branch directly — the JS never runs there. --}}
+    <span id="wavadesk-nav-actions" style="display:inline-flex;align-items:center;gap:12px">
+      @if($isAuthed)
+        <a class="btn p" href="{{ $homeRoute }}">{{ __('landing.go_to_dashboard') }}</a>
+      @else
+        <a class="si" href="{{ route('login') }}">{{ __('landing.nav_login') }}</a>
+        <a class="btn p" href="{{ route('register') }}">{{ __('landing.hero_cta') }}</a>
+      @endif
+    </span>
     @include('partials.marketing-mobile-nav-button')
   </div>
 </div></div>
+
+@include('partials.marketing-sso-nav-hydrate')
 
 @include('partials.marketing-mobile-nav')
 
