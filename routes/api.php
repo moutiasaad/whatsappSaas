@@ -35,6 +35,11 @@ Route::post('/webhooks/whatsapp/{token}', [WhatsAppWebhookController::class, 'ha
 //   POST → event delivery (HMAC-SHA256 signed with the App Secret)
 // Registered only on the core box — the marketing box has no DB rows to
 // serve them from, and Meta must not be pointed at wavadesk.com anyway.
+//
+// URL to paste into Meta's dashboard: https://app.wavadesk.com/api/webhooks/messenger
+// The `/api` prefix is applied by bootstrap/app.php to every route in this
+// file — do NOT forget it in docs (the 2026-09-17 launch lost ~45 min to
+// exactly this trap).
 if (Wavadesk::isCore()) {
     Route::get('/webhooks/messenger',  [MessengerWebhookController::class, 'verify'])
         ->name('webhooks.messenger.verify');

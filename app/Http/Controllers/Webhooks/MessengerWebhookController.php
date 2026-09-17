@@ -37,10 +37,12 @@ use Illuminate\Support\Facades\Log;
  * (bootstrap/app.php's validateCsrfTokens except list).
  *
  * Per-endpoint request path: the URL you paste into Meta's Messenger
- * settings is `https://app.wavadesk.com/webhooks/messenger`. Note the
- * absence of an `/api` prefix — matches the existing WhatsApp webhook
- * shape (routes/api.php declares webhooks without the `/api` prefix by
- * using explicit paths).
+ * settings is `https://app.wavadesk.com/api/webhooks/messenger`. The
+ * `/api` prefix is applied globally to every route in routes/api.php
+ * by bootstrap/app.php (`Route::middleware('web')->prefix('api')`),
+ * so a `Route::get('/webhooks/messenger', ...)` line here serves
+ * `/api/webhooks/messenger`. Same trap the WhatsApp webhook lives
+ * with (`/api/webhooks/whatsapp/{token}`).
  */
 class MessengerWebhookController extends Controller
 {

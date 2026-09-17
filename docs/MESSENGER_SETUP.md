@@ -58,7 +58,7 @@ App dashboard → **Messenger → Settings**.
 
 ### Webhooks
 
-- **Callback URL**: `https://app.wavadesk.com/webhooks/messenger`
+- **Callback URL**: `https://app.wavadesk.com/api/webhooks/messenger`
 - **Verify Token**: the same string you generate for `.env`
   `META_WEBHOOK_VERIFY_TOKEN`. Generate one on the core box:
   ```bash
