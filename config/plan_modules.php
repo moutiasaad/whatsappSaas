@@ -19,6 +19,7 @@
 return [
     'whatsapp'       => ['icon' => 'ri-whatsapp-line',       'group' => 'channels',   'always' => true],
     'webchat'        => ['icon' => 'ri-chat-smile-2-line',   'group' => 'channels',   'teaser' => true],
+    'messenger'      => ['icon' => 'ri-messenger-line',      'group' => 'channels',   'teaser' => true],
     'ai_agent'       => ['icon' => 'ri-sparkling-2-line',    'group' => 'automation'],
     'knowledge_base' => ['icon' => 'ri-book-2-line',         'group' => 'automation'],
     'saved_replies'  => ['icon' => 'ri-chat-quote-line',     'group' => 'automation'],

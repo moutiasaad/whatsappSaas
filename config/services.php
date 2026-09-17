@@ -64,4 +64,30 @@ return [
         'rest_payee_email' => env('PAYPAL_REST_PAYEE_EMAIL'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Meta / Facebook Messenger
+    |--------------------------------------------------------------------------
+    |
+    | Credentials for the Messenger channel (config/plan_modules.php key
+    | `messenger`). The webhook verify token is a random string YOU set here
+    | AND paste into the Meta app's Messenger settings — the two must match
+    | exactly or Meta's initial GET verification fails.
+    |
+    | graph_version is kept in config (not hardcoded) so a Meta minor-version
+    | bump is a one-line change. Meta's changelog:
+    | https://developers.facebook.com/docs/graph-api/changelog/versions
+    |
+    | Left empty on any host that does not sell the Messenger module. See
+    | docs/MESSENGER_SETUP.md for the full Meta-side setup checklist.
+    |
+    */
+
+    'meta' => [
+        'app_id'        => env('META_APP_ID'),
+        'app_secret'    => env('META_APP_SECRET'),
+        'verify_token'  => env('META_WEBHOOK_VERIFY_TOKEN'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
+    ],
+
 ];
