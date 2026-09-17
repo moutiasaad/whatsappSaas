@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\V1\Auth\AuthApiController;
 use App\Http\Controllers\Api\V1\BillingApiController;
 use App\Http\Controllers\Api\V1\PlansApiController;
+use App\Http\Controllers\Api\V1\SessionStatusController;
+use App\Http\Middleware\SessionStatusCors;
 use App\Http\Controllers\Api\DirectSendController;
 use App\Http\Controllers\Api\SingleInstanceController;
 use App\Http\Controllers\Api\AgentPresenceController;
@@ -93,6 +95,20 @@ if (Wavadesk::isCore()) {
             ->middleware(['auth:sanctum', 'throttle:20,1'])
             ->name('api.v1.billing.paypal.capture-order');
     });
+
+    // ─── v1 Session status (called from the marketing site's browser) ──────
+    // Unlike everything else above this is NOT server-to-server: the visitor's
+    // own browser fetches it with `credentials: 'include'` so the marketing
+    // header can flip from "Sign in / Start free trial" to "Go to dashboard"
+    // when the same browser already carries a core session cookie.
+    //
+    // No `wavadesk.caller` gate — the browser has no shared secret. The
+    // origin allowlist in SessionStatusCors is what stands in for the secret,
+    // and the payload is display-only (name, initials, role, home URL) so a
+    // leaked response reveals no tokens.
+    Route::match(['get', 'options'], '/v1/session/status', [SessionStatusController::class, 'show'])
+        ->middleware([SessionStatusCors::class, 'throttle:60,1'])
+        ->name('api.v1.session.status');
 }
 
 // ─── Web Live-Chat public widget API ─────────────────────────────────────────

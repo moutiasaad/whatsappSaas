@@ -60,14 +60,68 @@
         @unless($hideLocale ?? false)
             @include('partials.locale-switcher')
         @endunless
-        @if($navHome)
-            <a class="btn p sm" href="{{ $navHome }}">{{ __('landing.go_to_dashboard') }}</a>
-        @else
-            <a class="si" href="{{ route('login') }}">{{ __('landing.nav_signin') }}</a>
-            <a class="btn p sm" href="{{ route('register') }}">{{ __('landing.nav_cta') }}</a>
-        @endif
+        {{-- On marketing (wavadesk.com) $navHome is always null — identity lives
+             on core. The signed-out CTAs render server-side; a small JS below
+             asks core "is this browser signed in?" and swaps them out if yes.
+             On core the PHP branch already knows, so no hydration runs. --}}
+        <span id="wavadesk-nav-actions" style="display:inline-flex;align-items:center;gap:12px">
+            @if($navHome)
+                <a class="btn p sm" href="{{ $navHome }}">{{ __('landing.go_to_dashboard') }}</a>
+            @else
+                <a class="si" href="{{ route('login') }}">{{ __('landing.nav_signin') }}</a>
+                <a class="btn p sm" href="{{ route('register') }}">{{ __('landing.nav_cta') }}</a>
+            @endif
+        </span>
         @include('partials.marketing-mobile-nav-button')
     </div>
 </div></div>
+
+@if(\App\Support\Wavadesk::isMarketing() && \App\Support\Wavadesk::coreUrl() !== '')
+<script>
+(function(){
+    var el = document.getElementById('wavadesk-nav-actions');
+    if (!el) return;
+
+    var endpoint = @json(\App\Support\Wavadesk::coreUrlTo('/api/v1/session/status'));
+    var coreOrigin = @json(\App\Support\Wavadesk::coreUrl());
+    var mobileEl = document.getElementById('wavadesk-mnav-cta');
+
+    // Labels are pulled from the same translation keys the SSR branch uses
+    // so a locale swap doesn't drift out of sync.
+    var dashboardLabel = @json(__('landing.go_to_dashboard'));
+
+    fetch(endpoint, {
+        method: 'GET',
+        credentials: 'include',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+        if (!data || !data.authenticated || !data.home_url) return;
+
+        // Defence in depth: only accept a home URL that lives on the core
+        // origin. Guards against a rogue future response value ending up as
+        // a javascript: href.
+        if (data.home_url.indexOf(coreOrigin + '/') !== 0) return;
+
+        var a = document.createElement('a');
+        a.className = 'btn p sm';
+        a.href = data.home_url;
+        a.textContent = dashboardLabel;
+        el.replaceChildren(a);
+
+        if (mobileEl) {
+            var m = document.createElement('a');
+            m.className = 'btn p';
+            m.href = data.home_url;
+            m.textContent = dashboardLabel;
+            mobileEl.replaceChildren(m);
+        }
+    })
+    .catch(function () { /* swallow — signed-out CTAs remain */ });
+})();
+</script>
+@endif
 
 @include('partials.marketing-mobile-nav')

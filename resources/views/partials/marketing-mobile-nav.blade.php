@@ -71,7 +71,10 @@
             </div>
         @endif
 
-        <div class="mnav-cta">
+        {{-- id lets marketing-nav.blade.php's hydration swap the mobile CTA
+             the same time it swaps the desktop one. See the <script> tag at
+             the bottom of that partial. --}}
+        <div class="mnav-cta" id="wavadesk-mnav-cta">
             @if($homeRoute ?? null)
                 <a class="btn p" href="{{ $homeRoute }}">{{ __('landing.go_to_dashboard') }}</a>
             @else
