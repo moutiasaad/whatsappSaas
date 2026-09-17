@@ -142,8 +142,14 @@ class ProcessMessengerIncomingMessage implements ShouldQueue
             'mid'             => $mid,
         ]);
 
+        // AI dispatch: only on fresh visitor messages (an echo is us or
+        // an off-platform agent, and re-processed retries reuse the
+        // same row so wasRecentlyCreated=false → don't double-answer).
+        if (! $isEcho && $message->wasRecentlyCreated) {
+            ProcessMessengerAiReply::dispatch($conversation->id, $message->id);
+        }
+
         // Phase 6 wires: broadcast to agent inbox via Reverb.
-        // Phase 7 wires: dispatch MessengerAutoReply job if AI mode is on.
     }
 
     public function failed(\Throwable $e): void

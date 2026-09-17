@@ -12,7 +12,7 @@ class AiSettings extends Model
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id', 'mode', 'mode_before_auto_off', 'whatsapp_enabled', 'webchat_enabled',
+        'tenant_id', 'mode', 'mode_before_auto_off', 'whatsapp_enabled', 'webchat_enabled', 'messenger_enabled',
         'reply_language', 'suggestion_count', 'reply_when_claimed',
         'system_prompt', 'escalation_keywords',
         'monthly_message_quota', 'ai_messages_used_this_period', 'quota_reset_at',
@@ -23,6 +23,7 @@ class AiSettings extends Model
         'escalation_keywords'    => 'array',
         'whatsapp_enabled'       => 'boolean',
         'webchat_enabled'        => 'boolean',
+        'messenger_enabled'      => 'boolean',
         'reply_when_claimed'     => 'boolean',
         'monthly_message_quota'       => 'integer',
         'ai_messages_used_this_period'=> 'integer',
@@ -41,9 +42,10 @@ class AiSettings extends Model
         }
 
         return match ($channel) {
-            'whatsapp' => (bool) $this->whatsapp_enabled,
-            'webchat'  => (bool) $this->webchat_enabled,
-            default    => false,
+            'whatsapp'  => (bool) $this->whatsapp_enabled,
+            'webchat'   => (bool) $this->webchat_enabled,
+            'messenger' => (bool) $this->messenger_enabled,
+            default     => false,
         };
     }
 
