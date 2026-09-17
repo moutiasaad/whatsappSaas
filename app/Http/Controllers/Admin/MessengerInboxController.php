@@ -39,6 +39,19 @@ class MessengerInboxController extends Controller
         // paginated list. Same URL serves both, matching the WebChat +
         // Users + Teams admin pages.
         if (! $request->expectsJson()) {
+            // Empty inbox for an admin who hasn't connected any Page is
+            // confusing — bounce them to settings with a "Connect a Page"
+            // prompt. Supervisors and agents get the empty inbox because
+            // they can't fix it (settings is admin-only).
+            $user = $request->user();
+            if ($user->isAdmin()) {
+                $hasPage = \App\Models\Messenger\Page::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $user->tenant_id)
+                    ->exists();
+                if (! $hasPage) {
+                    return redirect()->route('tenant_admin.messenger.settings');
+                }
+            }
             return view('admin.messenger.index');
         }
 

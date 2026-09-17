@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\SuperAdminManagerController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\MessengerConnectController;
 use App\Http\Controllers\Admin\MessengerInboxController;
 use App\Http\Controllers\WebChat\ConversationController as WebChatConversationController;
 use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
@@ -298,6 +299,17 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                     Route::post('/conversations/{uuid}/close',   [MessengerInboxController::class, 'close'])->name('close');
                     Route::post('/conversations/{uuid}/read',    [MessengerInboxController::class, 'markRead'])->name('read');
                     Route::post('/conversations/{uuid}/reply',   [MessengerInboxController::class, 'reply'])->name('reply');
+
+                    // Facebook Page connection — admin-only settings inside the
+                    // Messenger module. Agents can work the inbox but only the
+                    // tenant admin decides which Pages Wavadesk manages.
+                    Route::middleware('role:admin')->group(function () {
+                        Route::get('/settings',                [MessengerConnectController::class, 'settings'])->name('settings');
+                        Route::get('/oauth/start',             [MessengerConnectController::class, 'start'])->name('oauth.start');
+                        Route::get('/oauth/callback',          [MessengerConnectController::class, 'callback'])->name('oauth.callback');
+                        Route::post('/oauth/select',           [MessengerConnectController::class, 'select'])->name('oauth.select');
+                        Route::post('/pages/{id}/disconnect',  [MessengerConnectController::class, 'disconnect'])->name('oauth.disconnect');
+                    });
                 });
 
             // Impersonation leave route (when admin is currently impersonating).

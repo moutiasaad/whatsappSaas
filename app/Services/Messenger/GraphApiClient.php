@@ -92,6 +92,100 @@ class GraphApiClient
     }
 
     /**
+     * OAuth: exchange the code Facebook redirected back with for a
+     * short-lived USER access token. First step of the Phase 5
+     * connect flow — the returned token authenticates the /me/accounts
+     * lookup that lists which Pages the user manages.
+     *
+     * Returns ['ok'=>bool, 'token'=>?string, 'expires_in'=>?int, 'error'=>?array]
+     */
+    public function exchangeCodeForUserToken(string $code, string $redirectUri): array
+    {
+        $response = Http::asJson()->get($this->url('/oauth/access_token'), [
+            'client_id'     => (string) config('services.meta.app_id'),
+            'client_secret' => $this->appSecret,
+            'redirect_uri'  => $redirectUri,
+            'code'          => $code,
+        ]);
+
+        if (! $response->successful() || ! $response->json('access_token')) {
+            return [
+                'ok'    => false,
+                'token' => null,
+                'error' => $this->extractError($response),
+            ];
+        }
+
+        return [
+            'ok'         => true,
+            'token'      => (string) $response->json('access_token'),
+            'expires_in' => (int) ($response->json('expires_in') ?? 0),
+            'error'      => null,
+        ];
+    }
+
+    /**
+     * OAuth: trade a short-lived user token for a long-lived one
+     * (~60 days). Page tokens minted from a long-lived user token do
+     * NOT expire unless the user changes their password or revokes
+     * access. This is why we do the exchange before /me/accounts.
+     */
+    public function getLongLivedUserToken(string $shortLivedToken): array
+    {
+        $response = Http::get($this->url('/oauth/access_token'), [
+            'grant_type'        => 'fb_exchange_token',
+            'client_id'         => (string) config('services.meta.app_id'),
+            'client_secret'     => $this->appSecret,
+            'fb_exchange_token' => $shortLivedToken,
+        ]);
+
+        if (! $response->successful() || ! $response->json('access_token')) {
+            return [
+                'ok'    => false,
+                'token' => null,
+                'error' => $this->extractError($response),
+            ];
+        }
+
+        return [
+            'ok'         => true,
+            'token'      => (string) $response->json('access_token'),
+            'expires_in' => (int) ($response->json('expires_in') ?? 0),
+            'error'      => null,
+        ];
+    }
+
+    /**
+     * List Pages the given user token owns. Each result has:
+     *   { id, name, access_token, tasks?, category? }
+     * The `access_token` here is the Page-scoped token we store in
+     * messenger_pages.access_token.
+     */
+    public function listPages(string $userAccessToken): array
+    {
+        $response = Http::get($this->url('/me/accounts'), [
+            'access_token'    => $userAccessToken,
+            'appsecret_proof' => $this->appsecretProof($userAccessToken),
+            'fields'          => 'id,name,access_token,tasks,category',
+            'limit'           => 100,
+        ]);
+
+        if (! $response->successful()) {
+            return [
+                'ok'    => false,
+                'pages' => [],
+                'error' => $this->extractError($response),
+            ];
+        }
+
+        return [
+            'ok'    => true,
+            'pages' => (array) ($response->json('data') ?? []),
+            'error' => null,
+        ];
+    }
+
+    /**
      * POST /{page_id}/subscribed_apps — subscribe the app to a Page's
      * webhook events. This is the call Meta's dashboard UI does NOT
      * always run for you (Phase 3 launch trap 2026-09-17). Called by
