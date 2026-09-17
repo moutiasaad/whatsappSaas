@@ -3025,5 +3025,6 @@
         btn.addEventListener('click', function () { pPanel?.classList.remove('open'); });
     })();
     </script>
+    @include('partials.wavadesk-chat-widget')
 </body>
 </html>

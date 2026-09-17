@@ -1,0 +1,305 @@
+{
+    "entries": [
+        {
+            "type": "company_profile",
+            "title": "About Wavadesk",
+            "body": "Wavadesk is a multi-tenant customer-support desk built around WhatsApp and a website live-chat widget. A business connects its own WhatsApp Business number by scanning a QR code; incoming messages land in a shared inbox where agents claim, reply, and close them. An AI assistant powered by Anthropic Claude can answer automatically from the tenant's own knowledge base and hands off to a human on escalation keywords. Domain: https://wavadesk.com. The product is designed for small and mid-size support teams, e-commerce operations, and agencies that already handle customer service over WhatsApp.",
+            "is_active": true,
+            "sort_order": 0
+        },
+        {
+            "type": "company_profile",
+            "title": "Positioning and differentiators",
+            "body": "Wavadesk runs on a self-hosted WhatsApp gateway (Baileys) rather than the Meta Cloud API. That means there are no per-conversation Meta fees to pass through to customers. The stack is Laravel 12, MySQL, and Laravel Reverb for real-time updates over WebSockets. Interface languages are English, French, and Arabic with full right-to-left support. Billing is in USD via Stripe Checkout or PayPal.",
+            "is_active": true,
+            "sort_order": 1
+        },
+        {
+            "type": "product",
+            "title": "WhatsApp Desk",
+            "body": "The core channel. Connect a WhatsApp Business number by scanning a QR code, then work every conversation from a shared inbox: pool, claim, reply, close. Atomic claim prevents two agents from taking the same chat. Every message shows a delivery status (pending, sent, delivered, read, failed). Customers are created automatically as contacts with their conversation history. WhatsApp Desk is always on for every plan.",
+            "is_active": true,
+            "sort_order": 10
+        },
+        {
+            "type": "product",
+            "title": "Website Live Chat",
+            "body": "An embeddable JavaScript widget that adds live chat to any website. Per-tenant theming (colour, launcher icon and text, position, bubble style, branding toggle), welcome message, suggested topics, pre-chat email capture, offline message, multi-language support, and a domain allowlist that fails closed. Conversations land in the same inbox as WhatsApp, so agents work one queue.",
+            "is_active": true,
+            "sort_order": 11
+        },
+        {
+            "type": "product",
+            "title": "AI Auto-Reply",
+            "body": "An Anthropic Claude assistant that answers customer messages using the tenant's knowledge base. Four modes: off, suggestion (drafts only), autonomous (sends automatically), and hybrid (per-conversation toggle). Per-channel toggles for WhatsApp and web-chat, choice of reply language, custom system prompt, and configurable escalation keywords (defaults include manager, refund, complaint, lawsuit). Monthly AI message quota is enforced per plan.",
+            "is_active": true,
+            "sort_order": 12
+        },
+        {
+            "type": "product",
+            "title": "Knowledge Base",
+            "body": "Per-tenant knowledge base with five entry types: FAQ, product, policy, company profile, and custom instruction. Entries can be created one by one or imported in bulk from a JSON file. The knowledge base is what the AI reads to answer questions, so keeping it accurate directly improves reply quality.",
+            "is_active": true,
+            "sort_order": 13
+        },
+        {
+            "type": "product",
+            "title": "Saved Replies",
+            "body": "Canned responses with keyboard shortcuts. Can be scoped tenant-wide or personal to a single agent. Ordered for quick access from the composer.",
+            "is_active": true,
+            "sort_order": 14
+        },
+        {
+            "type": "product",
+            "title": "Reservation Bot",
+            "body": "A WhatsApp appointment-booking flow with tappable list and button messages: date, period, slot, name, notes, confirm. Includes an availability manager with bulk generation across a date range, per-tenant trigger keywords (for example: book, booking, reservation, and their Arabic and French equivalents), cancel keywords, and reservation status management. Ideal for clinics, salons, garages, and restaurants.",
+            "is_active": true,
+            "sort_order": 15
+        },
+        {
+            "type": "product",
+            "title": "OTP over WhatsApp",
+            "body": "A developer API that sends one-time codes over the tenant's own WhatsApp number instead of SMS. Configurable code length (4, 6, or 8 digits), TTL from 1 to 60 minutes, message template with a {code} placeholder, and copy-paste integration snippets. Great for applications that want lower-cost verification than SMS.",
+            "is_active": true,
+            "sort_order": 16
+        },
+        {
+            "type": "product",
+            "title": "Teams and Routing",
+            "body": "Group agents into teams, assign WhatsApp instances to teams, and scope the shared pool per team. Supervisors get oversight of the teams they manage.",
+            "is_active": true,
+            "sort_order": 17
+        },
+        {
+            "type": "product",
+            "title": "Reports and Analytics",
+            "body": "Operational KPIs: total and closed conversations, resolution rate, average first-response time, average resolution time, inbound and outbound counts. Also a team leaderboard, agent leaderboard, daily volume chart, hourly heatmap, state breakdown, and AI-versus-agent split. Every report is date-range and timezone aware.",
+            "is_active": true,
+            "sort_order": 18
+        },
+        {
+            "type": "product",
+            "title": "Audit Log",
+            "body": "Every meaningful action is recorded with actor, timestamp, and target. Impersonation events are logged separately so admins can prove who did what.",
+            "is_active": true,
+            "sort_order": 19
+        },
+        {
+            "type": "product",
+            "title": "External API",
+            "body": "A static X-Api-Key (prefixed wvd_) that can be regenerated from the profile page. Endpoints include POST /api/send for direct sends to any number, GET /api/instance, GET /api/instance/status, POST /api/instance/connect, POST /api/instance/disconnect, and POST /api/conversations/start for outbound conversations. A Postman collection and HTML docs are shipped in the app.",
+            "is_active": true,
+            "sort_order": 20
+        },
+        {
+            "type": "faq",
+            "title": "What is Wavadesk?",
+            "body": "Wavadesk is a shared inbox for WhatsApp and website live chat, with an AI assistant powered by Claude. Your team connects a WhatsApp Business number by scanning a QR code, then works every conversation from one queue. The AI can answer common questions from your knowledge base and hand off to a human when needed.",
+            "is_active": true,
+            "sort_order": 30
+        },
+        {
+            "type": "faq",
+            "title": "Do you use the Meta WhatsApp Cloud API?",
+            "body": "No. Wavadesk runs on a self-hosted WhatsApp gateway (Baileys), not the Meta Cloud API. This means there are no per-conversation Meta fees to pass through. To connect, you scan a QR code with the WhatsApp app on your phone, the same way WhatsApp Web works.",
+            "is_active": true,
+            "sort_order": 31
+        },
+        {
+            "type": "faq",
+            "title": "How do I connect my WhatsApp number?",
+            "body": "Create an instance in the WhatsApp Instances page, click Connect, and scan the QR code with the WhatsApp app on the phone that holds the number. Once connected, incoming messages start landing in your inbox. If the session drops, you can reconnect by scanning a fresh QR.",
+            "is_active": true,
+            "sort_order": 32
+        },
+        {
+            "type": "faq",
+            "title": "Which channels does Wavadesk support today?",
+            "body": "Two channels: WhatsApp (via a QR-connected number on our self-hosted gateway) and a website live-chat widget that you embed with a small JavaScript snippet. Both channels feed the same shared inbox so agents don't have to context-switch.",
+            "is_active": true,
+            "sort_order": 33
+        },
+        {
+            "type": "faq",
+            "title": "How many WhatsApp numbers can I connect?",
+            "body": "One WhatsApp number per tenant. Multi-number support is on the roadmap but not shipped yet, so please plan around one connected number per workspace.",
+            "is_active": true,
+            "sort_order": 34
+        },
+        {
+            "type": "faq",
+            "title": "Is there a free trial?",
+            "body": "Yes. Every plan can carry its own free trial length, set by the platform. When you register, the trial starts automatically and gives you access to the plan's modules. When it ends, you're prompted to pick a paid subscription.",
+            "is_active": true,
+            "sort_order": 35
+        },
+        {
+            "type": "faq",
+            "title": "What payment methods do you accept?",
+            "body": "Stripe Checkout for card payments and PayPal for PayPal balance or card. All prices are in USD.",
+            "is_active": true,
+            "sort_order": 36
+        },
+        {
+            "type": "faq",
+            "title": "Do you bill annually?",
+            "body": "Right now checkout charges the monthly price. The landing page shows an annual-billing toggle for reference, but annual billing isn't wired end-to-end yet, so please plan for monthly billing today.",
+            "is_active": true,
+            "sort_order": 37
+        },
+        {
+            "type": "faq",
+            "title": "How does the AI auto-reply work?",
+            "body": "The AI runs on Anthropic Claude. It reads your knowledge base, the customer's message, and recent conversation context, then replies in the language you configure. You choose one of four modes: off, suggestion (drafts only), autonomous (sends automatically), or hybrid (toggle per conversation). If a message contains an escalation keyword (like manager, refund, complaint, lawsuit) the AI stops and hands off to a human.",
+            "is_active": true,
+            "sort_order": 38
+        },
+        {
+            "type": "faq",
+            "title": "Can I control what the AI is allowed to say?",
+            "body": "Yes. You set the system prompt, the reply language, the escalation keywords, and the AI mode per channel. You can also toggle whether the AI replies on conversations that are already claimed by a human agent. And every reply is grounded in your knowledge base, so what the AI \"knows\" is what you upload.",
+            "is_active": true,
+            "sort_order": 39
+        },
+        {
+            "type": "faq",
+            "title": "Can I import my knowledge base in bulk?",
+            "body": "Yes. From the Knowledge Base page use Import JSON and upload a file shaped like {\"entries\": [{\"type\": \"faq\", \"title\": \"...\", \"body\": \"...\"}]}. A downloadable template is available on the same page. Allowed entry types are faq, product, policy, company_profile, and custom_instruction.",
+            "is_active": true,
+            "sort_order": 40
+        },
+        {
+            "type": "faq",
+            "title": "What languages does Wavadesk support?",
+            "body": "The interface ships in English, French, and Arabic, with full right-to-left layout for Arabic. The AI can be configured to reply in any language independently of the interface language.",
+            "is_active": true,
+            "sort_order": 41
+        },
+        {
+            "type": "faq",
+            "title": "Can I take appointments over WhatsApp?",
+            "body": "Yes, with the Reservation Bot module. Customers walk through a tappable flow (date, period, slot, name, notes, confirm). You manage availability slots in bulk, set your own trigger and cancel keywords, and can update reservation statuses. The bot is Arabic-first by default; other-language templates are on the roadmap.",
+            "is_active": true,
+            "sort_order": 42
+        },
+        {
+            "type": "faq",
+            "title": "Do you have an API?",
+            "body": "Yes. Once the External API module is enabled on your plan, you get an X-Api-Key (prefixed wvd_) from your profile. Endpoints include direct send, instance status and connect/disconnect, and start-outbound-conversation. A Postman collection and HTML documentation are shipped in the app.",
+            "is_active": true,
+            "sort_order": 43
+        },
+        {
+            "type": "faq",
+            "title": "Can I send OTP codes over WhatsApp?",
+            "body": "Yes. The OTP module gives you two endpoints: /api/otp/send and /api/otp/verify. You control code length (4, 6, or 8 digits), TTL (1 to 60 minutes), and the message template with a {code} placeholder. It's a lower-cost alternative to SMS OTP.",
+            "is_active": true,
+            "sort_order": 44
+        },
+        {
+            "type": "faq",
+            "title": "What user roles are there?",
+            "body": "Four roles, each with its own panel: Super Admin (platform operator), Admin (owner of a tenant workspace), Supervisor (oversees teams), and Agent (frontline support). Permissions are enforced server-side, not just by hiding menu items.",
+            "is_active": true,
+            "sort_order": 45
+        },
+        {
+            "type": "faq",
+            "title": "How is data separated between customers?",
+            "body": "Every tenant has its own isolated data scope. Queries automatically filter by tenant, so users of one workspace can never see another workspace's conversations, customers, or knowledge base. Super-admin operators are the only accounts that can look across tenants.",
+            "is_active": true,
+            "sort_order": 46
+        },
+        {
+            "type": "faq",
+            "title": "Can I customise the live-chat widget?",
+            "body": "Yes. From the Web Chat settings page you set the colour, launcher icon and text, position (bottom-left or bottom-right), bubble style, welcome message, suggested topic cards, pre-chat email capture, offline message, allowed domains, and whether the small \"Powered by\" branding shows. The widget also respects your locale.",
+            "is_active": true,
+            "sort_order": 47
+        },
+        {
+            "type": "faq",
+            "title": "Do you offer reports and analytics?",
+            "body": "Yes, once the Reports module is enabled. Reports cover total and closed conversations, resolution rate, first-response time, resolution time, inbound and outbound volume, a team and agent leaderboard, daily volume, hourly heatmap, state breakdown, AI-vs-agent split, all filterable by date range and timezone.",
+            "is_active": true,
+            "sort_order": 48
+        },
+        {
+            "type": "faq",
+            "title": "Is there an audit log?",
+            "body": "Yes. Every meaningful action (message send, conversation reassign, plan change, user creation, impersonation, etc.) is recorded with actor, timestamp, and target. Impersonation is logged separately for accountability.",
+            "is_active": true,
+            "sort_order": 49
+        },
+        {
+            "type": "faq",
+            "title": "Where do I find my API key?",
+            "body": "If your plan includes the External API module, open the API Access page in the tenant admin panel. Your X-Api-Key is shown there, along with the full documentation and a Postman collection. You can regenerate the key at any time; the old key stops working the moment a new one is issued.",
+            "is_active": true,
+            "sort_order": 50
+        },
+        {
+            "type": "faq",
+            "title": "How do I upgrade my plan?",
+            "body": "Open Billing in the tenant admin panel and pick a plan. You'll be sent to Stripe Checkout or PayPal to complete payment; on return, the new plan is applied immediately and the modules it grants become available.",
+            "is_active": true,
+            "sort_order": 51
+        },
+        {
+            "type": "policy",
+            "title": "Data isolation",
+            "body": "Every tenant's data (conversations, customers, users, teams, knowledge base, saved replies, reservations, audit log) is scoped and queried per tenant. Cross-tenant queries are only possible for platform super admins, and impersonation of a tenant user is always logged.",
+            "is_active": true,
+            "sort_order": 60
+        },
+        {
+            "type": "policy",
+            "title": "Free trial and cancellation",
+            "body": "Free trials are per plan. When the trial ends, the workspace is blocked from starting new work until a paid plan is chosen. You can cancel a paid subscription at any time from Billing; access continues to the end of the paid period.",
+            "is_active": true,
+            "sort_order": 61
+        },
+        {
+            "type": "policy",
+            "title": "Support channels",
+            "body": "Live support is available through the chat widget on wavadesk.com and inside the app. Email support is available at support@wavadesk.com. If the AI can't answer, your message is queued for a human agent.",
+            "is_active": true,
+            "sort_order": 62
+        },
+        {
+            "type": "custom_instruction",
+            "title": "Brand voice",
+            "body": "Reply in a warm, direct tone. Keep answers short: two or three sentences by default, longer only when a customer explicitly asks for detail. Do not use marketing superlatives (\"world-class\", \"best-in-class\", \"revolutionary\"). Never open with \"Great question!\" or similar filler. Do not use markdown formatting in chat replies.",
+            "is_active": true,
+            "sort_order": 70
+        },
+        {
+            "type": "custom_instruction",
+            "title": "Handoff behaviour",
+            "body": "If the customer asks to speak to a human, or their message contains any of the configured escalation keywords (manager, refund, complaint, lawsuit, cancel my subscription), stop replying and let the request queue for a human agent. Do not promise a refund, credit, or deadline; only a human should commit to those.",
+            "is_active": true,
+            "sort_order": 71
+        },
+        {
+            "type": "custom_instruction",
+            "title": "Do not invent pricing or features",
+            "body": "Never quote a specific USD price, plan name, or module inclusion from memory. If asked about pricing, direct the visitor to the Pricing section of wavadesk.com and offer to hand them over to a human if they need a quote. Never claim support for the Meta WhatsApp Cloud API, multi-number, or annual billing — those are not shipped today.",
+            "is_active": true,
+            "sort_order": 72
+        },
+        {
+            "type": "custom_instruction",
+            "title": "Language handling",
+            "body": "Detect the language of the incoming message and reply in the same language when it is English, French, or Arabic. For any other language, reply in English and offer to continue in French or Arabic if the visitor prefers.",
+            "is_active": true,
+            "sort_order": 73
+        },
+        {
+            "type": "custom_instruction",
+            "title": "When you don't know the answer",
+            "body": "If the knowledge base does not cover the question, say so plainly (for example: \"I don't have that detail on hand\") and offer to hand the visitor over to a human agent. Do not guess. Do not fabricate documentation URLs.",
+            "is_active": true,
+            "sort_order": 74
+        }
+    ]
+}

@@ -445,5 +445,6 @@ html[dir="rtl"] .backlink svg{transform:scaleX(-1)}
 })();
 </script>
 @stack('scripts')
+@include('partials.wavadesk-chat-widget')
 </body>
 </html>

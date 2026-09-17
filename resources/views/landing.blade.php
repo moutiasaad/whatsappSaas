@@ -980,5 +980,6 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   }
 })();
 </script>
+@include('partials.wavadesk-chat-widget')
 </body>
 </html>

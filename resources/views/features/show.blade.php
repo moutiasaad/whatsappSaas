@@ -244,5 +244,6 @@
     document.querySelectorAll('.art section[id]').forEach(s => io.observe(s));
 })();
 </script>
+@include('partials.wavadesk-chat-widget')
 </body>
 </html>

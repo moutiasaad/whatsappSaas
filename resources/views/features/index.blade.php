@@ -100,5 +100,6 @@
 </section>
 
 @include('partials.marketing-footer')
+@include('partials.wavadesk-chat-widget')
 </body>
 </html>

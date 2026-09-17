@@ -226,5 +226,6 @@ if (langBtn && langDD) {
     langDD.addEventListener('click', e => e.stopPropagation());
 }
 </script>
+@include('partials.wavadesk-chat-widget')
 </body>
 </html>
