@@ -130,6 +130,11 @@ class MessengerAutoReplyService
             }
 
             if ($this->shouldEscalate($text, $settings)) {
+                Log::channel('messenger')->info('AI: reply tripped escalation keyword', [
+                    'conversation_id' => $conversation->id,
+                    'reply_head'      => mb_substr($text, 0, 200),
+                    'keywords'        => $settings->escalation_keywords ?? [],
+                ]);
                 $this->promoteToPending($conversation, 'ai_escalation_keyword', 'reply_keyword');
                 return null;
             }
@@ -263,6 +268,7 @@ class MessengerAutoReplyService
         Log::channel('messenger')->info('AI: promoted to pending', [
             'conversation_id' => $conversation->id,
             'reason'          => $reason,
+            'source'          => $escalation, // customer_keyword | reply_keyword | null
             'current_status'  => $conversation->status,
             'took_effect'     => $conversation->isBot(),
         ]);
