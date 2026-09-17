@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\SuperAdminManagerController;
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\MessengerInboxController;
 use App\Http\Controllers\WebChat\ConversationController as WebChatConversationController;
 use App\Http\Controllers\WebChat\MessageController as WebChatMessageController;
 use App\Http\Controllers\WebChat\WidgetSettingsController as WebChatWidgetSettingsController;
@@ -280,6 +281,23 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
                         ->name('conversations.read');
                     Route::post('/conversations/{uuid}/messages', [WebChatMessageController::class, 'store'])
                         ->name('messages.store');
+                });
+
+            // Messenger inbox — mirrors the webchat routes above. Gated on
+            // the `messenger` plan module so tenants without the module see
+            // 403 instead of a broken empty page. Not available to
+            // super_admin — they don't act as frontline agents.
+            Route::middleware(['role:admin,supervisor,agent', 'module:messenger'])
+                ->prefix('messenger')
+                ->name('messenger.')
+                ->group(function () {
+                    Route::get('/',                        [MessengerInboxController::class, 'index'])->name('index');
+                    Route::get('/conversations/{uuid}',    [MessengerInboxController::class, 'show'])->name('show');
+                    Route::post('/conversations/{uuid}/claim',   [MessengerInboxController::class, 'claim'])->name('claim');
+                    Route::post('/conversations/{uuid}/release', [MessengerInboxController::class, 'release'])->name('release');
+                    Route::post('/conversations/{uuid}/close',   [MessengerInboxController::class, 'close'])->name('close');
+                    Route::post('/conversations/{uuid}/read',    [MessengerInboxController::class, 'markRead'])->name('read');
+                    Route::post('/conversations/{uuid}/reply',   [MessengerInboxController::class, 'reply'])->name('reply');
                 });
 
             // Impersonation leave route (when admin is currently impersonating).
