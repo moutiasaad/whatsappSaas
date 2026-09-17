@@ -1328,20 +1328,34 @@ function unifiedInbox() {
 
                 // Re-key the optimistic bubble to the stored id, so the reload and
                 // the broadcast both land on it instead of adding a second copy.
+                // Each channel prefixes its ids differently — the wrong prefix
+                // meant the reload treated the real message as new and left the
+                // stale optimistic bubble behind (or, with a full-replace
+                // reloadThread, the reload showed nothing until the settle timer
+                // fired — which read as "message didn't show up until refresh").
                 const saved = await r.json().catch(() => null);
                 const realId = t.channel === 'whatsapp'
                     ? (saved?.id ? 'wa-' + saved.id : null)
-                    : (saved?.message?.id ? 'lc-' + saved.message.id : null);
+                    : t.channel === 'messenger'
+                        ? (saved?.message?.id ? 'msg-' + saved.message.id : null)
+                        : (saved?.message?.id ? 'lc-' + saved.message.id : null);
                 const at = t.messages.findIndex((m) => m.id === tempId);
                 if (at !== -1 && realId) t.messages[at].id = realId;
 
                 this.loadList(true);
 
-                // The send is queued, so it is still 'pending' above. Settle the
-                // delivery state once the job has had time to run.
+                // WhatsApp sends go through a queue and are still `pending` in
+                // the DB for a second or two — the settle timer lets the job
+                // catch up so the bubble flips from pending to sent. WebChat +
+                // Messenger persist synchronously so the reload can happen
+                // immediately, no timer needed.
                 if (this.thread === t) {
                     clearTimeout(this._sendSettle);
-                    this._sendSettle = setTimeout(() => this.reloadThread().catch(() => {}), 4000);
+                    if (t.channel === 'whatsapp') {
+                        this._sendSettle = setTimeout(() => this.reloadThread().catch(() => {}), 4000);
+                    } else {
+                        this.reloadThread().catch(() => {});
+                    }
                 }
             } catch (e) {
                 console.error('[inbox] send failed', e);

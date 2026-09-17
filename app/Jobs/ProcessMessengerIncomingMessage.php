@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Messenger\Conversation;
 use App\Models\Messenger\Message;
 use App\Models\Messenger\Page;
+use App\Services\Messenger\MessengerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -94,6 +95,21 @@ class ProcessMessengerIncomingMessage implements ShouldQueue
                 ['page_id' => $page->id, 'psid' => $psid],
                 ['tenant_id' => $page->tenant_id]
             );
+
+        // Fill contact_name + contact_avatar_url on first sight of a new PSID
+        // (or backfill an old row whose profile was never fetched). Meta's
+        // profile_pic URLs expire, so the same call is worth repeating
+        // periodically — 7 days is a safe default. Rescued because the
+        // profile call is cosmetic; a failure must not drop the message.
+        $needsProfile = $conversation->wasRecentlyCreated
+            || $conversation->contact_name === null
+            || (
+                $conversation->contact_profile_refreshed_at !== null
+                && $conversation->contact_profile_refreshed_at->lt(now()->subDays(7))
+            );
+        if ($needsProfile) {
+            rescue(fn () => app(MessengerService::class)->refreshContactProfile($conversation->id));
+        }
 
         $mid       = (string) ($event['message']['mid'] ?? '');
         $text      = $event['message']['text'] ?? null;
