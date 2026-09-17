@@ -256,7 +256,21 @@ class MessengerAutoReplyService
 
     private function promoteToPending(Conversation $conversation, string $reason, ?string $escalation = null): void
     {
+        // Always log the DECISION even if we can't act on it, so
+        // debugging never sits in the dark when an AI job silently
+        // returns on a non-bot conversation. Cost 30 min on the
+        // 2026-09-17 Messenger launch — worth the extra line.
+        Log::channel('messenger')->info('AI: promoted to pending', [
+            'conversation_id' => $conversation->id,
+            'reason'          => $reason,
+            'current_status'  => $conversation->status,
+            'took_effect'     => $conversation->isBot(),
+        ]);
+
         if (! $conversation->isBot()) {
+            // Already claimed / already pending / already closed. The
+            // AI has nothing to promote — an agent (or a previous AI
+            // pass) already owns the conversation. Don't touch state.
             return;
         }
 
@@ -269,11 +283,6 @@ class MessengerAutoReplyService
         }
 
         $conversation->save();
-
-        Log::channel('messenger')->info('AI: promoted to pending', [
-            'conversation_id' => $conversation->id,
-            'reason'          => $reason,
-        ]);
 
         // Phase 6 will fire a Reverb broadcast here so the agent inbox
         // updates in real time. For now the conversation just changes
