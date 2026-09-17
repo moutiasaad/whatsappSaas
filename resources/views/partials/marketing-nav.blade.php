@@ -90,20 +90,53 @@
     // so a locale swap doesn't drift out of sync.
     var dashboardLabel = @json(__('landing.go_to_dashboard'));
 
+    // Expose the endpoint on the container so devtools can grab it via
+    // document.getElementById('wavadesk-nav-actions').dataset.endpoint
+    // without hunting through inline scripts.
+    el.setAttribute('data-endpoint', endpoint);
+
+    // Global tap for postmortem inspection: after the fetch settles,
+    // window.__wavadesk_sso holds { ok, status, response|error, at }.
+    // Read it in the console when the CTAs aren't swapping.
+    window.__wavadesk_sso = { pending: true, endpoint: endpoint };
+
+    console.info('[wavadesk-sso] checking core session at', endpoint);
+
     fetch(endpoint, {
         method: 'GET',
         credentials: 'include',
         mode: 'cors',
         headers: { 'Accept': 'application/json' }
     })
-    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (r) {
+        window.__wavadesk_sso.status = r.status;
+        window.__wavadesk_sso.pending = false;
+        if (!r.ok) {
+            console.warn('[wavadesk-sso] endpoint returned', r.status, '— header stays signed-out');
+            return null;
+        }
+        return r.json();
+    })
     .then(function (data) {
-        if (!data || !data.authenticated || !data.home_url) return;
+        window.__wavadesk_sso.response = data;
+
+        if (!data) return;
+        if (!data.authenticated) {
+            console.info('[wavadesk-sso] not signed in on core — header stays signed-out');
+            return;
+        }
+        if (!data.home_url) {
+            console.warn('[wavadesk-sso] signed in but home_url missing from response');
+            return;
+        }
 
         // Defence in depth: only accept a home URL that lives on the core
         // origin. Guards against a rogue future response value ending up as
         // a javascript: href.
-        if (data.home_url.indexOf(coreOrigin + '/') !== 0) return;
+        if (data.home_url.indexOf(coreOrigin + '/') !== 0) {
+            console.warn('[wavadesk-sso] home_url', data.home_url, 'not on core origin', coreOrigin);
+            return;
+        }
 
         var a = document.createElement('a');
         a.className = 'btn p sm';
@@ -118,8 +151,18 @@
             m.textContent = dashboardLabel;
             mobileEl.replaceChildren(m);
         }
+
+        console.info('[wavadesk-sso] header swapped for', data.user && data.user.name);
     })
-    .catch(function () { /* swallow — signed-out CTAs remain */ });
+    .catch(function (e) {
+        window.__wavadesk_sso.pending = false;
+        window.__wavadesk_sso.error = e && (e.message || String(e));
+        // A TypeError here is almost always CORS: the endpoint returned but
+        // the browser refused to expose the body because the Origin didn't
+        // match WAVADESK_MARKETING_ORIGIN on core. Second suspect is the
+        // network — refused connection, DNS, etc.
+        console.warn('[wavadesk-sso] fetch failed:', e, '— likely CORS (missing/mismatched Access-Control-Allow-Origin) or a network error. Check the Network tab for the raw response.');
+    });
 })();
 </script>
 @endif
