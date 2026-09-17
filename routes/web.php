@@ -229,12 +229,12 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
             Route::get('/inbox/list', [InboxController::class, 'list'])->name('inbox.list');
             Route::get('/inbox/thread/{channel}/{ref}', [InboxController::class, 'thread'])
-                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->whereIn('channel', ['whatsapp', 'webchat', 'messenger'])
                 ->name('inbox.thread');
             // Agents a thread may be handed to, filtered by the same rules the
             // reassign endpoints enforce.
             Route::get('/inbox/assignable/{channel}/{ref}', [InboxController::class, 'assignable'])
-                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->whereIn('channel', ['whatsapp', 'webchat', 'messenger'])
                 ->name('inbox.assignable');
 
             // Conversations - all system users
@@ -553,13 +553,13 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
             Route::get('/inbox/list', [InboxController::class, 'list'])->name('inbox.list');
             Route::get('/inbox/thread/{channel}/{ref}', [InboxController::class, 'thread'])
-                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->whereIn('channel', ['whatsapp', 'webchat', 'messenger'])
                 ->name('inbox.thread');
             // The inbox renders a reassign picker for any role ConversationPolicy
             // lets reassign, and super_admin is one of them — without this route
             // the page itself 500s on route('super_admin.inbox.assignable').
             Route::get('/inbox/assignable/{channel}/{ref}', [InboxController::class, 'assignable'])
-                ->whereIn('channel', ['whatsapp', 'webchat'])
+                ->whereIn('channel', ['whatsapp', 'webchat', 'messenger'])
                 ->name('inbox.assignable');
 
             Route::get('/conversations', [ConversationWebController::class, 'index'])->name('conversations.index');

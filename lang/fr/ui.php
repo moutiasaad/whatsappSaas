@@ -2708,6 +2708,7 @@ Toujours :
     'plan_modules' => [
         'whatsapp' => 'Boîte WhatsApp',
         'webchat' => 'Widget de chat en direct',
+        'messenger' => 'Facebook Messenger',
         'ai_agent' => 'Agent IA',
         'knowledge_base' => 'Base de connaissances',
         'saved_replies' => 'Réponses enregistrées',
@@ -2722,6 +2723,7 @@ Toujours :
     'plan_modules_desc' => [
         'whatsapp' => 'Toujours actif — le produit ne fonctionne pas sans.',
         'webchat' => 'Le widget de chat du site et sa page de réglages.',
+        'messenger' => 'Connectez une Page Facebook pour que ses conversations Messenger arrivent dans la boîte partagée.',
         'ai_agent' => 'Réponses automatiques, suggestions et page de réglages IA.',
         'knowledge_base' => 'Les entrées sur lesquelles l’IA s’appuie.',
         'saved_replies' => 'Réponses prê-écrites insérables par les agents.',

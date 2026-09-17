@@ -2715,6 +2715,7 @@ Always:
     'plan_modules' => [
         'whatsapp' => 'WhatsApp inbox',
         'webchat' => 'Live Chat widget',
+        'messenger' => 'Facebook Messenger',
         'ai_agent' => 'AI agent',
         'knowledge_base' => 'Knowledge base',
         'saved_replies' => 'Saved replies',
@@ -2729,6 +2730,7 @@ Always:
     'plan_modules_desc' => [
         'whatsapp' => 'Always on — the product does not run without it.',
         'webchat' => 'The website chat widget and its settings page.',
+        'messenger' => 'Connect a Facebook Page so its Messenger conversations land in the shared inbox.',
         'ai_agent' => 'AI auto-reply, suggestions and the AI settings page.',
         'knowledge_base' => 'Grounding entries the AI answers from.',
         'saved_replies' => 'Canned replies agents insert in the composer.',

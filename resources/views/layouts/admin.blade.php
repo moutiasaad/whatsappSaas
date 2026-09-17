@@ -1890,11 +1890,12 @@
                             ['route' => 'otp-service.show',      'match' => ['otp-service.*'],    'icon' => 'ri-shield-keyhole-line', 'label' => __('ui.sidebar.otp_service'),    'show' => $u->isAdmin() && $mod('otp_service')],
                             ['route' => 'reservations.index',    'match' => ['reservations.*'],   'icon' => 'ri-calendar-check-line', 'label' => __('ui.sidebar.reservations'),   'show' => $u->isAdmin() && $modShow('reservations'), 'locked' => $teased('reservations')],
                             ['route' => 'webchat.settings.show', 'match' => ['webchat.*'],        'icon' => 'ri-chat-smile-2-line',   'label' => __('ui.sidebar.live_chat'),      'show' => $u->isAdmin() && $modShow('webchat'), 'locked' => $teased('webchat')],
-                            // Messenger inbox — sits alongside WebChat under "modules" for
-                            // consistency. Available to admin/supervisor/agent (all roles
-                            // that handle frontline conversations) once the plan grants
-                            // the `messenger` module.
-                            ['route' => 'messenger.index',       'match' => ['messenger.*'],      'icon' => 'ri-messenger-line',      'label' => 'Messenger',                     'show' => ($u->isAdmin() || $u->isSupervisor() || $u->isAgent()) && $modShow('messenger'), 'locked' => $teased('messenger')],
+                            // Messenger — points to the Facebook Page settings, which is
+                            // where the Connect a Page action lives. Once Pages are
+                            // connected, Messenger conversations appear in the unified
+                            // Inbox alongside WhatsApp + WebChat, so the sidebar link
+                            // is settings-first (agents work from the Inbox).
+                            ['route' => 'messenger.settings',    'match' => ['messenger.*'],      'icon' => 'ri-messenger-line',      'label' => __('ui.plan_modules.messenger'), 'show' => $u->isAdmin() && $modShow('messenger'), 'locked' => $teased('messenger')],
                             // API Access — teaser module; shows locked to plans that lack it,
                             // exactly like reservations/webchat above. Available to all tenant
                             // roles (keys are per-user), but hidden for super_admin: they're a

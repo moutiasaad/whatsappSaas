@@ -19,7 +19,7 @@ main.page-content { padding: 0 !important; }
   --teal:#0f7e7a;--teal-l:#15b6a8;--teal-d:#0a5e5b;--teal-50:#ecf7f6;--teal-100:#d6efed;
   --ink:#0d1417;--txt:#0f172a;--mut:#64748b;--mut-2:#94a3b8;
   --bd:#e6ebf0;--bd-2:#cbd5e1;--soft:#f7f9fa;--soft-2:#eef2f5;
-  --wa:#25a35a;--wa-50:#e9f7ee;--lc:#4f6bed;--lc-50:#eef1fe;
+  --wa:#25a35a;--wa-50:#e9f7ee;--lc:#4f6bed;--lc-50:#eef1fe;--fb:#0866ff;--fb-50:#e7f0ff;
   --amber:#d97706;--amber-50:#fef3e2;
   --list:352px;--info:300px;
   display:grid;grid-template-columns:var(--list) minmax(0,1fr) var(--info);
@@ -59,7 +59,8 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .chan .d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .ubx .chan .d.wa{background:var(--wa)}
 .ubx .chan .d.lc{background:var(--lc)}
-.ubx .chan .d.all{background:linear-gradient(135deg,var(--wa) 50%,var(--lc) 50%)}
+.ubx .chan .d.fb{background:var(--fb)}
+.ubx .chan .d.all{background:conic-gradient(var(--wa) 0 33%,var(--lc) 33% 66%,var(--fb) 66% 100%)}
 
 .ubx .tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin:0 -16px;padding:0 16px;overflow-x:auto}
 .ubx .tab{padding:9px 11px;font-size:13px;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s;display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -79,6 +80,7 @@ html[dir="rtl"] .ubx .search input{padding:0 34px 0 12px}
 .ubx .row.on .ch{border-color:var(--teal-50)}
 .ubx .ch.wa{background:var(--wa)}
 .ubx .ch.lc{background:var(--lc)}
+.ubx .ch.fb{background:var(--fb)}
 .ubx .row .m{display:block;flex:1;min-width:0}
 .ubx .row .l1{display:flex;align-items:baseline;gap:8px}
 .ubx .row .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
@@ -242,6 +244,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
 .ubx .ihero .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-top:10px}
 .ubx .ihero .chip.wa{background:var(--wa-50);color:var(--wa)}
 .ubx .ihero .chip.lc{background:var(--lc-50);color:var(--lc)}
+.ubx .ihero .chip.fb{background:var(--fb-50);color:var(--fb)}
 .ubx .isec{padding:16px 20px}
 .ubx .isec h4{font-size:10.5px;font-weight:700;letter-spacing:.13em;color:var(--mut-2);text-transform:uppercase;margin:0 0 11px}
 .ubx .kv{display:flex;gap:10px;font-size:12.5px;padding:5px 0;align-items:flex-start}
@@ -394,6 +397,9 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                 <button type="button" class="chan" :class="{ 'on': channel === 'all' }" @click="setChannel('all')"><span class="d all"></span>{{ $i18n['all_channels'] }}</button>
                 <button type="button" class="chan" :class="{ 'on': channel === 'whatsapp' }" @click="setChannel('whatsapp')"><span class="d wa"></span>{{ $i18n['whatsapp'] }}</button>
                 <button type="button" class="chan" :class="{ 'on': channel === 'webchat' }" @click="setChannel('webchat')"><span class="d lc"></span>{{ $i18n['live_chat'] }}</button>
+                @if($canUseMessenger ?? false)
+                    <button type="button" class="chan" :class="{ 'on': channel === 'messenger' }" @click="setChannel('messenger')"><span class="d fb"></span>Messenger</button>
+                @endif
             </div>
             @endif
 
@@ -434,7 +440,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                 <button type="button" class="row" :class="{ 'on': activeKey === r.key, 'unread': r.unread > 0 }" @click="openRow(r)">
                     <span class="avw">
                         <span class="av" x-text="r.initials"></span>
-                        <span class="ch" :class="r.channel === 'whatsapp' ? 'wa' : 'lc'" x-html="channelGlyph(r.channel)"></span>
+                        <span class="ch" :class="r.channel === 'whatsapp' ? 'wa' : (r.channel === 'messenger' ? 'fb' : 'lc')" x-html="channelGlyph(r.channel)"></span>
                     </span>
                     <span class="m">
                         <span class="l1">
@@ -508,7 +514,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                     </button>
                     <span class="avw">
                         <span class="av" x-text="thread.header.initials"></span>
-                        <span class="ch" :class="thread.channel === 'whatsapp' ? 'wa' : 'lc'" x-html="channelGlyph(thread.channel)"></span>
+                        <span class="ch" :class="thread.channel === 'whatsapp' ? 'wa' : (thread.channel === 'messenger' ? 'fb' : 'lc')" x-html="channelGlyph(thread.channel)"></span>
                     </span>
                     <div class="m">
                         <div class="n" x-text="thread.header.name"></div>
@@ -774,8 +780,8 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
                 <div class="av" x-text="thread?.header.initials"></div>
                 <div class="n" x-text="thread?.header.name"></div>
                 <div class="sub" x-text="thread?.header.subtitle || ''"></div>
-                <div class="chip" :class="thread?.channel === 'whatsapp' ? 'wa' : 'lc'">
-                    <span x-text="thread?.channel === 'whatsapp' ? '{{ $i18n['whatsapp'] }}' : '{{ $i18n['live_chat'] }}'"></span>
+                <div class="chip" :class="thread?.channel === 'whatsapp' ? 'wa' : (thread?.channel === 'messenger' ? 'fb' : 'lc')">
+                    <span x-text="thread?.channel === 'whatsapp' ? '{{ $i18n['whatsapp'] }}' : (thread?.channel === 'messenger' ? 'Messenger' : '{{ $i18n['live_chat'] }}')"></span>
                 </div>
             </div>
             <div class="isec">
@@ -848,6 +854,10 @@ function unifiedInbox() {
             ? route($panelPrefix . '.inbox.assignable', ['channel' => '__CH__', 'ref' => '__REF__'])
             : ''),
         webchatTpl: @json($canUseWebChat ? route($panelPrefix . '.webchat.conversations.index') : ''),
+        // Messenger routes are gated by `module:messenger` — route() would throw
+        // if the module isn't in the plan and the URL isn't registered.
+        // Guard with Route::has to keep the JSON safe on plans without it.
+        messengerTpl: @json(($canUseMessenger ?? false) && \Illuminate\Support\Facades\Route::has($panelPrefix . '.messenger.index') ? route($panelPrefix . '.messenger.index') : ''),
         uploadUrl:  '/api/media/upload',
         repliesUrl: '/api/saved-replies',
         myId:       @json((int) auth()->id()),
@@ -1156,7 +1166,14 @@ function unifiedInbox() {
         actionUrl(what) {
             const t = this.thread;
             if (!t) return null;
-            if (t.channel === 'whatsapp') return `/api/conversations/${t.ref}/${what}`;
+            if (t.channel === 'whatsapp')  return `/api/conversations/${t.ref}/${what}`;
+            if (t.channel === 'messenger') {
+                // Messenger's send endpoint is /reply (not /messages) — the
+                // route was named that way to make the "auto-claim on send"
+                // behaviour obvious. `messages` normalises to `reply` here.
+                const tail = what === 'messages' ? 'reply' : what;
+                return this.messengerTpl + '/conversations/' + encodeURIComponent(t.ref) + '/' + tail;
+            }
             return this.webchatTpl + '/' + encodeURIComponent(t.ref) + (what === 'messages' ? '/messages' : '/' + what);
         },
 
@@ -1487,9 +1504,14 @@ function unifiedInbox() {
         backToList() { this.mobileThread = false; this.infoOpen = false; },
 
         channelGlyph(channel) {
-            return channel === 'whatsapp'
-                ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.15l-.3-.18-3.1.81.83-3.02-.2-.31A8.2 8.2 0 1112 20.2z"/><path d="M17.5 14.4c-.3-.15-1.75-.86-2-.96-.28-.1-.48-.15-.68.15s-.78.96-.95 1.16c-.18.2-.35.22-.65.07a8.2 8.2 0 01-2.4-1.48 9 9 0 01-1.67-2.07c-.17-.3 0-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.6-.93-2.2-.24-.58-.49-.5-.67-.51h-.58c-.2 0-.53.07-.8.38-.28.3-1.05 1.02-1.05 2.5s1.07 2.9 1.22 3.1c.15.2 2.1 3.2 5.1 4.5.71.3 1.27.48 1.7.62.72.23 1.37.2 1.89.12.57-.09 1.75-.72 2-1.4.25-.7.25-1.28.17-1.4-.07-.13-.27-.2-.57-.35z"/></svg>'
-                : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="#fff"/><path d="M8 20l3-3h2l-5 3z" fill="#fff"/><path d="M7 9h10M7 12.5h6" stroke="#4f6bed" stroke-width="1.8" stroke-linecap="round"/></svg>';
+            if (channel === 'whatsapp') {
+                return '<svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.15l-.3-.18-3.1.81.83-3.02-.2-.31A8.2 8.2 0 1112 20.2z"/><path d="M17.5 14.4c-.3-.15-1.75-.86-2-.96-.28-.1-.48-.15-.68.15s-.78.96-.95 1.16c-.18.2-.35.22-.65.07a8.2 8.2 0 01-2.4-1.48 9 9 0 01-1.67-2.07c-.17-.3 0-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.6-.93-2.2-.24-.58-.49-.5-.67-.51h-.58c-.2 0-.53.07-.8.38-.28.3-1.05 1.02-1.05 2.5s1.07 2.9 1.22 3.1c.15.2 2.1 3.2 5.1 4.5.71.3 1.27.48 1.7.62.72.23 1.37.2 1.89.12.57-.09 1.75-.72 2-1.4.25-.7.25-1.28.17-1.4-.07-.13-.27-.2-.57-.35z"/></svg>';
+            }
+            if (channel === 'messenger') {
+                return '<svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.5 2 2 6.2 2 11.4c0 2.9 1.4 5.5 3.7 7.3v3.3l3.4-1.9c.9.3 1.9.4 2.9.4 5.5 0 10-4.2 10-9.4S17.5 2 12 2zm1 12.6l-2.6-2.7-5 2.7 5.5-5.7 2.6 2.6 5-2.6-5.5 5.7z"/></svg>';
+            }
+            // webchat
+            return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="#fff"/><path d="M8 20l3-3h2l-5 3z" fill="#fff"/><path d="M7 9h10M7 12.5h6" stroke="#4f6bed" stroke-width="1.8" stroke-linecap="round"/></svg>';
         },
 
         initials(name) {

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Messenger\Conversation as MessengerConversation;
+use App\Models\Messenger\Message as MessengerMessage;
 use App\Models\User;
 use App\Models\WebChat\Conversation as WebChatConversation;
 use App\Models\WebChat\Message as WebChatMessage;
@@ -13,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Unified inbox — WhatsApp and Live Chat conversations in one list.
+ * Unified inbox — WhatsApp, Live Chat AND Messenger conversations in one list.
  *
  * Read paths (list + thread) are normalised here so the page renders one shape
  * regardless of channel. Write paths (claim / release / close / reply) stay on
@@ -22,7 +24,7 @@ use Illuminate\Support\Str;
  */
 class InboxController extends Controller
 {
-    public const CHANNELS = ['all', 'whatsapp', 'webchat'];
+    public const CHANNELS = ['all', 'whatsapp', 'webchat', 'messenger'];
     public const TABS     = ['pending', 'mine', 'all', 'closed'];
 
     private const LIMIT = 150;
@@ -37,9 +39,10 @@ class InboxController extends Controller
         $counts = $this->counts($request, 'all');
 
         return view('admin.inbox.index', [
-            'canUseWebChat' => $this->canUseWebChat(),
-            'initialTab'    => ($counts['mine'] ?? 0) > 0 ? 'mine' : 'pending',
-            'initialCounts' => $counts,
+            'canUseWebChat'   => $this->canUseWebChat(),
+            'canUseMessenger' => $this->canUseMessenger(),
+            'initialTab'      => ($counts['mine'] ?? 0) > 0 ? 'mine' : 'pending',
+            'initialCounts'   => $counts,
         ]);
     }
 
@@ -57,12 +60,18 @@ class InboxController extends Controller
 
         $rows = collect();
 
-        if ($channel !== 'webchat') {
+        // Each channel opts-IN when the requested filter is 'all' OR names it
+        // explicitly. We collect from all sources, then time-sort + cap.
+        if ($channel === 'all' || $channel === 'whatsapp') {
             $rows = $rows->merge($this->whatsappRows($request, $tab, $search));
         }
 
-        if ($channel !== 'whatsapp' && $this->canUseWebChat()) {
+        if (($channel === 'all' || $channel === 'webchat') && $this->canUseWebChat()) {
             $rows = $rows->merge($this->webchatRows($request, $tab, $search));
+        }
+
+        if (($channel === 'all' || $channel === 'messenger') && $this->canUseMessenger()) {
+            $rows = $rows->merge($this->messengerRows($request, $tab, $search));
         }
 
         $rows = $rows
@@ -191,6 +200,62 @@ class InboxController extends Controller
     }
 
     /**
+     * Messenger conversations for the shared inbox list. Mirrors
+     * webchatRows() shape so the front-end doesn't need channel-specific
+     * branches for rendering.
+     */
+    private function messengerRows(Request $request, string $tab, string $search)
+    {
+        $user = $request->user();
+
+        $query = MessengerConversation::withoutGlobalScope('tenant')
+            ->where('tenant_id', $user->tenant_id)
+            ->with(['latestMessage', 'claimer:id,name', 'page:id,page_name']);
+
+        match ($tab) {
+            'mine'   => $query->where('status', MessengerConversation::STATUS_ASSIGNED)->where('claimed_by', $user->id),
+            'all'    => $query->where('status', '!=', MessengerConversation::STATUS_CLOSED),
+            'closed' => $query->where('status', MessengerConversation::STATUS_CLOSED),
+            default  => $query->whereIn('status', [
+                MessengerConversation::STATUS_PENDING,
+                MessengerConversation::STATUS_BOT,
+            ]),
+        };
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('contact_name', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderByDesc('last_activity_at')
+            ->orderByDesc('id')
+            ->limit(self::LIMIT)
+            ->get()
+            ->map(function (MessengerConversation $c) {
+                $name = $c->contact_name ?: __('ui.webchat_page.visitor_prefix') . Str::limit($c->uuid, 6, '');
+
+                return [
+                    'channel'          => 'messenger',
+                    'key'              => 'msg-' . $c->uuid,
+                    'ref'              => $c->uuid,
+                    'name'             => $name,
+                    'subtitle'         => $c->page?->page_name,
+                    'initials'         => $this->initials($c->contact_name ?: $c->uuid),
+                    'avatar_url'       => $c->contact_avatar_url,
+                    'preview'          => $c->title ?: ($c->latestMessage ? Str::limit((string) $c->latestMessage->body, 120) : null),
+                    'status'           => $this->messengerStatus($c->status),
+                    'ai'               => $c->status === MessengerConversation::STATUS_BOT,
+                    'escalated'        => $c->escalated_at !== null && ! $c->isClosed(),
+                    'assignee'         => $c->claimer ? ['id' => $c->claimer->id, 'name' => $c->claimer->name] : null,
+                    'unread'           => 0,
+                    'last_activity_at' => optional($c->last_activity_at ?? $c->created_at)->toISOString(),
+                ];
+            });
+    }
+
+    /**
      * Agents this conversation may be handed to.
      *
      * Eligibility repeats what Api\ConversationController::reassign() enforces
@@ -210,6 +275,23 @@ class InboxController extends Controller
             $tenantId  = $c->tenant_id;
             $teamId    = $c->team_id;
             $currentId = $c->owner_agent_id;
+        } elseif ($channel === 'messenger') {
+            abort_unless($this->canUseMessenger(), 403);
+
+            $c = MessengerConversation::withoutGlobalScope('tenant')
+                ->where('tenant_id', $user->tenant_id)
+                ->where('uuid', $ref)
+                ->firstOrFail();
+
+            abort_unless(
+                $c->status === MessengerConversation::STATUS_ASSIGNED
+                    && ($user->isAdmin() || $user->isSupervisor() || $user->isSuperAdmin()),
+                403,
+            );
+
+            $tenantId  = $c->tenant_id;
+            $teamId    = null;
+            $currentId = $c->claimed_by;
         } else {
             abort_unless($this->canUseWebChat(), 403);
 
@@ -247,7 +329,7 @@ class InboxController extends Controller
         $user   = $request->user();
         $counts = array_fill_keys(self::TABS, 0);
 
-        if ($channel !== 'webchat') {
+        if ($channel === 'all' || $channel === 'whatsapp') {
             $base = Conversation::query();
             $this->scopeWhatsApp($base, $user);
 
@@ -258,7 +340,7 @@ class InboxController extends Controller
             $counts['mine']    += (int) (clone $base)->where('state', 'claimed')->where('owner_agent_id', $user->id)->count();
         }
 
-        if ($channel !== 'whatsapp' && $this->canUseWebChat()) {
+        if (($channel === 'all' || $channel === 'webchat') && $this->canUseWebChat()) {
             $base = WebChatConversation::withoutGlobalScope('tenant')->where('tenant_id', $user->tenant_id);
 
             $byStatus = (clone $base)->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
@@ -273,6 +355,30 @@ class InboxController extends Controller
                 ->count();
         }
 
+        if (($channel === 'all' || $channel === 'messenger') && $this->canUseMessenger()) {
+            $base = MessengerConversation::withoutGlobalScope('tenant')->where('tenant_id', $user->tenant_id);
+
+            $byStatus = (clone $base)->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
+            $counts['pending'] += (int) ($byStatus[MessengerConversation::STATUS_PENDING] ?? 0)
+                                + (int) ($byStatus[MessengerConversation::STATUS_BOT] ?? 0);
+            $counts['closed']  += (int) ($byStatus[MessengerConversation::STATUS_CLOSED] ?? 0);
+            $counts['all']     += (int) $byStatus->except(MessengerConversation::STATUS_CLOSED)->sum();
+            $counts['mine']    += (int) (clone $base)
+                ->where('status', MessengerConversation::STATUS_ASSIGNED)
+                ->where('claimed_by', $user->id)
+                ->count();
+        }
+
+        // WhatsApp is the ONLY channel we DON'T filter by tenant-owned pages
+        // here — its scope is applied inside scopeWhatsApp above. WebChat +
+        // Messenger both scope on tenant_id inline.
+        if ($channel === 'webchat' || $channel === 'messenger') {
+            // Zero out WhatsApp counts we accidentally added above when
+            // channel is a specific chat channel other than whatsapp.
+            // (Not strictly needed — the "if channel !== whatsapp" gate
+            //  above already skipped WhatsApp. Kept as a safety comment.)
+        }
+
         return $counts;
     }
 
@@ -281,9 +387,10 @@ class InboxController extends Controller
     public function thread(Request $request, string $channel, string $ref): JsonResponse
     {
         return match ($channel) {
-            'whatsapp' => $this->whatsappThread($request, (int) $ref),
-            'webchat'  => $this->webchatThread($request, $ref),
-            default    => abort(404),
+            'whatsapp'  => $this->whatsappThread($request, (int) $ref),
+            'webchat'   => $this->webchatThread($request, $ref),
+            'messenger' => $this->messengerThread($request, $ref),
+            default     => abort(404),
         };
     }
 
@@ -470,6 +577,80 @@ class InboxController extends Controller
         ]);
     }
 
+    private function messengerThread(Request $request, string $uuid): JsonResponse
+    {
+        abort_unless($this->canUseMessenger(), 403);
+
+        $user = $request->user();
+
+        $c = MessengerConversation::withoutGlobalScope('tenant')
+            ->where('tenant_id', $user->tenant_id)
+            ->with(['page:id,page_name', 'claimer:id,name'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $name = $c->contact_name ?: __('ui.webchat_page.visitor_prefix') . Str::limit($c->uuid, 6, '');
+
+        $messages = $c->messages()
+            ->with('sender:id,name')
+            ->orderBy('id')
+            ->limit(200)
+            ->get()
+            ->map(fn (MessengerMessage $m) => [
+                'id'         => 'msg-' . $m->id,
+                'kind'       => $m->sender_type === 'system' ? 'system' : 'text',
+                'side'       => $m->sender_type === 'visitor' ? 'in' : 'out',
+                'who'        => $m->sender_type === 'visitor'
+                                    ? $name
+                                    : ($m->sender?->name ?? ($m->sender_type === 'bot' ? __('ui.inbox_page.ai') : __('ui.inbox_page.agent'))),
+                'body'       => $m->body,
+                'created_at' => $m->created_at?->toISOString(),
+                'status'     => 'sent',
+                'media'      => null,
+            ]);
+
+        $isMine = $c->status === MessengerConversation::STATUS_ASSIGNED
+            && (int) $c->claimed_by === (int) $user->id;
+
+        return response()->json([
+            'channel' => 'messenger',
+            'ref'     => $c->uuid,
+            'header'  => [
+                'name'      => $name,
+                'subtitle'  => $c->page?->page_name,
+                'initials'  => $this->initials($c->contact_name ?: $c->uuid),
+                'avatar_url'=> $c->contact_avatar_url,
+                'status'    => $this->messengerStatus($c->status),
+                'escalated' => $c->escalated_at !== null && ! $c->isClosed(),
+                'assignee'  => $c->claimer ? ['id' => $c->claimer->id, 'name' => $c->claimer->name] : null,
+            ],
+            'can' => [
+                'claim'   => in_array($c->status, [MessengerConversation::STATUS_PENDING, MessengerConversation::STATUS_BOT], true),
+                // Reply also gated on the 24h Meta window — outside that,
+                // sends require a MESSAGE_TAG we don't yet support.
+                'reply'   => $isMine && $c->withinMessagingWindow(),
+                'release' => $isMine,
+                'close'   => $c->status !== MessengerConversation::STATUS_CLOSED && ($isMine || $user->isAdmin()),
+                'reassign'=> $c->status === MessengerConversation::STATUS_ASSIGNED
+                    && ($user->isAdmin() || $user->isSupervisor() || $user->isSuperAdmin()),
+            ],
+            'ai' => [
+                'applies'    => (bool) $user->tenant?->aiSettings?->enabledFor('messenger'),
+                'suspended'  => false,
+                'eligible'   => (bool) $user->tenant?->aiSettings?->enabledFor('messenger'),
+                'reason'     => null,
+                'can_toggle' => false,
+            ],
+            'info' => array_values(array_filter([
+                $this->kv(__('ui.inbox_page.started'), optional($c->created_at)->toDateTimeString()),
+                $this->kv('Page', $c->page?->page_name),
+                $this->kv('PSID', $c->psid),
+                $c->last_inbound_at ? $this->kv('Last inbound', $c->last_inbound_at->toDateTimeString() . ($c->withinMessagingWindow() ? '' : ' (outside 24h window)')) : null,
+            ])),
+            'messages' => $messages,
+        ]);
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     /** Mirrors the scoping in Api\ConversationController@index. */
@@ -487,6 +668,12 @@ class InboxController extends Controller
 
     /** Live Chat is not available to the platform owner — they aren't frontline. */
     private function canUseWebChat(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'agent']) ?? false;
+    }
+
+    /** Same rule as WebChat: super-admins are not frontline agents. */
+    private function canUseMessenger(): bool
     {
         return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'agent']) ?? false;
     }
@@ -533,6 +720,17 @@ class InboxController extends Controller
             WebChatConversation::STATUS_ASSIGNED => 'assigned',
             WebChatConversation::STATUS_CLOSED   => 'closed',
             default                              => 'pending',
+        };
+    }
+
+    /** Messenger status → the same workflow vocabulary the other two speak. */
+    private function messengerStatus(?string $status): string
+    {
+        return match ($status) {
+            MessengerConversation::STATUS_BOT      => 'pending',
+            MessengerConversation::STATUS_ASSIGNED => 'assigned',
+            MessengerConversation::STATUS_CLOSED   => 'closed',
+            default                                => 'pending',
         };
     }
 
