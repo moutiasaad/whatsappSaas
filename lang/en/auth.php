@@ -105,6 +105,7 @@ return [
         'plan_heading'             => 'Choose your plan',
         'plan_sub'                 => 'Your workspace is created. Pick the plan it runs on — you can change it any time from Billing.',
         'plan_signout'             => 'Sign out',
+        'impersonating_notice'     => 'You are signed in as :name — they have not chosen a plan yet.',
         'plan_side_pill'           => 'Workspace created',
         'plan_side_title'          => 'One step left: <em>pick a plan</em>.',
         'plan_side_desc'           => 'Start on the free trial and connect a number today, or go straight to a paid plan. Nothing is locked in either way.',

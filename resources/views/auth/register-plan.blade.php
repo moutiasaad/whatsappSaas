@@ -4,6 +4,16 @@
 
 @section('pane_class', 'plans-wide')
 
+@push('head')
+<style>
+.impersonate-return{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:11px;padding:11px 14px;font-size:13px;line-height:1.4;margin-bottom:14px}
+.impersonate-return svg{flex-shrink:0}
+.impersonate-return span{flex:1}
+.impersonate-return .return-btn{flex-shrink:0;background:#92400e;color:#fff;font-weight:600;font-size:12.5px;padding:6px 12px;border-radius:8px;text-decoration:none;transition:.15s}
+.impersonate-return .return-btn:hover{background:#78350f;color:#fff}
+</style>
+@endpush
+
 @section('proof')
     <span class="eyebrow">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -49,6 +59,24 @@
     <span class="st on"><i>2</i>{{ __('auth.register.step_plan') }}</span>
 </div>
 
+@if(session('impersonating'))
+{{-- Super-admin landed here because the impersonated tenant never picked a
+     plan. The layouts.admin impersonation banner isn't rendered on the
+     auth layout, so without this escape the picker is a dead-end — clicking
+     "Sign out" would kill the super-admin's own session too. --}}
+<div class="impersonate-return" role="status">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 5v6m0 3.5h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    <span>{{ __('auth.register.impersonating_notice', ['name' => $tenant->name]) }}</span>
+    {{-- Uses the impersonated user's own prefix (not a hard-coded `admin.`)
+         so role_path doesn't 302 through an extra hop. The leave route is
+         registered under every panel prefix by $registerPanelRoutes, all
+         with the same CheckSubscription bypass. --}}
+    <a href="{{ route(auth()->user()->routeNamePrefix() . '.users.impersonate.leave') }}" class="return-btn">
+        {{ __('ui.return_to_account') }}
+    </a>
+</div>
+@endif
+
 <div class="whoami">
     <div class="av">{{ mb_strtoupper(mb_substr($tenant->name, 0, 1)) }}</div>
     <div class="m">
@@ -58,10 +86,12 @@
              Auth fallback keeps the single-host flow unchanged. --}}
         <div class="e">{{ $currentUserEmail ?? auth()->user()?->email }}</div>
     </div>
+    @if(!session('impersonating'))
     <form method="POST" action="{{ route('logout') }}" style="margin:0" class="signout-wrap">
         @csrf
         <button type="submit" class="signout">{{ __('auth.register.plan_signout') }}</button>
     </form>
+    @endif
 </div>
 
 <h2 class="formtitle">{{ __('auth.register.plan_heading') }}</h2>

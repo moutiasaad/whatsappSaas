@@ -105,6 +105,7 @@ return [
         'plan_heading'             => 'Choisissez votre forfait',
         'plan_sub'                 => 'Votre espace est créé. Choisissez le forfait sur lequel il tourne — modifiable à tout moment depuis la facturation.',
         'plan_signout'             => 'Se déconnecter',
+        'impersonating_notice'     => 'Vous êtes connecté(e) en tant que :name — ce compte n\'a pas encore choisi de forfait.',
         'plan_side_pill'           => 'Espace créé',
         'plan_side_title'          => 'Dernière étape : <em>choisir un forfait</em>.',
         'plan_side_desc'           => 'Commencez par l\'essai gratuit et connectez un numéro dès aujourd\'hui, ou passez directement à un forfait payant. Rien n\'est figé.',
