@@ -15,7 +15,7 @@
         'try_adjusting'          => __('ui.platform_tenants_page.try_adjusting'),
         'no_plan'                => __('ui.platform_tenants_page.no_plan'),
         'inactive'               => __('ui.platform_tenants_page.inactive'),
-        'delete_selected_confirm'=> __('ui.platform_tenants_page.delete_selected_confirm'),
+        'archive_selected_confirm'=> __('ui.platform_tenants_page.archive_selected_confirm'),
         'impersonate_prompt'     => __('ui.platform_tenants_page.impersonate_prompt'),
         'impersonate_confirm'    => __('ui.platform_tenants_page.impersonate_confirm'),
         'selected_items'         => __('ui.selected_items'),
@@ -264,9 +264,7 @@
         <span class="bulk-sep">|</span>
         <div class="bulk-actions" style="display:flex;gap:.5rem;align-items:center;">
             <select x-model="bulkAction" class="form-control" style="min-width:170px;">
-                <option value="enable">{{ __('ui.platform_tenants_page.bulk_enable') }}</option>
-                <option value="disable">{{ __('ui.platform_tenants_page.bulk_disable') }}</option>
-                <option value="delete">{{ __('ui.platform_tenants_page.bulk_delete') }}</option>
+                <option value="archive">{{ __('ui.platform_tenants_page.bulk_archive') }}</option>
             </select>
             <button type="button" @click="submitBulk()" :disabled="bulkSaving" class="btn btn-primary btn-sm">
                 <span x-show="!bulkSaving">{{ __('ui.platform_tenants_page.apply') }}</span>
@@ -320,7 +318,7 @@ function tenantsPage() {
         filters:    { plan_id: '', status: '', is_active: '', archived: '', created_from: '', created_to: '', ends_from: '', ends_to: '' },
 
         selected:   [],
-        bulkAction: 'enable',
+        bulkAction: 'archive',
         bulkSaving: false,
 
         impersonateModal: { show: false, id: null, name: '', url: '' },
@@ -469,8 +467,8 @@ function tenantsPage() {
 
         async submitBulk() {
             if (!this.selected.length) return;
-            if (this.bulkAction === 'delete') {
-                if (!confirm(this.i18n.delete_selected_confirm)) return;
+            if (this.bulkAction === 'archive') {
+                if (!confirm(this.i18n.archive_selected_confirm)) return;
             }
             this.bulkSaving = true;
             try {

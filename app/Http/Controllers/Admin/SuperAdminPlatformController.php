@@ -510,8 +510,12 @@ class SuperAdminPlatformController extends Controller
 
     public function bulkTenants(Request $request)
     {
+        // Bulk archive is the only action wired to this endpoint on purpose:
+        // disable and delete were removed because they're irreversible-ish
+        // enough that they should require opening a specific tenant profile
+        // (Danger zone on tenants-show handles them one at a time).
         $data = $request->validate([
-            'action' => 'required|in:enable,disable,delete',
+            'action' => 'required|in:archive',
             'ids' => 'required|string',
         ]);
 
@@ -528,33 +532,14 @@ class SuperAdminPlatformController extends Controller
             return back()->with('error', __('ui.controller_messages.no_tenants_selected'));
         }
 
-        $tenants = Tenant::whereIn('id', $ids)->get();
+        // Only archive tenants that aren't already archived, so the reported
+        // count matches what actually changed and a second click on the bulk
+        // button doesn't overwrite everyone's archived_at timestamp.
+        $affected = Tenant::whereIn('id', $ids)
+            ->whereNull('archived_at')
+            ->update(['archived_at' => now()]);
 
-        if ($tenants->isEmpty()) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => __('ui.controller_messages.no_valid_tenants_selected')], 422);
-            }
-            return back()->with('error', __('ui.controller_messages.no_valid_tenants_selected'));
-        }
-
-        if ($data['action'] === 'delete') {
-            foreach ($tenants as $tenant) {
-                $tenant->delete();
-            }
-
-            $message = __('ui.controller_messages.tenants_deleted', ['count' => $tenants->count()]);
-            if ($request->expectsJson()) {
-                return response()->json(['message' => $message]);
-            }
-            return back()->with('success', $message);
-        }
-
-        $enable = $data['action'] === 'enable';
-        Tenant::whereIn('id', $tenants->pluck('id'))->update(['is_active' => $enable]);
-
-        $message = $enable
-            ? __('ui.controller_messages.tenants_enabled', ['count' => $tenants->count()])
-            : __('ui.controller_messages.tenants_disabled', ['count' => $tenants->count()]);
+        $message = __('ui.controller_messages.tenants_archived', ['count' => $affected]);
 
         if ($request->expectsJson()) {
             return response()->json(['message' => $message]);
