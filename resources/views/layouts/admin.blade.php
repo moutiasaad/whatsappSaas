@@ -1817,25 +1817,43 @@
 
                 // ── nav definition: groups of items, each gated by `show` ──
                 $navGroups = [
+                    // Split from the previous single "Platform Owner" group.
+                    // Three focused SA-only groups so the commercial spine,
+                    // the technical config and the access-control section
+                    // don't blur into one long list.
+
+                    // 1. Commercial spine — tenants and how they pay.
                     [
-                        'label' => __('ui.sidebar.platform_owner'),
+                        'label' => __('ui.sidebar.tenants_and_plans'),
                         'show'  => $isSA,
                         'items' => [
-                            ['route' => 'platform.tenants',           'match' => ['platform.tenants*'],       'icon' => 'ri-building-2-line',    'label' => __('ui.sidebar.tenants'),            'show' => $sp('platform_tenants')],
-                            ['route' => 'platform.plans',             'match' => ['platform.plans*'],         'icon' => 'ri-price-tag-3-line',   'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
-                            ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line', 'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
-                            ['route' => 'platform.addons',            'match' => ['platform.addons*'],        'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
-                            // Claude API cost report — ops-oriented (what the platform pays
-                            // Anthropic per tenant). Gated on the same permission slug as
-                            // system_health / meta_settings so the same operator role sees them.
-                            ['route' => 'platform.claude-usage',      'match' => ['platform.claude-usage*'],  'icon' => 'ri-cpu-line',            'label' => __('ui.sidebar.claude_usage'),       'show' => $sp('platform_system_health')],
+                            ['route' => 'platform.tenants', 'match' => ['platform.tenants*'], 'icon' => 'ri-building-2-line',     'label' => __('ui.sidebar.tenants'),            'show' => $sp('platform_tenants')],
+                            ['route' => 'platform.plans',   'match' => ['platform.plans*'],   'icon' => 'ri-price-tag-3-line',    'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
+                            ['route' => 'platform.addons',  'match' => ['platform.addons*'],  'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
+                        ],
+                    ],
+
+                    // 2. Platform-wide technical config.
+                    [
+                        'label' => __('ui.sidebar.platform_settings'),
+                        'show'  => $isSA,
+                        'items' => [
+                            ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line',   'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
                             // Meta / Facebook Messenger platform credentials — App ID, App
                             // Secret, Verify Token, Graph version. Same permission gate as
                             // system health (both are cross-tenant ops-owned config).
-                            ['route' => 'platform.meta-settings',     'match' => ['platform.meta-settings*'], 'icon' => 'ri-messenger-line',     'label' => 'Meta / Messenger',                  'show' => $sp('platform_system_health')],
-                            ['route' => 'platform.system-health',     'match' => ['platform.system-health*'], 'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),      'show' => $sp('platform_system_health')],
-                            ['route' => 'platform.legal-pages.index', 'match' => ['platform.legal-pages*'],   'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),        'show' => $sp('platform_legal_pages')],
-                            ['route' => 'super-admins.index',         'match' => ['super-admins.*'],          'icon' => 'ri-shield-user-line',   'label' => __('ui.sidebar.super_admins'),       'show' => $u->isMasterSuperAdmin()],
+                            ['route' => 'platform.meta-settings',         'match' => ['platform.meta-settings*'],         'icon' => 'ri-messenger-line',     'label' => 'Meta / Messenger',                       'show' => $sp('platform_system_health')],
+                            ['route' => 'platform.system-health',         'match' => ['platform.system-health*'],         'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),           'show' => $sp('platform_system_health')],
+                            ['route' => 'platform.legal-pages.index',     'match' => ['platform.legal-pages*'],           'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),             'show' => $sp('platform_legal_pages')],
+                        ],
+                    ],
+
+                    // 3. Who can operate the platform.
+                    [
+                        'label' => __('ui.sidebar.access'),
+                        'show'  => $isSA && $u->isMasterSuperAdmin(),
+                        'items' => [
+                            ['route' => 'super-admins.index', 'match' => ['super-admins.*'], 'icon' => 'ri-shield-user-line', 'label' => __('ui.sidebar.super_admins'), 'show' => $u->isMasterSuperAdmin()],
                         ],
                     ],
 
@@ -1921,10 +1939,15 @@
                         'show'  => $u->hasAnyRole(['admin', 'super_admin']),
                         'items' => [
                             ['route' => 'reports.index',       'match' => ['reports.*'],       'icon' => 'ri-bar-chart-2-line',    'label' => __('ui.sidebar.reports'),       'show' => ($u->isAdmin() && $mod('reports')) || ($isSA && $sp('reports'))],
-                            ['route' => 'audit-log.index',     'match' => ['audit-log.*'],     'icon' => 'ri-file-list-3-line',    'label' => __('ui.sidebar.audit_log'),     'show' => $isSA && $sp('audit_log')],
-                            ['route' => 'notifications.index', 'match' => ['notifications.*'], 'icon' => 'ri-notification-3-line', 'label' => __('ui.sidebar.notifications'), 'show' => $isSA && $sp('notifications')],
                             ['route' => 'billing.index',       'match' => ['billing.index'],   'icon' => 'ri-bank-card-line',      'label' => __('ui.sidebar.billing'),       'show' => $isSA && $sp('billing')],
                             ['route' => 'billing.payments',    'match' => ['billing.payments', 'billing.payment.show'], 'icon' => 'ri-receipt-line', 'label' => __('ui.sidebar.payments'), 'show' => $isSA && $sp('billing')],
+                            // Moved from Platform Owner to sit next to Billing/Payments
+                            // — Claude cost is a money view, not a settings one.
+                            // Gate on `billing` for the same reason: same operator
+                            // role decides who sees platform money.
+                            ['route' => 'platform.claude-usage', 'match' => ['platform.claude-usage*'], 'icon' => 'ri-cpu-line',       'label' => __('ui.sidebar.claude_usage'), 'show' => $isSA && $sp('billing')],
+                            ['route' => 'audit-log.index',     'match' => ['audit-log.*'],     'icon' => 'ri-file-list-3-line',    'label' => __('ui.sidebar.audit_log'),     'show' => $isSA && $sp('audit_log')],
+                            ['route' => 'notifications.index', 'match' => ['notifications.*'], 'icon' => 'ri-notification-3-line', 'label' => __('ui.sidebar.notifications'), 'show' => $isSA && $sp('notifications')],
                         ],
                     ],
 
