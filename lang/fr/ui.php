@@ -1058,6 +1058,8 @@ Toujours :
         'name' => 'Nom du forfait',
         'monthly_price' => 'Prix mensuel',
         'annual_price' => 'Prix annuel',
+        'paypal_ncp_link' => 'Lien de paiement PayPal',
+        'paypal_ncp_link_hint' => 'Facultatif. Collez l\'URL du bouton PayPal NCP (paypal.com/ncp/payment/XXX). Si défini, le checkout remplace le formulaire de carte par un bouton unique qui ouvre ce lien. Laissez vide pour utiliser le lien par défaut de la plateforme ou le flux SDK.',
         'max_users' => 'Utilisateurs max',
         'max_instances' => 'Instances max',
         'max_conversations_per_month' => 'Conversations max / mois',

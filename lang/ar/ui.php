@@ -1055,6 +1055,8 @@ return [
         'name' => 'اسم الخطة',
         'monthly_price' => 'السعر الشهري',
         'annual_price' => 'السعر السنوي',
+        'paypal_ncp_link' => 'رابط الدفع عبر PayPal',
+        'paypal_ncp_link_hint' => 'اختياري. الصق رابط زر PayPal NCP (paypal.com/ncp/payment/XXX). عند تعيينه، تستبدل صفحة الدفع نموذج البطاقة بزر واحد يفتح هذا الرابط. اتركه فارغًا للرجوع إلى الرابط الافتراضي للمنصة أو تدفّق SDK.',
         'max_users' => 'أقصى عدد مستخدمين',
         'max_instances' => 'أقصى عدد حالات',
         'max_conversations_per_month' => 'أقصى محادثات / شهر',

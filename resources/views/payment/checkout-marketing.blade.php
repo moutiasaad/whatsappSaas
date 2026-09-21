@@ -318,11 +318,16 @@
                         <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
                     </div>
 
-                    @if(config('services.paypal.ncp_link'))
-                        {{-- PayPal NCP mode wins over the SDK/REST flow when
-                             PAYPAL_NCP_LINK is set. Simpler + no API keys but
-                             manual reconciliation — see
-                             PaymentController::initiatePaypalNcp. --}}
+                    @php
+                        // Per-plan link wins over the platform-wide env. Blank
+                        // on both → fall through to the SDK / REST flow.
+                        $ncpLink = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
+                    @endphp
+                    @if($ncpLink)
+                        {{-- PayPal NCP mode wins over the SDK/REST flow. One
+                             button, one redirect, manual reconciliation —
+                             card-fields form is deliberately NOT rendered
+                             here so the checkout stays a single-tap flow. --}}
                         <form method="POST" action="{{ route('payment.paypal.ncp.initiate') }}"
                               onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
                             @csrf

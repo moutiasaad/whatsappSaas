@@ -527,18 +527,22 @@ class PaymentController extends Controller
      */
     public function initiatePaypalNcp(Request $request)
     {
-        $ncpLink = config('services.paypal.ncp_link');
+        $data = $request->validate([
+            'plan_id'   => ['required', \Illuminate\Validation\Rule::exists('plans', 'id')->where('is_active', true)],
+            // Optional on marketing where the tenant is in session; required
+            // on core when the admin manually initiates a top-up.
+            'tenant_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tenants', 'id')],
+        ]);
+
+        $plan = Plan::find($data['plan_id']);
+
+        // Per-plan link wins over the platform-wide env. Blank on both
+        // means NCP isn't configured for this plan and we bail cleanly.
+        $ncpLink = $plan?->paypal_ncp_link ?: config('services.paypal.ncp_link');
         if (! $ncpLink) {
             return redirect()->route('payment.failed')
                 ->with('error', __('ui.payment_page.ncp_not_configured'));
         }
-
-        $data = $request->validate([
-            'plan_id'   => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
-            // Optional on marketing where the tenant is in session; required
-            // on core when the admin manually initiates a top-up.
-            'tenant_id' => ['nullable', 'integer', Rule::exists('tenants', 'id')],
-        ]);
 
         // Same tenant-resolution pattern as initiatePaypal: on marketing the
         // tenant lives in the SSO session; on core it's the request's own or
@@ -548,7 +552,6 @@ class PaymentController extends Controller
             ?? auth()->user()?->tenant_id
             ?? 0);
         $tenant = Tenant::find($tenantId);
-        $plan   = Plan::find($data['plan_id']);
 
         if ($tenant && $plan) {
             // Pending row so the super admin sees "someone tried to pay with

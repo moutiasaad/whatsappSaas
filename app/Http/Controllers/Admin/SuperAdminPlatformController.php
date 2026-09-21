@@ -1291,6 +1291,11 @@ class SuperAdminPlatformController extends Controller
             'ai_message_limit'            => 'nullable|integer|min:1|required_if:ai_messages_mode,limited',
             'is_active'                   => 'nullable|boolean',
 
+            // Per-plan PayPal NCP URL. When set, /payment/checkout replaces
+            // the SDK card-fields box with a single button linking to this
+            // URL. Overrides the platform-wide PAYPAL_NCP_LINK env.
+            'paypal_ncp_link'             => 'nullable|url|max:500',
+
             // Per-plan free trial. A blank length falls back to the platform
             // default (config app.trial_days) inside Plan::trialDays().
             'trial_enabled'               => 'nullable|boolean',
@@ -1345,6 +1350,7 @@ class SuperAdminPlatformController extends Controller
             'name'                        => $data['name'],
             'price_monthly'               => $data['price_monthly'],
             'price_annual'                => $data['price_annual'] ?? null,
+            'paypal_ncp_link'             => $data['paypal_ncp_link'] ?? null,
             'max_users'                   => $data['max_users'],
             'max_instances'               => $data['max_instances'] ?? null,
             'max_conversations_per_month' => $data['max_conversations_per_month'],

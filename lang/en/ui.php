@@ -1058,6 +1058,8 @@ Always:
         'name' => 'Plan Name',
         'monthly_price' => 'Monthly Price',
         'annual_price' => 'Annual Price',
+        'paypal_ncp_link' => 'PayPal payment link',
+        'paypal_ncp_link_hint' => 'Optional. Paste the PayPal NCP button URL (paypal.com/ncp/payment/XXX). When set, the checkout replaces the card form with a single button that opens this link. Leave blank to fall back to the platform default or the SDK flow.',
         'max_users' => 'Max Users',
         'max_instances' => 'Max Instances',
         'max_conversations_per_month' => 'Max Conversations / Month',
