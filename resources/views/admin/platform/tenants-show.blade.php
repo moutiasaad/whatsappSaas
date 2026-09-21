@@ -215,6 +215,119 @@
     </div>
     @endif
 
+    {{-- Claude API cost — this tenant's own Anthropic spend, priced from
+         the ai_api_usages ledger. Reuses the source/model labels from the
+         platform-wide report so a super admin sees consistent language on
+         both pages. --}}
+    @php
+        $fmtUsd    = fn ($n) => '$' . number_format((float) $n, 2);
+        $fmtUsd4   = fn ($n) => '$' . number_format((float) $n, 4);
+        $fmtTokens = function ($n) {
+            $n = (int) $n;
+            if ($n >= 1_000_000) return number_format($n / 1_000_000, 2) . 'M';
+            if ($n >= 1_000)     return number_format($n / 1_000, 1) . 'k';
+            return number_format($n);
+        };
+        $sourceLabels = [
+            'whatsapp'  => __('ui.claude_usage.source_whatsapp'),
+            'webchat'   => __('ui.claude_usage.source_webchat'),
+            'messenger' => __('ui.claude_usage.source_messenger'),
+            'title'     => __('ui.claude_usage.source_title'),
+            'ask'       => __('ui.claude_usage.source_ask'),
+        ];
+    @endphp
+
+    <div class="card" style="margin-top:1.25rem;">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div class="card-title">{{ __('ui.platform_tenants_show_page.claude_cost_title') }}</div>
+                <div class="card-subtitle">{{ __('ui.platform_tenants_show_page.claude_cost_subtitle') }}</div>
+            </div>
+            <a href="{{ route('super_admin.platform.claude-usage') }}" class="btn btn-outline" style="font-size:12px;padding:4px 12px;">
+                <i class="ri-external-link-line"></i> {{ __('ui.platform_tenants_show_page.claude_view_platform') }}
+            </a>
+        </div>
+
+        @if(($claudeLifetime->calls ?? 0) === 0)
+            <div style="padding:24px 20px;text-align:center;color:var(--text-muted);font-size:13px;">
+                <i class="ri-cpu-line" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                {{ __('ui.platform_tenants_show_page.claude_no_data') }}
+            </div>
+        @else
+            {{-- KPI banner --}}
+            <div style="padding:8px 20px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                <div style="padding:12px;background:var(--page-bg);border-radius:8px;">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{{ __('ui.platform_tenants_show_page.claude_spend_30d') }}</div>
+                    <div style="font-size:20px;font-weight:700;margin-top:4px;">{{ $fmtUsd($claude30d->cost ?? 0) }}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ number_format((int) ($claude30d->calls ?? 0)) }} {{ __('ui.claude_usage.calls_word') }}</div>
+                </div>
+                <div style="padding:12px;background:var(--page-bg);border-radius:8px;">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{{ __('ui.platform_tenants_show_page.claude_spend_lifetime') }}</div>
+                    <div style="font-size:20px;font-weight:700;margin-top:4px;">{{ $fmtUsd($claudeLifetime->cost ?? 0) }}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ number_format((int) ($claudeLifetime->calls ?? 0)) }} {{ __('ui.claude_usage.calls_word') }}</div>
+                </div>
+                <div style="padding:12px;background:var(--page-bg);border-radius:8px;">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{{ __('ui.platform_tenants_show_page.claude_input_tokens') }}</div>
+                    <div style="font-size:20px;font-weight:700;margin-top:4px;">{{ $fmtTokens($claudeLifetime->in_tok ?? 0) }}</div>
+                </div>
+                <div style="padding:12px;background:var(--page-bg);border-radius:8px;">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">{{ __('ui.platform_tenants_show_page.claude_output_tokens') }}</div>
+                    <div style="font-size:20px;font-weight:700;margin-top:4px;">{{ $fmtTokens($claudeLifetime->out_tok ?? 0) }}</div>
+                </div>
+            </div>
+
+            {{-- Two-column split: by-model / by-source --}}
+            <div style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="border:1px solid var(--card-border);border-radius:8px;padding:12px 14px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">{{ __('ui.claude_usage.by_model_title') }}</div>
+                    @foreach($claudeByModel as $row)
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;">
+                            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">{{ $row->model }}</span>
+                            <strong>{{ $fmtUsd($row->cost) }}</strong>
+                        </div>
+                    @endforeach
+                </div>
+                <div style="border:1px solid var(--card-border);border-radius:8px;padding:12px 14px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">{{ __('ui.claude_usage.by_source_title') }}</div>
+                    @foreach($claudeBySource as $row)
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;">
+                            <span>{{ $sourceLabels[$row->source] ?? $row->source }} <span style="color:var(--text-muted);font-size:11px;">· {{ number_format((int) $row->calls) }}</span></span>
+                            <strong>{{ $fmtUsd($row->cost) }}</strong>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Last 10 calls — spot-check that fresh calls are billing correctly. --}}
+            <div class="table-container" style="border-radius:0 0 12px 12px;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.claude_usage.col_when') }}</th>
+                            <th>{{ __('ui.claude_usage.col_source') }}</th>
+                            <th>{{ __('ui.claude_usage.col_model') }}</th>
+                            <th style="text-align:end;">{{ __('ui.claude_usage.col_input_tokens') }}</th>
+                            <th style="text-align:end;">{{ __('ui.claude_usage.col_output_tokens') }}</th>
+                            <th style="text-align:end;">{{ __('ui.claude_usage.col_spend') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($claudeRecent as $row)
+                            <tr>
+                                <td style="color:var(--text-muted);font-size:12px;">{{ $row->created_at?->diffForHumans() }}</td>
+                                <td><span class="badge">{{ $sourceLabels[$row->source] ?? $row->source }}</span></td>
+                                <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:11px;">{{ $row->model }}</td>
+                                <td style="text-align:end;color:var(--text-muted);">{{ number_format((int) $row->input_tokens) }}</td>
+                                <td style="text-align:end;color:var(--text-muted);">{{ number_format((int) $row->output_tokens) }}</td>
+                                <td style="text-align:end;font-weight:600;">{{ $fmtUsd4($row->cost_usd) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     {{-- Payment history --}}
     <div class="card" style="margin-top:1.25rem;">
         <div class="card-header">

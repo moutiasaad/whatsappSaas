@@ -155,7 +155,50 @@ class SuperAdminPlatformController extends Controller
         // for how these rows get written.
         $linkedTenants = $tenant->linkedTenants();
 
-        return view('admin.platform.tenants-show', compact('tenant', 'payments', 'linkedTenants'));
+        // Claude API cost block. Aggregates come from the ai_api_usages
+        // ledger (App\Services\AI\UsageTracker records one row per call,
+        // cost snapshotted at record time). Same SQL pattern used on the
+        // platform-wide report at /platform/claude-usage.
+        $claudeBase = \App\Models\AiApiUsage::where('tenant_id', $tenant->id);
+
+        $claudeLifetime = (clone $claudeBase)
+            ->selectRaw('COUNT(*) as calls')
+            ->selectRaw('COALESCE(SUM(input_tokens), 0)  as in_tok')
+            ->selectRaw('COALESCE(SUM(output_tokens), 0) as out_tok')
+            ->selectRaw('COALESCE(SUM(cost_usd), 0)      as cost')
+            ->first();
+
+        $claude30d = (clone $claudeBase)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('COUNT(*) as calls')
+            ->selectRaw('COALESCE(SUM(cost_usd), 0) as cost')
+            ->first();
+
+        $claudeByModel = (clone $claudeBase)
+            ->selectRaw('model')
+            ->selectRaw('COUNT(*) as calls')
+            ->selectRaw('COALESCE(SUM(cost_usd), 0) as cost')
+            ->groupBy('model')
+            ->orderByDesc('cost')
+            ->get();
+
+        $claudeBySource = (clone $claudeBase)
+            ->selectRaw('source')
+            ->selectRaw('COUNT(*) as calls')
+            ->selectRaw('COALESCE(SUM(cost_usd), 0) as cost')
+            ->groupBy('source')
+            ->orderByDesc('cost')
+            ->get();
+
+        $claudeRecent = (clone $claudeBase)
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        return view('admin.platform.tenants-show', compact(
+            'tenant', 'payments', 'linkedTenants',
+            'claudeLifetime', 'claude30d', 'claudeByModel', 'claudeBySource', 'claudeRecent'
+        ));
     }
 
     public function editTenant(Tenant $tenant)
