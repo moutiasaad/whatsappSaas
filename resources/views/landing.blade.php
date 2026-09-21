@@ -255,9 +255,10 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
 .hero h1 em{font-style:normal;color:var(--teal-l)}
 .hero .lede{font-size:19px;color:#94a3b8;margin-top:20px;max-width:46ch;line-height:1.6}
 .capture{display:flex;gap:10px;margin-top:32px;max-width:480px}
-.capture input{flex:1;height:54px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;padding:0 16px;font-size:15.5px;outline:none;transition:.15s;min-width:0}
-.capture input::placeholder{color:#7b8894}
-.capture input:focus{border-color:var(--teal-l);background:rgba(255,255,255,.09);box-shadow:0 0 0 3px rgba(21,182,168,.16)}
+.capture input{flex:1;height:54px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;padding:0 18px;font-size:15.5px;outline:none;transition:.15s;min-width:0;-webkit-appearance:none;appearance:none}
+.capture input::placeholder{color:#94a3b8}
+.capture input:hover{border-color:rgba(255,255,255,.32)}
+.capture input:focus{border-color:var(--teal-l);background:rgba(255,255,255,.12);box-shadow:0 0 0 3px rgba(21,182,168,.18)}
 .capture .btn{height:54px;flex-shrink:0}
 .microtrust{display:flex;gap:18px;margin-top:16px;flex-wrap:wrap}
 .microtrust span{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#8b99a6}
@@ -399,7 +400,11 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   .steps,.feats,.ba,.plans{grid-template-columns:1fr;max-width:520px;margin-inline:auto}
   .nav nav{display:none}
   section{padding:64px 0}
-  .capture{flex-direction:column;max-width:none}
+  /* Column-stack on tablets/phones. Give more air above the input so it
+     visually detaches from the .lede paragraph — the hero's glow gradient
+     was blending the input's subtle border into the paragraph on small
+     screens and making the two look tied together. */
+  .capture{flex-direction:column;max-width:none;margin-top:36px;gap:12px}
   .final h2{font-size:32px}
   .mobcta{display:flex}
   footer{padding-bottom:96px}
@@ -413,6 +418,12 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   .sechead{margin-bottom:36px}
   .sechead h2{font-size:27px}
   .sechead p{font-size:15.5px}
+  /* Phones: font-size:16px on the input so iOS Safari doesn't auto-zoom
+     when it focuses. Slightly taller + stronger contrast so the input
+     reads as a real form field, not a background flourish. */
+  .capture input{height:56px;font-size:16px;border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.11);padding:0 20px}
+  .capture input:focus{background:rgba(255,255,255,.14)}
+  .capture .btn{height:56px;font-size:16px}
   .strip .in{gap:22px}
   .strip .k{flex:1 1 40%}
   .strip .k b{font-size:22px}
