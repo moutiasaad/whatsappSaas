@@ -1331,8 +1331,14 @@ class PaymentController extends Controller
             'plan_id' => ['required', 'integer'],
         ]);
 
+        // Marketing knows the visitor's country from DetectCountry middleware.
+        // Forward it so core prices the checkout in the local currency —
+        // without this the API would fall back to its own DetectCountry pass
+        // (which sees an internal server-to-server call, not the visitor).
+        $country = (string) (view()->shared('visitorCountry') ?? session(\App\Http\Middleware\DetectCountry::SESSION_KEY, ''));
+
         $result = app(\App\Services\WavadeskApi::class)
-            ->billingCheckout($token, (int) $data['plan_id'], $provider);
+            ->billingCheckout($token, (int) $data['plan_id'], $provider, $country ?: null);
 
         if (!$result['ok']) {
             // 422 → field error (retired plan, provider mismatch). Anything

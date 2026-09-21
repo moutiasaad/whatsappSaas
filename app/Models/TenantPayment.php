@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TenantPayment extends Model
 {
     protected $fillable = [
-        'tenant_id', 'plan_id', 'kind', 'amount', 'currency',
+        'tenant_id', 'plan_id', 'kind', 'amount', 'currency', 'base_amount_usd',
         'payment_method', 'metadata',
         'stripe_session_id', 'stripe_checkout_url',
         'paypal_order_id', 'paypal_capture_id',
@@ -17,6 +17,7 @@ class TenantPayment extends Model
 
     protected $casts = [
         'amount'           => 'decimal:2',
+        'base_amount_usd'  => 'decimal:2',
         'gateway_response' => 'array',
         'metadata'         => 'array',
         'paid_at'          => 'datetime',

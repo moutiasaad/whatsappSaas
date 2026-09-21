@@ -156,13 +156,19 @@ class PayPalService
         });
     }
 
-    public function createOrder(float $amount, string $description, string $returnUrl, string $cancelUrl, array $metadata = []): array
+    public function createOrder(float $amount, string $description, string $returnUrl, string $cancelUrl, array $metadata = [], ?string $currency = null): array
     {
         $token = $this->getAccessToken();
 
+        // Per-call currency override — Phase 3 sends the visitor's local
+        // currency here. Falls back to the constructor default (PAYPAL_CURRENCY
+        // env) when the caller doesn't pass one, so the existing web-flow
+        // callers keep working unchanged.
+        $orderCurrency = strtoupper($currency ?: $this->currency);
+
         $purchaseUnit = [
             'amount' => [
-                'currency_code' => $this->currency,
+                'currency_code' => $orderCurrency,
                 'value'         => number_format($amount, 2, '.', ''),
             ],
             'description'   => mb_substr($description, 0, 127),

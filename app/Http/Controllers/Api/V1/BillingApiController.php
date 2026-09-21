@@ -61,6 +61,12 @@ class BillingApiController extends Controller
         $data = $request->validate([
             'plan_id'  => ['required', 'integer', Rule::exists('plans', 'id')->where('is_active', true)],
             'provider' => ['required', 'string', Rule::in(['stripe', 'paypal'])],
+            // Optional ISO 3166-1 alpha-2. When present, the localised price
+            // for this country is used instead of the plan's base USD price.
+            // Marketing sends the value it got from DetectCountry middleware;
+            // the API also runs DetectCountry, so an absent param falls back
+            // to session/CF-IPCountry/default just like everywhere else.
+            'country'  => ['nullable', 'string', 'size:2', 'alpha'],
         ]);
 
         $user   = $request->user();
@@ -83,9 +89,16 @@ class BillingApiController extends Controller
             ], 422);
         }
 
+        // Country resolution order: explicit body param → view()->shared value
+        // that DetectCountry seeded from the header/session/default. Either way
+        // Plan::priceFor() guarantees a safe USD fallback if the resolved code
+        // isn't a country we sell in.
+        $country = strtoupper((string) ($data['country'] ?? view()->shared('visitorCountry') ?? ''));
+        $priced  = $plan->priceFor($country, 'monthly');
+
         return match ($data['provider']) {
-            'stripe' => $this->checkoutStripe($tenant, $plan, (int) $user->id),
-            'paypal' => $this->checkoutPaypal($tenant, $plan, (int) $user->id),
+            'stripe' => $this->checkoutStripe($tenant, $plan, (int) $user->id, $priced),
+            'paypal' => $this->checkoutPaypal($tenant, $plan, (int) $user->id, $priced),
         };
     }
 
@@ -94,18 +107,20 @@ class BillingApiController extends Controller
      * Checkout Session, one pending TenantPayment row keyed by the
      * session id so the webhook can settle it later.
      */
-    private function checkoutStripe($tenant, Plan $plan, int $userId): JsonResponse
+    private function checkoutStripe($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
-        $admin       = $tenant->users()->where('role', 'admin')->first();
-        $amount      = (float) $plan->price_monthly;
-        $amountCents = (int) round($amount * 100);
+        $admin        = $tenant->users()->where('role', 'admin')->first();
+        $amount       = (float) $priced['amount'];
+        $currency     = strtolower((string) $priced['currency']); // Stripe expects lowercase
+        $amountCents  = (int) round($amount * 100);
+        $baseUsd      = (float) $plan->price_monthly; // snapshot for super-admin visibility
 
         try {
             $session = $this->stripe->createCheckoutSession([
                 'payment_method_types' => ['card'],
                 'line_items'           => [[
                     'price_data' => [
-                        'currency'     => 'usd',
+                        'currency'     => $currency,
                         'product_data' => [
                             'name'        => $plan->name . ' — ' . $tenant->name,
                             'description' => "Monthly subscription for {$tenant->name}",
@@ -141,7 +156,8 @@ class BillingApiController extends Controller
                 'tenant_id'           => $tenant->id,
                 'plan_id'             => $plan->id,
                 'amount'              => $amount,
-                'currency'            => 'USD',
+                'currency'            => strtoupper($currency),
+                'base_amount_usd'     => $baseUsd,
                 'payment_method'      => 'stripe',
                 'stripe_session_id'   => $session->id,
                 'stripe_checkout_url' => $session->url,
@@ -153,8 +169,9 @@ class BillingApiController extends Controller
                 'redirect_url' => $session->url,
                 'provider'     => 'stripe',
                 'payment_id'   => $payment->id,
-                'currency'     => 'USD',
+                'currency'     => strtoupper($currency),
                 'amount'       => $amount,
+                'base_amount_usd' => $baseUsd,
             ]);
         } catch (\Throwable $e) {
             Log::error('API v1 billing/checkout Stripe failed', [
@@ -175,14 +192,14 @@ class BillingApiController extends Controller
      * PaymentController::initiatePaypal so a server configured for one
      * mode on the web flow behaves identically on the API.
      */
-    private function checkoutPaypal($tenant, Plan $plan, int $userId): JsonResponse
+    private function checkoutPaypal($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
         if (config('services.paypal.client_id')) {
-            return $this->checkoutPaypalRest($tenant, $plan, $userId);
+            return $this->checkoutPaypalRest($tenant, $plan, $userId, $priced);
         }
 
         if ($this->paypalStd->isConfigured()) {
-            return $this->checkoutPaypalStandard($tenant, $plan, $userId);
+            return $this->checkoutPaypalStandard($tenant, $plan, $userId, $priced);
         }
 
         return response()->json([
@@ -190,9 +207,11 @@ class BillingApiController extends Controller
         ], 502);
     }
 
-    private function checkoutPaypalRest($tenant, Plan $plan, int $userId): JsonResponse
+    private function checkoutPaypalRest($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
-        $amount = (float) $plan->price_monthly;
+        $amount   = (float) $priced['amount'];
+        $currency = strtoupper((string) $priced['currency']);
+        $baseUsd  = (float) $plan->price_monthly;
 
         // Same rationale as the Stripe branch: PayPal returns to core, and the
         // marketing app never opened a session there, so bake an SSO code into
@@ -205,6 +224,7 @@ class BillingApiController extends Controller
                 description: $plan->name . ' — ' . $tenant->name,
                 returnUrl:   route('payment.paypal.return') . '?sso=' . urlencode($sso),
                 cancelUrl:   route('payment.paypal.cancel'),
+                currency:    $currency,
                 metadata:    [
                     'tenant_id'  => $tenant->id,
                     'invoice_id' => 'tenant_' . $tenant->id . '_' . time(),
@@ -221,7 +241,8 @@ class BillingApiController extends Controller
                 'tenant_id'       => $tenant->id,
                 'plan_id'         => $plan->id,
                 'amount'          => $amount,
-                'currency'        => config('services.paypal.currency', 'USD'),
+                'currency'        => $currency,
+                'base_amount_usd' => $baseUsd,
                 'payment_method'  => 'paypal',
                 'paypal_order_id' => $order['id'] ?? null,
                 'status'          => 'pending',
@@ -229,11 +250,12 @@ class BillingApiController extends Controller
             ]);
 
             return response()->json([
-                'redirect_url' => $approveUrl,
-                'provider'     => 'paypal',
-                'payment_id'   => $payment->id,
-                'currency'     => (string) config('services.paypal.currency', 'USD'),
-                'amount'       => $amount,
+                'redirect_url'    => $approveUrl,
+                'provider'        => 'paypal',
+                'payment_id'      => $payment->id,
+                'currency'        => $currency,
+                'amount'          => $amount,
+                'base_amount_usd' => $baseUsd,
             ]);
         } catch (\Throwable $e) {
             Log::error('API v1 billing/checkout PayPal REST failed', [
@@ -253,16 +275,19 @@ class BillingApiController extends Controller
      * app to render its own auto-submit form. Mirrors what
      * PaymentController::initiatePaypalStandard renders inline.
      */
-    private function checkoutPaypalStandard($tenant, Plan $plan, int $userId): JsonResponse
+    private function checkoutPaypalStandard($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
-        $amount    = (float) $plan->price_monthly;
+        $amount    = (float) $priced['amount'];
+        $currency  = strtoupper((string) $priced['currency']);
+        $baseUsd   = (float) $plan->price_monthly;
         $invoiceId = 'tenant_' . $tenant->id . '_' . time();
 
         $payment = TenantPayment::create([
             'tenant_id'       => $tenant->id,
             'plan_id'         => $plan->id,
             'amount'          => $amount,
-            'currency'        => config('services.paypal.currency', 'USD'),
+            'currency'        => $currency,
+            'base_amount_usd' => $baseUsd,
             'payment_method'  => 'paypal',
             'paypal_order_id' => $invoiceId,
             'status'          => 'pending',
@@ -279,19 +304,21 @@ class BillingApiController extends Controller
             cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
             notifyUrl:     route('payment.paypal.ipn'),
             customPayload: (string) $payment->id,
+            currency:      $currency,
         );
 
         return response()->json([
             // Standard mode is a form POST, not a straight 302. The caller
             // must render an auto-submit form with these params — a plain
             // redirect will not carry the fields.
-            'redirect_url'  => $this->paypalStd->getCheckoutUrl(),
-            'redirect_form' => $params,
-            'method'        => 'POST',
-            'provider'      => 'paypal',
-            'payment_id'    => $payment->id,
-            'currency'      => (string) config('services.paypal.currency', 'USD'),
-            'amount'        => $amount,
+            'redirect_url'    => $this->paypalStd->getCheckoutUrl(),
+            'redirect_form'   => $params,
+            'method'          => 'POST',
+            'provider'        => 'paypal',
+            'payment_id'      => $payment->id,
+            'currency'        => $currency,
+            'amount'          => $amount,
+            'base_amount_usd' => $baseUsd,
         ]);
     }
 

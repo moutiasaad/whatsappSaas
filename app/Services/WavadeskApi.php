@@ -129,12 +129,13 @@ class WavadeskApi
      * @param  'stripe'|'paypal'  $provider
      * @return array{ok: bool, status: int, body: array}
      */
-    public function billingCheckout(string $token, int $planId, string $provider): array
+    public function billingCheckout(string $token, int $planId, string $provider, ?string $country = null): array
     {
-        return $this->call('post', '/api/v1/billing/checkout', [
+        return $this->call('post', '/api/v1/billing/checkout', array_filter([
             'plan_id'  => $planId,
             'provider' => $provider,
-        ], $token);
+            'country'  => $country,
+        ], fn ($v) => $v !== null && $v !== ''), $token);
     }
 
     /**

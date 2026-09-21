@@ -59,7 +59,8 @@ class PayPalStandardService
         string $cancelUrl,
         string $notifyUrl,
         string $customPayload = '',
-        bool $preferCard = false
+        bool $preferCard = false,
+        ?string $currency = null
     ): array {
         if (!$this->isConfigured()) {
             throw new RuntimeException('PayPal payee email is not configured.');
@@ -70,7 +71,7 @@ class PayPalStandardService
             'business'      => $this->payeeEmail,
             'item_name'     => mb_substr($itemName, 0, 127),
             'amount'        => number_format($amount, 2, '.', ''),
-            'currency_code' => $this->currency,
+            'currency_code' => strtoupper($currency ?: $this->currency),
             'invoice'       => $invoiceId,
             'custom'        => $customPayload,
             'no_shipping'   => '1',
