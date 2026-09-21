@@ -6,6 +6,7 @@ use App\Events\WebChat\WebChatConversationRequested;
 use App\Events\WebChat\WebChatMessageSent;
 use App\Models\WebChat\Conversation;
 use App\Models\WebChat\Message;
+use App\Services\AI\UsageTracker;
 use Illuminate\Support\Facades\Log;
 
 class WebChatAutoReplyService
@@ -103,6 +104,13 @@ class WebChatAutoReplyService
 
             // One generated reply = one unit of the plan's monthly allowance.
             $settings->consumeReply();
+
+            app(UsageTracker::class)->record(
+                $tenant,
+                UsageTracker::SOURCE_WEBCHAT,
+                $response,
+                $conversation->id,
+            );
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
 

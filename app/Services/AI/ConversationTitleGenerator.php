@@ -31,7 +31,7 @@ class ConversationTitleGenerator
             ->values()
             ->all();
 
-        return $this->askClaude($lines, app()->getLocale());
+        return $this->askClaude($lines, app()->getLocale(), $conversation->tenant_id, $conversation->id);
     }
 
     public function forWebChat(WebChatConversation $conversation): string
@@ -53,10 +53,10 @@ class ConversationTitleGenerator
             ->values()
             ->all();
 
-        return $this->askClaude($lines, app()->getLocale());
+        return $this->askClaude($lines, app()->getLocale(), $conversation->tenant_id, $conversation->id);
     }
 
-    private function askClaude(array $lines, string $locale): string
+    private function askClaude(array $lines, string $locale, ?int $tenantId = null, ?int $conversationId = null): string
     {
         if (empty($lines)) {
             return '';
@@ -82,6 +82,15 @@ class ConversationTitleGenerator
                 model: config('services.anthropic.model', 'claude-haiku-4-5-20251001'),
                 system: $this->systemPrompt($locale),
             );
+
+            if ($tenantId) {
+                app(UsageTracker::class)->record(
+                    $tenantId,
+                    UsageTracker::SOURCE_TITLE,
+                    $response,
+                    $conversationId,
+                );
+            }
 
             $text = trim($response->content[0]->text ?? '');
             $text = trim($text, "\"'“”‘’ \t\n\r\0\x0B");

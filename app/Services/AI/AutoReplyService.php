@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Jobs\SendOutgoingMessage;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\AI\UsageTracker;
 use Illuminate\Support\Facades\Log;
 
 class AutoReplyService
@@ -92,6 +93,13 @@ class AutoReplyService
             // Billed on a successful API call, before the text is inspected:
             // the call was made and paid for either way.
             $settings->consumeReply();
+
+            app(UsageTracker::class)->record(
+                $conversation->tenant,
+                UsageTracker::SOURCE_WHATSAPP,
+                $response,
+                $conversation->id,
+            );
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
 

@@ -1825,6 +1825,10 @@
                             ['route' => 'platform.plans',             'match' => ['platform.plans*'],         'icon' => 'ri-price-tag-3-line',   'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
                             ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line', 'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
                             ['route' => 'platform.addons',            'match' => ['platform.addons*'],        'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
+                            // Claude API cost report — ops-oriented (what the platform pays
+                            // Anthropic per tenant). Gated on the same permission slug as
+                            // system_health / meta_settings so the same operator role sees them.
+                            ['route' => 'platform.claude-usage',      'match' => ['platform.claude-usage*'],  'icon' => 'ri-cpu-line',            'label' => __('ui.sidebar.claude_usage'),       'show' => $sp('platform_system_health')],
                             // Meta / Facebook Messenger platform credentials — App ID, App
                             // Secret, Verify Token, Graph version. Same permission gate as
                             // system health (both are cross-tenant ops-owned config).

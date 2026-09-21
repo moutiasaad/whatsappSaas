@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\ClaudeUsageController;
 use App\Http\Controllers\Admin\ConversationWebController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -641,6 +642,10 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // on trial. See SuperAdminPlatformController::expireTrial.
             Route::post('/platform/tenants/{tenant}/expire-trial', [SuperAdminPlatformController::class, 'expireTrial'])
                 ->name('platform.tenants.expire-trial');
+
+            // Claude API cost report. Ledger-backed, one row per Anthropic
+            // call recorded by App\Services\AI\UsageTracker.
+            Route::get('/platform/claude-usage', [ClaudeUsageController::class, 'index'])->name('platform.claude-usage');
 
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');

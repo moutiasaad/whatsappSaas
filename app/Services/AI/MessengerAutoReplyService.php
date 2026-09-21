@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Models\Messenger\Conversation;
 use App\Models\Messenger\Message;
+use App\Services\AI\UsageTracker;
 use App\Services\Messenger\MessengerSendException;
 use App\Services\Messenger\MessengerService;
 use Illuminate\Support\Facades\Log;
@@ -117,6 +118,13 @@ class MessengerAutoReplyService
             );
 
             $settings->consumeReply();
+
+            app(UsageTracker::class)->record(
+                $tenant,
+                UsageTracker::SOURCE_MESSENGER,
+                $response,
+                $conversation->id,
+            );
 
             $tokens = ($response->usage->inputTokens ?? 0) + ($response->usage->outputTokens ?? 0);
             $text   = PromptBuilder::sanitizeReply((string) ($response->content[0]->text ?? ''));

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AiSettings;
 use App\Services\AI\PromptBuilder;
+use App\Services\AI\UsageTracker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -77,6 +78,12 @@ class AiController extends Controller
             );
 
             $settings?->consumeReply();
+
+            app(UsageTracker::class)->record(
+                $tenant,
+                UsageTracker::SOURCE_ASK,
+                $response,
+            );
 
             return response()->json([
                 'answer'          => $response->content[0]->text ?? '',
