@@ -646,6 +646,9 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // or paid). Every extension writes an AuditLog row.
             Route::post('/platform/tenants/{tenant}/extend-plan', [SuperAdminPlatformController::class, 'extendTenantPlan'])
                 ->name('platform.tenants.extend-plan');
+            // Replace the plan end date with an operator-chosen absolute date.
+            Route::post('/platform/tenants/{tenant}/set-plan-date', [SuperAdminPlatformController::class, 'setTenantPlanDate'])
+                ->name('platform.tenants.set-plan-date');
 
             // Claude API cost report. Ledger-backed, one row per Anthropic
             // call recorded by App\Services\AI\UsageTracker.

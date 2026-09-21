@@ -10,11 +10,26 @@
     <span>{{ $tenant->name }}</span>
 @endsection
 
+@php
+    // Which column the two "plan date" actions target, and the current value
+    // in that column. `setDateDefault` seeds the date-picker with the current
+    // end date when it's still in the future, otherwise tomorrow — the
+    // controller rejects past dates anyway, so tomorrow is the safe fallback.
+    $planColumn      = $tenant->subscription_status === 'trial' ? 'trial_ends_at' : 'subscription_ends_at';
+    $currentEndDate  = $tenant->{$planColumn};
+    $setDateDefault  = ($currentEndDate && $currentEndDate->isFuture())
+        ? $currentEndDate->format('Y-m-d')
+        : now()->addDay()->format('Y-m-d');
+@endphp
+
 @section('content')
-{{-- x-data at the root so the Extend Plan modal (rendered at the bottom of
-     the page) shares the same Alpine scope as the header button that opens
-     it. `days` starts at 30 which matches the most common operator ask. --}}
-<div x-data="{ extendOpen: false, days: 30, reason: '' }">
+{{-- x-data at the root so both plan-date modals (rendered at the bottom of
+     the page) share the same Alpine scope as the header buttons that open
+     them. `days` starts at 30 = most common operator ask. --}}
+<div x-data="{
+    extendOpen: false, days: 30, reason: '',
+    dateOpen: false, endDate: @js($setDateDefault), dateReason: ''
+}">
     <div class="page-header">
         <div class="page-header-left">
             <div class="page-title">{{ $tenant->name }}</div>
@@ -31,6 +46,14 @@
             <button type="button" @click="extendOpen = true; days = 30; reason = ''"
                     class="btn btn-outline" style="color:var(--brand);border-color:rgba(16,185,129,.4);">
                 <i class="ri-calendar-2-line"></i> {{ __('ui.platform_tenants_show_page.extend_plan') }}
+            </button>
+
+            {{-- Replace the end date with an operator-picked date. Distinct
+                 button from Extend because the two speak to different intents
+                 — "give them more time" vs. "the date should be X". --}}
+            <button type="button" @click="dateOpen = true; endDate = @js($setDateDefault); dateReason = ''"
+                    class="btn btn-outline" style="color:var(--brand);border-color:rgba(16,185,129,.4);">
+                <i class="ri-calendar-event-line"></i> {{ __('ui.platform_tenants_show_page.set_plan_date') }}
             </button>
 
             {{-- Block / Unblock. One form; label + color flip on tenant.is_active.
@@ -217,21 +240,37 @@
                 </div>
             </div>
 
-            {{-- Extension history — only rendered when at least one extension
+            {{-- Plan change history — only rendered when at least one change
                  has been recorded. Rows come from the AuditLog ledger so
-                 this list and /admin-control-panel/audit-log always agree. --}}
+                 this list and /admin-control-panel/audit-log always agree.
+                 Renders two action types with distinct headlines. --}}
             @if($planExtensions->isNotEmpty())
             <div class="card">
                 <div class="card-header" style="padding-bottom:12px;">
-                    <div class="card-title">{{ __('ui.platform_tenants_show_page.recent_extensions') }}</div>
+                    <div class="card-title">{{ __('ui.platform_tenants_show_page.recent_plan_changes') }}</div>
                 </div>
                 <div style="padding:0 18px 18px 18px;display:flex;flex-direction:column;gap:10px;">
                     @foreach($planExtensions as $log)
-                        @php $p = (array) ($log->payload ?? []); @endphp
+                        @php
+                            $p       = (array) ($log->payload ?? []);
+                            $isSet   = $log->action === 'tenant.plan_date_set';
+                            $newIso  = $p['new'] ?? null;
+                            $newFmt  = $newIso ? \Carbon\Carbon::parse($newIso)->format('M j, Y') : null;
+                        @endphp
                         <div style="padding:10px;background:var(--page-bg);border-radius:8px;font-size:12.5px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <strong>+{{ (int) ($p['days'] ?? 0) }} {{ __('ui.platform_tenants_show_page.days_short') }}</strong>
-                                <span style="color:var(--text-muted);font-size:11px;">{{ $log->created_at?->diffForHumans() }}</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                @if($isSet)
+                                    <strong>
+                                        <i class="ri-calendar-event-line" style="color:var(--brand);"></i>
+                                        {{ __('ui.platform_tenants_show_page.set_to_label') }}: {{ $newFmt ?? '—' }}
+                                    </strong>
+                                @else
+                                    <strong>
+                                        <i class="ri-calendar-2-line" style="color:var(--brand);"></i>
+                                        +{{ (int) ($p['days'] ?? 0) }} {{ __('ui.platform_tenants_show_page.days_short') }}
+                                    </strong>
+                                @endif
+                                <span style="color:var(--text-muted);font-size:11px;white-space:nowrap;">{{ $log->created_at?->diffForHumans() }}</span>
                             </div>
                             <div style="color:var(--text-muted);margin-top:2px;">
                                 {{ __('ui.platform_tenants_show_page.extension_by') }}:
@@ -518,6 +557,69 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="ri-check-line"></i>
                             {{ __('ui.platform_tenants_show_page.extend_plan_confirm') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    {{-- Set Plan Date Modal — replaces the end date with an operator-picked
+         one. Teleported for the same z-index reason as the Extend modal. --}}
+    <template x-teleport="body">
+        <div x-show="dateOpen" x-cloak
+             class="modal-overlay show" role="dialog" aria-modal="true"
+             @click.self="dateOpen = false"
+             @keydown.escape.window="dateOpen = false"
+             style="z-index:10000;">
+            <div class="modal-box" style="max-width:480px;">
+                <div class="modal-icon" style="color:var(--brand);background:rgba(16,185,129,.15);">
+                    <i class="ri-calendar-event-line"></i>
+                </div>
+                <h3>{{ __('ui.platform_tenants_show_page.set_plan_date_title', ['name' => $tenant->name]) }}</h3>
+                <p style="color:var(--text-muted);font-size:13px;">
+                    {{ __($tenant->subscription_status === 'trial' ? 'ui.platform_tenants_show_page.set_plan_date_body_trial' : 'ui.platform_tenants_show_page.set_plan_date_body_paid') }}
+                </p>
+
+                @if($currentEndDate)
+                    <p style="color:var(--text-muted);font-size:12px;margin-top:4px;">
+                        {{ __('ui.platform_tenants_show_page.current_end_date') }}:
+                        <strong style="color:var(--text-primary);">{{ $currentEndDate->format('M j, Y') }}</strong>
+                    </p>
+                @endif
+
+                <form method="POST" action="{{ route('super_admin.platform.tenants.set-plan-date', $tenant) }}"
+                      style="margin-top:16px;display:flex;flex-direction:column;gap:12px;text-align:left;">
+                    @csrf
+
+                    <div>
+                        <label class="form-label" style="display:block;margin-bottom:6px;">
+                            {{ __('ui.platform_tenants_show_page.set_plan_date_label') }}
+                        </label>
+                        <input type="date" name="end_date" x-model="endDate"
+                               min="{{ now()->format('Y-m-d') }}" required
+                               class="form-control" style="max-width:220px;">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:block;margin-bottom:6px;">
+                            {{ __('ui.platform_tenants_show_page.extend_plan_reason_label') }}
+                            <span style="color:var(--text-muted);font-weight:400;">
+                                ({{ __('ui.platform_tenants_show_page.extend_plan_reason_hint') }})
+                            </span>
+                        </label>
+                        <textarea name="reason" x-model="dateReason" rows="2" maxlength="500"
+                                  class="form-control"
+                                  placeholder="{{ __('ui.platform_tenants_show_page.set_plan_date_reason_placeholder') }}"></textarea>
+                    </div>
+
+                    <div class="modal-actions" style="margin-top:8px;">
+                        <button type="button" @click="dateOpen = false" class="btn btn-outline">
+                            {{ __('ui.cancel') }}
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-check-line"></i>
+                            {{ __('ui.platform_tenants_show_page.set_plan_date_confirm') }}
                         </button>
                     </div>
                 </form>

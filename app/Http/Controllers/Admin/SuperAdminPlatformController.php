@@ -202,7 +202,7 @@ class SuperAdminPlatformController extends Controller
         $planExtensions = \App\Models\AuditLog::query()
             ->where('target_type', 'Tenant')
             ->where('target_id', $tenant->id)
-            ->where('action', 'tenant.plan_extended')
+            ->whereIn('action', ['tenant.plan_extended', 'tenant.plan_date_set'])
             ->with('user:id,name,email')
             ->latest('created_at')
             ->limit(5)
@@ -552,6 +552,52 @@ class SuperAdminPlatformController extends Controller
         return back()->with('success', __('ui.controller_messages.plan_extended', [
             'name' => $tenant->name,
             'days' => (int) $data['days'],
+        ]));
+    }
+
+    /**
+     * Replace a tenant's plan end date with a specific date the operator picks.
+     *
+     * Distinct from extendTenantPlan: extend adds N days on top of the current
+     * end date (or now, whichever is later), this sets an absolute date. Both
+     * write to the same column pair (trial_ends_at for trials, otherwise
+     * subscription_ends_at) so the two paths stay symmetric — an operator can
+     * flip between them without wondering which knob they're turning.
+     *
+     * Only forward dates are accepted (today or later). Back-dating already has
+     * its own explicit route (expireTrial) and letting Set-date silently expire
+     * a tenant would blur the intent.
+     */
+    public function setTenantPlanDate(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'end_date' => 'required|date|after_or_equal:today',
+            'reason'   => 'nullable|string|max:500',
+        ]);
+
+        $column = $tenant->subscription_status === 'trial'
+            ? 'trial_ends_at'
+            : 'subscription_ends_at';
+
+        $previous = $tenant->{$column}?->toIso8601String();
+        $newDate  = \Carbon\Carbon::parse($data['end_date'])->endOfDay();
+
+        $tenant->forceFill([$column => $newDate])->save();
+
+        AuditLog::record('tenant.plan_date_set', $tenant, [
+            'source'           => 'platform.tenants',
+            'column'           => $column,
+            'previous'         => $previous,
+            'new'              => $newDate->toIso8601String(),
+            'reason'           => $data['reason'] ?? null,
+            'status_at_change' => $tenant->subscription_status,
+        ]);
+
+        return back()->with('success', __('ui.controller_messages.plan_date_set', [
+            'name' => $tenant->name,
+            'date' => $newDate->format('M j, Y'),
         ]));
     }
 
