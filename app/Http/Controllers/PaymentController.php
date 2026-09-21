@@ -509,9 +509,14 @@ class PaymentController extends Controller
             return redirect()->route('register');
         }
 
-        // Mode selection: REST (OAuth) if client_id is set; otherwise Standard
-        // Payments (email-only). Standard requires just PAYPAL_PAYEE_EMAIL.
-        if (config('services.paypal.client_id')) {
+        // Mode selection: REST (OAuth) when the credentials actually work,
+        // otherwise Standard Payments (email-only). Just checking that
+        // PAYPAL_CLIENT_ID is set is not enough — a box that had client_id
+        // filled in but never had it verified would silently fail every
+        // checkout with "Impossible d'initialiser". credentialsValid()
+        // does a real token fetch (6s + cache) so we know whether REST
+        // is actually usable before committing the buyer to it.
+        if ($this->paypal->credentialsValid()) {
             return $this->initiatePaypalRest($tenant, $plan);
         }
 

@@ -194,7 +194,13 @@ class BillingApiController extends Controller
      */
     private function checkoutPaypal($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
-        if (config('services.paypal.client_id')) {
+        // credentialsValid() proves the OAuth creds work by fetching a token
+        // (6s + cache). Config presence alone is not enough — a box with a
+        // half-configured PAYPAL_CLIENT_ID/SECRET pair returns REST 401s
+        // and the buyer sees "Impossible d'initialiser le paiement". Falling
+        // straight through to Standard when the token fetch fails keeps
+        // checkout working while the operator sorts REST out.
+        if ($this->paypal->credentialsValid()) {
             return $this->checkoutPaypalRest($tenant, $plan, $userId, $priced);
         }
 
