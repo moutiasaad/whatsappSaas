@@ -52,6 +52,8 @@ class KnowledgeController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $this->safetyCheck($data);
+
         $entry = KnowledgeEntry::create($data + [
             'tenant_id' => auth()->user()->tenant_id,
             'is_active' => $request->boolean('is_active', true),
@@ -81,12 +83,65 @@ class KnowledgeController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $this->safetyCheck($data);
+
         $entry->update($data + ['is_active' => $request->boolean('is_active')]);
         AuditLog::record('knowledge.updated', $entry);
 
         $prefix = auth()->user()->routeNamePrefix();
         return redirect()->route($prefix . '.knowledge.index')
             ->with('success', __('ui.controller_messages.knowledge_updated'));
+    }
+
+    /**
+     * Screen a single entry against the content-safety filter. Rejected
+     * rows throw a validation exception attached to the `body` field so
+     * the modal's inline error surfaces the reason without needing a
+     * separate visible-on-page banner (see feedback_modal_only_error).
+     *
+     * Fail-closed on API errors: an unreachable filter blocks the save
+     * with a "try again" message rather than saving an unscreened entry.
+     */
+    private function safetyCheck(array $data): void
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $tenant   = auth()->user()->tenant ?: \App\Models\Tenant::find($tenantId);
+
+        try {
+            $screen = app(ContentSafetyFilter::class)->screen(
+                [['title' => $data['title'], 'body' => $data['body']]],
+                $tenant,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('KB single-entry: safety filter failed', [
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+            ]);
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'body' => __('ui.knowledge_page.safety_filter_unavailable'),
+            ]);
+        }
+
+        if (empty($screen['removed'])) {
+            return;
+        }
+
+        $rejected = $screen['removed'][0];
+        $category = (string) ($rejected['category'] ?? 'unknown');
+        $reason   = (string) ($rejected['reason']   ?? '');
+
+        AuditLog::record('knowledge.rejected_by_safety', null, [
+            'title'    => $data['title'],
+            'category' => $category,
+            'reason'   => $reason,
+        ]);
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'body' => __('ui.knowledge_page.entry_rejected_by_safety', [
+                'category' => $category,
+                'reason'   => $reason ?: '—',
+            ]),
+        ]);
     }
 
     public function destroy(KnowledgeEntry $entry)

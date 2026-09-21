@@ -219,6 +219,8 @@ return [
         'safety_filter_unavailable' => 'Le filtre de sécurité du contenu est indisponible pour le moment. Réessayez l’importation dans un instant.',
         'safety_removed_heading' => 'Retiré par le filtre de sécurité',
         'safety_removed_row' => 'Ligne :row — :category (:reason)',
+        'entry_rejected_by_safety' => 'Cette entrée a été bloquée par le filtre de sécurité du contenu (:category — :reason). Modifiez le contenu et réessayez.',
+        'entry_rejected_heading' => 'Entrée bloquée',
         'json_parse_error' => 'Le fichier n’est pas un JSON valide.',
         'no_entries_found' => 'Le JSON doit être un tableau d’entrées ou un objet avec un tableau "entries".',
         'import_row_error' => 'Ligne :row : :error',

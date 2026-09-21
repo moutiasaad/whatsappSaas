@@ -218,6 +218,8 @@ return [
         'safety_filter_unavailable' => 'The content safety filter is unavailable right now. Please try the import again in a moment.',
         'safety_removed_heading' => 'Removed by the content safety filter',
         'safety_removed_row' => 'Row :row — :category (:reason)',
+        'entry_rejected_by_safety' => 'This entry was blocked by the content safety filter (:category — :reason). Adjust the content and try again.',
+        'entry_rejected_heading' => 'Entry blocked',
         'json_parse_error' => 'The file is not valid JSON.',
         'no_entries_found' => 'The JSON must be an array of entries or an object with an "entries" array.',
         'import_row_error' => 'Row :row: :error',

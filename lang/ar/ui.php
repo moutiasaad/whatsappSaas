@@ -219,6 +219,8 @@ return [
         'safety_filter_unavailable' => 'مرشّح أمان المحتوى غير متاح حاليًا. أعد المحاولة بعد لحظات.',
         'safety_removed_heading' => 'تمت إزالتها بواسطة مرشّح الأمان',
         'safety_removed_row' => 'السطر :row — :category (:reason)',
+        'entry_rejected_by_safety' => 'تم حظر هذا الإدخال بواسطة مرشّح أمان المحتوى (:category — :reason). عدّل المحتوى ثم أعد المحاولة.',
+        'entry_rejected_heading' => 'تم حظر الإدخال',
         'json_parse_error' => 'الملف ليس بصيغة JSON صالحة.',
         'no_entries_found' => 'يجب أن يكون JSON مصفوفة من المدخلات أو كائنًا يحتوي على مصفوفة "entries".',
         'import_row_error' => 'السطر :row: :error',

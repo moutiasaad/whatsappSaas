@@ -137,6 +137,22 @@
         </div>
     @endif
 
+    {{-- Single-entry rejection banner — same modal-invisible-error trap
+         applies to Add / Edit Entry: the drawer closes on redirect, so
+         the `body` error attached by safetyCheck() would never render.
+         Same red-card treatment as the import banner above. --}}
+    @if($errors->has('body'))
+        <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #ef4444;background:#fef2f2">
+            <div style="font-weight:600;font-size:.875rem;color:#991b1b;margin-bottom:.25rem">
+                <i class="ri-shield-cross-line"></i>
+                {{ __('ui.knowledge_page.entry_rejected_heading') }}
+            </div>
+            <div style="font-size:.8125rem;color:#7f1d1d;line-height:1.6">
+                {{ $errors->first('body') }}
+            </div>
+        </div>
+    @endif
+
     @if(session('import_errors'))
         <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #f59e0b;background:#fffbeb">
             <div style="font-weight:600;font-size:.875rem;color:#92400e;margin-bottom:.375rem">
