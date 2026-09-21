@@ -33,6 +33,59 @@ class Plan extends Model
     ];
 
     public function tenants(): HasMany { return $this->hasMany(Tenant::class); }
+    public function countryPrices(): HasMany { return $this->hasMany(PlanCountryPrice::class); }
+
+    /**
+     * Resolve the price + currency to charge / display for a given country
+     * code. Falls back to the plan's base USD price when no per-country
+     * override exists or the country isn't recognised. Never returns null
+     * — a plan always has a chargeable price.
+     *
+     * @return array{amount: float, currency: string, symbol: string, is_local: bool}
+     */
+    public function priceFor(?string $countryCode, string $cycle = 'monthly'): array
+    {
+        $baseColumn = $cycle === 'annual' ? 'price_annual' : 'price_monthly';
+        $baseAmount = (float) ($this->{$baseColumn} ?? 0);
+        $baseFallback = ['amount' => $baseAmount, 'currency' => 'USD', 'symbol' => '$', 'is_local' => false];
+
+        if (!$countryCode) {
+            return $baseFallback;
+        }
+
+        $countryCode = strtoupper($countryCode);
+
+        // Country must exist AND be active, else we can't safely charge in
+        // that currency (Stripe/PayPal would reject an unknown/turned-off
+        // currency code). Base USD is always safe.
+        $country = Country::query()
+            ->where('code', $countryCode)
+            ->where('is_active', true)
+            ->first();
+        if (!$country) {
+            return $baseFallback;
+        }
+
+        $price = $this->countryPrices()
+            ->where('country_code', $countryCode)
+            ->first();
+
+        $localAmount = $price ? (float) $price->{$baseColumn} : null;
+
+        // A country with NO price row (or a row where this cycle's price
+        // is NULL) means "we sell in USD here" — see the plan_country_prices
+        // migration comment. Fall back to USD rather than defaulting to 0.
+        if ($localAmount === null || $localAmount <= 0) {
+            return $baseFallback;
+        }
+
+        return [
+            'amount'   => $localAmount,
+            'currency' => $country->currency_code,
+            'symbol'   => $country->currency_symbol,
+            'is_local' => true,
+        ];
+    }
 
     /**
      * Does this plan grant the given module?

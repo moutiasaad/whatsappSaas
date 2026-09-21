@@ -56,4 +56,84 @@
         </div>
     </div>
 </div>
+
+{{-- Country prices — separate form + endpoint so pricing edits don't
+     require re-submitting the whole plan. Empty rows mean "use base USD
+     price for this country" (see updatePlanCountryPrices). --}}
+<div class="card" style="margin-top:1.25rem;">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+            <div class="card-title">{{ __('ui.platform_plans_edit_page.country_prices_title') }}</div>
+            <div class="card-subtitle">{{ __('ui.platform_plans_edit_page.country_prices_subtitle', ['base' => '$' . number_format((float) $plan->price_monthly, 2)]) }}</div>
+        </div>
+        <a href="{{ route('super_admin.platform.countries.index') }}" class="btn btn-outline btn-sm">
+            <i class="ri-earth-line"></i> {{ __('ui.platform_plans_edit_page.manage_countries') }}
+        </a>
+    </div>
+
+    @if($countries->isEmpty())
+        <div class="empty-state" style="padding:2rem 1rem;">
+            <div class="empty-state-icon"><i class="ri-earth-line"></i></div>
+            <h4>{{ __('ui.platform_plans_edit_page.no_countries_title') }}</h4>
+            <p>{{ __('ui.platform_plans_edit_page.no_countries_body') }}</p>
+            <a href="{{ route('super_admin.platform.countries.create') }}" class="btn btn-primary" style="margin-top:12px;">
+                <i class="ri-add-line"></i> {{ __('ui.platform_countries_page.add_country') }}
+            </a>
+        </div>
+    @else
+        <form method="POST" action="{{ route('super_admin.platform.plans.country-prices.update', $plan) }}" style="padding:0;">
+            @csrf @method('PUT')
+            <div class="table-wrap" style="border:none;border-radius:0;box-shadow:none;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.platform_plans_edit_page.col_country') }}</th>
+                            <th>{{ __('ui.platform_plans_edit_page.col_currency') }}</th>
+                            <th>{{ __('ui.platform_plans_edit_page.col_price_monthly') }}</th>
+                            <th>{{ __('ui.platform_plans_edit_page.col_price_annual') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($countries as $country)
+                            @php $row = $countryPrices->get($country->code); @endphp
+                            <tr>
+                                <td style="font-weight:600;">
+                                    {{ $country->name }}
+                                    <span style="color:var(--text-muted);font-family:var(--font-mono);font-size:11px;margin-inline-start:4px;">({{ $country->code }})</span>
+                                </td>
+                                <td>
+                                    <span style="font-weight:600;">{{ $country->currency_code }}</span>
+                                    <span style="color:var(--text-muted);margin-inline-start:4px;">{{ $country->currency_symbol }}</span>
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" min="0" max="999999"
+                                           name="prices[{{ $country->code }}][price_monthly]"
+                                           value="{{ old('prices.' . $country->code . '.price_monthly', $row?->price_monthly) }}"
+                                           placeholder="—"
+                                           class="form-control" style="max-width:140px;">
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" min="0" max="999999"
+                                           name="prices[{{ $country->code }}][price_annual]"
+                                           value="{{ old('prices.' . $country->code . '.price_annual', $row?->price_annual) }}"
+                                           placeholder="—"
+                                           class="form-control" style="max-width:140px;">
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--card-border);">
+                <div style="color:var(--text-muted);font-size:12.5px;">
+                    <i class="ri-information-line"></i>
+                    {{ __('ui.platform_plans_edit_page.country_prices_hint') }}
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ri-save-line"></i> {{ __('ui.platform_plans_edit_page.save_country_prices') }}
+                </button>
+            </div>
+        </form>
+    @endif
+</div>
 @endsection

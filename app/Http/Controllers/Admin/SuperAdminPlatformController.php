@@ -729,8 +729,68 @@ class SuperAdminPlatformController extends Controller
     public function editPlan(Plan $plan)
     {
         $plan->loadCount('tenants');
+        $plan->load('countryPrices');
 
-        return view('admin.platform.plans-edit', compact('plan'));
+        $countries = \App\Models\Country::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Index by country_code so the blade can hydrate each row's input
+        // with the current value without an inline loop-search per country.
+        $countryPrices = $plan->countryPrices->keyBy('country_code');
+
+        return view('admin.platform.plans-edit', compact('plan', 'countries', 'countryPrices'));
+    }
+
+    /**
+     * Save per-country prices for a plan. Row semantics:
+     *   - Both monthly + annual blank OR zero → delete the row (falls back
+     *     to base USD for that country).
+     *   - Either non-zero → upsert.
+     * Wrapped in a transaction so a bad payload doesn't leave the plan in
+     * a half-migrated state.
+     */
+    public function updatePlanCountryPrices(Request $request, Plan $plan)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'prices'                    => 'nullable|array',
+            'prices.*.price_monthly'    => 'nullable|numeric|min:0|max:999999',
+            'prices.*.price_annual'     => 'nullable|numeric|min:0|max:999999',
+        ]);
+
+        $incoming = (array) ($data['prices'] ?? []);
+        $validCountries = \App\Models\Country::pluck('code')->all();
+
+        DB::transaction(function () use ($plan, $incoming, $validCountries) {
+            foreach ($incoming as $code => $row) {
+                $code = strtoupper((string) $code);
+                if (! in_array($code, $validCountries, true)) {
+                    continue;
+                }
+
+                $monthly = isset($row['price_monthly']) && $row['price_monthly'] !== '' ? (float) $row['price_monthly'] : null;
+                $annual  = isset($row['price_annual'])  && $row['price_annual']  !== '' ? (float) $row['price_annual']  : null;
+
+                // Both empty / zero → drop the row so the country falls back
+                // to the plan's base USD price. Saves DB rows and makes the
+                // "we don't localise price here" case explicit.
+                if (($monthly === null || $monthly <= 0) && ($annual === null || $annual <= 0)) {
+                    $plan->countryPrices()->where('country_code', $code)->delete();
+                    continue;
+                }
+
+                \App\Models\PlanCountryPrice::updateOrCreate(
+                    ['plan_id' => $plan->id, 'country_code' => $code],
+                    ['price_monthly' => $monthly, 'price_annual' => $annual],
+                );
+            }
+        });
+
+        AuditLog::record('plan.country_prices_updated', $plan);
+
+        return back()->with('success', __('ui.platform_plans_edit_page.country_prices_saved'));
     }
 
     public function updatePlan(Request $request, Plan $plan)

@@ -1830,6 +1830,9 @@
                             ['route' => 'platform.tenants', 'match' => ['platform.tenants*'], 'icon' => 'ri-building-2-line',     'label' => __('ui.sidebar.tenants'),            'show' => $sp('platform_tenants')],
                             ['route' => 'platform.plans',   'match' => ['platform.plans*'],   'icon' => 'ri-price-tag-3-line',    'label' => __('ui.sidebar.subscription_plans'), 'show' => $sp('platform_plans')],
                             ['route' => 'platform.addons',  'match' => ['platform.addons*'],  'icon' => 'ri-shopping-bag-3-line', 'label' => __('ui.sidebar.addon_pricing'),      'show' => $sp('platform_plans')],
+                            // Countries + per-country pricing. Same permission
+                            // gate as plans since they configure together.
+                            ['route' => 'platform.countries.index', 'match' => ['platform.countries*'], 'icon' => 'ri-earth-line', 'label' => __('ui.sidebar.countries'), 'show' => $sp('platform_plans')],
                         ],
                     ],
 

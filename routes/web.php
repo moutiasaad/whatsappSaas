@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\ClaudeUsageController;
+use App\Http\Controllers\Admin\CountriesController;
 use App\Http\Controllers\Admin\ConversationWebController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -654,12 +655,27 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // call recorded by App\Services\AI\UsageTracker.
             Route::get('/platform/claude-usage', [ClaudeUsageController::class, 'index'])->name('platform.claude-usage');
 
+            // Countries the platform sells in — enable each ISO-code
+            // country you want localised pricing for. Once a country row
+            // exists, per-plan prices become editable on the plan edit page.
+            Route::get('/platform/countries', [CountriesController::class, 'index'])->name('platform.countries.index');
+            Route::get('/platform/countries/create', [CountriesController::class, 'create'])->name('platform.countries.create');
+            Route::post('/platform/countries', [CountriesController::class, 'store'])->name('platform.countries.store');
+            Route::get('/platform/countries/{country}/edit', [CountriesController::class, 'edit'])->name('platform.countries.edit');
+            Route::put('/platform/countries/{country}', [CountriesController::class, 'update'])->name('platform.countries.update');
+            Route::patch('/platform/countries/{country}/toggle', [CountriesController::class, 'toggle'])->name('platform.countries.toggle');
+            Route::delete('/platform/countries/{country}', [CountriesController::class, 'destroy'])->name('platform.countries.destroy');
+
             Route::get('/platform/plans', [SuperAdminPlatformController::class, 'plans'])->name('platform.plans');
             Route::get('/platform/plans/create', [SuperAdminPlatformController::class, 'createPlan'])->name('platform.plans.create');
             Route::post('/platform/plans', [SuperAdminPlatformController::class, 'storePlan'])->name('platform.plans.store');
             Route::get('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'showPlan'])->name('platform.plans.show');
             Route::get('/platform/plans/{plan}/edit', [SuperAdminPlatformController::class, 'editPlan'])->name('platform.plans.edit');
             Route::put('/platform/plans/{plan}', [SuperAdminPlatformController::class, 'updatePlan'])->name('platform.plans.update');
+            // Per-country pricing for the plan. Separate endpoint so
+            // pricing edits don't need to re-submit the entire plan form.
+            Route::put('/platform/plans/{plan}/country-prices', [SuperAdminPlatformController::class, 'updatePlanCountryPrices'])
+                ->name('platform.plans.country-prices.update');
             Route::patch('/platform/plans/{plan}/status', [SuperAdminPlatformController::class, 'togglePlanStatus'])->name('platform.plans.status');
             Route::post('/platform/plans/bulk', [SuperAdminPlatformController::class, 'bulkPlans'])->name('platform.plans.bulk');
 
