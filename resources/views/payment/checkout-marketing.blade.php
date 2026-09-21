@@ -318,7 +318,26 @@
                         <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
                     </div>
 
-                    @if($sdkReady)
+                    @if(config('services.paypal.ncp_link'))
+                        {{-- PayPal NCP mode wins over the SDK/REST flow when
+                             PAYPAL_NCP_LINK is set. Simpler + no API keys but
+                             manual reconciliation — see
+                             PaymentController::initiatePaypalNcp. --}}
+                        <form method="POST" action="{{ route('payment.paypal.ncp.initiate') }}"
+                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                            @csrf
+                            <input type="hidden" name="plan_id"   value="{{ $plan->id }}">
+                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                            <button type="submit" class="btn-paypal">
+                                <i class="ri-paypal-fill"></i>
+                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
+                            </button>
+                        </form>
+                        <p class="payhint">
+                            <i class="ri-external-link-line"></i>
+                            {{ __('ui.payment_page.ncp_hint') }}
+                        </p>
+                    @elseif($sdkReady)
                         <div id="card-block" style="display:none">
                             <div class="cardhead">
                                 <i class="ri-bank-card-line"></i>

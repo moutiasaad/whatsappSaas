@@ -345,6 +345,19 @@ class PaymentController extends Controller
 
     public function success(Request $request)
     {
+        // PayPal NCP return: no session_id / token, just the merchant-
+        // configured return URL with a ?ncp=1 flag we look for. Render a
+        // dedicated "payment received, activating shortly" wait screen —
+        // there's nothing to capture here, the super admin will match the
+        // PayPal transaction to a pending TenantPayment row and mark the
+        // subscription active manually.
+        if ($request->boolean('ncp')) {
+            return view('payment.success', [
+                'tenant' => null, 'plan' => null, 'payment' => null,
+                'redirectToDash' => false, 'ncp' => true,
+            ]);
+        }
+
         $sessionId = $request->query('session_id');
         $orderId   = $request->query('token'); // PayPal returns ?token={ORDER_ID}
 
@@ -493,6 +506,73 @@ class PaymentController extends Controller
     }
 
     // ── PayPal ──────────────────────────────────────────────────────────────
+
+    /**
+     * PayPal NCP (No Code Payment) initiator.
+     *
+     * Flow: customer clicks "Pay via PayPal" on the checkout page →
+     * this method records a pending TenantPayment (source of truth for
+     * the super admin's reconciliation queue) → 302-redirects the
+     * browser to the fixed NCP URL configured in PAYPAL_NCP_LINK env.
+     *
+     * Post-payment: PayPal redirects the customer to whatever return
+     * URL the merchant configured on paypal.com (typically
+     * /payment/success?ncp=1). That page shows a "payment received,
+     * activating shortly" wait screen — super admin sees the
+     * TenantPayment row + a matching PayPal transaction email, then
+     * marks the tenant active manually via /admin-control-panel.
+     *
+     * Trades away amount localisation + auto-activation for a very
+     * simple integration — one env var, no API keys, no SDK.
+     */
+    public function initiatePaypalNcp(Request $request)
+    {
+        $ncpLink = config('services.paypal.ncp_link');
+        if (! $ncpLink) {
+            return redirect()->route('payment.failed')
+                ->with('error', __('ui.payment_page.ncp_not_configured'));
+        }
+
+        $data = $request->validate([
+            'plan_id'   => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
+            // Optional on marketing where the tenant is in session; required
+            // on core when the admin manually initiates a top-up.
+            'tenant_id' => ['nullable', 'integer', Rule::exists('tenants', 'id')],
+        ]);
+
+        // Same tenant-resolution pattern as initiatePaypal: on marketing the
+        // tenant lives in the SSO session; on core it's the request's own or
+        // the auth'd user's.
+        $tenantId = (int) ($data['tenant_id']
+            ?? session(\App\Support\Wavadesk::SESSION_TENANT . '.id', 0)
+            ?? auth()->user()?->tenant_id
+            ?? 0);
+        $tenant = Tenant::find($tenantId);
+        $plan   = Plan::find($data['plan_id']);
+
+        if ($tenant && $plan) {
+            // Pending row so the super admin sees "someone tried to pay with
+            // NCP for plan X on tenant Y at time Z" — enough context to match
+            // against the PayPal transaction email when it lands.
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $plan->id,
+                'amount'          => (float) $plan->price_monthly,
+                'currency'        => 'USD',
+                'base_amount_usd' => (float) $plan->price_monthly,
+                'payment_method'  => 'paypal_ncp',
+                'paypal_order_id' => 'ncp_' . $tenant->id . '_' . time(),
+                'status'          => 'pending',
+                'gateway_response'=> [
+                    'mode' => 'ncp',
+                    'link' => $ncpLink,
+                    'note' => 'Awaiting manual reconciliation by super admin.',
+                ],
+            ]);
+        }
+
+        return redirect()->away($ncpLink);
+    }
 
     public function initiatePaypal(Request $request)
     {

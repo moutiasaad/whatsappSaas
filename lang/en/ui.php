@@ -2753,6 +2753,14 @@ Always:
     ],
 
     'payment_page' => [
+        'ncp_hint'              => 'You\'ll be redirected to paypal.com to complete payment. Your workspace activates once we confirm the transaction.',
+        'ncp_not_configured'    => 'PayPal is not configured on this server.',
+        'ncp_success_heading'   => 'Payment received — activating shortly',
+        'ncp_success_desc'      => 'We\'ve received your PayPal payment. Your workspace will be activated as soon as our team confirms the transaction, usually within a few minutes.',
+        'ncp_success_step1'     => 'Payment sent to Wavadesk on PayPal',
+        'ncp_success_step2'     => 'Our team is verifying the transaction',
+        'ncp_success_step3'     => 'You\'ll get an email once your workspace is active',
+        'back_to_home'          => 'Back to home',
         'secure'      => 'Secure checkout',
         'go_home'     => 'Go to your dashboard',
         'back'        => 'Back',

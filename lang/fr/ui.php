@@ -2746,6 +2746,14 @@ Toujours :
     ],
 
     'payment_page' => [
+        'ncp_hint'              => 'Vous serez redirigé vers paypal.com pour finaliser le paiement. Votre espace s\'activera dès que nous aurons confirmé la transaction.',
+        'ncp_not_configured'    => 'PayPal n\'est pas configuré sur ce serveur.',
+        'ncp_success_heading'   => 'Paiement reçu — activation en cours',
+        'ncp_success_desc'      => 'Nous avons bien reçu votre paiement PayPal. Votre espace sera activé dès que notre équipe aura confirmé la transaction, généralement en quelques minutes.',
+        'ncp_success_step1'     => 'Paiement envoyé à Wavadesk sur PayPal',
+        'ncp_success_step2'     => 'Notre équipe vérifie la transaction',
+        'ncp_success_step3'     => 'Vous recevrez un e-mail dès que votre espace est actif',
+        'back_to_home'          => 'Retour à l\'accueil',
         'secure'      => 'Paiement sécurisé',
         'go_home'     => 'Aller à votre tableau de bord',
         'back'        => 'Retour',

@@ -132,6 +132,11 @@ Route::post('/payment/webhook', [PaymentController::class, 'webhook'])->name('pa
 
 // PayPal
 Route::post('/payment/paypal/initiate', [PaymentController::class, 'initiatePaypal'])->name('payment.paypal.initiate');
+// PayPal NCP (No Code Payment) link — merchant clicks button on checkout,
+// server records a pending TenantPayment for later reconciliation, then
+// 302-redirects to the fixed PayPal.com link the merchant configured.
+Route::post('/payment/paypal/ncp/initiate', [PaymentController::class, 'initiatePaypalNcp'])
+    ->name('payment.paypal.ncp.initiate');
 // Email-only PayPal Standard checkout, used when no REST client id is set.
 Route::post('/payment/paypal/standard', [PaymentController::class, 'paypalStandardStart'])
     ->name('payment.paypal.standard')
