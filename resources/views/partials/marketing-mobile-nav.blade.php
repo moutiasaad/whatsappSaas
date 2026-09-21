@@ -155,26 +155,37 @@
     .mnav-si{text-align:center;font-size:15px;color:var(--muted);font-weight:500;padding:6px}
 
     /* The header itself has to survive 390px: the desktop row of language
-       picker + sign-in + CTA overflowed the viewport by ~41px on /features. */
-    .nav .in{gap:10px}
-    .nav .act{gap:8px;min-width:0}
+       picker + sign-in + CTA overflowed the viewport by ~41px on /features.
+       Hamburger has flex-shrink:0 so it never gets pushed off-screen; the
+       CTA button gets to shrink instead (min-width:0 + truncate). */
+    .nav .in{gap:10px;min-width:0}
+    .nav .brand{flex-shrink:1;min-width:0;overflow:hidden}
+    .nav .act{gap:8px;min-width:0;flex-shrink:1}
     .nav .act a.si{display:none}
     .nav .act .lang-wrap{display:none}
-    .nav .btn.sm{height:40px;padding:0 14px;font-size:14px;white-space:nowrap}
-    .brand .wm{font-size:19px}
+    .nav .btn.sm{height:40px;padding:0 14px;font-size:14px;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:1}
+    .mnav-t{flex-shrink:0}
+    .brand .wm{font-size:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 }
 
-@media (max-width:380px){
-    /* Narrowest common phones: the CTA label is the first thing to give. */
-    .nav .act .btn.sm{padding:0 11px;font-size:13.5px}
-}
-
-@media (max-width:374px){
-    /* At 320px the row still ran over — by 7px in English and 17px in Arabic,
-       whose CTA label is longer. The wordmark goes rather than the call to
-       action or the menu button; the logo mark still carries the brand. */
+@media (max-width:440px){
+    /* Signed-in state on French/Arabic has a MUCH longer CTA label
+       ("Accéder à mon tableau de bord" — 29 chars) than the signed-out one
+       ("Start free trial" — 16). Shrink the button and hide the wordmark
+       so the hamburger stays on screen no matter which state we render. */
     .brand .wm{display:none}
     .nav .in{gap:8px}
+    .nav .act{gap:6px}
+    .nav .act .btn.sm{padding:0 12px;font-size:13.5px;max-width:220px}
+}
+
+@media (max-width:360px){
+    /* Very narrow phones — iPhone Mini (360), older Androids. Squeeze
+       more from the CTA before the hamburger is at risk. */
+    .nav .act .btn.sm{padding:0 10px;font-size:12.5px;max-width:180px}
+    .nav .in{gap:6px}
+    .nav .act{gap:4px}
+    .mnav-t{width:38px;height:38px;flex:0 0 38px}
 }
 
 @media (prefers-reduced-motion:reduce){
