@@ -132,9 +132,34 @@ class SplitHostingRedirect
             return $next($request);
         }
 
-        return $request->is(...self::MARKETING_KEEPS)
+        return $request->is(...$this->marketingKeeps())
             ? $next($request)
             : $this->handOff(Wavadesk::coreUrlTo($this->target($request)), $request);
+    }
+
+    /**
+     * MARKETING_KEEPS plus the language entry points — /ar, /fr/features/… —
+     * which cannot be listed as constants because the supported codes come
+     * from config.
+     *
+     * Without them a shared link like wavadesk.com/ar was handed to core,
+     * which recorded the choice in ITS session and bounced the visitor back
+     * to the marketing homepage in the language they started in. The prefix
+     * only ever records and redirects (LocaleController::enter), so keeping
+     * it here costs nothing: the clean path it redirects to is matched again
+     * and still hands off to core when it belongs there.
+     *
+     * @return list<string>
+     */
+    private function marketingKeeps(): array
+    {
+        $locales = array_keys(config('locales.supported', []));
+
+        return array_merge(
+            self::MARKETING_KEEPS,
+            $locales,
+            array_map(static fn (string $code): string => $code . '/*', $locales),
+        );
     }
 
     /**

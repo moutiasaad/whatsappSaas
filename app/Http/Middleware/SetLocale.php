@@ -20,6 +20,13 @@ class SetLocale
      * marketing landing within a minute — long enough to avoid an API call
      * per anonymous request, short enough to feel live during testing.
      */
+    /**
+     * Session flag meaning "this visitor picked their language on purpose".
+     * Set by LocaleController only; without it the session's locale is just a
+     * leftover default and is ignored in favour of the live platform default.
+     */
+    public const EXPLICIT_CHOICE_KEY = 'locale_explicit';
+
     private const MARKETING_DEFAULT_CACHE_KEY = 'wavadesk.platform_default_locale';
     private const MARKETING_DEFAULT_CACHE_TTL = 60;
 
@@ -63,18 +70,24 @@ class SetLocale
             $defaultLocale = $supportedLocales[0];
         }
 
+        // Only a deliberate pick survives in the session: the switcher and the
+        // /ar-style entry URLs both go through LocaleController, which sets
+        // EXPLICIT_CHOICE_KEY alongside the locale. The platform default is
+        // resolved fresh on every request and never written back.
+        //
+        // Writing it back is what made a super admin's change invisible: the
+        // first page view pinned whatever default was live at the time, and
+        // from then on the session shadowed the platform default until it
+        // expired. A session without the flag is either a first visit or one
+        // pinned by that old behaviour, and both should follow core.
         $locale = null;
 
-        if ($request->hasSession()) {
+        if ($request->hasSession() && $request->session()->get(self::EXPLICIT_CHOICE_KEY)) {
             $locale = $request->session()->get('locale');
         }
 
         if (!$locale || !in_array($locale, $supportedLocales, true)) {
             $locale = $defaultLocale;
-
-            if ($request->hasSession()) {
-                $request->session()->put('locale', $locale);
-            }
         }
 
         app()->setLocale($locale);

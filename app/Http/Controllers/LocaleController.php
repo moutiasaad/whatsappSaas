@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\SetLocale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,7 @@ class LocaleController extends Controller
         abort_unless(in_array($locale, $supported, true), 404);
 
         $request->session()->put('locale', $locale);
+        $request->session()->put(SetLocale::EXPLICIT_CHOICE_KEY, true);
 
         return redirect()->to($this->sameHostPath($path, $request->getQueryString()), 302);
     }
@@ -59,6 +61,7 @@ class LocaleController extends Controller
         ]);
 
         $request->session()->put('locale', $validated['locale']);
+        $request->session()->put(SetLocale::EXPLICIT_CHOICE_KEY, true);
 
         if (!empty($validated['redirect'])) {
             return redirect()->to($validated['redirect']);
