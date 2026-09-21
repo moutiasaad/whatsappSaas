@@ -15,24 +15,9 @@
         'try_adjusting'          => __('ui.platform_tenants_page.try_adjusting'),
         'no_plan'                => __('ui.platform_tenants_page.no_plan'),
         'inactive'               => __('ui.platform_tenants_page.inactive'),
-        'delete_prompt'          => __('ui.platform_tenants_page.delete_prompt'),
-        'delete_message'         => __('ui.platform_tenants_page.delete_message'),
         'delete_selected_confirm'=> __('ui.platform_tenants_page.delete_selected_confirm'),
         'impersonate_prompt'     => __('ui.platform_tenants_page.impersonate_prompt'),
         'impersonate_confirm'    => __('ui.platform_tenants_page.impersonate_confirm'),
-        'block'                  => __('ui.platform_tenants_page.block'),
-        'unblock'                => __('ui.platform_tenants_page.unblock'),
-        'block_prompt'           => __('ui.platform_tenants_page.block_prompt'),
-        'unblock_prompt'         => __('ui.platform_tenants_page.unblock_prompt'),
-        'block_message'          => __('ui.platform_tenants_page.block_message'),
-        'unblock_message'        => __('ui.platform_tenants_page.unblock_message'),
-        'archive'                => __('ui.platform_tenants_page.archive'),
-        'restore'                => __('ui.platform_tenants_page.restore'),
-        'archive_prompt'         => __('ui.platform_tenants_page.archive_prompt'),
-        'restore_prompt'         => __('ui.platform_tenants_page.restore_prompt'),
-        'archive_message'        => __('ui.platform_tenants_page.archive_message'),
-        'restore_message'        => __('ui.platform_tenants_page.restore_message'),
-        'deleted_toast'          => __('ui.controller_messages.tenant_deleted'),
         'selected_items'         => __('ui.selected_items'),
         'loading'                => __('ui.conversations_page.loading'),
         'statuses'               => __('ui.platform_tenants_page.statuses'),
@@ -245,26 +230,10 @@
                                                 class="action-btn" title="{{ __('ui.platform_tenants_page.impersonate') }}">
                                             <i class="ri-login-box-line"></i>
                                         </button>
-                                        {{-- Block / unblock the whole tenant. Icon + tooltip flip
-                                             based on current state so a single button covers both
-                                             actions without needing to duplicate a row. --}}
-                                        <button type="button" @click="openBlockModal(tenant.id, tenant.name, tenant.is_active)"
-                                                class="action-btn"
-                                                :title="tenant.is_active ? i18n.block : i18n.unblock">
-                                            <i :class="tenant.is_active ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
-                                        </button>
-                                        {{-- Archive / restore. Uses `!!tenant.archived_at` so the
-                                             icon flips based on presence, not the exact string value
-                                             (the API returns an ISO timestamp when archived, null when not). --}}
-                                        <button type="button" @click="openArchiveModal(tenant.id, tenant.name, !!tenant.archived_at)"
-                                                class="action-btn"
-                                                :title="!!tenant.archived_at ? i18n.restore : i18n.archive">
-                                            <i :class="!!tenant.archived_at ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
-                                        </button>
-                                        <button type="button" @click="openDeleteModal(tenant.id, tenant.name)"
-                                                class="action-btn danger" title="{{ __('ui.platform_tenants_page.delete') }}">
-                                            <i class="ri-delete-bin-line"></i>
-                                        </button>
+                                        {{-- Block, archive and delete used to live here as row
+                                             icons; they now live on the tenant Edit page's Danger
+                                             zone so the whole tenant profile has to be open before
+                                             an irreversible action is one click away. --}}
                                     </div>
                                 </td>
                             </tr>
@@ -307,25 +276,6 @@
         <button type="button" class="bulk-close" @click="selected = []"><i class="ri-close-line"></i></button>
     </div>
 
-    {{-- Delete Modal --}}
-    <div class="modal-overlay" :class="deleteModal.show ? 'show' : ''" role="dialog" aria-modal="true"
-         @click.self="deleteModal.show = false" @keydown.escape.window="deleteModal.show = false">
-        <div class="modal-box" style="max-width:420px">
-            <div class="modal-icon danger"><i class="ri-delete-bin-line"></i></div>
-            <h3 x-text="i18n.delete_prompt.replace(':name', deleteModal.name)"></h3>
-            <p x-text="i18n.delete_message"></p>
-            <div class="modal-actions">
-                <button type="button" @click="deleteModal.show = false" class="btn btn-outline">
-                    {{ __('ui.cancel') }}
-                </button>
-                <button type="button" @click="confirmDelete()" :disabled="deleteModal.saving" class="btn btn-danger">
-                    <span x-show="!deleteModal.saving"><i class="ri-delete-bin-line"></i> {{ __('ui.delete') }}</span>
-                    <span x-show="deleteModal.saving"><span class="btn-spinner"></span> {{ __('ui.deleting') }}</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     {{-- Impersonate Modal — mirrors the delete-modal shape so both live in the
          same visual family. Confirming navigates to the impersonation URL; the
          server does the actual role switch. --}}
@@ -346,64 +296,6 @@
         </div>
     </div>
 
-    {{-- Archive / Restore Modal — same one-modal-two-directions shape as block. --}}
-    <div class="modal-overlay" :class="archiveModal.show ? 'show' : ''" role="dialog" aria-modal="true"
-         @click.self="archiveModal.show = false" @keydown.escape.window="archiveModal.show = false">
-        <div class="modal-box" style="max-width:460px">
-            <div class="modal-icon" :class="archiveModal.currentlyArchived ? '' : 'danger'"
-                 :style="archiveModal.currentlyArchived ? 'color:var(--brand);background:rgba(16,185,129,.15)' : ''">
-                <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
-            </div>
-            <h3 x-text="(archiveModal.currentlyArchived ? i18n.restore_prompt : i18n.archive_prompt).replace(':name', archiveModal.name)"></h3>
-            <p x-text="archiveModal.currentlyArchived ? i18n.restore_message : i18n.archive_message"></p>
-            <div class="modal-actions">
-                <button type="button" @click="archiveModal.show = false" class="btn btn-outline">
-                    {{ __('ui.cancel') }}
-                </button>
-                <button type="button" @click="confirmArchiveToggle()" :disabled="archiveModal.saving"
-                        :class="archiveModal.currentlyArchived ? 'btn btn-primary' : 'btn btn-danger'">
-                    <span x-show="!archiveModal.saving">
-                        <i :class="archiveModal.currentlyArchived ? 'ri-inbox-unarchive-line' : 'ri-inbox-archive-line'"></i>
-                        <span x-text="archiveModal.currentlyArchived ? i18n.restore : i18n.archive"></span>
-                    </span>
-                    <span x-show="archiveModal.saving">
-                        <span class="btn-spinner"></span> {{ __('ui.processing') }}
-                    </span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    {{-- Block / Unblock Modal — one modal handles both directions. Icon + copy
-         + confirm-button variant swap based on the tenant's CURRENT state so
-         we don't need two near-duplicate modals. --}}
-    <div class="modal-overlay" :class="blockModal.show ? 'show' : ''" role="dialog" aria-modal="true"
-         @click.self="blockModal.show = false" @keydown.escape.window="blockModal.show = false">
-        <div class="modal-box" style="max-width:460px">
-            <div class="modal-icon" :class="blockModal.currentlyActive ? 'danger' : ''"
-                 :style="blockModal.currentlyActive ? '' : 'color:var(--brand);background:rgba(16,185,129,.15)'">
-                <i :class="blockModal.currentlyActive ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
-            </div>
-            <h3 x-text="(blockModal.currentlyActive ? i18n.block_prompt : i18n.unblock_prompt).replace(':name', blockModal.name)"></h3>
-            <p x-text="blockModal.currentlyActive ? i18n.block_message : i18n.unblock_message"></p>
-            <div class="modal-actions">
-                <button type="button" @click="blockModal.show = false" class="btn btn-outline">
-                    {{ __('ui.cancel') }}
-                </button>
-                <button type="button" @click="confirmBlockToggle()" :disabled="blockModal.saving"
-                        :class="blockModal.currentlyActive ? 'btn btn-danger' : 'btn btn-primary'">
-                    <span x-show="!blockModal.saving">
-                        <i :class="blockModal.currentlyActive ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line'"></i>
-                        <span x-text="blockModal.currentlyActive ? i18n.block : i18n.unblock"></span>
-                    </span>
-                    <span x-show="blockModal.saving">
-                        <span class="btn-spinner"></span> {{ __('ui.processing') }}
-                    </span>
-                </button>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
@@ -414,10 +306,7 @@ function tenantsPage() {
         indexUrl:    @json(route('super_admin.platform.tenants')),
         showUrlTpl:        @json(route('super_admin.platform.tenants.show',   ['tenant' => '__ID__'])),
         editUrlTpl:        @json(route('super_admin.platform.tenants.edit',   ['tenant' => '__ID__'])),
-        destroyUrlTpl:     @json(route('super_admin.platform.tenants.destroy', ['tenant' => '__ID__'])),
         impersonateUrlTpl: @json(route('super_admin.platform.tenants.impersonate-admin', ['tenant' => '__ID__'])),
-        toggleActiveUrlTpl:@json(route('super_admin.platform.tenants.toggle-active',     ['tenant' => '__ID__'])),
-        toggleArchiveUrlTpl:@json(route('super_admin.platform.tenants.toggle-archive',   ['tenant' => '__ID__'])),
         bulkUrl:     @json(route('super_admin.platform.tenants.bulk')),
 
         tenants:     [],
@@ -434,10 +323,7 @@ function tenantsPage() {
         bulkAction: 'enable',
         bulkSaving: false,
 
-        deleteModal:      { show: false, id: null, name: '', saving: false },
         impersonateModal: { show: false, id: null, name: '', url: '' },
-        blockModal:       { show: false, id: null, name: '', currentlyActive: true, saving: false },
-        archiveModal:     { show: false, id: null, name: '', currentlyArchived: false, saving: false },
 
         init() {
             this.loadData();
@@ -572,10 +458,6 @@ function tenantsPage() {
         isAllSelected()   { return this.tenants.length > 0 && this.selected.length === this.tenants.length; },
         isIndeterminate() { return this.selected.length > 0 && this.selected.length < this.tenants.length; },
 
-        openDeleteModal(id, name) {
-            this.deleteModal = { show: true, id, name, saving: false };
-        },
-
         openImpersonateModal(id, name) {
             // URL is resolved here so the modal's Confirm button is a real
             // <a href="..."> — right-click "open in new tab" then works
@@ -584,89 +466,6 @@ function tenantsPage() {
             this.impersonateModal = { show: true, id, name, url: this.impersonateUrl(id) };
         },
 
-        openBlockModal(id, name, currentlyActive) {
-            // `currentlyActive` is captured at open time so the modal's
-            // labels/colors don't flip mid-confirmation if another tab
-            // toggles the tenant while this modal is open.
-            this.blockModal = { show: true, id, name, currentlyActive: !!currentlyActive, saving: false };
-        },
-
-        async confirmBlockToggle() {
-            this.blockModal.saving = true;
-            try {
-                const res = await fetch(this.toggleActiveUrlTpl.replace('__ID__', String(this.blockModal.id)), {
-                    method: 'PATCH',
-                    headers: {
-                        'Accept':       'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                    credentials: 'same-origin',
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                this.blockModal.show = false;
-                // Refresh the table so the row's icon/tooltip flip to reflect
-                // the new state without a hard page reload.
-                this.loadData();
-            } catch (e) {
-                console.error('Toggle tenant active failed:', e);
-            } finally {
-                this.blockModal.saving = false;
-            }
-        },
-
-        openArchiveModal(id, name, currentlyArchived) {
-            this.archiveModal = { show: true, id, name, currentlyArchived: !!currentlyArchived, saving: false };
-        },
-
-        async confirmArchiveToggle() {
-            this.archiveModal.saving = true;
-            try {
-                const res = await fetch(this.toggleArchiveUrlTpl.replace('__ID__', String(this.archiveModal.id)), {
-                    method: 'PATCH',
-                    headers: {
-                        'Accept':       'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                    credentials: 'same-origin',
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                this.archiveModal.show = false;
-                // If we just archived a tenant while viewing the default list
-                // (which hides archived), the row will disappear on reload —
-                // that's the correct behavior. If viewing "archived only",
-                // an unarchive will similarly hide it. Either way, reload
-                // reflects the truth.
-                this.loadData();
-            } catch (e) {
-                console.error('Toggle tenant archive failed:', e);
-            } finally {
-                this.archiveModal.saving = false;
-            }
-        },
-
-        async confirmDelete() {
-            this.deleteModal.saving = true;
-            try {
-                const res = await fetch(this.destroyUrlTpl.replace('__ID__', String(this.deleteModal.id)), {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept':       'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                });
-                if (!res.ok) throw new Error();
-                const name = this.deleteModal.name;
-                this.deleteModal.show = false;
-                window.showToast?.('success', this.i18n.deleted_toast.replace(':name', name));
-                this.reload();
-            } catch {
-                window.showToast?.('error', 'Erreur lors de la suppression.');
-                this.deleteModal.saving = false;
-            }
-        },
 
         async submitBulk() {
             if (!this.selected.length) return;

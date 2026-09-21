@@ -1105,6 +1105,7 @@ Always:
         'teams' => 'Teams',
         'instances' => 'Instances',
         'danger_zone' => 'Danger Zone',
+        'danger_zone_hint' => 'These actions affect the whole tenant. Block/unblock is reversible; delete is not.',
     ],
     'platform_plans_show_page' => [
         'no_trial' => 'No trial — billed from day one',

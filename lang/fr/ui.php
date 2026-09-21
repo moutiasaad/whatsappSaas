@@ -1105,6 +1105,7 @@ Toujours :
         'teams' => 'Équipes',
         'instances' => 'Instances',
         'danger_zone' => 'Zone dangereuse',
+        'danger_zone_hint' => 'Ces actions concernent tout le locataire. Le blocage/déblocage est réversible, la suppression ne l\'est pas.',
     ],
     'platform_plans_show_page' => [
         'no_trial' => 'Pas d’essai — facturé dès le premier jour',
