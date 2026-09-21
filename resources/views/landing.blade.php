@@ -453,28 +453,13 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   .sechead{margin-bottom:36px}
   .sechead h2{font-size:27px}
   .sechead p{font-size:15.5px}
-  /* Phones: give the input the same visual weight as the CTA button so
-     the two stacked elements read as a paired field+CTA, not "subtle
-     field + big CTA". Solid-feeling dark background + 2px border + inset
-     shadow makes it look like a real sunken input rather than a haze
-     over the hero glow. 16px font stops iOS Safari auto-zoom on focus.
-     Icon padding-left bumped to 52px to match the larger padding scale. */
-  .capture{gap:14px}
-  .capture input{
-    height:58px;font-size:16px;padding:0 20px 0 52px;
-    border:2px solid rgba(255,255,255,.38);
-    background-color:rgba(10,20,28,.55);
-    background-position:20px center;
-    box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 4px 14px -6px rgba(0,0,0,.4);
-  }
-  html[dir="rtl"] .capture input{background-position:calc(100% - 20px) center;padding:0 52px 0 20px}
-  .capture input::placeholder{color:#a4b1bd}
-  .capture input:focus{
-    border-color:var(--teal-l);
-    background-color:rgba(10,20,28,.7);
-    box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 0 0 4px rgba(21,182,168,.22);
-  }
-  .capture .btn{height:58px;font-size:16px}
+  /* Phones inherit the desktop pill styling — same subtle border, same
+     bg tint, same icon padding — and only override what's phone-specific:
+     16px input font to stop iOS Safari auto-zoom on focus, and matching
+     button font so the stacked pair reads at one type scale. Height
+     stays 54px to match the desktop pill exactly. */
+  .capture input{font-size:16px}
+  .capture .btn{font-size:16px}
   .strip .in{gap:22px}
   .strip .k{flex:1 1 40%}
   .strip .k b{font-size:22px}
