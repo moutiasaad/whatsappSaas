@@ -164,6 +164,11 @@
             if (el) el.addEventListener('input', () => clearError(el));
         });
 
+        // capture:true so THIS handler runs BEFORE the layout's data-spin
+        // handler (registered earlier, bubble-phase). stopImmediatePropagation
+        // when validation fails then prevents the layout from ever adding
+        // .loading + disabled to the button — otherwise the CTA gets stuck
+        // in the submitting state on an empty submit and blocks the next click.
         form.addEventListener('submit', (ev) => {
             let firstBad = null;
             const emailV   = (email?.value || '').trim();
@@ -191,14 +196,18 @@
 
             if (firstBad) {
                 ev.preventDefault();
-                ev.stopPropagation();
-                // data-spin adds a submitting spinner via layouts/auth.blade.
-                // Remove it so the button isn't stuck in a "submitting" state.
+                ev.stopImmediatePropagation();
+                // Belt-and-braces: if the layout handler DID sneak in earlier
+                // (registered before this one during a race, or fired on an
+                // earlier invalid submit), reset the button so the user can
+                // click it again once they've filled the fields.
+                const btn = form.querySelector('.cta');
+                if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
                 form.classList.remove('is-submitting');
                 firstBad.focus({ preventScroll: false });
                 firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        });
+        }, { capture: true });
     }
 
     function score(v) {
