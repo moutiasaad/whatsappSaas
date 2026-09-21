@@ -254,8 +254,13 @@ class PayPalService
 
     public function extractApproveUrl(array $order): ?string
     {
+        // Older PayPal API responses name this link `approve`; newer ones
+        // (post-2024) rename it to `payer-action`. Same URL, same purpose —
+        // accept either so an API version bump on PayPal's side doesn't
+        // start throwing "PayPal approve URL not found in order response."
         foreach ($order['links'] ?? [] as $link) {
-            if (($link['rel'] ?? null) === 'approve') {
+            $rel = $link['rel'] ?? null;
+            if ($rel === 'approve' || $rel === 'payer-action') {
                 return $link['href'] ?? null;
             }
         }

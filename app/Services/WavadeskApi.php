@@ -131,11 +131,22 @@ class WavadeskApi
      */
     public function billingCheckout(string $token, int $planId, string $provider, ?string $country = null): array
     {
-        return $this->call('post', '/api/v1/billing/checkout', array_filter([
-            'plan_id'  => $planId,
-            'provider' => $provider,
-            'country'  => $country,
-        ], fn ($v) => $v !== null && $v !== ''), $token);
+        // The PayPal branch of this endpoint on core does an OAuth token
+        // fetch + orders/create round-trip to PayPal itself, which routinely
+        // takes 6-15s on a cold connection. Auth-side's 5s default here
+        // times out mid-flight and the buyer sees "Impossible d'initialiser
+        // le paiement" while core is still waiting for PayPal to answer.
+        return $this->call(
+            'post',
+            '/api/v1/billing/checkout',
+            array_filter([
+                'plan_id'  => $planId,
+                'provider' => $provider,
+                'country'  => $country,
+            ], fn ($v) => $v !== null && $v !== ''),
+            $token,
+            self::PAYPAL_TIMEOUT_SECONDS,
+        );
     }
 
     /**
