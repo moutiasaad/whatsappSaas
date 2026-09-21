@@ -255,11 +255,46 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
 .hero h1 em{font-style:normal;color:var(--teal-l)}
 .hero .lede{font-size:19px;color:#94a3b8;margin-top:20px;max-width:46ch;line-height:1.6}
 .capture{display:flex;gap:10px;margin-top:32px;max-width:480px}
-.capture input{flex:1;height:54px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;padding:0 18px;font-size:15.5px;outline:none;transition:.15s;min-width:0;-webkit-appearance:none;appearance:none}
+/* Email icon prefixed via background-image so we don't need to wrap the
+   input in a container. SVG stroke color is baked in as %2394a3b8 so
+   it matches the placeholder text; RTL flips the background position
+   + padding via [dir="rtl"] override below. */
+.capture input{
+  flex:1;height:54px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.22);
+  background:rgba(255,255,255,.09) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='14' rx='3'/><path d='m3 7 9 6 9-6'/></svg>") no-repeat 18px center;
+  color:#fff;
+  padding:0 18px 0 48px;
+  font-size:15.5px;
+  outline:none;
+  transition:border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+  min-width:0;
+  appearance:none;-webkit-appearance:none;
+}
+html[dir="rtl"] .capture input{background-position:calc(100% - 18px) center;padding:0 48px 0 18px}
 .capture input::placeholder{color:#94a3b8}
-.capture input:hover{border-color:rgba(255,255,255,.32)}
-.capture input:focus{border-color:var(--teal-l);background:rgba(255,255,255,.12);box-shadow:0 0 0 3px rgba(21,182,168,.18)}
-.capture .btn{height:54px;flex-shrink:0}
+.capture input:hover{border-color:rgba(255,255,255,.32);background-color:rgba(255,255,255,.11)}
+.capture input:focus{border-color:var(--teal-l);background-color:rgba(255,255,255,.12);box-shadow:0 0 0 4px rgba(21,182,168,.2)}
+/* Chrome/Safari autofill would paint the input yellow and switch the
+   text to black — both destroy the dark theme. Override with a large
+   inset shadow that's the same color as the input's dark background,
+   plus a 5000s transition to prevent the yellow flash on autofill. */
+.capture input:-webkit-autofill,
+.capture input:-webkit-autofill:hover,
+.capture input:-webkit-autofill:focus{
+  -webkit-text-fill-color:#fff;
+  -webkit-box-shadow:0 0 0 1000px rgba(20,30,40,.95) inset;
+  caret-color:#fff;
+  transition:background-color 5000s ease-in-out 0s;
+}
+.capture .btn{
+  height:54px;flex-shrink:0;
+  border-radius:14px;
+  transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.capture .btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px -6px rgba(21,182,168,.5)}
+.capture .btn:active{transform:translateY(0)}
 .microtrust{display:flex;gap:18px;margin-top:16px;flex-wrap:wrap}
 .microtrust span{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#8b99a6}
 
@@ -422,18 +457,21 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
      the two stacked elements read as a paired field+CTA, not "subtle
      field + big CTA". Solid-feeling dark background + 2px border + inset
      shadow makes it look like a real sunken input rather than a haze
-     over the hero glow. 16px font stops iOS Safari auto-zoom on focus. */
+     over the hero glow. 16px font stops iOS Safari auto-zoom on focus.
+     Icon padding-left bumped to 52px to match the larger padding scale. */
   .capture{gap:14px}
   .capture input{
-    height:58px;font-size:16px;padding:0 20px;
+    height:58px;font-size:16px;padding:0 20px 0 52px;
     border:2px solid rgba(255,255,255,.38);
-    background:rgba(10,20,28,.55);
+    background-color:rgba(10,20,28,.55);
+    background-position:20px center;
     box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 4px 14px -6px rgba(0,0,0,.4);
   }
+  html[dir="rtl"] .capture input{background-position:calc(100% - 20px) center;padding:0 52px 0 20px}
   .capture input::placeholder{color:#a4b1bd}
   .capture input:focus{
     border-color:var(--teal-l);
-    background:rgba(10,20,28,.7);
+    background-color:rgba(10,20,28,.7);
     box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 0 0 4px rgba(21,182,168,.22);
   }
   .capture .btn{height:58px;font-size:16px}
