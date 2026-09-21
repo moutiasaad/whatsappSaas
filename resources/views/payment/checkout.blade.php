@@ -429,7 +429,32 @@
                         <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
                     </div>
 
-                    @if($sdkReady)
+                    @php
+                        // Per-plan link wins over the platform-wide env. Same
+                        // resolution order as PaymentController::initiatePaypalNcp
+                        // and the marketing checkout view.
+                        $ncpLink = ($plan->paypal_ncp_link ?? null) ?: config('services.paypal.ncp_link');
+                    @endphp
+                    @if($ncpLink)
+                        {{-- PayPal NCP mode: single button that POSTs a pending
+                             TenantPayment row and redirects to the fixed PayPal
+                             link. Card-fields form is deliberately NOT rendered
+                             — one-tap flow only. --}}
+                        <form method="POST" action="{{ route('payment.paypal.ncp.initiate') }}"
+                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                            @csrf
+                            <input type="hidden" name="plan_id"   value="{{ $plan->id }}">
+                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                            <button type="submit" class="btn-paypal">
+                                <i class="ri-paypal-fill"></i>
+                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
+                            </button>
+                        </form>
+                        <p class="payhint">
+                            <i class="ri-external-link-line"></i>
+                            {{ __('ui.payment_page.ncp_hint') }}
+                        </p>
+                    @elseif($sdkReady)
                         {{-- Card first, PayPal second. Most buyers arriving here
                              have a card and no PayPal account, so the card form
                              is the open default rather than something behind a
