@@ -152,7 +152,14 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;font-family:"Outfit",ui-sans-serif,system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:#fff;line-height:1.5;overflow-x:hidden}
+/* overflow-x on body alone is ignored by mobile Safari + some Chrome
+   builds — HTML5 validation tooltips (like the empty-email prompt) or
+   any transient wide element (e.g. a WhatsApp bubble overflowing) will
+   scroll the whole document sideways and shift the sticky header off
+   screen. Clamp at the root too. `width:100%` on html+body plus
+   overflow-x:hidden together kills every code path. */
+html{overflow-x:hidden;width:100%}
+body{margin:0;font-family:"Outfit",ui-sans-serif,system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:#fff;line-height:1.5;overflow-x:hidden;width:100%;max-width:100vw;position:relative}
 html[dir="rtl"] body{font-family:"Cairo",ui-sans-serif,system-ui,sans-serif;line-height:1.65}
 a{color:var(--teal);text-decoration:none}a:hover{color:var(--teal-d)}
 h1,h2,h3{margin:0;letter-spacing:-.035em;font-weight:700;text-wrap:pretty}
