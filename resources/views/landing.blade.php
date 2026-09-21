@@ -258,12 +258,21 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
 /* Email icon prefixed via background-image so we don't need to wrap the
    input in a container. SVG stroke color is baked in as %2394a3b8 so
    it matches the placeholder text; RTL flips the background position
-   + padding via [dir="rtl"] override below. */
+   + padding via [dir="rtl"] override below.
+   Background-color pulled into its own layer so it can transition
+   independently of the icon SVG on hover/focus. Slightly more solid dark
+   tint (was rgba(255,255,255,.09), now a proper dark ink shade) so the
+   pill reads as a defined shape against the hero glow rather than a
+   frosted haze. Drop shadow lifts it off the background — the "floating
+   pill" you see on Stripe / Linear / Vercel email captures. */
 .capture input{
   flex:1;height:54px;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.22);
-  background:rgba(255,255,255,.09) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='14' rx='3'/><path d='m3 7 9 6 9-6'/></svg>") no-repeat 18px center;
+  border:1px solid rgba(255,255,255,.16);
+  background-color:rgba(18,28,38,.55);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='14' rx='3'/><path d='m3 7 9 6 9-6'/></svg>");
+  background-repeat:no-repeat;
+  background-position:18px center;
   color:#fff;
   padding:0 18px 0 48px;
   font-size:15.5px;
@@ -271,11 +280,12 @@ html[dir="rtl"] .hero .spine{transform:scaleX(-1)}
   transition:border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
   min-width:0;
   appearance:none;-webkit-appearance:none;
+  box-shadow:0 6px 20px -8px rgba(0,0,0,.55);
 }
 html[dir="rtl"] .capture input{background-position:calc(100% - 18px) center;padding:0 48px 0 18px}
 .capture input::placeholder{color:#94a3b8}
-.capture input:hover{border-color:rgba(255,255,255,.32);background-color:rgba(255,255,255,.11)}
-.capture input:focus{border-color:var(--teal-l);background-color:rgba(255,255,255,.12);box-shadow:0 0 0 4px rgba(21,182,168,.2)}
+.capture input:hover{border-color:rgba(255,255,255,.24);background-color:rgba(18,28,38,.65)}
+.capture input:focus{border-color:var(--teal-l);background-color:rgba(18,28,38,.7);box-shadow:0 6px 20px -8px rgba(0,0,0,.55), 0 0 0 4px rgba(21,182,168,.2)}
 /* Chrome/Safari autofill would paint the input yellow and switch the
    text to black — both destroy the dark theme. Override with a large
    inset shadow that's the same color as the input's dark background,
