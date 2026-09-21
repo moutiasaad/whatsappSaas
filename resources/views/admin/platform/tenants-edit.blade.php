@@ -64,60 +64,6 @@
             </div>
         </div>
 
-        <div class="card">
-            <div style="padding:16px;">
-                <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px;">{{ __('ui.platform_tenants_edit_page.danger_zone') }}</div>
-                <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">
-                    {{ __('ui.platform_tenants_edit_page.danger_zone_hint') }}
-                </div>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    {{-- Block / Unblock. Copies the row action's semantics
-                         (flip is_active) but drops the modal in favour of a
-                         plain form + native confirm — same pattern as the
-                         expire-trial form on tenants-show. --}}
-                    <form method="POST" action="{{ route('super_admin.platform.tenants.toggle-active', $tenant) }}"
-                          onsubmit="return confirm(@js($tenant->is_active ? __('ui.platform_tenants_page.block_prompt', ['name' => $tenant->name]) : __('ui.platform_tenants_page.unblock_prompt', ['name' => $tenant->name])))"
-                          style="margin:0;">
-                        @csrf
-                        @method('PATCH')
-                        @if($tenant->is_active)
-                            <button type="submit" class="btn btn-danger btn-sm" style="width:100%;">
-                                <i class="ri-forbid-2-line"></i> {{ __('ui.platform_tenants_page.block') }}
-                            </button>
-                        @else
-                            <button type="submit" class="btn btn-outline btn-sm" style="width:100%;color:var(--brand);border-color:rgba(16,185,129,.4);">
-                                <i class="ri-checkbox-circle-line"></i> {{ __('ui.platform_tenants_page.unblock') }}
-                            </button>
-                        @endif
-                    </form>
-
-                    {{-- Archive / Restore. Distinct from block: archive
-                         soft-hides the tenant from the default list; block
-                         is a live suspension that stays visible. --}}
-                    <form method="POST" action="{{ route('super_admin.platform.tenants.toggle-archive', $tenant) }}"
-                          onsubmit="return confirm(@js($tenant->archived_at ? __('ui.platform_tenants_page.restore_prompt', ['name' => $tenant->name]) : __('ui.platform_tenants_page.archive_prompt', ['name' => $tenant->name])))"
-                          style="margin:0;">
-                        @csrf
-                        @method('PATCH')
-                        @if($tenant->archived_at)
-                            <button type="submit" class="btn btn-outline btn-sm" style="width:100%;color:var(--brand);border-color:rgba(16,185,129,.4);">
-                                <i class="ri-inbox-unarchive-line"></i> {{ __('ui.platform_tenants_page.restore') }}
-                            </button>
-                        @else
-                            <button type="submit" class="btn btn-outline btn-sm" style="width:100%;">
-                                <i class="ri-inbox-archive-line"></i> {{ __('ui.platform_tenants_page.archive') }}
-                            </button>
-                        @endif
-                    </form>
-
-                    <button type="button"
-                            class="btn btn-danger btn-sm" style="width:100%;"
-                            onclick="confirmDelete('{{ route('super_admin.platform.tenants.destroy', $tenant) }}', { title: @js(__('ui.platform_tenants_page.delete_prompt', ['name' => $tenant->name])), message: @js(__('ui.platform_tenants_page.delete_message')) })">
-                        <i class="ri-delete-bin-line"></i> {{ __('ui.platform_tenants_page.delete') }}
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 @endsection
