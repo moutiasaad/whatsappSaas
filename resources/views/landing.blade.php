@@ -828,8 +828,20 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
         @if($isFree)
           <div class="pp">{{ __('landing.plan_free_label') }}</div>
         @else
+          @php
+              // Resolve local currency + numbers once so the JS annual toggle
+              // has both values from the same country context.
+              $localMonthly = $plan->priceFor($visitorCountry ?? null, 'monthly');
+              $localAnnual  = $hasAnnual ? $plan->priceFor($visitorCountry ?? null, 'annual') : null;
+              $sym = $localMonthly['symbol'];
+              // Latin symbols prefix ($39, €39), non-Latin follow (39 ر.س).
+              $prefix = in_array($sym, ['$', '€', '£', '¥', '₹'], true) ? $sym : '';
+              $suffix = $prefix === '' ? ' ' . $sym : '';
+          @endphp
           <div class="pp">
-            $<span class="plan-amount" data-monthly="{{ number_format((float) $plan->price_monthly, 0) }}"@if($hasAnnual) data-annual="{{ number_format((float) $plan->price_annual, 0) }}"@endif>{{ number_format((float) $plan->price_monthly, 0) }}</span><span class="monthly-label">{{ __('landing.plan_per_month') }}</span>@if($hasAnnual)<span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>@endif
+            {{ $prefix }}<span class="plan-amount"
+                  data-monthly="{{ number_format((float) $localMonthly['amount'], 0) }}"
+                  @if($hasAnnual) data-annual="{{ number_format((float) $localAnnual['amount'], 0) }}"@endif>{{ number_format((float) $localMonthly['amount'], 0) }}</span>{{ $suffix }}<span class="monthly-label">{{ __('landing.plan_per_month') }}</span>@if($hasAnnual)<span class="annual-label" style="display:none">{{ __('landing.plan_per_year') }}</span>@endif
           </div>
         @endif
         <div class="pd">{{ __('landing.plan_tagline_' . $tagline) }}</div>

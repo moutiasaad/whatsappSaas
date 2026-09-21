@@ -114,7 +114,7 @@
             </div>
         </div>
         @if($tenant->plan)
-        <div class="days"><b>${{ $price($tenant->plan->price_monthly) }}</b><span>{{ __('ui.tenant_billing.per_month_short') }}</span></div>
+        <div class="days"><b>{{ $tenant->plan->formatLocalPrice($visitorCountry ?? null, 'monthly') }}</b><span>{{ __('ui.tenant_billing.per_month_short') }}</span></div>
         @endif
     </div>
     @endif

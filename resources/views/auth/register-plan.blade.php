@@ -130,7 +130,7 @@
                     </span>
                     <span class="note">
                         @if($trialDays > 0)
-                            {{ __('auth.register.plan_trial_note', ['days' => $trialDays, 'price' => '$' . number_format((float) $plan->price_monthly, 0)]) }}
+                            {{ __('auth.register.plan_trial_note', ['days' => $trialDays, 'price' => $plan->formatLocalPrice($visitorCountry ?? null, 'monthly')]) }}
                         @elseif($isFree)
                             {{ __('auth.register.plan_free_note') }}
                         @else
@@ -139,7 +139,7 @@
                     </span>
                 </span>
                 <span class="price">
-                    <b>{{ $isFree ? __('landing.plan_free_label') : '$' . number_format((float) $plan->price_monthly, 0) }}</b>
+                    <b>{{ $isFree ? __('landing.plan_free_label') : $plan->formatLocalPrice($visitorCountry ?? null, 'monthly') }}</b>
                     @unless($isFree)<span>{{ __('landing.plan_per_month') }}</span>@endunless
                 </span>
             </span>
