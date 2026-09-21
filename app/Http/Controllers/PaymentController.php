@@ -1234,14 +1234,27 @@ class PaymentController extends Controller
             }
         }
 
+        // Localise the amount + currency for the visitor's country. DetectCountry
+        // middleware already resolved it and shared it as $visitorCountry;
+        // Plan::priceFor() falls back to base USD when no localised price
+        // exists for that country. amount / currency drive what Stripe / PayPal
+        // charge; baseAmount is shown in parens next to the local amount
+        // so the visitor always sees the USD reference.
+        $priced = $plan->priceFor(view()->shared('visitorCountry') ?? null, 'monthly');
+        $baseAmount = (float) $plan->price_monthly;
+
         return view('payment.checkout-marketing', [
-            'tenant'      => $tenant,
-            'plan'        => $plan,
-            'admin'       => $admin,
-            'amount'      => (float) $plan->price_monthly,
-            'backUrl'     => route('register.plan'),
-            'sdkReady'    => $sdkReady,
-            'clientToken' => $clientToken,
+            'tenant'         => $tenant,
+            'plan'           => $plan,
+            'admin'          => $admin,
+            'amount'         => (float) $priced['amount'],
+            'currency'       => $priced['currency'],
+            'currencySymbol' => $priced['symbol'],
+            'isLocal'        => (bool) $priced['is_local'],
+            'baseAmount'     => $baseAmount, // always base USD
+            'backUrl'        => route('register.plan'),
+            'sdkReady'       => $sdkReady,
+            'clientToken'    => $clientToken,
         ]);
     }
 

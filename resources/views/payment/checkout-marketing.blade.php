@@ -2,7 +2,32 @@
     $isRtl       = (bool) data_get(config('locales.supported', []), app()->getLocale() . '.rtl');
     $backUrl     = $backUrl ?? url('/register/plan');
     $homeUrl     = url('/');
-    $currency    = config('services.paypal.currency', 'USD');
+    // Currency is what will be CHARGED. Passed from the controller after
+    // Plan::priceFor() resolves the visitor's country. Defaults kept for
+    // any legacy caller that predates the country-aware update.
+    $currency       = $currency       ?? config('services.paypal.currency', 'USD');
+    $currencySymbol = $currencySymbol ?? '$';
+    $isLocal        = (bool) ($isLocal ?? false);
+    $baseAmount     = (float) ($baseAmount ?? $amount);
+
+    // Format the visible price string. Latin symbols prefix ($39, €39),
+    // non-Latin follow (149 ر.س) — matches Plan::formatLocalPrice(). When
+    // the visitor is being charged in a non-USD currency, append the base
+    // USD in parens ("149 ر.س (≈ $39)") so they always see the reference.
+    $fmtAmount = function ($value, $symbol) {
+        $value = (float) $value;
+        $n = fmod($value, 1.0) === 0.0 ? number_format($value, 0) : number_format($value, 2);
+        return in_array($symbol, ['$','€','£','¥','₹'], true) ? $symbol . $n : $n . ' ' . $symbol;
+    };
+
+    $displayPrice = $fmtAmount($amount, $currencySymbol);
+    $baseUsdPrice = $fmtAmount($baseAmount, '$');
+    // Only show the "(≈ $X)" suffix when local currency differs from USD;
+    // showing "($39)" next to "$39" would just be noise.
+    $displayWithBase = $isLocal && strtoupper($currency) !== 'USD'
+        ? $displayPrice . ' (≈ ' . $baseUsdPrice . ')'
+        : $displayPrice;
+
     // Same SDK decisions as the core checkout view. `sdkReady` is passed
     // from the controller; when true the client-side SDK renders the
     // inline card fields and the PayPal button. clientToken is optional
@@ -249,7 +274,7 @@
                         <div class="n">{{ __('ui.payment_page.plan_name', ['plan' => $plan->name]) }}</div>
                         <div class="s">{{ __('ui.payment_page.plan_billed_monthly') }}</div>
                     </div>
-                    <div class="amt">${{ number_format($amount, 2) }}</div>
+                    <div class="amt">{{ $displayWithBase }}</div>
                 </div>
 
                 <ul class="feats">
@@ -320,7 +345,7 @@
 
                                 <button type="button" id="cf-submit" class="btn-card primary">
                                     <i class="ri-lock-line"></i>
-                                    {{ __('ui.payment_page.pay_by_card_amount', ['amount' => '$' . number_format($amount, 2)]) }}
+                                    {{ __('ui.payment_page.pay_by_card_amount', ['amount' => $displayPrice]) }}
                                 </button>
                             </div>
                         </div>
@@ -357,7 +382,7 @@
                             <input type="hidden" name="plan_id" value="{{ $plan->id }}">
                             <button type="submit" class="btn-paypal">
                                 <i class="ri-paypal-fill"></i>
-                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
+                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
                             </button>
                         </form>
                         <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
@@ -378,7 +403,7 @@
                             <div class="n">{{ $plan->name }}</div>
                             <div class="s">{{ __('ui.payment_page.plan_line_sub') }}</div>
                         </div>
-                        <div class="v">${{ number_format($amount, 2) }}</div>
+                        <div class="v">{{ $displayWithBase }}</div>
                     </div>
                     <div class="li">
                         <div class="m">
@@ -391,8 +416,12 @@
                     <div class="tot">
                         <span class="l">{{ __('ui.payment_page.due_now') }}</span>
                         <div class="r">
-                            <b>${{ number_format($amount, 2) }}</b>
-                            <span>{{ $currency }} · {{ __('ui.payment_page.excl_tax') }}</span>
+                            <b>{{ $displayPrice }}</b>
+                            @if($isLocal && strtoupper($currency) !== 'USD')
+                                <span style="display:block;font-size:.75rem;color:var(--muted);">≈ {{ $baseUsdPrice }} USD · {{ __('ui.payment_page.excl_tax') }}</span>
+                            @else
+                                <span>{{ $currency }} · {{ __('ui.payment_page.excl_tax') }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>

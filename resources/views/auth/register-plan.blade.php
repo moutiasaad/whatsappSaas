@@ -128,9 +128,21 @@
                             <span class="pop">{{ __('landing.popular_short') }}</span>
                         @endif
                     </span>
+                    @php
+                        // Local + base USD for the trial note. When the two
+                        // differ, prepend the base USD in parens so the visitor
+                        // sees both currencies at a glance ("149 ر.س (≈ $39)").
+                        $localPricedForPlan = $plan->priceFor($visitorCountry ?? null, 'monthly');
+                        $localPriceStr      = $plan->formatLocalPrice($visitorCountry ?? null, 'monthly');
+                        $showBaseUsd        = $localPricedForPlan['is_local']
+                                              && strtoupper($localPricedForPlan['currency']) !== 'USD';
+                        $baseUsdStr         = '$' . (fmod((float) $plan->price_monthly, 1.0) === 0.0
+                                                ? number_format((float) $plan->price_monthly, 0)
+                                                : number_format((float) $plan->price_monthly, 2));
+                    @endphp
                     <span class="note">
                         @if($trialDays > 0)
-                            {{ __('auth.register.plan_trial_note', ['days' => $trialDays, 'price' => $plan->formatLocalPrice($visitorCountry ?? null, 'monthly')]) }}
+                            {{ __('auth.register.plan_trial_note', ['days' => $trialDays, 'price' => $localPriceStr . ($showBaseUsd ? ' (≈ ' . $baseUsdStr . ')' : '')]) }}
                         @elseif($isFree)
                             {{ __('auth.register.plan_free_note') }}
                         @else
@@ -139,8 +151,13 @@
                     </span>
                 </span>
                 <span class="price">
-                    <b>{{ $isFree ? __('landing.plan_free_label') : $plan->formatLocalPrice($visitorCountry ?? null, 'monthly') }}</b>
-                    @unless($isFree)<span>{{ __('landing.plan_per_month') }}</span>@endunless
+                    <b>{{ $isFree ? __('landing.plan_free_label') : $localPriceStr }}</b>
+                    @unless($isFree)
+                        <span>{{ __('landing.plan_per_month') }}</span>
+                        @if($showBaseUsd)
+                            <small style="display:block;color:var(--muted,#94a3b8);font-size:11.5px;font-weight:400;margin-top:2px;">≈ {{ $baseUsdStr }} USD</small>
+                        @endif
+                    @endunless
                 </span>
             </span>
 
