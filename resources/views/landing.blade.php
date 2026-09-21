@@ -248,16 +248,21 @@ html[dir="rtl"] .has-mega:hover .mega,html[dir="rtl"] .has-mega:focus-within .me
 /* On mobile the sticky CTA and the webchat launcher both live at
    bottom-right and stack on top of each other. When the CTA is visible
    (JS-toggled body.mobcta-visible), slide the launcher out with the
-   same easing — desktop is unaffected. */
+   same easing — desktop is unaffected.
+   Selector wraps the widget's own #wvch-root scope so specificity beats
+   the widget's base rule (which is id+class); !important pins the hide
+   properties in case the widget's stylesheet loads after this one. */
 @media (max-width:980px){
-  .wvch-launcher{transition:opacity .22s ease, transform .22s ease}
-  body.mobcta-visible .wvch-launcher{
-    opacity:0;visibility:hidden;pointer-events:none;
-    transform:translateY(20px) scale(.9);
+  #wvch-root .wvch-launcher{transition:opacity .22s ease, transform .22s ease, visibility .22s ease}
+  body.mobcta-visible #wvch-root .wvch-launcher{
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+    transform:translateY(20px) scale(.9) !important;
   }
 }
 @media (max-width:980px) and (prefers-reduced-motion:reduce){
-  .wvch-launcher{transition:none}
+  #wvch-root .wvch-launcher{transition:none}
 }
 
 /* hero */
