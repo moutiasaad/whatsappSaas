@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\AuthApiController;
 use App\Http\Controllers\Api\V1\BillingApiController;
 use App\Http\Controllers\Api\V1\PlansApiController;
+use App\Http\Controllers\Api\V1\PlatformPreferencesApiController;
 use App\Http\Controllers\Api\V1\SessionStatusController;
 use App\Http\Middleware\SessionStatusCors;
 use App\Http\Controllers\Api\DirectSendController;
@@ -115,6 +116,15 @@ if (Wavadesk::isCore()) {
             ->middleware(['auth:sanctum', 'throttle:20,1'])
             ->name('api.v1.billing.paypal.capture-order');
     });
+
+    // ─── v1 Platform preferences (called by marketing's SetLocale) ─────────
+    // Read-only, tiny, high-frequency. Marketing caches the result for 60s
+    // so this doesn't run per-request on the anonymous landing page. Behind
+    // wavadesk.caller for symmetry with the rest of v1 — the payload is
+    // low-risk but the endpoint has no business being open to the world.
+    Route::get('/v1/platform/preferences', [PlatformPreferencesApiController::class, 'show'])
+        ->middleware(['wavadesk.caller', 'throttle:120,1'])
+        ->name('api.v1.platform.preferences');
 
     // ─── v1 Session status (called from the marketing site's browser) ──────
     // Unlike everything else above this is NOT server-to-server: the visitor's

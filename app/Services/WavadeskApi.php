@@ -180,6 +180,18 @@ class WavadeskApi
     }
 
     /**
+     * GET /api/v1/platform/preferences — read the platform-wide defaults
+     * the super admin picked in the core panel. Marketing calls this from
+     * SetLocale (cached 60s) so the two boxes agree on the default language.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function platformPreferences(): array
+    {
+        return $this->call('get', '/api/v1/platform/preferences');
+    }
+
+    /**
      * @param  float|null  $timeoutOverride  Seconds to wait; falls back to the
      *   constructor default when null. PayPal capture / create-order pass
      *   a longer value because the round-trip involves an external call
