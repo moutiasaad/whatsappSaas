@@ -642,6 +642,10 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             // on trial. See SuperAdminPlatformController::expireTrial.
             Route::post('/platform/tenants/{tenant}/expire-trial', [SuperAdminPlatformController::class, 'expireTrial'])
                 ->name('platform.tenants.expire-trial');
+            // Grant N extra days on the tenant's current plan window (trial
+            // or paid). Every extension writes an AuditLog row.
+            Route::post('/platform/tenants/{tenant}/extend-plan', [SuperAdminPlatformController::class, 'extendTenantPlan'])
+                ->name('platform.tenants.extend-plan');
 
             // Claude API cost report. Ledger-backed, one row per Anthropic
             // call recorded by App\Services\AI\UsageTracker.

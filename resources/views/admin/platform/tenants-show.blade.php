@@ -11,7 +11,10 @@
 @endsection
 
 @section('content')
-<div>
+{{-- x-data at the root so the Extend Plan modal (rendered at the bottom of
+     the page) shares the same Alpine scope as the header button that opens
+     it. `days` starts at 30 which matches the most common operator ask. --}}
+<div x-data="{ extendOpen: false, days: 30, reason: '' }">
     <div class="page-header">
         <div class="page-header-left">
             <div class="page-title">{{ $tenant->name }}</div>
@@ -21,6 +24,14 @@
             <a href="{{ route('super_admin.platform.tenants') }}" class="btn btn-outline">
                 <i class="ri-arrow-left-line"></i> {{ __('ui.back') }}
             </a>
+
+            {{-- Extend the tenant's plan window. Opens the modal defined at
+                 the bottom of this file. Green because it's an operator
+                 courtesy (granting time), not a punitive action. --}}
+            <button type="button" @click="extendOpen = true; days = 30; reason = ''"
+                    class="btn btn-outline" style="color:var(--brand);border-color:rgba(16,185,129,.4);">
+                <i class="ri-calendar-2-line"></i> {{ __('ui.platform_tenants_show_page.extend_plan') }}
+            </button>
 
             {{-- Block / Unblock. One form; label + color flip on tenant.is_active.
                  Plain form + native confirm — same pattern as expire-trial below. --}}
@@ -205,6 +216,35 @@
                     @endforelse
                 </div>
             </div>
+
+            {{-- Extension history — only rendered when at least one extension
+                 has been recorded. Rows come from the AuditLog ledger so
+                 this list and /admin-control-panel/audit-log always agree. --}}
+            @if($planExtensions->isNotEmpty())
+            <div class="card">
+                <div class="card-header" style="padding-bottom:12px;">
+                    <div class="card-title">{{ __('ui.platform_tenants_show_page.recent_extensions') }}</div>
+                </div>
+                <div style="padding:0 18px 18px 18px;display:flex;flex-direction:column;gap:10px;">
+                    @foreach($planExtensions as $log)
+                        @php $p = (array) ($log->payload ?? []); @endphp
+                        <div style="padding:10px;background:var(--page-bg);border-radius:8px;font-size:12.5px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <strong>+{{ (int) ($p['days'] ?? 0) }} {{ __('ui.platform_tenants_show_page.days_short') }}</strong>
+                                <span style="color:var(--text-muted);font-size:11px;">{{ $log->created_at?->diffForHumans() }}</span>
+                            </div>
+                            <div style="color:var(--text-muted);margin-top:2px;">
+                                {{ __('ui.platform_tenants_show_page.extension_by') }}:
+                                <strong style="color:var(--text-primary);">{{ $log->user?->name ?? $log->user?->email ?? '—' }}</strong>
+                            </div>
+                            @if(!empty($p['reason']))
+                                <div style="color:var(--text-muted);margin-top:4px;font-style:italic;">"{{ $p['reason'] }}"</div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -415,5 +455,74 @@
             </div>
         @endif
     </div>
+
+    {{-- Extend Plan Modal — real modal-overlay so it sits above the sidebar
+         and dims the page. Teleport to body so the admin layout's z-index
+         doesn't clip it (feedback_admin_modal_z_index memory). --}}
+    <template x-teleport="body">
+        <div x-show="extendOpen" x-cloak
+             class="modal-overlay show" role="dialog" aria-modal="true"
+             @click.self="extendOpen = false"
+             @keydown.escape.window="extendOpen = false"
+             style="z-index:10000;">
+            <div class="modal-box" style="max-width:480px;">
+                <div class="modal-icon" style="color:var(--brand);background:rgba(16,185,129,.15);">
+                    <i class="ri-calendar-2-line"></i>
+                </div>
+                <h3>{{ __('ui.platform_tenants_show_page.extend_plan_title', ['name' => $tenant->name]) }}</h3>
+                <p style="color:var(--text-muted);font-size:13px;">
+                    {{ __($tenant->subscription_status === 'trial' ? 'ui.platform_tenants_show_page.extend_plan_body_trial' : 'ui.platform_tenants_show_page.extend_plan_body_paid') }}
+                </p>
+
+                <form method="POST" action="{{ route('super_admin.platform.tenants.extend-plan', $tenant) }}"
+                      style="margin-top:16px;display:flex;flex-direction:column;gap:12px;text-align:left;">
+                    @csrf
+
+                    <div>
+                        <label class="form-label" style="display:block;margin-bottom:6px;">
+                            {{ __('ui.platform_tenants_show_page.extend_plan_days_label') }}
+                        </label>
+                        {{-- Quick picks. Clicking sets `days` and gives the
+                             chosen option a filled look; the input below stays
+                             the source of truth so custom values still work. --}}
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                            @foreach([7, 14, 30, 60, 90] as $preset)
+                                <button type="button" @click="days = {{ $preset }}"
+                                        :class="days === {{ $preset }} ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'"
+                                        style="padding:4px 12px;">
+                                    +{{ $preset }} {{ __('ui.platform_tenants_show_page.days_short') }}
+                                </button>
+                            @endforeach
+                        </div>
+                        <input type="number" name="days" x-model.number="days"
+                               min="1" max="365" required
+                               class="form-control" style="max-width:160px;">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:block;margin-bottom:6px;">
+                            {{ __('ui.platform_tenants_show_page.extend_plan_reason_label') }}
+                            <span style="color:var(--text-muted);font-weight:400;">
+                                ({{ __('ui.platform_tenants_show_page.extend_plan_reason_hint') }})
+                            </span>
+                        </label>
+                        <textarea name="reason" x-model="reason" rows="2" maxlength="500"
+                                  class="form-control"
+                                  placeholder="{{ __('ui.platform_tenants_show_page.extend_plan_reason_placeholder') }}"></textarea>
+                    </div>
+
+                    <div class="modal-actions" style="margin-top:8px;">
+                        <button type="button" @click="extendOpen = false" class="btn btn-outline">
+                            {{ __('ui.cancel') }}
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-check-line"></i>
+                            {{ __('ui.platform_tenants_show_page.extend_plan_confirm') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
 </div>
 @endsection

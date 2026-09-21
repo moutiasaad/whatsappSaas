@@ -195,9 +195,23 @@ class SuperAdminPlatformController extends Controller
             ->limit(10)
             ->get();
 
+        // Extension history — every AuditLog row where the target is this
+        // tenant AND the action is a plan extension. Rendered as a small
+        // "Recent extensions" card next to the plan info so a super admin
+        // sees the extension trail without leaving the tenant page.
+        $planExtensions = \App\Models\AuditLog::query()
+            ->where('target_type', 'Tenant')
+            ->where('target_id', $tenant->id)
+            ->where('action', 'tenant.plan_extended')
+            ->with('user:id,name,email')
+            ->latest('created_at')
+            ->limit(5)
+            ->get();
+
         return view('admin.platform.tenants-show', compact(
             'tenant', 'payments', 'linkedTenants',
-            'claudeLifetime', 'claude30d', 'claudeByModel', 'claudeBySource', 'claudeRecent'
+            'claudeLifetime', 'claude30d', 'claudeByModel', 'claudeBySource', 'claudeRecent',
+            'planExtensions'
         ));
     }
 
@@ -481,6 +495,66 @@ class SuperAdminPlatformController extends Controller
      * for the real end date. No-op unless the tenant is currently on trial:
      * an active/expired tenant has nothing here to back-date.
      */
+    /**
+     * Push a tenant's plan end date forward by N days.
+     *
+     * Which column moves depends on the current lifecycle state, per the split
+     * documented in project_trial_lifecycle_semantics.md: trials extend
+     * trial_ends_at, everyone else extends subscription_ends_at. Status is left
+     * alone — a suspended tenant stays suspended even after the date moves;
+     * reactivating a suspended tenant is a separate deliberate action.
+     *
+     * Base date is the *later of now() and the current end date*. That means an
+     * expired trial extended by 7 days ends 7 days from today, not 7 days from
+     * whenever the trial originally ran out — which is the "give them a week"
+     * semantics operators actually mean.
+     *
+     * Every extension writes an AuditLog row with the previous date, the new
+     * date, the day-count and the reason, so /admin-control-panel/audit-log is
+     * the single source of truth for "who extended what and why".
+     */
+    public function extendTenantPlan(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'days'   => 'required|integer|min:1|max:365',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        // Which date column to move.
+        $column = $tenant->subscription_status === 'trial'
+            ? 'trial_ends_at'
+            : 'subscription_ends_at';
+
+        $current = $tenant->{$column};
+
+        // "Extend from where we are" — later of now() vs. the stored end
+        // date. Passing an expired date through addDays would land the
+        // extension in the past.
+        $baseDate = ($current && $current->isFuture()) ? $current : now();
+        $newDate  = $baseDate->copy()->addDays((int) $data['days']);
+
+        $previous = $current?->toIso8601String();
+
+        $tenant->forceFill([$column => $newDate])->save();
+
+        AuditLog::record('tenant.plan_extended', $tenant, [
+            'source'      => 'platform.tenants',
+            'column'      => $column,
+            'days'        => (int) $data['days'],
+            'previous'    => $previous,
+            'new'         => $newDate->toIso8601String(),
+            'reason'      => $data['reason'] ?? null,
+            'status_at_extend' => $tenant->subscription_status,
+        ]);
+
+        return back()->with('success', __('ui.controller_messages.plan_extended', [
+            'name' => $tenant->name,
+            'days' => (int) $data['days'],
+        ]));
+    }
+
     public function expireTrial(Request $request, Tenant $tenant)
     {
         abort_unless(auth()->user()->isSuperAdmin(), 403);
