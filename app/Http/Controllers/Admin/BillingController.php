@@ -89,6 +89,12 @@ class BillingController extends Controller
             $result['data']      = $payments->map(function ($p) {
                 $payer = $this->payerFromPayment($p);
 
+                // base_amount_usd is only present when the payment was
+                // captured in a non-USD currency (per P3). USD payments
+                // leave it NULL — no side-by-side display needed.
+                $baseUsd = $p->base_amount_usd ? (float) $p->base_amount_usd : null;
+                $isLocal = $baseUsd !== null && strtoupper($p->currency ?? '') !== 'USD';
+
                 return [
                     'id'               => $p->id,
                     'tenant_name'      => $p->tenant?->name,
@@ -97,6 +103,11 @@ class BillingController extends Controller
                     'plan_name'        => $p->plan?->name ?? '—',
                     'amount'           => number_format((float) $p->amount, 2),
                     'currency'         => $p->currency ?? 'USD',
+                    // Present only when the paid currency differs from USD.
+                    // Front-end renders "149 SAR ($39 USD)" when set,
+                    // "$39 USD" alone otherwise.
+                    'base_amount_usd'  => $isLocal ? number_format($baseUsd, 2) : null,
+                    'is_local_currency'=> $isLocal,
                     'status'           => $p->status,
                     'is_completed'     => $p->isCompleted(),
                     'paid_at_date'     => $p->paid_at?->format('d M Y'),

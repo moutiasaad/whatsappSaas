@@ -78,6 +78,12 @@
                     <div class="detail-value" style="font-size:1.25rem;font-weight:800;color:{{ $payment->isCompleted() ? 'var(--brand)' : 'var(--text-primary)' }};">
                         {{ $payment->currency ?? 'USD' }} {{ number_format((float)$payment->amount, 2) }}
                     </div>
+                    @if($payment->base_amount_usd && strtoupper($payment->currency ?? '') !== 'USD')
+                        <div style="font-size:.8125rem;color:var(--text-muted);margin-top:.25rem;">
+                            ≈ USD {{ number_format((float) $payment->base_amount_usd, 2) }}
+                            <span style="font-size:11px;">({{ __('ui.payments_page.base_price_at_checkout') }})</span>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="detail-item">

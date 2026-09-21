@@ -1873,6 +1873,7 @@ return [
     'payments_page' => [
         'title'              => 'سجل المدفوعات',
         'subtitle'           => 'جميع معاملات Stripe لجميع المستأجرين',
+        'base_price_at_checkout' => 'سعر الخطة الأساسي وقت الدفع',
         'total_revenue'      => 'إجمالي الإيرادات',
         'total_transactions' => 'المعاملات',
         'pending'            => 'قيد الانتظار',

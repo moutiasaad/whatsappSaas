@@ -1879,6 +1879,7 @@ Always:
     'payments_page' => [
         'title'               => 'Payment History',
         'subtitle'            => 'All Stripe transactions across all tenants',
+        'base_price_at_checkout' => 'base plan price at checkout',
         'total_revenue'       => 'Total Revenue',
         'total_transactions'  => 'Transactions',
         'pending'             => 'Pending',

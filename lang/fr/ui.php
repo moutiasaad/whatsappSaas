@@ -1877,6 +1877,7 @@ Toujours :
     'payments_page' => [
         'title'               => 'Historique des paiements',
         'subtitle'            => 'Toutes les transactions Stripe pour tous les tenants',
+        'base_price_at_checkout' => 'tarif de base du forfait au moment du paiement',
         'total_revenue'       => 'Revenus totaux',
         'total_transactions'  => 'Transactions',
         'pending'             => 'En attente',

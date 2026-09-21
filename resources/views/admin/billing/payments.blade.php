@@ -135,10 +135,14 @@ $i18n = [
                                 <td>
                                     <span style="font-size:.875rem;font-weight:500;" x-text="row.plan_name"></span>
                                 </td>
-                                <td style="text-align:right;">
+                                <td style="text-align:right;white-space:nowrap;">
                                     <span style="font-weight:700;font-size:.9375rem;"
                                           :style="row.is_completed ? 'color:var(--brand)' : 'color:var(--text-muted)'"
                                           x-text="row.currency + ' ' + row.amount"></span>
+                                    <template x-if="row.is_local_currency">
+                                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:400;"
+                                             x-text="'≈ USD ' + row.base_amount_usd"></div>
+                                    </template>
                                 </td>
                                 <td style="text-align:center;">
                                     <span :class="'badge ' + statusBadge(row.status).cls">
