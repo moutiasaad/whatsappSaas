@@ -170,15 +170,20 @@ class KnowledgeController extends Controller
         // one call, drops anything flagged as violence/hate/sexual/etc.
         // Fail-closed: if Anthropic is unreachable the import is rejected
         // with a "try again" message rather than silently importing without
-        // the safety check.
+        // the safety check. Tenant is passed for billing but the filter runs
+        // whether or not one resolves — content safety is not tenant-gated.
         $safetyRemoved = [];
-        if (!empty($validRows) && $tenant) {
+        if (!empty($validRows)) {
             try {
                 $screen = app(ContentSafetyFilter::class)->screen(
                     array_map(fn ($v) => ['title' => $v['title'], 'body' => $v['body']], $validRows),
-                    $tenant,
+                    $tenant ?: \App\Models\Tenant::find($tenantId),
                 );
             } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('KB import: safety filter failed', [
+                    'tenant_id' => $tenantId,
+                    'error'     => $e->getMessage(),
+                ]);
                 return redirect()->route($prefix . '.knowledge.index')
                     ->withErrors(['file' => __('ui.knowledge_page.safety_filter_unavailable')]);
             }

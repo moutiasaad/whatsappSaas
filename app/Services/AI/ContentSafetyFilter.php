@@ -27,9 +27,10 @@ class ContentSafetyFilter
 {
     /**
      * @param  array<int, array{title?: string, body?: string}>  $rows  Already-validated KB rows keyed by their original index in the upload.
+     * @param  ?Tenant  $tenant  Optional — the tenant to bill for the API call. Null just means the safety call is unbilled; the filter still runs.
      * @return array{kept: array<int, array>, removed: array<int, array>}
      */
-    public function screen(array $rows, Tenant $tenant): array
+    public function screen(array $rows, ?Tenant $tenant = null): array
     {
         if (empty($rows)) {
             return ['kept' => [], 'removed' => []];
@@ -39,6 +40,11 @@ class ContentSafetyFilter
         if (! $apiKey) {
             throw new RuntimeException('ANTHROPIC_API_KEY missing — cannot run safety filter.');
         }
+
+        Log::info('ContentSafetyFilter: screening batch', [
+            'tenant_id' => $tenant?->id,
+            'items'     => count($rows),
+        ]);
 
         // Build the {id, text} array the prompt expects. id = original row
         // index so the controller can map kept rows back to the parsed data.
@@ -68,7 +74,7 @@ class ContentSafetyFilter
             );
         } catch (\Throwable $e) {
             Log::error('ContentSafetyFilter: Anthropic call failed', [
-                'tenant_id' => $tenant->id,
+                'tenant_id' => $tenant?->id,
                 'items'     => count($items),
                 'error'     => $e->getMessage(),
             ]);
@@ -77,12 +83,12 @@ class ContentSafetyFilter
 
         // Bill this call to the platform Claude spend report — same source
         // slug for every safety screen so a super admin can tell KB imports
-        // apart from auto-reply calls on the per-source breakdown.
-        app(UsageTracker::class)->record(
-            $tenant,
-            'kb_safety',
-            $response,
-        );
+        // apart from auto-reply calls on the per-source breakdown. Null
+        // tenant is fine — UsageTracker just skips the row, the filter
+        // still ran and its result is honored.
+        if ($tenant) {
+            app(UsageTracker::class)->record($tenant, 'kb_safety', $response);
+        }
 
         $raw = trim((string) ($response->content[0]->text ?? ''));
 
@@ -105,6 +111,13 @@ class ContentSafetyFilter
         if (! is_array($parsed) || ! isset($parsed['kept']) || ! is_array($parsed['kept'])) {
             throw new RuntimeException('Content safety filter returned a malformed response.');
         }
+
+        Log::info('ContentSafetyFilter: batch screened', [
+            'tenant_id' => $tenant?->id,
+            'sent'      => count($rows),
+            'kept'      => count((array) ($parsed['kept']    ?? [])),
+            'removed'   => count((array) ($parsed['removed'] ?? [])),
+        ]);
 
         return [
             'kept'    => (array) ($parsed['kept'] ?? []),
