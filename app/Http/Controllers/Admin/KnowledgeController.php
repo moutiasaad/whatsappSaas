@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\KnowledgeEntry;
+use App\Services\AI\ContentSafetyFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -130,35 +131,89 @@ class KnowledgeController extends Controller
         $imported = 0;
         $skipped  = 0;
         $errors   = [];
-        $tenantId = auth()->user()->tenant_id;
+        $tenant   = auth()->user()->tenant;
+        $tenantId = $tenant?->id ?? auth()->user()->tenant_id;
 
-        DB::transaction(function () use ($rows, $tenantId, &$imported, &$skipped, &$errors) {
-            foreach ($rows as $index => $row) {
-                if (!is_array($row)) {
-                    $skipped++;
-                    $errors[] = __('ui.knowledge_page.import_row_error', ['row' => $index + 1, 'error' => 'not an object']);
-                    continue;
-                }
+        // Pass 1 — per-row validation. Rows that fail validation don't reach
+        // the safety filter (waste of a Claude call on obviously invalid data).
+        // Keyed by original row index so the safety filter can echo ids and
+        // we can map back cleanly.
+        $validRows = [];
+        foreach ($rows as $index => $row) {
+            if (!is_array($row)) {
+                $skipped++;
+                $errors[] = __('ui.knowledge_page.import_row_error', ['row' => $index + 1, 'error' => 'not an object']);
+                continue;
+            }
 
-                $validator = Validator::make($row, [
-                    'type'       => 'required|in:' . implode(',', self::ALLOWED_TYPES),
-                    'title'      => 'required|string|max:200',
-                    'body'       => 'required|string',
-                    'is_active'  => 'nullable|boolean',
-                    'sort_order' => 'nullable|integer',
+            $validator = Validator::make($row, [
+                'type'       => 'required|in:' . implode(',', self::ALLOWED_TYPES),
+                'title'      => 'required|string|max:200',
+                'body'       => 'required|string',
+                'is_active'  => 'nullable|boolean',
+                'sort_order' => 'nullable|integer',
+            ]);
+
+            if ($validator->fails()) {
+                $skipped++;
+                $errors[] = __('ui.knowledge_page.import_row_error', [
+                    'row'   => $index + 1,
+                    'error' => $validator->errors()->first(),
                 ]);
+                continue;
+            }
 
-                if ($validator->fails()) {
-                    $skipped++;
-                    $errors[] = __('ui.knowledge_page.import_row_error', [
-                        'row'   => $index + 1,
-                        'error' => $validator->errors()->first(),
-                    ]);
+            $validRows[$index] = $validator->validated();
+        }
+
+        // Pass 2 — content-safety filter. Ships the whole batch to Claude in
+        // one call, drops anything flagged as violence/hate/sexual/etc.
+        // Fail-closed: if Anthropic is unreachable the import is rejected
+        // with a "try again" message rather than silently importing without
+        // the safety check.
+        $safetyRemoved = [];
+        if (!empty($validRows) && $tenant) {
+            try {
+                $screen = app(ContentSafetyFilter::class)->screen(
+                    array_map(fn ($v) => ['title' => $v['title'], 'body' => $v['body']], $validRows),
+                    $tenant,
+                );
+            } catch (\Throwable $e) {
+                return redirect()->route($prefix . '.knowledge.index')
+                    ->withErrors(['file' => __('ui.knowledge_page.safety_filter_unavailable')]);
+            }
+
+            // Original index → mapped from the position within $validRows.
+            $indexMap = array_keys($validRows);
+            $keptIndexes = [];
+            foreach ((array) $screen['kept'] as $item) {
+                $pos = (int) ($item['id'] ?? -1);
+                if (isset($indexMap[$pos])) {
+                    $keptIndexes[] = $indexMap[$pos];
+                }
+            }
+            foreach ((array) $screen['removed'] as $item) {
+                $pos = (int) ($item['id'] ?? -1);
+                if (!isset($indexMap[$pos])) {
                     continue;
                 }
+                $originalIndex = $indexMap[$pos];
+                $safetyRemoved[] = [
+                    'row'      => $originalIndex + 1,
+                    'category' => (string) ($item['category'] ?? 'unknown'),
+                    'reason'   => (string) ($item['reason']   ?? ''),
+                ];
+                unset($validRows[$originalIndex]);
+            }
 
-                $data = $validator->validated();
+            // If Claude echoed an id that wasn't in our request (or missed
+            // some), be strict: only insert rows Claude explicitly kept.
+            $validRows = array_intersect_key($validRows, array_flip($keptIndexes));
+        }
 
+        // Pass 3 — insert what survived both filters.
+        DB::transaction(function () use ($validRows, $tenantId, &$imported) {
+            foreach ($validRows as $data) {
                 KnowledgeEntry::create([
                     'tenant_id'  => $tenantId,
                     'type'       => $data['type'],
@@ -171,25 +226,31 @@ class KnowledgeController extends Controller
             }
         });
 
-        if ($imported > 0) {
+        if ($imported > 0 || !empty($safetyRemoved)) {
             AuditLog::record('knowledge.imported', null, [
-                'imported' => $imported,
-                'skipped'  => $skipped,
-                'source'   => $request->file('file')->getClientOriginalName(),
+                'imported'       => $imported,
+                'skipped'        => $skipped,
+                'safety_removed' => count($safetyRemoved),
+                'safety_details' => $safetyRemoved,
+                'source'         => $request->file('file')->getClientOriginalName(),
             ]);
         }
 
-        $redirect = redirect()->route($prefix . '.knowledge.index');
+        $redirect = redirect()->route($prefix . '.knowledge.index')
+            ->with('safety_removed', $safetyRemoved);
 
         if ($imported === 0) {
             return $redirect->withErrors(['file' => __('ui.knowledge_page.import_failed')])
                 ->with('import_errors', $errors);
         }
 
-        if ($skipped > 0) {
+        // Merge the "skipped for validation" + "removed by safety" counts
+        // into a single flash so the admin sees one number instead of two.
+        $totalDropped = $skipped + count($safetyRemoved);
+        if ($totalDropped > 0) {
             return $redirect->with('success', __('ui.knowledge_page.import_partial', [
                 'ok'      => $imported,
-                'skipped' => $skipped,
+                'skipped' => $totalDropped,
             ]))->with('import_errors', $errors);
         }
 

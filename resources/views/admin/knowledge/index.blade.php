@@ -135,6 +135,26 @@
         </div>
     @endif
 
+    {{-- Rows the content-safety filter dropped during the last import.
+         Distinct card (red-left) from the yellow validation-errors card
+         above so an admin sees at a glance which mechanism blocked what. --}}
+    @if(session('safety_removed') && count(session('safety_removed')) > 0)
+        <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #ef4444;background:#fef2f2">
+            <div style="font-weight:600;font-size:.875rem;color:#991b1b;margin-bottom:.375rem">
+                <i class="ri-shield-cross-line"></i>
+                {{ __('ui.knowledge_page.safety_removed_heading') }}
+            </div>
+            <ul style="margin:0;padding-inline-start:1.25rem;font-size:.8125rem;color:#7f1d1d;line-height:1.6">
+                @foreach(array_slice(session('safety_removed'), 0, 20) as $r)
+                    <li>{{ __('ui.knowledge_page.safety_removed_row', ['row' => $r['row'], 'category' => $r['category'], 'reason' => $r['reason']]) }}</li>
+                @endforeach
+                @if(count(session('safety_removed')) > 20)
+                    <li style="color:#b91c1c">…{{ count(session('safety_removed')) - 20 }} more</li>
+                @endif
+            </ul>
+        </div>
+    @endif
+
     {{-- Import JSON modal — teleported to <body> so it escapes the admin
          layout wrappers. Uses a scoped .kb-import-* CSS class set rather
          than inline styles so no global admin CSS can override the layout. --}}
