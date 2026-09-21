@@ -61,6 +61,10 @@ class Plan extends Model
      * override exists or the country isn't recognised. Never returns null
      * — a plan always has a chargeable price.
      *
+     * Delegates to App\Support\CountriesRegistry, which reads the local DB
+     * on core and a cached snapshot of core's countries API on marketing.
+     * Same call site, works transparently on both hosts.
+     *
      * @return array{amount: float, currency: string, symbol: string, is_local: bool}
      */
     public function priceFor(?string $countryCode, string $cycle = 'monthly'): array
@@ -69,40 +73,21 @@ class Plan extends Model
         $baseAmount = (float) ($this->{$baseColumn} ?? 0);
         $baseFallback = ['amount' => $baseAmount, 'currency' => 'USD', 'symbol' => '$', 'is_local' => false];
 
-        if (!$countryCode) {
+        if (! $countryCode) {
             return $baseFallback;
         }
 
-        $countryCode = strtoupper($countryCode);
+        $local = app(\App\Support\CountriesRegistry::class)
+            ->priceFor((int) $this->id, $countryCode, $cycle);
 
-        // Country must exist AND be active, else we can't safely charge in
-        // that currency (Stripe/PayPal would reject an unknown/turned-off
-        // currency code). Base USD is always safe.
-        $country = Country::query()
-            ->where('code', $countryCode)
-            ->where('is_active', true)
-            ->first();
-        if (!$country) {
-            return $baseFallback;
-        }
-
-        $price = $this->countryPrices()
-            ->where('country_code', $countryCode)
-            ->first();
-
-        $localAmount = $price ? (float) $price->{$baseColumn} : null;
-
-        // A country with NO price row (or a row where this cycle's price
-        // is NULL) means "we sell in USD here" — see the plan_country_prices
-        // migration comment. Fall back to USD rather than defaulting to 0.
-        if ($localAmount === null || $localAmount <= 0) {
+        if (! $local) {
             return $baseFallback;
         }
 
         return [
-            'amount'   => $localAmount,
-            'currency' => $country->currency_code,
-            'symbol'   => $country->currency_symbol,
+            'amount'   => $local['amount'],
+            'currency' => $local['currency'],
+            'symbol'   => $local['symbol'],
             'is_local' => true,
         ];
     }

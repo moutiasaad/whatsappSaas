@@ -789,6 +789,7 @@ class SuperAdminPlatformController extends Controller
         });
 
         AuditLog::record('plan.country_prices_updated', $plan);
+        app(\App\Support\CountriesRegistry::class)->forget();
 
         return back()->with('success', __('ui.platform_plans_edit_page.country_prices_saved'));
     }

@@ -44,6 +44,7 @@ class CountriesController extends Controller
         $country = Country::create($data);
 
         AuditLog::record('country.created', $country, ['code' => $country->code]);
+        app(\App\Support\CountriesRegistry::class)->forget();
 
         return redirect()->route('super_admin.platform.countries.index')
             ->with('success', __('ui.platform_countries_page.created', ['name' => $country->name]));
@@ -65,6 +66,7 @@ class CountriesController extends Controller
         $country->update($data);
 
         AuditLog::record('country.updated', $country, ['code' => $country->code]);
+        app(\App\Support\CountriesRegistry::class)->forget();
 
         return redirect()->route('super_admin.platform.countries.index')
             ->with('success', __('ui.platform_countries_page.updated', ['name' => $country->name]));
@@ -77,6 +79,7 @@ class CountriesController extends Controller
         $country->update(['is_active' => ! $country->is_active]);
 
         AuditLog::record('country.toggled', $country, ['is_active' => $country->is_active]);
+        app(\App\Support\CountriesRegistry::class)->forget();
 
         return back()->with('success', __('ui.platform_countries_page.toggled', [
             'name'   => $country->name,
@@ -92,6 +95,7 @@ class CountriesController extends Controller
         $country->delete(); // plan_country_prices cascade
 
         AuditLog::record('country.deleted', null, ['name' => $name]);
+        app(\App\Support\CountriesRegistry::class)->forget();
 
         return redirect()->route('super_admin.platform.countries.index')
             ->with('success', __('ui.platform_countries_page.deleted', ['name' => $name]));

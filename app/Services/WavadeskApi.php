@@ -193,6 +193,19 @@ class WavadeskApi
     }
 
     /**
+     * GET /api/v1/platform/countries — countries + per-plan pricing snapshot.
+     * Consumed by App\Support\CountriesRegistry (cached 60s) so the
+     * marketing box's landing / register pages can render local prices
+     * without a copy of the data in its own database.
+     *
+     * @return array{ok: bool, status: int, body: array}
+     */
+    public function countries(): array
+    {
+        return $this->call('get', '/api/v1/platform/countries');
+    }
+
+    /**
      * @param  float|null  $timeoutOverride  Seconds to wait; falls back to the
      *   constructor default when null. PayPal capture / create-order pass
      *   a longer value because the round-trip involves an external call

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Admin\SuperAdminPlatformController;
 use App\Http\Controllers\Controller;
+use App\Models\Country;
+use App\Models\PlanCountryPrice;
 use App\Models\PlatformSetting;
 use Illuminate\Http\JsonResponse;
 
@@ -26,6 +28,26 @@ class PlatformPreferencesApiController extends Controller
                 SuperAdminPlatformController::DEFAULT_LOCALE_KEY,
                 config('app.locale', 'en'),
             ),
+        ]);
+    }
+
+    /**
+     * Countries snapshot for the marketing box.
+     *
+     * `countries` is the active countries the super admin has enabled
+     * on core (code, name, currency_code, currency_symbol). `plan_prices`
+     * is the per-plan per-country pricing snapshot. Marketing caches
+     * both for 60s via CountriesRegistry so anonymous landing traffic
+     * doesn't round-trip to core on every request.
+     */
+    public function countries(): JsonResponse
+    {
+        return response()->json([
+            'countries' => Country::where('is_active', true)
+                ->orderBy('name')
+                ->get(['code', 'name', 'currency_code', 'currency_symbol']),
+            'plan_prices' => PlanCountryPrice::query()
+                ->get(['plan_id', 'country_code', 'price_monthly', 'price_annual']),
         ]);
     }
 }

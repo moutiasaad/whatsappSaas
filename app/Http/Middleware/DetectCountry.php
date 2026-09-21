@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Country;
 use App\Models\PlatformSetting;
 use Closure;
 use Illuminate\Http\Request;
@@ -105,20 +104,15 @@ class DetectCountry
     private function currencyFor(string $code): array
     {
         try {
-            $country = Cache::remember('country.currency.' . $code, self::CACHE_TTL, function () use ($code) {
-                return Country::query()
-                    ->where('code', $code)
-                    ->where('is_active', true)
-                    ->first(['currency_code', 'currency_symbol']);
-            });
+            $entry = app(\App\Support\CountriesRegistry::class)->currencyFor($code);
         } catch (Throwable) {
-            $country = null;
+            $entry = null;
         }
 
-        if (! $country) {
+        if (! $entry) {
             return ['USD', '$'];
         }
 
-        return [$country->currency_code, $country->currency_symbol];
+        return [$entry['currency_code'], $entry['currency_symbol']];
     }
 }

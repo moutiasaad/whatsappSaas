@@ -126,6 +126,13 @@ if (Wavadesk::isCore()) {
         ->middleware(['wavadesk.caller', 'throttle:120,1'])
         ->name('api.v1.platform.preferences');
 
+    // Countries + per-plan pricing snapshot. Marketing reads this via
+    // CountriesRegistry (cached 60s) so localised prices on wavadesk.com
+    // stay in sync with what the super admin edits on app.wavadesk.com.
+    Route::get('/v1/platform/countries', [PlatformPreferencesApiController::class, 'countries'])
+        ->middleware(['wavadesk.caller', 'throttle:120,1'])
+        ->name('api.v1.platform.countries');
+
     // ─── v1 Session status (called from the marketing site's browser) ──────
     // Unlike everything else above this is NOT server-to-server: the visitor's
     // own browser fetches it with `credentials: 'include'` so the marketing
