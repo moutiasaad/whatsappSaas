@@ -1147,7 +1147,6 @@ Toujours :
         'expire_trial_confirm' => 'Antidater l’essai de « :name » à hier ? Cela permet de tester immédiatement le comportement post-essai. Réversible depuis la page d’édition du locataire.',
         'stripe_customer_id' => 'ID client Stripe',
         'not_set' => 'Non défini',
-        'settings_json' => 'JSON des paramètres',
         'meta' => 'Méta',
         'created' => 'Créé le',
         'last_updated' => 'Dernière mise à jour',

@@ -111,11 +111,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="form-group" style="margin-top:16px;">
-                    <label class="form-label">{{ __('ui.platform_tenants_show_page.settings_json') }}</label>
-                    <textarea class="form-control" rows="8" readonly>{{ $tenant->settings ? json_encode($tenant->settings, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) : '{}' }}</textarea>
-                </div>
             </div>
         </div>
 

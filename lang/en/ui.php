@@ -1147,7 +1147,6 @@ Always:
         'expire_trial_confirm' => 'Back-date the trial for ":name" to yesterday? This lets you test post-trial behavior immediately. Reversible from the tenant edit page.',
         'stripe_customer_id' => 'Stripe Customer ID',
         'not_set' => 'Not set',
-        'settings_json' => 'Settings JSON',
         'meta' => 'Meta',
         'created' => 'Created',
         'last_updated' => 'Last Updated',
