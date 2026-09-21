@@ -215,6 +215,7 @@ return [
         'import_success' => ':count entrées importées avec succès.',
         'import_partial' => ':ok entrées importées, :skipped ignorées en raison d’erreurs.',
         'import_failed' => 'Échec de l’importation — aucune entrée valide trouvée dans le fichier.',
+        'import_rejected_heading' => 'Importation refusée',
         'safety_filter_unavailable' => 'Le filtre de sécurité du contenu est indisponible pour le moment. Réessayez l’importation dans un instant.',
         'safety_removed_heading' => 'Retiré par le filtre de sécurité',
         'safety_removed_row' => 'Ligne :row — :category (:reason)',

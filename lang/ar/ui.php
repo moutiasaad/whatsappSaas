@@ -215,6 +215,7 @@ return [
         'import_success' => 'تم استيراد :count مدخلًا بنجاح.',
         'import_partial' => 'تم استيراد :ok مدخلًا وتجاهل :skipped بسبب أخطاء.',
         'import_failed' => 'فشل الاستيراد — لم يتم العثور على مدخلات صالحة في الملف.',
+        'import_rejected_heading' => 'تم رفض الاستيراد',
         'safety_filter_unavailable' => 'مرشّح أمان المحتوى غير متاح حاليًا. أعد المحاولة بعد لحظات.',
         'safety_removed_heading' => 'تمت إزالتها بواسطة مرشّح الأمان',
         'safety_removed_row' => 'السطر :row — :category (:reason)',

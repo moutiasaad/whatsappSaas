@@ -214,6 +214,7 @@ return [
         'import_success' => ':count entries imported successfully.',
         'import_partial' => ':ok entries imported, :skipped skipped due to errors.',
         'import_failed' => 'Import failed — no valid entries were found in the file.',
+        'import_rejected_heading' => 'Import rejected',
         'safety_filter_unavailable' => 'The content safety filter is unavailable right now. Please try the import again in a moment.',
         'safety_removed_heading' => 'Removed by the content safety filter',
         'safety_removed_row' => 'Row :row — :category (:reason)',

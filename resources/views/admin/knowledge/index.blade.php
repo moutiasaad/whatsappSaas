@@ -119,6 +119,24 @@
         </div>
     </div>
 
+    {{-- Import rejection banner — kicks in when the JSON never made it past
+         the early exits (bad mime, unreadable JSON, empty/not-a-list). The
+         `file` error was previously only rendered inside the Import JSON
+         modal, which the redirect closes, so every failure was silent.
+         Surfacing it as a page-level card guarantees an admin sees the
+         reason without having to reopen the modal. --}}
+    @if($errors->has('file'))
+        <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #ef4444;background:#fef2f2">
+            <div style="font-weight:600;font-size:.875rem;color:#991b1b;margin-bottom:.25rem">
+                <i class="ri-error-warning-line"></i>
+                {{ __('ui.knowledge_page.import_rejected_heading') }}
+            </div>
+            <div style="font-size:.8125rem;color:#7f1d1d;line-height:1.6">
+                {{ $errors->first('file') }}
+            </div>
+        </div>
+    @endif
+
     @if(session('import_errors'))
         <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid #f59e0b;background:#fffbeb">
             <div style="font-weight:600;font-size:.875rem;color:#92400e;margin-bottom:.375rem">

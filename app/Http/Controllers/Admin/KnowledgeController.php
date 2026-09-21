@@ -102,10 +102,21 @@ class KnowledgeController extends Controller
 
     public function importJson(Request $request)
     {
+        // finfo (behind `mimetypes:`) sniffs the *content*, not the extension,
+        // and a JSON file returns anything from application/json to text/plain
+        // to text/x-c to application/octet-stream depending on OS, browser,
+        // and file authoring tool. The old restrictive list rejected legit
+        // uploads with a "file" error that only rendered inside the modal
+        // (invisible after redirect). Enforce the size cap + `file` + a
+        // permissive text-ish mime allow-list, then let the JSON parse
+        // itself be the real validity check.
         $request->validate([
-            // mimes:json fails on Windows because .json isn't in the default mime map;
-            // fall back to a size/extension check via validation rules.
-            'file' => 'required|file|max:4096|mimetypes:application/json,text/plain,text/json',
+            'file' => [
+                'required',
+                'file',
+                'max:4096',
+                'mimetypes:application/json,application/ld+json,text/json,text/plain,text/x-c,application/octet-stream',
+            ],
         ], [
             'file.mimetypes' => __('ui.knowledge_page.json_parse_error'),
         ]);
