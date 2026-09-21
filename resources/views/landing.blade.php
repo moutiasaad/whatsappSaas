@@ -245,6 +245,21 @@ html[dir="rtl"] .has-mega:hover .mega,html[dir="rtl"] .has-mega:focus-within .me
 @media (max-width:980px){.mobcta{display:flex}footer{padding-bottom:96px}}
 @media (prefers-reduced-motion:reduce){.mobcta{transition:none}}
 
+/* On mobile the sticky CTA and the webchat launcher both live at
+   bottom-right and stack on top of each other. When the CTA is visible
+   (JS-toggled body.mobcta-visible), slide the launcher out with the
+   same easing — desktop is unaffected. */
+@media (max-width:980px){
+  .wvch-launcher{transition:opacity .22s ease, transform .22s ease}
+  body.mobcta-visible .wvch-launcher{
+    opacity:0;visibility:hidden;pointer-events:none;
+    transform:translateY(20px) scale(.9);
+  }
+}
+@media (max-width:980px) and (prefers-reduced-motion:reduce){
+  .wvch-launcher{transition:none}
+}
+
 /* hero */
 .hero{background:var(--ink);color:#fff;padding:84px 0 96px;position:relative;overflow:hidden}
 .hero .glow{position:absolute;width:1100px;height:1100px;border-radius:50%;background:radial-gradient(circle,rgba(21,182,168,.15),transparent 60%);top:-460px;inset-inline-end:-320px;pointer-events:none}
@@ -1034,12 +1049,20 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   }
 
   // ── sticky mobile CTA: show once the hero form is out of view, hide over the final form ──
+  // The body class flips at the same time so the CSS below can slide the
+  // webchat launcher out of the way — the launcher and the sticky CTA
+  // both live at bottom-right and would otherwise stack on top of each
+  // other on phones.
   const mob    = document.getElementById('mobcta');
   const heroF  = document.getElementById('hero-form');
   const finalF = document.getElementById('final-form');
   if (mob && heroF && finalF && 'IntersectionObserver' in window) {
     let heroOut = false, finalIn = false;
-    const sync = () => mob.classList.toggle('show', heroOut && !finalIn);
+    const sync = () => {
+      const on = heroOut && !finalIn;
+      mob.classList.toggle('show', on);
+      document.body.classList.toggle('mobcta-visible', on);
+    };
     new IntersectionObserver(([e]) => { heroOut = !e.isIntersecting; sync(); }, { threshold: 0 }).observe(heroF);
     new IntersectionObserver(([e]) => { finalIn = e.isIntersecting;  sync(); }, { threshold: .2 }).observe(finalF);
   }
