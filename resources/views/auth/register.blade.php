@@ -121,6 +121,85 @@
     const LABELS       = @json($pwLabels);
     const HINT_DEFAULT = @json(__('auth.register.email_hint'));
     const HINT_NAMED   = @json(__('auth.register.email_hint_named', ['name' => '__N__']));
+    const ERR = {
+        email_required:    @json(__('auth.register.err_email_required')),
+        email_invalid:     @json(__('auth.register.err_email_invalid')),
+        company_required:  @json(__('auth.register.err_company_required')),
+        password_required: @json(__('auth.register.err_password_required')),
+        password_short:    @json(__('auth.register.err_password_short')),
+    };
+
+    // ── Client-side pre-submit validation ─────────────────────────────
+    // The form has `novalidate` so browsers don't show their own tooltip
+    // (Chrome's box floats away from RTL/mobile layouts). We enforce the
+    // same rules the server does (RegisterController::store) inline
+    // instead: mark the input .is-error, render a .hint.err message
+    // under it, and block the submit until every field passes. Errors
+    // clear the moment the user starts typing again.
+    const form = document.getElementById('regForm');
+    if (form) {
+        const setError = (input, msg) => {
+            input.classList.add('is-error');
+            const field = input.closest('.field');
+            if (!field) return;
+            let hint = field.querySelector('.hint.err');
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.className = 'hint err';
+                field.appendChild(hint);
+            }
+            hint.textContent = msg;
+        };
+        const clearError = (input) => {
+            input.classList.remove('is-error');
+            const field = input.closest('.field');
+            const hint = field?.querySelector('.hint.err');
+            // Keep the default helper hint (id="email-hint") in place; only
+            // remove hints we injected on submit.
+            if (hint && !hint.id) hint.remove();
+        };
+        // Clear per-field errors as soon as the user starts typing/blurring.
+        ['email','company_name','password'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', () => clearError(el));
+        });
+
+        form.addEventListener('submit', (ev) => {
+            let firstBad = null;
+            const emailV   = (email?.value || '').trim();
+            const companyV = (company?.value || '').trim();
+            const pwV      = (pw?.value || '');
+
+            if (!emailV) {
+                setError(email, ERR.email_required);
+                firstBad = firstBad || email;
+            } else if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(emailV)) {
+                setError(email, ERR.email_invalid);
+                firstBad = firstBad || email;
+            }
+            if (!companyV) {
+                setError(company, ERR.company_required);
+                firstBad = firstBad || company;
+            }
+            if (!pwV) {
+                setError(pw, ERR.password_required);
+                firstBad = firstBad || pw;
+            } else if (pwV.length < 8) {
+                setError(pw, ERR.password_short);
+                firstBad = firstBad || pw;
+            }
+
+            if (firstBad) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                // data-spin adds a submitting spinner via layouts/auth.blade.
+                // Remove it so the button isn't stuck in a "submitting" state.
+                form.classList.remove('is-submitting');
+                firstBad.focus({ preventScroll: false });
+                firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
 
     function score(v) {
         let s = 0;
