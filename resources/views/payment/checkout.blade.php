@@ -24,7 +24,11 @@
     // without a secret, so the buyer sees a card form regardless.
     $sdkReady = (bool) config('services.paypal.client_id');
     $stdReady = !$sdkReady && (bool) config('services.paypal.payee_email');
-    $ready    = $sdkReady;
+    // The SDK bootstrap script at the bottom only runs when the SDK branch
+    // actually rendered — i.e. this is a pack/seat/cart purchase. Plan
+    // subscriptions now use a simple form-POST redirect flow instead, and
+    // the SDK DOM ids the script grabs never exist on that path.
+    $ready    = $sdkReady && ($isPack || $isSeat || $isCart);
 
     // Creating and capturing the order is server-side and does need a working
     // secret. A failure there surfaces as the red error box on submit, so the
@@ -429,31 +433,25 @@
                         <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
                     </div>
 
-                    @php
-                        // Per-plan link wins over the platform-wide env. Same
-                        // resolution order as PaymentController::initiatePaypalNcp
-                        // and the marketing checkout view.
-                        $ncpLink = ($plan->paypal_ncp_link ?? null) ?: config('services.paypal.ncp_link');
-                    @endphp
-                    @if($ncpLink)
-                        {{-- PayPal NCP mode: single button that POSTs a pending
-                             TenantPayment row and redirects to the fixed PayPal
-                             link. Card-fields form is deliberately NOT rendered
-                             — one-tap flow only. --}}
-                        <form method="POST" action="{{ route('payment.paypal.ncp.initiate') }}"
+                    @if(!$isPack && !$isSeat && !$isCart)
+                        {{-- Plan subscription: single "Pay with PayPal" button.
+                             POSTs to /payment/paypal/initiate which creates a
+                             PayPal Orders API order and 302s the browser to
+                             the dynamic approval URL. PayPal returns to
+                             /payment/paypal/return where we capture and
+                             activate the subscription. No card form on our
+                             side — PayPal's hosted page collects it. --}}
+                        <form method="POST" action="{{ route('payment.paypal.initiate') }}"
                               onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
                             @csrf
-                            <input type="hidden" name="plan_id"   value="{{ $plan->id }}">
                             <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                            <input type="hidden" name="plan_id"   value="{{ $plan->id ?? '' }}">
                             <button type="submit" class="btn-paypal">
                                 <i class="ri-paypal-fill"></i>
                                 {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
                             </button>
                         </form>
-                        <p class="payhint">
-                            <i class="ri-external-link-line"></i>
-                            {{ __('ui.payment_page.ncp_hint') }}
-                        </p>
+                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
                     @elseif($sdkReady)
                         {{-- Card first, PayPal second. Most buyers arriving here
                              have a card and no PayPal account, so the card form

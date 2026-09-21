@@ -62,13 +62,6 @@ return [
         // has partner permissions to be paid on another merchant's behalf.
         // Normally left unset so funds go to the client id's own account.
         'rest_payee_email' => env('PAYPAL_REST_PAYEE_EMAIL'),
-        // PayPal "No Code Payment" (NCP) link — a fixed payment URL the
-        // merchant creates in PayPal dashboard. When set, /payment/checkout
-        // replaces its whole PayPal box with a single "Pay via PayPal"
-        // button that opens this link. Simpler than the REST/SDK path but
-        // trades away multi-currency + auto-activation — see
-        // PaymentController::initiatePaypalNcp for the flow.
-        'ncp_link'         => env('PAYPAL_NCP_LINK'),
     ],
 
     /*

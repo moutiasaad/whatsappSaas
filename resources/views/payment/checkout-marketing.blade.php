@@ -28,14 +28,6 @@
         ? $displayPrice . ' (≈ ' . $baseUsdPrice . ')'
         : $displayPrice;
 
-    // Same SDK decisions as the core checkout view. `sdkReady` is passed
-    // from the controller; when true the client-side SDK renders the
-    // inline card fields and the PayPal button. clientToken is optional
-    // for CardFields — passing it just improves the SDK's rate-limit
-    // handling.
-    $sdkReady    = (bool) ($sdkReady ?? false);
-    $clientToken = $clientToken ?? null;
-    $ready       = $sdkReady;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
@@ -314,103 +306,23 @@
                         <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    <div id="paypal-error" class="errbox" style="display:none">
-                        <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
-                    </div>
-
-                    @php
-                        // Per-plan link wins over the platform-wide env. Blank
-                        // on both → fall through to the SDK / REST flow.
-                        $ncpLink = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
-                    @endphp
-                    @if($ncpLink)
-                        {{-- PayPal NCP mode wins over the SDK/REST flow. One
-                             button, one redirect, manual reconciliation —
-                             card-fields form is deliberately NOT rendered
-                             here so the checkout stays a single-tap flow. --}}
-                        <form method="POST" action="{{ route('payment.paypal.ncp.initiate') }}"
-                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
-                            @csrf
-                            <input type="hidden" name="plan_id"   value="{{ $plan->id }}">
-                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
-                            <button type="submit" class="btn-paypal">
-                                <i class="ri-paypal-fill"></i>
-                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
-                            </button>
-                        </form>
-                        <p class="payhint">
-                            <i class="ri-external-link-line"></i>
-                            {{ __('ui.payment_page.ncp_hint') }}
-                        </p>
-                    @elseif($sdkReady)
-                        <div id="card-block" style="display:none">
-                            <div class="cardhead">
-                                <i class="ri-bank-card-line"></i>
-                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
-                            </div>
-
-                            <div class="cardform">
-                                <label class="cf-l" for="cf-name">{{ __('ui.payment_page.card_name') }}</label>
-                                <div id="cf-name" class="cf"></div>
-
-                                <label class="cf-l" for="cf-number">{{ __('ui.payment_page.card_number') }}</label>
-                                <div id="cf-number" class="cf"></div>
-
-                                <div class="cf-row">
-                                    <div>
-                                        <label class="cf-l" for="cf-exp">{{ __('ui.payment_page.card_expiry') }}</label>
-                                        <div id="cf-exp" class="cf"></div>
-                                    </div>
-                                    <div>
-                                        <label class="cf-l" for="cf-cvv">{{ __('ui.payment_page.card_cvv') }}</label>
-                                        <div id="cf-cvv" class="cf"></div>
-                                    </div>
-                                </div>
-
-                                <button type="button" id="cf-submit" class="btn-card primary">
-                                    <i class="ri-lock-line"></i>
-                                    {{ __('ui.payment_page.pay_by_card_amount', ['amount' => $displayPrice]) }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="card-loading" class="cardskel">
-                            <div class="cardhead">
-                                <i class="ri-bank-card-line"></i>
-                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
-                            </div>
-                            <div class="sk"></div><div class="sk"></div>
-                            <div class="sk-row"><div class="sk"></div><div class="sk"></div></div>
-                            <div class="sk-note">{{ __('ui.payment_page.card_loading') }}</div>
-                        </div>
-
-                        <div id="card-fallback" style="display:none"></div>
-
-                        <div id="pay-or" class="paysep" style="display:none">
-                            <span>{{ __('ui.payment_page.or_paypal') }}</span>
-                        </div>
-
-                        <div id="paypal-button-container"></div>
-
-                        <div class="working" id="working">
-                            <span class="spin"></span>{{ __('ui.payment_page.finalising') }}
-                        </div>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
-                    @else
-                        {{-- No SDK available on this box — fall back to the
-                             hosted-checkout redirect flow (form submit to
-                             /payment/initiate). Same shape as the Stripe
-                             button just above it. --}}
-                        <form method="POST" action="{{ route('payment.paypal.initiate') }}" onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
-                            @csrf
-                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                            <button type="submit" class="btn-paypal">
-                                <i class="ri-paypal-fill"></i>
-                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
-                            </button>
-                        </form>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
-                    @endif
+                    {{-- Single-button PayPal redirect flow. Marketing POSTs
+                         to /payment/paypal/initiate which proxies to core;
+                         core creates a PayPal Orders API order, returns the
+                         approval URL, and the browser is 302-redirected to
+                         paypal.com. PayPal returns to /payment/paypal/return,
+                         core captures, and success page auto-logs-in via the
+                         signed SSO handoff embedded in success_url. --}}
+                    <form method="POST" action="{{ route('payment.paypal.initiate') }}"
+                          onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                        @csrf
+                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                        <button type="submit" class="btn-paypal">
+                            <i class="ri-paypal-fill"></i>
+                            {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
+                        </button>
+                    </form>
+                    <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
                 </div>
 
                 <a href="{{ $backUrl }}" class="backlink">← {{ __('ui.payment_page.back_cancel') }}</a>
@@ -461,182 +373,5 @@
 </div>
 </main>
 
-@if($ready)
-{{-- Same PayPal SDK bootstrap as the core view. The `createOrder` and
-     `onApprove` fetches hit /payment/paypal/create-order and
-     /payment/paypal/capture-order/{id} on THIS host — the marketing
-     PaymentController branches proxy them to core with the session PAT. --}}
-<script src="https://www.paypal.com/sdk/js?client-id={{ urlencode(config('services.paypal.client_id')) }}&currency={{ urlencode($currency) }}&intent=capture&enable-funding=card&components=buttons,card-fields"
-        @if($clientToken) data-client-token="{{ $clientToken }}" @endif
-        data-partner-attribution-id="wavadesk_saas"
-        onerror="window.__ppFail && window.__ppFail()"></script>
-<script>
-(function () {
-    const errBox  = document.getElementById('paypal-error');
-    const errText = document.getElementById('paypal-error-text');
-    const working = document.getElementById('working');
-
-    function showError(msg) {
-        errBox.style.display = 'flex';
-        errText.textContent = msg;
-        working.classList.remove('on');
-        const skel = document.getElementById('card-loading');
-        if (skel) skel.style.display = 'none';
-    }
-    window.__ppFail = function () { showError(@js(__('ui.payment_page.sdk_failed'))); };
-
-    function markFinalising() {
-        working.classList.add('on');
-        document.getElementById('line3').classList.add('done');
-        const s2 = document.querySelector('.stp[data-step="2"]');
-        const s3 = document.querySelector('.stp[data-step="3"]');
-        s2.classList.remove('on'); s2.classList.add('done');
-        s2.querySelector('.dot').innerHTML = '<i class="ri-check-line"></i>';
-        s3.classList.add('on');
-    }
-
-    if (typeof paypal === 'undefined') { window.__ppFail(); return; }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    // Marketing sends just the plan id — tenant is derived server-side
-    // from the session PAT that the marketing controller forwards to core.
-    const ORDER_BODY = @js(['plan_id' => (int) ($plan->id ?? 0)]);
-
-    async function createOrder() {
-        errBox.style.display = 'none';
-        const res = await fetch(@js(route('payment.paypal.create-order')), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify(ORDER_BODY),
-        });
-        const data = res.ok ? await res.json() : null;
-        if (!data || !data.id) {
-            showError(@js(__('ui.payment_page.start_failed')));
-            throw new Error('create-order failed');
-        }
-        return data.id;
-    }
-
-    async function onApprove(data) {
-        markFinalising();
-        try {
-            const res = await fetch('/payment/paypal/capture-order/' + encodeURIComponent(data.orderID), {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-            const result = await res.json();
-            if (result.success && result.redirect) {
-                window.location.href = result.redirect;
-                return;
-            }
-            showError(@js(__('ui.payment_page.capture_failed')));
-        } catch (e) {
-            showError(@js(__('ui.payment_page.capture_failed')));
-        }
-    }
-
-    function onCancel() { working.classList.remove('on'); }
-
-    function onError(err) {
-        console.error('[PayPal]', err);
-        showError(@js(__('ui.payment_page.gateway_error')));
-    }
-
-    const cardBlock    = document.getElementById('card-block');
-    const cardLoading  = document.getElementById('card-loading');
-    const cardFallback = document.getElementById('card-fallback');
-    const payOr        = document.getElementById('pay-or');
-
-    function revealSeparator() { payOr.style.display = 'flex'; }
-
-    const cardFields = typeof paypal.CardFields === 'function'
-        ? paypal.CardFields({
-            createOrder: createOrder,
-            onApprove: onApprove,
-            onError: function (err) {
-                console.error('[PayPal CardFields]', err);
-                showError(@js(__('ui.payment_page.card_failed')));
-            },
-        })
-        : null;
-
-    function renderHostedCardButton() {
-        if (!paypal.FUNDING || !paypal.FUNDING.CARD) return;
-
-        const btn = paypal.Buttons({
-            fundingSource: paypal.FUNDING.CARD,
-            style: { layout: 'vertical', shape: 'rect', height: 48 },
-            createOrder: createOrder,
-            onApprove: onApprove,
-            onCancel: onCancel,
-            onError: onError,
-        });
-
-        if (!btn.isEligible()) return;
-
-        cardFallback.style.display = 'block';
-        btn.render('#card-fallback').then(revealSeparator).catch(function () {
-            cardFallback.style.display = 'none';
-        });
-    }
-
-    if (cardFields && cardFields.isEligible()) {
-        Promise.all([
-            cardFields.NameField().render('#cf-name'),
-            cardFields.NumberField().render('#cf-number'),
-            cardFields.ExpiryField().render('#cf-exp'),
-            cardFields.CVVField().render('#cf-cvv'),
-        ]).then(function () {
-            cardLoading.style.display = 'none';
-            cardBlock.style.display = 'block';
-            revealSeparator();
-        }).catch(function (e) {
-            console.error('[PayPal CardFields] render', e);
-            cardLoading.style.display = 'none';
-            renderHostedCardButton();
-        });
-
-        const cfBtn = document.getElementById('cf-submit');
-        cfBtn.addEventListener('click', async function () {
-            cfBtn.disabled = true;
-            try {
-                await cardFields.submit();
-            } catch (e) {
-                console.error('[PayPal CardFields] submit', e);
-                showError(@js(__('ui.payment_page.card_failed')));
-            } finally {
-                cfBtn.disabled = false;
-            }
-        });
-    } else {
-        cardLoading.style.display = 'none';
-        renderHostedCardButton();
-    }
-
-    paypal.Buttons({
-        fundingSource: paypal.FUNDING.PAYPAL,
-        style: { layout: 'vertical', shape: 'rect', label: 'paypal', height: 48 },
-        createOrder: createOrder,
-        onApprove: onApprove,
-        onCancel: onCancel,
-        onError: onError,
-    }).render('#paypal-button-container').catch(function () {
-        showError(@js(__('ui.payment_page.render_failed')));
-    });
-
-})();
-</script>
-@endif
 </body>
 </html>

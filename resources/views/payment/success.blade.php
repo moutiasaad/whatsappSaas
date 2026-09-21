@@ -38,36 +38,6 @@
 </head>
 <body>
 <div class="card">
-    @if($ncp ?? false)
-        {{-- PayPal NCP return: no capture happens here. Payment landed on
-             the merchant's PayPal account; super admin reconciles + marks
-             the tenant active manually via /admin-control-panel. Show a
-             friendly wait screen so the customer knows what to expect. --}}
-        <div class="icon-wrap" style="background:#fef3c7;border-color:#f59e0b;">
-            <svg width="34" height="34" fill="none" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-            </svg>
-        </div>
-        <h1>{{ __('ui.payment_page.ncp_success_heading') }}</h1>
-        <p>{{ __('ui.payment_page.ncp_success_desc') }}</p>
-        <div class="details" style="background:#fef9c3;border-color:#fde68a;">
-            <div class="detail-row" style="justify-content:flex-start;gap:8px;">
-                <span style="color:#92400e;flex:0 0 auto;">✓</span>
-                <span class="detail-value" style="color:#78350f;">{{ __('ui.payment_page.ncp_success_step1') }}</span>
-            </div>
-            <div class="detail-row" style="justify-content:flex-start;gap:8px;">
-                <span style="color:#92400e;flex:0 0 auto;">⌛</span>
-                <span class="detail-value" style="color:#78350f;">{{ __('ui.payment_page.ncp_success_step2') }}</span>
-            </div>
-            <div class="detail-row" style="justify-content:flex-start;gap:8px;">
-                <span style="color:#92400e;flex:0 0 auto;">✉</span>
-                <span class="detail-value" style="color:#78350f;">{{ __('ui.payment_page.ncp_success_step3') }}</span>
-            </div>
-        </div>
-        <a href="{{ url('/') }}" class="btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 14px rgba(245,158,11,.3);">
-            {{ __('ui.payment_page.back_to_home') }}
-        </a>
-    @else
     <div class="icon-wrap">
         <svg width="36" height="36" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
             <path d="M20 6L9 17l-5-5"/>
@@ -133,7 +103,6 @@
         <p>{{ __('auth.register.payment_pending_desc') }}</p>
         <a href="{{ route('login') }}" class="btn">{{ __('auth.login.sign_in') }}</a>
     @endif
-    @endif {{-- ncp branch --}}
 </div>
 </body>
 </html>

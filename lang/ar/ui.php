@@ -1055,8 +1055,6 @@ return [
         'name' => 'اسم الخطة',
         'monthly_price' => 'السعر الشهري',
         'annual_price' => 'السعر السنوي',
-        'paypal_ncp_link' => 'رابط الدفع عبر PayPal',
-        'paypal_ncp_link_hint' => 'اختياري. الصق رابط زر PayPal NCP (paypal.com/ncp/payment/XXX). عند تعيينه، تستبدل صفحة الدفع نموذج البطاقة بزر واحد يفتح هذا الرابط. اتركه فارغًا للرجوع إلى الرابط الافتراضي للمنصة أو تدفّق SDK.',
         'max_users' => 'أقصى عدد مستخدمين',
         'max_instances' => 'أقصى عدد حالات',
         'max_conversations_per_month' => 'أقصى محادثات / شهر',
@@ -2742,13 +2740,6 @@ return [
     ],
 
     'payment_page' => [
-        'ncp_hint'              => 'ستتم إعادة توجيهك إلى paypal.com لإتمام الدفع. سيُفعَّل حسابك فور تأكيدنا للعملية.',
-        'ncp_not_configured'    => 'خدمة PayPal غير مُهيّأة على هذا الخادم.',
-        'ncp_success_heading'   => 'تم استلام الدفع — التفعيل جارٍ',
-        'ncp_success_desc'      => 'لقد استلمنا دفعتك عبر PayPal. سيُفعَّل حسابك فور تأكيد فريقنا للعملية، عادةً خلال دقائق.',
-        'ncp_success_step1'     => 'تم إرسال الدفع إلى Wavadesk عبر PayPal',
-        'ncp_success_step2'     => 'فريقنا يتحقق من العملية',
-        'ncp_success_step3'     => 'ستصلك رسالة بريد إلكتروني عند تفعيل حسابك',
         'back_to_home'          => 'العودة إلى الصفحة الرئيسية',
         'secure'      => 'دفع آمن',
         'go_home'     => 'الانتقال إلى لوحة المعلومات',

@@ -50,23 +50,6 @@
         @error('price_annual') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
-    {{-- PayPal NCP button URL (full column since the value is long).
-         When set, /payment/checkout replaces the card-form + SDK box
-         with a single button linking to this URL. Leave blank to use
-         the platform-wide PAYPAL_NCP_LINK env, or to fall back to the
-         SDK/REST flow. --}}
-    <div class="form-group" style="grid-column:1 / -1;">
-        <label class="form-label" for="paypal_ncp_link">{{ __('ui.plan_form_fields.paypal_ncp_link') }}</label>
-        <input id="paypal_ncp_link" type="url" name="paypal_ncp_link"
-               value="{{ old('paypal_ncp_link', $plan?->paypal_ncp_link) }}"
-               placeholder="https://www.paypal.com/ncp/payment/XXXXXXXX"
-               class="form-control @error('paypal_ncp_link') error @enderror">
-        <div class="form-hint" style="color:var(--text-muted);font-size:12px;margin-top:4px;">
-            {{ __('ui.plan_form_fields.paypal_ncp_link_hint') }}
-        </div>
-        @error('paypal_ncp_link') <div class="form-error">{{ $message }}</div> @enderror
-    </div>
-
     <div class="form-group">
         <label class="form-label" for="max_users">{{ __('ui.plan_form_fields.max_users') }}</label>
         <input id="max_users" type="number" min="1" step="1" name="max_users" value="{{ old('max_users', $plan?->max_users) }}" class="form-control @error('max_users') error @enderror">
