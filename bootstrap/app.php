@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            // Resolves visitor country (CF-IPCountry / session / platform
+            // default) and shares $visitorCountry + $visitorCurrency to
+            // every view. Plan pickers read those to render local prices.
+            \App\Http\Middleware\DetectCountry::class,
             // Split hosting: each host answers only for the pages it owns, so
             // core stops serving its inherited landing/login/register copies
             // and marketing stops answering for panels, payment and the APIs.

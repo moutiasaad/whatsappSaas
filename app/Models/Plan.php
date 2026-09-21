@@ -36,6 +36,26 @@ class Plan extends Model
     public function countryPrices(): HasMany { return $this->hasMany(PlanCountryPrice::class); }
 
     /**
+     * Formatted price string for a view. "$39" / "$7.50" / "149 ر.س" —
+     * strips trailing zeros on whole numbers, keeps 2 decimals otherwise.
+     * Symbol placement follows the currency: '$' and '€' go BEFORE the
+     * number, non-Latin symbols go AFTER (matches how each currency is
+     * conventionally written).
+     */
+    public function formatLocalPrice(?string $countryCode, string $cycle = 'monthly'): string
+    {
+        $p = $this->priceFor($countryCode, $cycle);
+        $amount = fmod($p['amount'], 1.0) === 0.0
+            ? number_format($p['amount'], 0)
+            : number_format($p['amount'], 2);
+
+        $prefixSymbols = ['$', '€', '£', '¥', '₹'];
+        return in_array($p['symbol'], $prefixSymbols, true)
+            ? $p['symbol'] . $amount
+            : $amount . ' ' . $p['symbol'];
+    }
+
+    /**
      * Resolve the price + currency to charge / display for a given country
      * code. Falls back to the plan's base USD price when no per-country
      * override exists or the country isn't recognised. Never returns null
