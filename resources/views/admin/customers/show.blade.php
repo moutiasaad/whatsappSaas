@@ -62,7 +62,16 @@
                     {{ $customer->display_name ?: __('ui.customers_page.unknown') }}
                 </div>
                 <div style="font-size:.875rem;color:var(--text-muted);margin-top:.25rem;font-family:monospace">
-                    {{ $customer->phone_e164 }}
+                    @if($customer->phone_kind === 'phone')
+                        {{ $customer->display_phone }}
+                    @elseif($customer->phone_kind === 'lid')
+                        <span class="badge badge-gray" style="font-family:inherit;" title="{{ $customer->phone_e164 }}">
+                            <i class="ri-eye-off-line"></i>
+                            {{ __('ui.customers_page.phone_hidden') }}
+                        </span>
+                    @else
+                        —
+                    @endif
                 </div>
             </div>
 

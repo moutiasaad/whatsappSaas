@@ -172,6 +172,7 @@ return [
         'customer' => 'Client',
         'tenant' => 'Locataire',
         'phone' => 'Téléphone',
+        'phone_hidden' => 'Numéro masqué',
         'conversations' => 'Conversations',
         'engagement' => 'Engagement',
         'last_message' => 'Dernier message',

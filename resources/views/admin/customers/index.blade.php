@@ -169,8 +169,20 @@
                                     </td>
                                 @endif
                                 <td>
-                                    <span style="font-size:.875rem;font-family:monospace;color:var(--text-secondary)"
-                                          x-text="customer.phone_e164 || '-'"></span>
+                                    <template x-if="customer.phone_kind === 'phone'">
+                                        <span style="font-size:.875rem;font-family:monospace;color:var(--text-secondary)"
+                                              x-text="customer.display_phone"></span>
+                                    </template>
+                                    <template x-if="customer.phone_kind === 'lid'">
+                                        <span class="badge badge-gray" style="font-family:inherit;"
+                                              :title="customer.phone_e164">
+                                            <i class="ri-eye-off-line"></i>
+                                            {{ __('ui.customers_page.phone_hidden') }}
+                                        </span>
+                                    </template>
+                                    <template x-if="customer.phone_kind === 'empty'">
+                                        <span style="color:var(--text-muted);">—</span>
+                                    </template>
                                 </td>
                                 <td>
                                     <span class="badge badge-blue">
@@ -348,7 +360,7 @@ function customersPage() {
         },
 
         initials(customer) {
-            const s = customer.display_name || customer.phone_e164 || '?';
+            const s = customer.display_name || customer.display_phone || '?';
             return s.slice(0, 2).toUpperCase();
         },
 

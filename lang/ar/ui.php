@@ -172,6 +172,7 @@ return [
         'customer' => 'العميل',
         'tenant' => 'العميل',
         'phone' => 'الهاتف',
+        'phone_hidden' => 'رقم مخفي',
         'conversations' => 'المحادثات',
         'engagement' => 'التفاعل',
         'last_message' => 'آخر رسالة',

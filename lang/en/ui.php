@@ -171,6 +171,7 @@ return [
         'customer' => 'Customer',
         'tenant' => 'Tenant',
         'phone' => 'Phone',
+        'phone_hidden' => 'Hidden number',
         'conversations' => 'Conversations',
         'engagement' => 'Engagement',
         'last_message' => 'Last Message',
