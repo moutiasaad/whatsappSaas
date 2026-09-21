@@ -235,14 +235,23 @@ html[dir="rtl"] .has-mega:hover .mega,html[dir="rtl"] .has-mega:focus-within .me
 @media (max-width:980px){.shtabs{gap:5px}.sht{height:38px;padding:0 13px;font-size:13px}}
 
 /* sticky mobile CTA — shown once the hero form scrolls away, hidden again
-   over the final form so the page never shows two competing CTAs at once */
-.mobcta{position:fixed;bottom:0;inset-inline:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:12px;align-items:center;transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+   over the final form so the page never shows two competing CTAs at once.
+   Colors pinned explicitly (title=var(--text), subline=var(--muted)) so
+   an ancestor rule can't inherit through and wash them out on the near-
+   white bar. Button label ellipses instead of clipping on narrow phones. */
+.mobcta{position:fixed;bottom:0;inset-inline:0;z-index:60;background:rgba(255,255,255,.98);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:none;gap:10px;align-items:center;transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
 .mobcta.show{transform:translateY(0)}
-.mobcta .t{flex:1;min-width:0;line-height:1.25}
-.mobcta .t b{display:block;font-size:14px;font-weight:700}
-.mobcta .t span{font-size:12.5px;color:var(--muted)}
-.mobcta .btn{height:46px;padding:0 20px;font-size:15px}
+.mobcta .t{flex:1 1 auto;min-width:0;line-height:1.25}
+.mobcta .t b{display:block;font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobcta .t span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobcta .btn{height:44px;padding:0 16px;font-size:14.5px;flex:0 0 auto;min-width:0;max-width:50%;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:980px){.mobcta{display:flex}footer{padding-bottom:96px}}
+@media (max-width:380px){
+  .mobcta{padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:8px}
+  .mobcta .btn{height:42px;padding:0 12px;font-size:13.5px}
+  .mobcta .t b{font-size:13.5px}
+  .mobcta .t span{font-size:11.5px}
+}
 @media (prefers-reduced-motion:reduce){.mobcta{transition:none}}
 
 /* On mobile the sticky CTA and the webchat launcher both live at
@@ -445,13 +454,9 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
 @media (max-width:980px){footer .fcols{grid-template-columns:1fr 1fr}}
 @media (max-width:560px){footer .fcols{grid-template-columns:1fr}}
 
-/* sticky mobile CTA */
-.mobcta{position:fixed;bottom:0;left:0;right:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:12px;align-items:center;transform:translateY(110%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
-.mobcta.show{transform:translateY(0)}
-.mobcta .t{flex:1;min-width:0;line-height:1.25}
-.mobcta .t b{display:block;font-size:14px;font-weight:700}
-.mobcta .t span{font-size:12.5px;color:var(--muted)}
-.mobcta .btn{height:46px;padding:0 20px;font-size:15px}
+/* .mobcta rules live in the block up above (~line 239) with the rest of
+   the sticky-CTA styling. The duplicate that used to be here was silently
+   overriding those improvements because of cascade order. */
 
 @media (max-width:1100px){
   .hero h1{font-size:52px}
