@@ -1363,6 +1363,10 @@ class PaymentController extends Controller
             Log::warning('Marketing -> core billing/checkout failed', [
                 'status'   => $result['status'],
                 'provider' => $provider,
+                // Body is the only signal we have when core throws — a timeout
+                // shows here as an empty body + status 0, and a PayPal upstream
+                // failure comes through as the message core logged.
+                'body'     => $result['body'],
             ]);
 
             return back()->withErrors([
