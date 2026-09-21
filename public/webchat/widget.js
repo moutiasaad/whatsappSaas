@@ -1795,8 +1795,32 @@
             "#wvch-root[data-position='left']  .wvch-panel { left: 32px;  transform-origin: bottom left; }",
             "@keyframes wvch-panel-in { from { opacity: 0; transform: translateY(24px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }",
             "@media (max-width: 480px) {",
-            "  #wvch-root .wvch-panel { width: calc(100vw - 16px); height: calc(100vh - 100px); left: 8px; right: 8px; bottom: 92px; border-radius: 22px; }",
-            "  #wvch-root .wvch-launcher { width: 58px; height: 58px; }",
+            // Full-screen panel on phones — the desktop "floating card
+            // with margins" pattern breaks under iOS Safari's shifting
+            // URL bar: 100vh includes chrome-covered area, so the panel
+            // extends above the visible top and clips the header.
+            // dvh (dynamic viewport height) tracks the visible area as
+            // the URL bar shows/hides; svh is the fallback for browsers
+            // without dvh support (still respects Safari's smallest state).
+            // safe-area-inset-top / -bottom keep the header clear of the
+            // notch on iPhone and the home indicator at the bottom.
+            "  #wvch-root .wvch-panel {",
+            "    top: 0; left: 0; right: 0; bottom: 0;",
+            "    width: 100%; max-width: 100%;",
+            "    height: 100svh; height: 100dvh;",
+            "    max-height: 100svh; max-height: 100dvh;",
+            "    border-radius: 0;",
+            "    padding-top: env(safe-area-inset-top);",
+            "    padding-bottom: env(safe-area-inset-bottom);",
+            "  }",
+            // Position adjustments on the desktop side snap to full-screen too.
+            "  #wvch-root[data-position='right'] .wvch-panel,",
+            "  #wvch-root[data-position='left']  .wvch-panel { left: 0; right: 0; }",
+            // The floating launcher (bottom-right chat bubble) would sit on
+            // top of a full-screen panel and cover the header's close X.
+            // Hide it while the panel is open — the header close is the
+            // reachable exit on mobile.
+            "  #wvch-root .wvch-launcher-open { opacity: 0; visibility: hidden; pointer-events: none; }",
             "}",
 
             /* ---------- Header ---------- */
