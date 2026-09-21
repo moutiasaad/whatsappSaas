@@ -1882,7 +1882,7 @@
             "  transition: background .18s ease;",
             "}",
             "#wvch-root .wvch-toggle-knob {",
-            "  position: absolute; top: 2px; left: 2px;",
+            "  position: absolute; top: 2px; inset-inline-start: 2px;",
             "  width: 16px; height: 16px; border-radius: 50%;",
             "  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);",
             "  transition: transform .18s ease;",
