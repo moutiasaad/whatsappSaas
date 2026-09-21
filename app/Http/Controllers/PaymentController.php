@@ -541,6 +541,15 @@ class PaymentController extends Controller
 
             $approveUrl = $this->paypal->extractApproveUrl($order);
             if (!$approveUrl) {
+                // Include the full order payload so we can see what PayPal
+                // actually returned — every field name they use for the
+                // approve URL, plus the order id + status. Without this,
+                // "approve URL not found" is a black box.
+                Log::error('PayPal create-order returned no approve link', [
+                    'order_id' => $order['id'] ?? null,
+                    'status'   => $order['status'] ?? null,
+                    'links'    => $order['links'] ?? [],
+                ]);
                 throw new \RuntimeException('PayPal approve URL not found in order response.');
             }
 
@@ -557,7 +566,14 @@ class PaymentController extends Controller
 
             return redirect($approveUrl);
         } catch (\Throwable $e) {
-            Log::error('PayPal REST initiate failed', ['error' => $e->getMessage()]);
+            // Include class name so PayPal SDK exceptions are distinguishable
+            // from our RuntimeException — the two need different fixes.
+            Log::error('PayPal REST initiate failed', [
+                'error' => $e->getMessage(),
+                'type'  => get_class($e),
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $plan->id,
+            ]);
             // UI-003: never surface raw gateway exception text to the visitor,
             // even under APP_DEBUG. The failure is already in Log::error above
             // with full context for operators.
