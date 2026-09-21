@@ -107,10 +107,19 @@ class SplitHostingRedirect
         $host = $request->getHost();
 
         if (Wavadesk::isCore()) {
-            // Never bounce a signed-in user off the app they are using. Only
-            // the guest-facing copies of these pages are the problem, and the
-            // `guest` middleware already sends a logged-in visitor home.
-            if (Auth::check() || ! Wavadesk::delegatesToMarketing($host)) {
+            if (! Wavadesk::delegatesToMarketing($host)) {
+                return $next($request);
+            }
+
+            // A signed-in user keeps every page of the app they are using, but
+            // the root is the marketing homepage's address whoever asks for it:
+            // app.wavadesk.com/ is not a second front page of the product.
+            //
+            // /login and /register still stay here for them. Marketing holds no
+            // session of its own, so handing an authenticated visitor its login
+            // form would offer a door they are already through; the local
+            // `guest` middleware sends them home instead.
+            if (Auth::check() && ! $request->is('/')) {
                 return $next($request);
             }
 

@@ -87,8 +87,12 @@ class SplitHostingCoreRoutingTest extends TestCase
         $this->get(self::CORE_HOST . '/agent/login')->assertOk()->assertSee('agent door');
     }
 
-    /** Bouncing someone who is already using the app off it would be absurd. */
-    public function test_a_signed_in_user_is_never_handed_off(): void
+    /**
+     * Bouncing someone who is already using the app off a page of it would be
+     * absurd — and marketing has no session, so its login form would be a door
+     * they are already through. The root is the one exception, below.
+     */
+    public function test_a_signed_in_user_keeps_the_pages_of_the_app(): void
     {
         Route::middleware('web')->get('/login', fn () => response('local form'));
 
@@ -96,6 +100,18 @@ class SplitHostingCoreRoutingTest extends TestCase
             ->get(self::CORE_HOST . '/login')
             ->assertOk()
             ->assertSee('local form');
+    }
+
+    /**
+     * app.wavadesk.com/ is not a second front page of the product. Whoever asks
+     * for it — guest or signed-in tenant — gets the marketing homepage, which
+     * carries its own "Go to dashboard" for a session it can see.
+     */
+    public function test_a_signed_in_user_is_handed_off_from_the_root(): void
+    {
+        $this->actingAs(User::make(['email' => 'someone@example.com']))
+            ->get(self::CORE_HOST . '/')
+            ->assertRedirect(self::MARKETING . '/');
     }
 
     /**
