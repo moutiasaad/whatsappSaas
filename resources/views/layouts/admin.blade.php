@@ -1839,6 +1839,10 @@
                         'show'  => $isSA,
                         'items' => [
                             ['route' => 'platform.conversation-settings', 'match' => ['platform.conversation-settings*'], 'icon' => 'ri-timer-flash-line',   'label' => __('ui.sidebar.conversation_automation'), 'show' => $sp('platform_conversation_settings')],
+                            // Platform default language. Same permission slug as
+                            // conversation settings — both are cross-tenant knobs
+                            // an operator flips rarely.
+                            ['route' => 'platform.localization',           'match' => ['platform.localization*'],           'icon' => 'ri-translate-2',        'label' => __('ui.sidebar.localization'),            'show' => $sp('platform_conversation_settings')],
                             // Meta / Facebook Messenger platform credentials — App ID, App
                             // Secret, Verify Token, Graph version. Same permission gate as
                             // system health (both are cross-tenant ops-owned config).

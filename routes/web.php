@@ -664,6 +664,11 @@ $registerControlPanelRoutes = function () use ($superAdminPrefix): void {
             Route::post('/platform/plans/bulk', [SuperAdminPlatformController::class, 'bulkPlans'])->name('platform.plans.bulk');
 
             Route::get('/platform/conversation-settings', [SuperAdminPlatformController::class, 'conversationSettings'])->name('platform.conversation-settings');
+            // Platform default language — used by SetLocale when a visitor
+            // has no locale in session yet. DB-backed so the change lands
+            // without editing .env on every box.
+            Route::get('/platform/localization', [SuperAdminPlatformController::class, 'localizationSettings'])->name('platform.localization');
+            Route::put('/platform/localization', [SuperAdminPlatformController::class, 'updateLocalizationSettings'])->name('platform.localization.update');
             Route::put('/platform/conversation-settings', [SuperAdminPlatformController::class, 'updateConversationSettings'])->name('platform.conversation-settings.update');
 
             // Add-on pricing — what tenants pay for extra seats and AI packs.

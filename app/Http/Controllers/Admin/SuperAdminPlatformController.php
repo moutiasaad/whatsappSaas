@@ -858,6 +858,41 @@ class SuperAdminPlatformController extends Controller
         ]);
     }
 
+    /**
+     * The platform-wide default language for any visitor that hasn't picked
+     * one yet (no `locale` in session). Stored in platform_settings so a
+     * change lands live without a .env edit or config:cache. Each tenant's
+     * users can still override for themselves through the language switcher
+     * in the header — this key only decides the fallback.
+     *
+     * @see \App\Http\Middleware\SetLocale
+     */
+    public const DEFAULT_LOCALE_KEY = 'default_locale';
+
+    public function localizationSettings()
+    {
+        return view('admin.platform.localization', [
+            'currentDefault' => PlatformSetting::get(
+                self::DEFAULT_LOCALE_KEY,
+                config('app.locale', 'en'),
+            ),
+            'supported' => config('locales.supported', []),
+        ]);
+    }
+
+    public function updateLocalizationSettings(Request $request)
+    {
+        $supported = array_keys((array) config('locales.supported', []));
+
+        $data = $request->validate([
+            'default_locale' => ['required', 'string', \Illuminate\Validation\Rule::in($supported)],
+        ]);
+
+        PlatformSetting::set(self::DEFAULT_LOCALE_KEY, $data['default_locale'], 'string');
+
+        return back()->with('success', __('ui.platform_localization_page.saved'));
+    }
+
     public function updateConversationSettings(Request $request)
     {
         // 0 disables the sweep; the ceiling is a day, past which "idle" stops
