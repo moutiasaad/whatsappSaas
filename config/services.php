@@ -62,6 +62,12 @@ return [
         // has partner permissions to be paid on another merchant's behalf.
         // Normally left unset so funds go to the client id's own account.
         'rest_payee_email' => env('PAYPAL_REST_PAYEE_EMAIL'),
+        // Platform-wide fallback for the "static NCP link" checkout mode.
+        // Used by the checkout button when a plan has no `paypal_ncp_link`
+        // override of its own. When both are unset, the checkout falls
+        // through to the dynamic Orders API redirect flow. Format is a full
+        // PayPal.com/ncp/payment/XXX URL created in the merchant dashboard.
+        'ncp_link'      => env('PAYPAL_NCP_LINK'),
     ],
 
     /*

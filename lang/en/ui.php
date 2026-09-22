@@ -1059,7 +1059,7 @@ Always:
         'monthly_price' => 'Monthly Price',
         'annual_price' => 'Annual Price',
         'paypal_ncp_link' => 'PayPal payment link',
-        'paypal_ncp_link_hint' => 'Optional. Paste the PayPal NCP button URL (paypal.com/ncp/payment/XXX) you created in the merchant dashboard. When set, the checkout button links straight to this URL. Leave blank to use the dynamic PayPal Orders API flow instead.',
+        'paypal_ncp_link_hint' => 'Optional. Paste the PayPal NCP button URL (paypal.com/ncp/payment/XXX) you created in the merchant dashboard. When set, the checkout button links straight to this URL. Leave blank to use the platform-wide PAYPAL_NCP_LINK env, or the dynamic PayPal Orders API flow if that is also unset.',
         'max_users' => 'Max Users',
         'max_instances' => 'Max Instances',
         'max_conversations_per_month' => 'Max Conversations / Month',

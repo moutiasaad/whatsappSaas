@@ -1056,7 +1056,7 @@ return [
         'monthly_price' => 'السعر الشهري',
         'annual_price' => 'السعر السنوي',
         'paypal_ncp_link' => 'رابط الدفع عبر PayPal',
-        'paypal_ncp_link_hint' => 'اختياري. الصق رابط زر PayPal NCP (paypal.com/ncp/payment/XXX) الذي أنشأته في لوحة تحكم التاجر. عند تعيينه، ينتقل زر الدفع مباشرة إلى هذا الرابط. اتركه فارغًا لاستخدام تدفق PayPal Orders API الديناميكي.',
+        'paypal_ncp_link_hint' => 'اختياري. الصق رابط زر PayPal NCP (paypal.com/ncp/payment/XXX) الذي أنشأته في لوحة تحكم التاجر. عند تعيينه، ينتقل زر الدفع مباشرة إلى هذا الرابط. اتركه فارغًا لاستخدام متغيّر PAYPAL_NCP_LINK على مستوى المنصة، أو تدفق PayPal Orders API الديناميكي إذا لم يكن ذلك أيضًا مُعيَّنًا.',
         'max_users' => 'أقصى عدد مستخدمين',
         'max_instances' => 'أقصى عدد حالات',
         'max_conversations_per_month' => 'أقصى محادثات / شهر',

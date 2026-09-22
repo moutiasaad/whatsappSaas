@@ -27,11 +27,14 @@
 
     // Static NCP link mode — only valid for plan subscriptions, since
     // pack/seat/cart amounts vary per quantity and an NCP link is a
-    // fixed-amount PayPal button. If set, the checkout button links
-    // straight to the paypal.com/ncp/payment/XXX URL and skips the
-    // Orders API flow entirely (manual reconciliation on the operator).
+    // fixed-amount PayPal button. Resolution order:
+    //   1. per-plan `paypal_ncp_link` (super-admin form)
+    //   2. platform-wide `PAYPAL_NCP_LINK` env (config services.paypal.ncp_link)
+    //   3. neither set → fall through to Orders API flow
+    // If set, the button links straight to paypal.com/ncp/payment/XXX and
+    // skips the Orders API entirely (manual reconciliation on the operator).
     $ncpLink = (!$isPack && !$isSeat && !$isCart)
-        ? ($plan?->paypal_ncp_link ?? null)
+        ? ($plan?->paypal_ncp_link ?: config('services.paypal.ncp_link'))
         : null;
 
     // Hidden fields the initiate endpoint needs to reprice the order server

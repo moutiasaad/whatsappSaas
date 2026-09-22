@@ -306,13 +306,19 @@
                         <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    @if($plan->paypal_ncp_link)
+                    @php
+                        // Per-plan override wins; falls back to the platform-wide
+                        // PAYPAL_NCP_LINK env. Both blank → the plain Orders API
+                        // flow renders below.
+                        $ncpLink = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
+                    @endphp
+                    @if($ncpLink)
                         {{-- NCP mode: super-admin set a paypal.com/ncp/payment/XXX
-                             URL on this plan (created in the PayPal merchant
-                             dashboard). Button links straight there — no Orders
-                             API call, no server round-trip, no dynamic pricing.
-                             Manual reconciliation via the PayPal dashboard. --}}
-                        <a href="{{ $plan->paypal_ncp_link }}" class="btn-paypal" rel="noopener">
+                             URL on this plan (or PAYPAL_NCP_LINK on core's .env).
+                             Button links straight there — no Orders API call, no
+                             server round-trip, no dynamic pricing. Manual
+                             reconciliation via the PayPal dashboard. --}}
+                        <a href="{{ $ncpLink }}" class="btn-paypal" rel="noopener">
                             <i class="ri-paypal-fill"></i>
                             {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
                         </a>
