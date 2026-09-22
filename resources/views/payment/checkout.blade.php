@@ -17,37 +17,36 @@
     $seats    = $seats ?? 0;
     $messages = $messages ?? 0;
     $currency = config('services.paypal.currency', 'USD');
-    // Two ways to take a PayPal payment: the REST/SDK smart buttons when a
-    // client id is configured, or the email-only Standard flow when only a
-    // payee address is. Standard needs no developer app at all.
-    // The client id alone drives the SDK: card fields render and are eligible
-    // without a secret, so the buyer sees a card form regardless.
-    $sdkReady = (bool) config('services.paypal.client_id');
-    $stdReady = !$sdkReady && (bool) config('services.paypal.payee_email');
-    // The SDK bootstrap script at the bottom only runs when the SDK branch
-    // actually rendered — i.e. this is a pack/seat/cart purchase. Plan
-    // subscriptions now use a simple form-POST redirect flow instead, and
-    // the SDK DOM ids the script grabs never exist on that path.
-    $ready    = $sdkReady && ($isPack || $isSeat || $isCart);
+    // PayPal is offered whenever a REST client id OR an email-only payee is
+    // configured — the controller picks REST (Orders API redirect) when the
+    // credentials actually work and falls back to Standard otherwise. Both
+    // land the buyer on PayPal-hosted checkout, so this page only has to
+    // decide whether to render the button at all.
+    $paypalReady = (bool) config('services.paypal.client_id')
+        || (bool) config('services.paypal.payee_email');
 
-    // Creating and capturing the order is server-side and does need a working
-    // secret. A failure there surfaces as the red error box on submit, so the
-    // page does not pre-empt it — this only decides whether it is worth asking
-    // PayPal for a client token below.
-    $restOk = $sdkReady && app(\App\Services\PayPalService::class)->credentialsValid();
-
-    // Optional for card fields, so only fetched when the secret works.
-    $clientToken = $restOk
-        ? app(\App\Services\PayPalService::class)->clientToken()
-        : null;
-
-    // What the Standard form has to post to rebuild the same order server-side.
-    $stdFields = match (true) {
-        $isCart => ['plan_id' => $cart['plan']?->id, 'seats' => $cart['seats'], 'packs' => $cart['packs']],
-        $isSeat => ['seats' => $seats],
-        $isPack => ['packs' => $packs],
-        default => ['plan_id' => $plan->id ?? null],
-    };
+    // Hidden fields the initiate endpoint needs to reprice the order server
+    // side. Kind drives which branch of PaymentController::initiatePaypal runs.
+    $initiateFields = array_filter(match (true) {
+        $isCart => [
+            'kind'      => \App\Models\TenantPayment::KIND_CART,
+            'plan_id'   => $cart['plan']?->id,
+            'seats'     => $cart['seats'],
+            'packs'     => $cart['packs'],
+        ],
+        $isSeat => [
+            'kind'  => \App\Models\TenantPayment::KIND_SEAT_PACK,
+            'seats' => $seats,
+        ],
+        $isPack => [
+            'kind'  => \App\Models\TenantPayment::KIND_AI_PACK,
+            'packs' => $packs,
+        ],
+        default => [
+            'tenant_id' => $tenant->id,
+            'plan_id'   => $plan->id ?? null,
+        ],
+    }, fn ($v) => $v !== null && $v !== '' && $v !== 0);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
@@ -429,126 +428,28 @@
                         <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    <div id="paypal-error" class="errbox" style="display:none">
-                        <i class="ri-error-warning-line"></i><div id="paypal-error-text"></div>
-                    </div>
-
-                    @if(!$isPack && !$isSeat && !$isCart)
-                        {{-- Plan subscription: single "Pay with PayPal" button.
-                             POSTs to /payment/paypal/initiate which creates a
-                             PayPal Orders API order and 302s the browser to
-                             the dynamic approval URL. PayPal returns to
-                             /payment/paypal/return where we capture and
-                             activate the subscription. No card form on our
-                             side — PayPal's hosted page collects it. --}}
+                    @if($paypalReady)
+                        {{-- Single "Pay with PayPal" button for every kind
+                             (plan / cart / seats / AI pack). POSTs to
+                             /payment/paypal/initiate; the controller picks
+                             REST (Orders API + 302 to approve URL) when the
+                             credentials work, otherwise Standard (form-POST
+                             to PayPal's hosted checkout). Either way the
+                             buyer lands on paypal.com — card + PayPal login
+                             are both offered there. No card form on this
+                             side. --}}
                         <form method="POST" action="{{ route('payment.paypal.initiate') }}"
                               onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
                             @csrf
-                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
-                            <input type="hidden" name="plan_id"   value="{{ $plan->id ?? '' }}">
-                            <button type="submit" class="btn-paypal">
-                                <i class="ri-paypal-fill"></i>
-                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
-                            </button>
-                        </form>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
-                    @elseif($sdkReady)
-                        {{-- Card first, PayPal second. Most buyers arriving here
-                             have a card and no PayPal account, so the card form
-                             is the open default rather than something behind a
-                             second click.
-
-                             These are PayPal Card Fields: each input is an
-                             iframe hosted by PayPal, so no card number ever
-                             reaches this server — but the buyer stays on this
-                             page and never sees a PayPal login. --}}
-                        <div id="card-block" style="display:none">
-                            <div class="cardhead">
-                                <i class="ri-bank-card-line"></i>
-                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
-                            </div>
-
-                            <div class="cardform">
-                                <label class="cf-l" for="cf-name">{{ __('ui.payment_page.card_name') }}</label>
-                                <div id="cf-name" class="cf"></div>
-
-                                <label class="cf-l" for="cf-number">{{ __('ui.payment_page.card_number') }}</label>
-                                <div id="cf-number" class="cf"></div>
-
-                                <div class="cf-row">
-                                    <div>
-                                        <label class="cf-l" for="cf-exp">{{ __('ui.payment_page.card_expiry') }}</label>
-                                        <div id="cf-exp" class="cf"></div>
-                                    </div>
-                                    <div>
-                                        <label class="cf-l" for="cf-cvv">{{ __('ui.payment_page.card_cvv') }}</label>
-                                        <div id="cf-cvv" class="cf"></div>
-                                    </div>
-                                </div>
-
-                                <button type="button" id="cf-submit" class="btn-card primary">
-                                    <i class="ri-lock-line"></i>
-                                    {{ __('ui.payment_page.pay_by_card_amount', ['amount' => '$' . number_format($amount, 2)]) }}
-                                </button>
-                            </div>
-                        </div>
-
-                        {{-- Shown only while the SDK decides whether this
-                             merchant account can use inline card fields, so the
-                             panel is never just blank on a slow connection. --}}
-                        <div id="card-loading" class="cardskel">
-                            <div class="cardhead">
-                                <i class="ri-bank-card-line"></i>
-                                <span>{{ __('ui.payment_page.pay_card_title') }}</span>
-                            </div>
-                            <div class="sk"></div><div class="sk"></div>
-                            <div class="sk-row"><div class="sk"></div><div class="sk"></div></div>
-                            <div class="sk-note">{{ __('ui.payment_page.card_loading') }}</div>
-                        </div>
-
-                        {{-- Fallback when the account is not approved for inline
-                             card fields: PayPal's own hosted card button, which
-                             still takes a card from a buyer with no PayPal
-                             account. Kept in the same slot, above PayPal. --}}
-                        <div id="card-fallback" style="display:none"></div>
-
-                        <div id="pay-or" class="paysep" style="display:none">
-                            <span>{{ __('ui.payment_page.or_paypal') }}</span>
-                        </div>
-
-                        <div id="paypal-button-container"></div>
-
-                        <div class="working" id="working">
-                            <span class="spin"></span>{{ __('ui.payment_page.finalising') }}
-                        </div>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
-                    @elseif($stdReady)
-                        {{-- Email-only flow: a plain POST to PayPal's hosted
-                             checkout. No SDK, so no in-page card button — the
-                             hosted page offers guest card payment itself. --}}
-                        {{-- Two doors to the same hosted checkout. `card=1`
-                             opens PayPal on the card form instead of the account
-                             login; both allow guest payment. --}}
-                        <form method="POST" action="{{ route('payment.paypal.standard') }}"
-                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
-                            @csrf
-                            @foreach($stdFields as $k => $v)
-                                @if($v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endif
+                            @foreach($initiateFields as $k => $v)
+                                <input type="hidden" name="{{ $k }}" value="{{ $v }}">
                             @endforeach
-
                             <button type="submit" class="btn-paypal">
                                 <i class="ri-paypal-fill"></i>
                                 {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
                             </button>
-
-                            <div class="paysep"><span>{{ __('ui.payment_page.or') }}</span></div>
-
-                            <button type="submit" name="card" value="1" class="btn-card">
-                                <i class="ri-bank-card-line"></i>
-                                {{ __('ui.payment_page.pay_by_card') }}
-                            </button>
                         </form>
-                        <p class="payhint">{{ __('ui.payment_page.card_hint') }}</p>
+                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
                     @else
                         <div class="errbox" style="margin:0">
                             <i class="ri-error-warning-line"></i>
@@ -630,213 +531,5 @@
 </div>
 </main>
 
-@if($ready)
-{{-- enable-funding=card puts PayPal's own Visa/Mastercard guest checkout in
-     the stack, so a buyer without a PayPal account can still pay by card. --}}
-<script src="https://www.paypal.com/sdk/js?client-id={{ urlencode(config('services.paypal.client_id')) }}&currency={{ urlencode($currency) }}&intent=capture&enable-funding=card&components=buttons,card-fields"
-        @if($clientToken) data-client-token="{{ $clientToken }}" @endif
-        data-partner-attribution-id="wavadesk_saas"
-        onerror="window.__ppFail && window.__ppFail()"></script>
-<script>
-(function () {
-    const errBox  = document.getElementById('paypal-error');
-    const errText = document.getElementById('paypal-error-text');
-    const working = document.getElementById('working');
-
-    function showError(msg) {
-        errBox.style.display = 'flex';
-        errText.textContent = msg;
-        working.classList.remove('on');
-        // If the SDK never loaded, nothing else will ever clear the card
-        // skeleton — it would sit there shimmering under the error forever.
-        const skel = document.getElementById('card-loading');
-        if (skel) skel.style.display = 'none';
-    }
-    window.__ppFail = function () { showError(@js(__('ui.payment_page.sdk_failed'))); };
-
-    /* Advance the step rail once PayPal hands the order back — the buyer is
-       past "pay" and waiting on us, which is a different state from idle. */
-    function markFinalising() {
-        working.classList.add('on');
-        document.getElementById('line3').classList.add('done');
-        const s2 = document.querySelector('.stp[data-step="2"]');
-        const s3 = document.querySelector('.stp[data-step="3"]');
-        s2.classList.remove('on'); s2.classList.add('done');
-        s2.querySelector('.dot').innerHTML = '<i class="ri-check-line"></i>';
-        s3.classList.add('on');
-    }
-
-    if (typeof paypal === 'undefined') { window.__ppFail(); return; }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const ORDER_BODY = @js(match (true) {
-        $isCart => [
-            'kind'    => TenantPayment::KIND_CART,
-            'plan_id' => $cart['plan']?->id,
-            'seats'   => $cart['seats'],
-            'packs'   => $cart['packs'],
-        ],
-        $isSeat => ['kind' => TenantPayment::KIND_SEAT_PACK, 'seats' => $seats],
-        $isPack => ['kind' => TenantPayment::KIND_AI_PACK,   'packs' => $packs],
-        default => ['tenant_id' => (int) $tenant->id, 'plan_id' => (int) ($plan->id ?? 0)],
-    });
-
-    /* One order pipeline for every funding source on this page: the inline
-       card fields, PayPal's hosted card button and the PayPal account button
-       all hit the same endpoints, so the server prices and fulfils an order
-       the same way no matter which one the buyer used. */
-    async function createOrder() {
-        errBox.style.display = 'none';
-        const res = await fetch(@js(route('payment.paypal.create-order')), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify(ORDER_BODY),
-        });
-        const data = res.ok ? await res.json() : null;
-        if (!data || !data.id) {
-            showError(@js(__('ui.payment_page.start_failed')));
-            throw new Error('create-order failed');
-        }
-        return data.id;
-    }
-
-    async function onApprove(data) {
-        markFinalising();
-        try {
-            const res = await fetch('/payment/paypal/capture-order/' + encodeURIComponent(data.orderID), {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-            const result = await res.json();
-            if (result.success && result.redirect) {
-                window.location.href = result.redirect;
-                return;
-            }
-            showError(@js(__('ui.payment_page.capture_failed')));
-        } catch (e) {
-            showError(@js(__('ui.payment_page.capture_failed')));
-        }
-    }
-
-    function onCancel() { working.classList.remove('on'); }
-
-    function onError(err) {
-        console.error('[PayPal]', err);
-        showError(@js(__('ui.payment_page.gateway_error')));
-    }
-
-    const cardBlock    = document.getElementById('card-block');
-    const cardLoading  = document.getElementById('card-loading');
-    const cardFallback = document.getElementById('card-fallback');
-    const payOr        = document.getElementById('pay-or');
-
-    // The divider only earns its place once something sits above it.
-    function revealSeparator() { payOr.style.display = 'flex'; }
-
-    /* ── 1. Card, first ────────────────────────────────────────────────────
-       Inline PayPal Card Fields when the merchant account is approved for
-       them. The inputs are PayPal-hosted iframes, so the card number never
-       reaches this origin, but the buyer types it here and is never asked to
-       sign in to PayPal. */
-    const cardFields = typeof paypal.CardFields === 'function'
-        ? paypal.CardFields({
-            createOrder: createOrder,
-            onApprove: onApprove,
-            onError: function (err) {
-                console.error('[PayPal CardFields]', err);
-                showError(@js(__('ui.payment_page.card_failed')));
-            },
-            // No `style` and no `inputEvents`: PayPal's default field rendering
-            // is left exactly as it ships, so the buyer sees PayPal's own input
-            // and its own focus / error states.
-        })
-        : null;
-
-    /* Not every merchant account is approved for inline card fields. When this
-       one is not, fall back to PayPal's own hosted card button — still a card
-       payment with no PayPal account, just entered on PayPal's page — and keep
-       it in the same slot above the PayPal button. */
-    function renderHostedCardButton() {
-        if (!paypal.FUNDING || !paypal.FUNDING.CARD) return;
-
-        const btn = paypal.Buttons({
-            fundingSource: paypal.FUNDING.CARD,
-            style: { layout: 'vertical', shape: 'rect', height: 48 },
-            createOrder: createOrder,
-            onApprove: onApprove,
-            onCancel: onCancel,
-            onError: onError,
-        });
-
-        if (!btn.isEligible()) return;
-
-        cardFallback.style.display = 'block';
-        btn.render('#card-fallback').then(revealSeparator).catch(function () {
-            cardFallback.style.display = 'none';
-        });
-    }
-
-    if (cardFields && cardFields.isEligible()) {
-        Promise.all([
-            cardFields.NameField().render('#cf-name'),
-            cardFields.NumberField().render('#cf-number'),
-            cardFields.ExpiryField().render('#cf-exp'),
-            cardFields.CVVField().render('#cf-cvv'),
-        ]).then(function () {
-            cardLoading.style.display = 'none';
-            cardBlock.style.display = 'block';
-            revealSeparator();
-        }).catch(function (e) {
-            console.error('[PayPal CardFields] render', e);
-            cardLoading.style.display = 'none';
-            renderHostedCardButton();
-        });
-
-        const cfBtn = document.getElementById('cf-submit');
-        cfBtn.addEventListener('click', async function () {
-            cfBtn.disabled = true;
-            try {
-                await cardFields.submit();
-            } catch (e) {
-                console.error('[PayPal CardFields] submit', e);
-                showError(@js(__('ui.payment_page.card_failed')));
-            } finally {
-                cfBtn.disabled = false;
-            }
-        });
-    } else {
-        cardLoading.style.display = 'none';
-        renderHostedCardButton();
-    }
-
-    /* ── 2. PayPal account button, below the card ──────────────────────────
-       Restricted to the PayPal funding source: the card option is already
-       presented above, and a second card button here would just be a
-       duplicate of it. */
-    paypal.Buttons({
-        fundingSource: paypal.FUNDING.PAYPAL,
-        style: { layout: 'vertical', shape: 'rect', label: 'paypal', height: 48 },
-        createOrder: createOrder,
-        onApprove: onApprove,
-        onCancel: onCancel,
-        onError: onError,
-    }).render('#paypal-button-container').catch(function () {
-        showError(@js(__('ui.payment_page.render_failed')));
-    });
-
-})();
-</script>
-@endif
 </body>
 </html>

@@ -500,6 +500,20 @@ class PaymentController extends Controller
             return $this->initiateViaCoreApi($request, 'paypal');
         }
 
+        // Cart, seat-pack and AI-pack checkouts all POST here now: the SDK
+        // card fields were removed in favour of one unified "Pay with PayPal"
+        // button per checkout view. Kind drives which pricing helper runs and
+        // what shape the persisted TenantPayment takes.
+        return match ($request->input('kind')) {
+            TenantPayment::KIND_AI_PACK   => $this->initiatePaypalForAiPack($request),
+            TenantPayment::KIND_SEAT_PACK => $this->initiatePaypalForSeatPack($request),
+            TenantPayment::KIND_CART      => $this->initiatePaypalForCart($request),
+            default                       => $this->initiatePaypalForPlan($request),
+        };
+    }
+
+    private function initiatePaypalForPlan(Request $request)
+    {
         $request->validate(['tenant_id' => 'required|exists:tenants,id']);
 
         $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
@@ -526,6 +540,87 @@ class PaymentController extends Controller
 
         return redirect()->route('payment.checkout', $tenant->id)
             ->withErrors(['payment' => 'PayPal is not configured on this server.']);
+    }
+
+    private function initiatePaypalForCart(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            abort(403);
+        }
+
+        $tenant = $user->tenant;
+        $cart   = $this->priceCart($this->validateCart($request), $tenant);
+        abort_if($cart['amount'] <= 0, 404);
+
+        if ($this->paypal->credentialsValid()) {
+            return $this->initiatePaypalRestForCart($tenant, $cart, $request);
+        }
+
+        if ($this->paypalStd->isConfigured()) {
+            // Reuse the Standard entrypoint — it already prices carts via
+            // priceCart() and writes the same TenantPayment shape.
+            return $this->paypalStandardStart($request);
+        }
+
+        return back()->withErrors(['payment' => 'PayPal is not configured on this server.']);
+    }
+
+    private function initiatePaypalForAiPack(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            abort(403);
+        }
+
+        abort_unless(AddonPricing::packsEnabled(), 404);
+
+        $data = $request->validate([
+            'packs' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxPacks()],
+        ]);
+
+        $tenant   = $user->tenant;
+        $packs    = (int) $data['packs'];
+        $messages = $packs * AddonPricing::packMessages();
+        $amount   = AddonPricing::packTotal($packs);
+
+        if ($this->paypal->credentialsValid()) {
+            return $this->initiatePaypalRestForAiPack($tenant, $packs, $messages, $amount);
+        }
+
+        if ($this->paypalStd->isConfigured()) {
+            return $this->paypalStandardStart($request);
+        }
+
+        return back()->withErrors(['payment' => 'PayPal is not configured on this server.']);
+    }
+
+    private function initiatePaypalForSeatPack(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !$user->isAdmin() || !$user->tenant) {
+            abort(403);
+        }
+
+        abort_unless(AddonPricing::seatsEnabled(), 404);
+
+        $data = $request->validate([
+            'seats' => ['required', 'integer', 'min:1', 'max:' . AddonPricing::maxSeats()],
+        ]);
+
+        $tenant = $user->tenant;
+        $seats  = (int) $data['seats'];
+        $amount = AddonPricing::seatTotal($seats);
+
+        if ($this->paypal->credentialsValid()) {
+            return $this->initiatePaypalRestForSeatPack($tenant, $seats, $amount);
+        }
+
+        if ($this->paypalStd->isConfigured()) {
+            return $this->paypalStandardStart($request);
+        }
+
+        return back()->withErrors(['payment' => 'PayPal is not configured on this server.']);
     }
 
     private function initiatePaypalRest(Tenant $tenant, Plan $plan)
@@ -584,6 +679,161 @@ class PaymentController extends Controller
             // with full context for operators.
             return redirect()->route('payment.checkout', $tenant->id)
                 ->withErrors(['payment' => __('auth.register.payment_init_failed')]);
+        }
+    }
+
+    private function initiatePaypalRestForCart(Tenant $tenant, array $cart, Request $request)
+    {
+        $parts = array_filter([
+            $cart['plan']?->name,
+            $cart['seats'] ? $cart['seats'] . ' seats' : null,
+            $cart['packs'] ? number_format($cart['messages']) . ' AI messages' : null,
+        ]);
+
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $cart['amount'],
+                description: implode(' + ', $parts) . ' — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'cart_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            $approveUrl = $this->paypal->extractApproveUrl($order);
+            if (!$approveUrl) {
+                Log::error('PayPal cart create-order returned no approve link', [
+                    'order_id' => $order['id'] ?? null,
+                    'status'   => $order['status'] ?? null,
+                    'links'    => $order['links'] ?? [],
+                ]);
+                throw new \RuntimeException('PayPal approve URL not found in order response.');
+            }
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $cart['plan']?->id,
+                'kind'            => TenantPayment::KIND_CART,
+                'amount'          => $cart['amount'],
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['order' => $order],
+                'metadata'        => [
+                    'plan_id'  => $cart['plan']?->id,
+                    'seats'    => $cart['seats'],
+                    'packs'    => $cart['packs'],
+                    'messages' => $cart['messages'],
+                ],
+            ]);
+
+            return redirect($approveUrl);
+        } catch (\Throwable $e) {
+            Log::error('PayPal REST cart initiate failed', [
+                'error'     => $e->getMessage(),
+                'type'      => get_class($e),
+                'tenant_id' => $tenant->id,
+            ]);
+            return back()->withErrors(['payment' => __('auth.register.payment_init_failed')]);
+        }
+    }
+
+    private function initiatePaypalRestForAiPack(Tenant $tenant, int $packs, int $messages, float $amount)
+    {
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $messages . ' AI messages — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'aipack_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            $approveUrl = $this->paypal->extractApproveUrl($order);
+            if (!$approveUrl) {
+                Log::error('PayPal AI-pack create-order returned no approve link', [
+                    'order_id' => $order['id'] ?? null,
+                    'status'   => $order['status'] ?? null,
+                    'links'    => $order['links'] ?? [],
+                ]);
+                throw new \RuntimeException('PayPal approve URL not found in order response.');
+            }
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => null,
+                'kind'            => TenantPayment::KIND_AI_PACK,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['order' => $order],
+                'metadata'        => ['packs' => $packs, 'messages' => $messages],
+            ]);
+
+            return redirect($approveUrl);
+        } catch (\Throwable $e) {
+            Log::error('PayPal REST AI-pack initiate failed', [
+                'error'     => $e->getMessage(),
+                'type'      => get_class($e),
+                'tenant_id' => $tenant->id,
+            ]);
+            return back()->withErrors(['payment' => __('auth.register.payment_init_failed')]);
+        }
+    }
+
+    private function initiatePaypalRestForSeatPack(Tenant $tenant, int $seats, float $amount)
+    {
+        try {
+            $order = $this->paypal->createOrder(
+                amount:      $amount,
+                description: $seats . ' agent seats — ' . $tenant->name,
+                returnUrl:   route('payment.paypal.return'),
+                cancelUrl:   route('payment.paypal.cancel'),
+                metadata:    [
+                    'tenant_id'  => $tenant->id,
+                    'invoice_id' => 'seats_' . $tenant->id . '_' . time(),
+                ],
+            );
+
+            $approveUrl = $this->paypal->extractApproveUrl($order);
+            if (!$approveUrl) {
+                Log::error('PayPal seat create-order returned no approve link', [
+                    'order_id' => $order['id'] ?? null,
+                    'status'   => $order['status'] ?? null,
+                    'links'    => $order['links'] ?? [],
+                ]);
+                throw new \RuntimeException('PayPal approve URL not found in order response.');
+            }
+
+            TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => null,
+                'kind'            => TenantPayment::KIND_SEAT_PACK,
+                'amount'          => $amount,
+                'currency'        => config('services.paypal.currency', 'USD'),
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $order['id'] ?? null,
+                'status'          => 'pending',
+                'gateway_response'=> ['order' => $order],
+                'metadata'        => ['seats' => $seats],
+            ]);
+
+            return redirect($approveUrl);
+        } catch (\Throwable $e) {
+            Log::error('PayPal REST seat initiate failed', [
+                'error'     => $e->getMessage(),
+                'type'      => get_class($e),
+                'tenant_id' => $tenant->id,
+            ]);
+            return back()->withErrors(['payment' => __('auth.register.payment_init_failed')]);
         }
     }
 
