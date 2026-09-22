@@ -50,6 +50,21 @@
         @error('price_annual') <div class="form-error">{{ $message }}</div> @enderror
     </div>
 
+    {{-- PayPal NCP button URL — one per plan, created manually in the
+         PayPal merchant dashboard. When set, the checkout button links
+         straight to this URL (paypal.com/ncp/payment/XXX) instead of
+         going through the Orders API. Full-row because the value is
+         long. Leave blank to fall back to the dynamic Orders API flow. --}}
+    <div class="form-group" style="grid-column:1 / -1;">
+        <label class="form-label" for="paypal_ncp_link">{{ __('ui.plan_form_fields.paypal_ncp_link') }}</label>
+        <input id="paypal_ncp_link" type="url" name="paypal_ncp_link"
+               value="{{ old('paypal_ncp_link', $plan?->paypal_ncp_link) }}"
+               placeholder="https://www.paypal.com/ncp/payment/XXXXXXXX"
+               class="form-control @error('paypal_ncp_link') error @enderror">
+        <small class="form-help">{{ __('ui.plan_form_fields.paypal_ncp_link_hint') }}</small>
+        @error('paypal_ncp_link') <div class="form-error">{{ $message }}</div> @enderror
+    </div>
+
     <div class="form-group">
         <label class="form-label" for="max_users">{{ __('ui.plan_form_fields.max_users') }}</label>
         <input id="max_users" type="number" min="1" step="1" name="max_users" value="{{ old('max_users', $plan?->max_users) }}" class="form-control @error('max_users') error @enderror">

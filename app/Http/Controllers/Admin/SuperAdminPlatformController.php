@@ -1291,6 +1291,12 @@ class SuperAdminPlatformController extends Controller
             'ai_message_limit'            => 'nullable|integer|min:1|required_if:ai_messages_mode,limited',
             'is_active'                   => 'nullable|boolean',
 
+            // Static PayPal "No Code Payment" URL — one per plan, created in
+            // the PayPal merchant dashboard. When set, the checkout button
+            // links straight to this URL instead of going through the Orders
+            // API. Nullable + max 500 to match the DB column.
+            'paypal_ncp_link'             => 'nullable|url|max:500',
+
             // Per-plan free trial. A blank length falls back to the platform
             // default (config app.trial_days) inside Plan::trialDays().
             'trial_enabled'               => 'nullable|boolean',
@@ -1357,6 +1363,9 @@ class SuperAdminPlatformController extends Controller
             'trial_days'                  => $trialEnabled && !empty($data['trial_days'])
                 ? (int) $data['trial_days']
                 : null,
+            // Blank input becomes NULL so the checkout controller can gate
+            // on `$plan->paypal_ncp_link ?? null` without treating "" as set.
+            'paypal_ncp_link'             => trim((string) ($data['paypal_ncp_link'] ?? '')) ?: null,
         ];
     }
 

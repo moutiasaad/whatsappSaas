@@ -25,6 +25,15 @@
     $paypalReady = (bool) config('services.paypal.client_id')
         || (bool) config('services.paypal.payee_email');
 
+    // Static NCP link mode — only valid for plan subscriptions, since
+    // pack/seat/cart amounts vary per quantity and an NCP link is a
+    // fixed-amount PayPal button. If set, the checkout button links
+    // straight to the paypal.com/ncp/payment/XXX URL and skips the
+    // Orders API flow entirely (manual reconciliation on the operator).
+    $ncpLink = (!$isPack && !$isSeat && !$isCart)
+        ? ($plan?->paypal_ncp_link ?? null)
+        : null;
+
     // Hidden fields the initiate endpoint needs to reprice the order server
     // side. Kind drives which branch of PaymentController::initiatePaypal runs.
     $initiateFields = array_filter(match (true) {
@@ -428,7 +437,18 @@
                         <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    @if($paypalReady)
+                    @if($ncpLink)
+                        {{-- NCP mode: super-admin set a paypal.com/ncp/payment/XXX
+                             URL on this plan. Button links straight there —
+                             no Orders API call, no server round-trip, no
+                             dynamic pricing. Manual reconciliation via the
+                             PayPal dashboard. --}}
+                        <a href="{{ $ncpLink }}" class="btn-paypal" rel="noopener">
+                            <i class="ri-paypal-fill"></i>
+                            {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
+                        </a>
+                        <p class="payhint">{{ __('ui.payment_page.paypal_ncp_hint') }}</p>
+                    @elseif($paypalReady)
                         {{-- Single "Pay with PayPal" button for every kind
                              (plan / cart / seats / AI pack). POSTs to
                              /payment/paypal/initiate; the controller picks

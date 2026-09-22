@@ -9,6 +9,7 @@ class Plan extends Model
 {
     protected $fillable = [
         'name', 'stripe_price_id_monthly', 'stripe_price_id_annual',
+        'paypal_ncp_link',
         'price_monthly', 'price_annual', 'max_users', 'max_instances',
         'max_conversations_per_month', 'ai_included', 'ai_message_quota',
         'reservations_enabled', 'features', 'is_active',

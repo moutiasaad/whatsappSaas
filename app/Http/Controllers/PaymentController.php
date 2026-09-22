@@ -348,8 +348,21 @@ class PaymentController extends Controller
         $sessionId = $request->query('session_id');
         $orderId   = $request->query('token'); // PayPal returns ?token={ORDER_ID}
 
+        // NCP return: paypal.com/ncp/payment/XXX can be configured with a
+        // return URL in the PayPal merchant dashboard. We surface an amber
+        // "payment received — pending manual reconciliation" state so the
+        // buyer isn't left staring at the generic success screen wondering
+        // if it went through.
+        $isNcp = $request->boolean('ncp');
+
         if (!$sessionId && !$orderId) {
-            return view('payment.success', ['tenant' => null, 'plan' => null, 'payment' => null, 'redirectToDash' => false]);
+            return view('payment.success', [
+                'tenant'         => null,
+                'plan'           => null,
+                'payment'        => null,
+                'redirectToDash' => false,
+                'isNcp'          => $isNcp,
+            ]);
         }
 
         $payment = $sessionId
