@@ -225,6 +225,14 @@ class BillingApiController extends Controller
      */
     private function checkoutPaypal($tenant, Plan $plan, int $userId, array $priced): JsonResponse
     {
+        // Guard against local currencies PayPal's Orders API doesn't take
+        // (e.g. TND, DZD, MAD): sending them earns a 422
+        // UNPROCESSABLE_ENTITY / CURRENCY_NOT_SUPPORTED, which the branch
+        // catch renders as a generic "Could not initialize payment" with
+        // no way forward for the buyer. Fall back to the plan's base USD
+        // price so the checkout completes, and log the swap for audit.
+        $priced = PayPalService::compatiblePricing($plan, $priced, $tenant->id);
+
         // credentialsValid() proves the OAuth creds work by fetching a token
         // (6s + cache). Config presence alone is not enough — a box with a
         // half-configured PAYPAL_CLIENT_ID/SECRET pair returns REST 401s

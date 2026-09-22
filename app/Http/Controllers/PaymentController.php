@@ -1512,6 +1512,15 @@ class PaymentController extends Controller
         // charge; baseAmount is shown in parens next to the local amount
         // so the visitor always sees the USD reference.
         $priced = $plan->priceFor(view()->shared('visitorCountry') ?? null, 'monthly');
+
+        // The marketing checkout only offers PayPal today. When the visitor's
+        // local currency isn't on PayPal's supported-currency list (TND, DZD,
+        // MAD, ...), PayPal Orders API rejects the order with 422
+        // CURRENCY_NOT_SUPPORTED and the buyer sees the generic "Could not
+        // initialize payment". Swap the display + the eventual charge to
+        // USD BEFORE rendering so what the buyer sees matches what they get
+        // billed — the API side does the same swap defensively.
+        $priced     = \App\Services\PayPalService::compatiblePricing($plan, $priced, (int) $tenant->id);
         $baseAmount = (float) $plan->price_monthly;
 
         return view('payment.checkout-marketing', [

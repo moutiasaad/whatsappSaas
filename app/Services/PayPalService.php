@@ -9,6 +9,74 @@ use RuntimeException;
 
 class PayPalService
 {
+    /**
+     * Currencies PayPal accepts on the Orders v2 API without account-level
+     * restrictions. A checkout priced in anything else must fall back to
+     * base USD before hitting createOrder(), otherwise PayPal 422s with
+     * UNPROCESSABLE_ENTITY / CURRENCY_NOT_SUPPORTED and the buyer sees the
+     * generic "Could not initialize payment" message with no way forward.
+     *
+     * https://developer.paypal.com/api/rest/reference/currency-codes/
+     *
+     * INR and RUB are excluded — INR is domestic-only (Indian merchants
+     * receiving from Indian buyers), RUB is sanctions-restricted. Neither
+     * matches our merchant setup, so treating them as unsupported forces
+     * the safe USD fallback.
+     */
+    public const SUPPORTED_CURRENCIES = [
+        'AUD', 'BRL', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'HKD', 'HUF',
+        'ILS', 'JPY', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'SEK', 'SGD',
+        'THB', 'TWD', 'USD',
+    ];
+
+    public static function supportsCurrency(?string $code): bool
+    {
+        return $code !== null
+            && in_array(strtoupper($code), self::SUPPORTED_CURRENCIES, true);
+    }
+
+    /**
+     * Return a `$priced` array (same shape as Plan::priceFor()) that is
+     * safe to send to PayPal. When the localised currency isn't on
+     * PayPal's supported list, swap to the plan's base USD price and log
+     * the fallback for audit.
+     *
+     * Callers must treat the returned array as authoritative for BOTH the
+     * PayPal API call AND any persistence (TenantPayment.currency, view
+     * display), otherwise the buyer sees one price and gets charged
+     * another — a real bug, not just cosmetics.
+     *
+     * @param  array{amount?: float, currency?: string, symbol?: string, is_local?: bool}  $priced
+     * @return array{amount: float, currency: string, symbol: string, is_local: bool}
+     */
+    public static function compatiblePricing(\App\Models\Plan $plan, array $priced, ?int $tenantId = null): array
+    {
+        $currency = strtoupper((string) ($priced['currency'] ?? 'USD'));
+
+        if (self::supportsCurrency($currency)) {
+            return [
+                'amount'   => (float) ($priced['amount'] ?? 0),
+                'currency' => $currency,
+                'symbol'   => (string) ($priced['symbol'] ?? '$'),
+                'is_local' => (bool)   ($priced['is_local'] ?? false),
+            ];
+        }
+
+        Log::warning('PayPal cannot take local currency, falling back to USD', [
+            'tenant_id'      => $tenantId,
+            'plan_id'        => $plan->id,
+            'local_currency' => $currency,
+            'local_amount'   => (float) ($priced['amount'] ?? 0),
+        ]);
+
+        return [
+            'amount'   => (float) $plan->price_monthly,
+            'currency' => 'USD',
+            'symbol'   => '$',
+            'is_local' => false,
+        ];
+    }
+
     private string $baseUrl;
     private ?string $clientId;
     private ?string $clientSecret;
