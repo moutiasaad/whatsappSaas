@@ -76,30 +76,61 @@ class BillingApiController extends Controller
             return response()->json(['message' => 'No workspace attached to this token.'], 403);
         }
 
-        $plan = Plan::findOrFail($data['plan_id']);
+        // Outer safety net: any Throwable that bubbles out of the branch
+        // calls below (SsoHandoffCode singleton throwing on a missing
+        // WAVADESK_SHARED_SECRET, priceFor() blowing up on a stale country
+        // cache, PayPal SDK ctor issues, DB constraint on TenantPayment)
+        // becomes a Laravel-rendered JSON 502 with a log line the operator
+        // can grep for, instead of leaking as an HTTP 500 the marketing box
+        // logs as body:[]. Empty-body 502s on marketing's log line for this
+        // endpoint therefore point at the web-server / Cloudflare layer,
+        // not Laravel — a useful signal for the next round of diagnosis.
+        try {
+            $plan = Plan::findOrFail($data['plan_id']);
 
-        // Free plans have no checkout to initiate — the caller should have
-        // gone through /api/v1/plans/choose, which grants a $0 plan on the
-        // spot. Returning 422 rather than silently redirecting to /register
-        // (which the web PaymentController does) is deliberate: an API caller
-        // benefits from an explicit failure it can render inline.
-        if (! $plan->price_monthly || (float) $plan->price_monthly === 0.0) {
-            return response()->json([
-                'errors' => ['plan_id' => ['This plan is free — use /api/v1/plans/choose instead of billing/checkout.']],
-            ], 422);
+            // Free plans have no checkout to initiate — the caller should have
+            // gone through /api/v1/plans/choose, which grants a $0 plan on the
+            // spot. Returning 422 rather than silently redirecting to /register
+            // (which the web PaymentController does) is deliberate: an API
+            // caller benefits from an explicit failure it can render inline.
+            if (! $plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+                return response()->json([
+                    'errors' => ['plan_id' => ['This plan is free — use /api/v1/plans/choose instead of billing/checkout.']],
+                ], 422);
+            }
+
+            // Country resolution order: explicit body param → view()->shared
+            // value that DetectCountry seeded from the header/session/default.
+            // Either way Plan::priceFor() guarantees a safe USD fallback if
+            // the resolved code isn't a country we sell in.
+            $country = strtoupper((string) ($data['country'] ?? view()->shared('visitorCountry') ?? ''));
+            $priced  = $plan->priceFor($country, 'monthly');
+
+            Log::info('API v1 billing/checkout entered', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $plan->id,
+                'provider'  => $data['provider'],
+                'country'   => $country ?: null,
+                'currency'  => $priced['currency'] ?? null,
+                'amount'    => $priced['amount'] ?? null,
+            ]);
+
+            return match ($data['provider']) {
+                'stripe' => $this->checkoutStripe($tenant, $plan, (int) $user->id, $priced),
+                'paypal' => $this->checkoutPaypal($tenant, $plan, (int) $user->id, $priced),
+            };
+        } catch (\Throwable $e) {
+            Log::error('API v1 billing/checkout crashed before gateway call', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $data['plan_id'] ?? null,
+                'provider'  => $data['provider'] ?? null,
+                'type'      => get_class($e),
+                'error'     => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+            ]);
+
+            return response()->json(['message' => 'Payment initiation failed.'], 502);
         }
-
-        // Country resolution order: explicit body param → view()->shared value
-        // that DetectCountry seeded from the header/session/default. Either way
-        // Plan::priceFor() guarantees a safe USD fallback if the resolved code
-        // isn't a country we sell in.
-        $country = strtoupper((string) ($data['country'] ?? view()->shared('visitorCountry') ?? ''));
-        $priced  = $plan->priceFor($country, 'monthly');
-
-        return match ($data['provider']) {
-            'stripe' => $this->checkoutStripe($tenant, $plan, (int) $user->id, $priced),
-            'paypal' => $this->checkoutPaypal($tenant, $plan, (int) $user->id, $priced),
-        };
     }
 
     /**
@@ -219,12 +250,15 @@ class BillingApiController extends Controller
         $currency = strtoupper((string) $priced['currency']);
         $baseUsd  = (float) $plan->price_monthly;
 
-        // Same rationale as the Stripe branch: PayPal returns to core, and the
-        // marketing app never opened a session there, so bake an SSO code into
-        // the return URL to auto-log the buyer in on landing.
-        $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
-
         try {
+            // Same rationale as the Stripe branch: PayPal returns to core,
+            // and the marketing app never opened a session there, so bake
+            // an SSO code into the return URL to auto-log the buyer in on
+            // landing. Kept inside try/catch so a missing WAVADESK_SHARED_SECRET
+            // (SsoHandoffCode singleton ctor throws RuntimeException) surfaces
+            // as a Laravel-rendered JSON 502 instead of a raw 500.
+            $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
+
             $order = $this->paypal->createOrder(
                 amount:      $amount,
                 description: $plan->name . ' — ' . $tenant->name,
@@ -267,7 +301,9 @@ class BillingApiController extends Controller
             Log::error('API v1 billing/checkout PayPal REST failed', [
                 'tenant_id' => $tenant->id,
                 'plan_id'   => $plan->id,
+                'type'      => get_class($e),
                 'error'     => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
             ]);
 
             return response()->json(['message' => 'Payment initiation failed.'], 502);
@@ -288,44 +324,59 @@ class BillingApiController extends Controller
         $baseUsd   = (float) $plan->price_monthly;
         $invoiceId = 'tenant_' . $tenant->id . '_' . time();
 
-        $payment = TenantPayment::create([
-            'tenant_id'       => $tenant->id,
-            'plan_id'         => $plan->id,
-            'amount'          => $amount,
-            'currency'        => $currency,
-            'base_amount_usd' => $baseUsd,
-            'payment_method'  => 'paypal',
-            'paypal_order_id' => $invoiceId,
-            'status'          => 'pending',
-            'gateway_response'=> ['mode' => 'standard'],
-        ]);
+        try {
+            $payment = TenantPayment::create([
+                'tenant_id'       => $tenant->id,
+                'plan_id'         => $plan->id,
+                'amount'          => $amount,
+                'currency'        => $currency,
+                'base_amount_usd' => $baseUsd,
+                'payment_method'  => 'paypal',
+                'paypal_order_id' => $invoiceId,
+                'status'          => 'pending',
+                'gateway_response'=> ['mode' => 'standard'],
+            ]);
 
-        $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
+            // Inside try/catch so a missing WAVADESK_SHARED_SECRET can't
+            // slip past this branch as a raw 500. Same rationale as the
+            // REST branch above.
+            $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
 
-        $params = $this->paypalStd->buildCheckoutParams(
-            amount:        $amount,
-            itemName:      $plan->name . ' — ' . $tenant->name,
-            invoiceId:     $invoiceId,
-            returnUrl:     route('payment.success', ['token' => $invoiceId, 'sso' => $sso]),
-            cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
-            notifyUrl:     route('payment.paypal.ipn'),
-            customPayload: (string) $payment->id,
-            currency:      $currency,
-        );
+            $params = $this->paypalStd->buildCheckoutParams(
+                amount:        $amount,
+                itemName:      $plan->name . ' — ' . $tenant->name,
+                invoiceId:     $invoiceId,
+                returnUrl:     route('payment.success', ['token' => $invoiceId, 'sso' => $sso]),
+                cancelUrl:     route('payment.paypal.cancel', ['token' => $invoiceId]),
+                notifyUrl:     route('payment.paypal.ipn'),
+                customPayload: (string) $payment->id,
+                currency:      $currency,
+            );
 
-        return response()->json([
-            // Standard mode is a form POST, not a straight 302. The caller
-            // must render an auto-submit form with these params — a plain
-            // redirect will not carry the fields.
-            'redirect_url'    => $this->paypalStd->getCheckoutUrl(),
-            'redirect_form'   => $params,
-            'method'          => 'POST',
-            'provider'        => 'paypal',
-            'payment_id'      => $payment->id,
-            'currency'        => $currency,
-            'amount'          => $amount,
-            'base_amount_usd' => $baseUsd,
-        ]);
+            return response()->json([
+                // Standard mode is a form POST, not a straight 302. The caller
+                // must render an auto-submit form with these params — a plain
+                // redirect will not carry the fields.
+                'redirect_url'    => $this->paypalStd->getCheckoutUrl(),
+                'redirect_form'   => $params,
+                'method'          => 'POST',
+                'provider'        => 'paypal',
+                'payment_id'      => $payment->id,
+                'currency'        => $currency,
+                'amount'          => $amount,
+                'base_amount_usd' => $baseUsd,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API v1 billing/checkout PayPal Standard failed', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $plan->id,
+                'type'      => get_class($e),
+                'error'     => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+            ]);
+
+            return response()->json(['message' => 'Payment initiation failed.'], 502);
+        }
     }
 
     /**
