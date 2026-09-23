@@ -41,8 +41,20 @@
     var LS_TIP   = 'wvch:v1:tip:'   + CONFIG.key;
     var LS_HUMAN = 'wvch:v1:human:' + CONFIG.key;
     var LS_SOUND = 'wvch:v1:sound:' + CONFIG.key;
+    var LS_WIDGET = 'wvch:v1:widget:' + CONFIG.key;
     function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+
+    // Prior-session cached widget config — used as the initial paint so
+    // returning visitors don't see the launcher flash from default blue
+    // to the tenant's theme_color while /session is in flight. Refreshed
+    // on every successful session; a schema drift just re-hydrates it.
+    function cachedWidget() {
+        var raw = lsGet(LS_WIDGET);
+        if (!raw) return null;
+        try { var w = JSON.parse(raw); return (w && typeof w === 'object') ? w : null; }
+        catch (e) { return null; }
+    }
 
     // ── Language auto-detect (respects tenant's enabled list) ─────────
     // Priority: localStorage → tenant defaultLang → embed defaultLang → html
@@ -244,9 +256,16 @@
     }
 
     // ── State ─────────────────────────────────────────────────────────
+    // availableLangs / lang are seeded from the cached widget config (when
+    // one is present) so the launcher hint on first paint speaks the right
+    // language — otherwise ar/en fallback and detectLang() decide.
+    var _cachedWidgetForBoot = cachedWidget();
+    var _cachedLangs = (_cachedWidgetForBoot && Array.isArray(_cachedWidgetForBoot.available_languages))
+        ? _cachedWidgetForBoot.available_languages.filter(function (l) { return SUPPORTED.indexOf(l) !== -1; })
+        : null;
     var S = {
-        lang:          detectLang(),
-        availableLangs: ['ar', 'en'],   // hydrated from widget config on boot
+        lang:          detectLang(_cachedLangs || null, _cachedWidgetForBoot && _cachedWidgetForBoot.default_lang),
+        availableLangs: (_cachedLangs && _cachedLangs.length) ? _cachedLangs : ['ar', 'en'],
         open:          lsGet(LS_OPEN) === '1',
         unreadCount:   Math.max(0, parseInt(lsGet(LS_UNREAD) || '0', 10) || 0),
         booted:        false,
@@ -254,7 +273,8 @@
         view:          'welcome',           // welcome | prechat | chat | leaving | closed | offline
         visitorToken:  lsGet(LS_TOKEN),
         convUuid:      lsGet(LS_CONV),
-        widget:        null,
+        widget:        cachedWidget(),
+        widgetCached:  cachedWidget() != null,
         reverb:        null,
         runtime:       null,
         status:        null,                // bot | pending | assigned | closed
@@ -346,6 +366,11 @@
                 S.reverb  = data.reverb  || null;
                 S.runtime = data.runtime || null;
                 lsSet(LS_TOKEN, S.visitorToken);
+                // Cache the fresh widget config so the next page load's
+                // first paint already has the tenant's theme_color / logo
+                // / position instead of the default blue circle flash.
+                try { lsSet(LS_WIDGET, JSON.stringify(S.widget)); } catch (e) {}
+                S.widgetCached = true;
 
                 // Hydrate language config from the widget payload. If the
                 // tenant only enabled one language, the toggle button is
@@ -2175,8 +2200,13 @@
     // just after the visitor clicks. Also stops the "auto-open then auto-
     // close" flash: previously LS_OPEN=1 opened the panel, and any session
     // failure in the .catch slammed S.open back to false and re-rendered.
+    //
+    // Returning visitors also get the cached widget config applied to the
+    // launcher BEFORE first render, so there's no default-blue → tenant-
+    // color flash while /session is in flight.
     function boot() {
         ensureRoot();
+        if (S.widgetCached) applyThemeFromWidget();
         render();
         ensureSession()
             .then(function () {
