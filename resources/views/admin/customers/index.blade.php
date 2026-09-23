@@ -169,9 +169,17 @@
                                     </td>
                                 @endif
                                 <td>
+                                    {{-- Phone cell: flag emoji (when the prefix resolves) + space-grouped
+                                         E.164 number, wrapped in a click-to-copy control. `.phone-cell`
+                                         + `.phone-copy` styles are near the bottom of this view. --}}
                                     <template x-if="customer.phone_kind === 'phone'">
-                                        <span style="font-size:.875rem;font-family:monospace;color:var(--text-secondary)"
-                                              x-text="customer.display_phone"></span>
+                                        <button type="button" class="phone-cell"
+                                                @click.stop="copyPhone(customer.display_phone, $event)"
+                                                :title="customer.display_phone + ' — click to copy'">
+                                            <span x-show="customer.phone_flag" class="phone-flag" x-text="customer.phone_flag"></span>
+                                            <span class="phone-number" x-text="customer.phone_formatted || customer.display_phone"></span>
+                                            <i class="ri-file-copy-line phone-copy"></i>
+                                        </button>
                                     </template>
                                     <template x-if="customer.phone_kind === 'lid'">
                                         <span class="badge badge-gray" style="font-family:inherit;"
@@ -362,6 +370,33 @@ function customersPage() {
         initials(customer) {
             const s = customer.display_name || customer.display_phone || '?';
             return s.slice(0, 2).toUpperCase();
+        },
+
+        // One-shot copy for a phone cell. Falls back to a hidden textarea +
+        // execCommand when navigator.clipboard isn't available (older Safari,
+        // insecure origin). Visual feedback swaps the copy icon to a checkmark
+        // for 1.2s so the operator sees the copy landed.
+        async copyPhone(text, ev) {
+            if (!text) return;
+            try {
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                    document.body.appendChild(ta); ta.select();
+                    document.execCommand('copy'); document.body.removeChild(ta);
+                }
+                const icon = ev?.currentTarget?.querySelector?.('.phone-copy');
+                if (icon) {
+                    icon.classList.remove('ri-file-copy-line');
+                    icon.classList.add('ri-check-line', 'phone-copy-ok');
+                    setTimeout(() => {
+                        icon.classList.remove('ri-check-line', 'phone-copy-ok');
+                        icon.classList.add('ri-file-copy-line');
+                    }, 1200);
+                }
+            } catch { /* swallow — nothing to escalate on a copy failure */ }
         },
 
         timeAgo(ts) {
