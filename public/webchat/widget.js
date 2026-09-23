@@ -2170,18 +2170,24 @@
     }
 
     // ── Boot ──────────────────────────────────────────────────────────
+    // Hydrate S.widget on every page load so the launcher paints with the
+    // tenant's real theme_color / position / topics on first render — not
+    // just after the visitor clicks. Also stops the "auto-open then auto-
+    // close" flash: previously LS_OPEN=1 opened the panel, and any session
+    // failure in the .catch slammed S.open back to false and re-rendered.
     function boot() {
         ensureRoot();
         render();
-        // Auto-open respects a stored open state or the `startOpen` config knob
-        if (!S.open && CONFIG.startOpen === true) {
-            S.open = true;
-            lsSet(LS_OPEN, '1');
-        }
-        if (S.open) {
-            render();
-            ensureSession().then(render).catch(function () { S.open = false; render(); });
-        }
+        ensureSession()
+            .then(function () {
+                // Auto-open respects a stored open state or the `startOpen` knob.
+                if (!S.open && CONFIG.startOpen === true) {
+                    S.open = true;
+                    lsSet(LS_OPEN, '1');
+                }
+                render();
+            })
+            .catch(function () { render(); });
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', boot);
