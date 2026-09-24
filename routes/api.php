@@ -101,6 +101,13 @@ if (Wavadesk::isCore()) {
             ->middleware(['auth:sanctum', 'throttle:10,1'])
             ->name('api.v1.billing.checkout');
 
+        // Asked by the marketing checkout before it renders, to find out
+        // whether this plan skips the page entirely. Read-only, so it can
+        // be called on a page view; throttled with the page, not the SDK.
+        Route::get('/ncp-handoff', [BillingApiController::class, 'ncpHandoff'])
+            ->middleware(['auth:sanctum', 'throttle:30,1'])
+            ->name('api.v1.billing.ncp-handoff');
+
         // PayPal SDK create-order / capture-order proxies for the marketing
         // checkout page. The SDK on wavadesk.com posts to
         // /payment/paypal/create-order and /payment/paypal/capture-order/{id}

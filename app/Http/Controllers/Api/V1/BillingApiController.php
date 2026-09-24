@@ -135,6 +135,74 @@ class BillingApiController extends Controller
     }
 
     /**
+     * Where a plan paid on a fixed PayPal page should send its buyer.
+     *
+     * The marketing checkout asks this before it renders anything: an NCP
+     * plan has nothing to choose on that page — one fixed PayPal page is the
+     * only way to pay it — so the buyer goes straight there instead of to a
+     * summary with a single button on it. Core has to answer because the
+     * link is signed with core's key and the session the return reads is
+     * core's.
+     *
+     * Deliberately free of side effects: no PayPal order, no payment row.
+     * It runs on a page view, and a page view must not leave a pending
+     * order behind every time someone opens the checkout.
+     */
+    public function ncpHandoff(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer', Rule::exists('plans', 'id')->where('is_active', true)],
+            'country' => ['nullable', 'string', 'size:2', 'alpha'],
+        ]);
+
+        $user   = $request->user();
+        $tenant = $user?->tenant;
+
+        if (! $tenant) {
+            return response()->json(['message' => 'No workspace attached to this token.'], 403);
+        }
+
+        try {
+            $plan    = Plan::findOrFail($data['plan_id']);
+            $country = strtoupper((string) ($data['country'] ?? view()->shared('visitorCountry') ?? ''));
+
+            // Priced exactly as the checkout branch prices it, so this
+            // answers the same question the button would have answered —
+            // including the localised-price refusal inside linkFor().
+            $priced = PayPalService::compatiblePricing($plan, $plan->priceFor($country, 'monthly'), $tenant->id);
+
+            $link = \App\Support\PaypalNcp::linkFor(
+                $plan,
+                (float) $priced['amount'],
+                false,
+                (string) $priced['currency'],
+            );
+
+            if (! $link) {
+                return response()->json(['ncp' => false]);
+            }
+
+            return response()->json([
+                'ncp'          => true,
+                'redirect_url' => URL::temporarySignedRoute(
+                    'payment.paypal.ncp.handoff',
+                    now()->addMinutes(30),
+                    ['plan' => $plan->id, 'sso' => app(SsoHandoffCode::class)->mint((int) $user->id, 1800)],
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('API v1 billing/ncp-handoff failed', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $data['plan_id'],
+                'error'     => $e->getMessage(),
+            ]);
+
+            // Answering "not NCP" degrades to the checkout page, which works.
+            return response()->json(['ncp' => false]);
+        }
+    }
+
+    /**
      * Stripe branch. Same shape as PaymentController::initiate — one
      * Checkout Session, one pending TenantPayment row keyed by the
      * session id so the webhook can settle it later.

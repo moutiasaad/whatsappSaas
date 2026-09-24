@@ -1744,6 +1744,25 @@ class PaymentController extends Controller
             return redirect()->route('register.plan');
         }
 
+        // An NCP plan has nothing to choose on this page: one fixed PayPal
+        // page is the only way to pay it, so the buyer goes straight there
+        // rather than to a summary with a single button on it — the same
+        // skip core's own checkout does. Core has to be the one to answer:
+        // the link is signed with its key, and the session its confirm URL
+        // reads is its own. A failure here just renders the page, which
+        // still works and still reaches PayPal through the button.
+        $visitorCountry = (string) (view()->shared('visitorCountry')
+            ?? session(\App\Http\Middleware\DetectCountry::SESSION_KEY, ''));
+
+        $ncp = app(\App\Services\WavadeskApi::class)
+            ->ncpHandoff($token, (int) $plan->id, $visitorCountry ?: null);
+
+        if (($ncp['ok'] ?? false)
+            && ($ncp['body']['ncp'] ?? false)
+            && !empty($ncp['body']['redirect_url'])) {
+            return redirect()->away((string) $ncp['body']['redirect_url']);
+        }
+
         // View expects Model-like access on $tenant + $admin — wrap the
         // session arrays so we don't have to touch the Blade.
         $tenant = (object) [

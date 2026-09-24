@@ -150,6 +150,24 @@ class WavadeskApi
     }
 
     /**
+     * GET /api/v1/billing/ncp-handoff — does this plan skip the checkout page?
+     *
+     * Read-only on core's side. Answers `{ncp: false}` or `{ncp: true,
+     * redirect_url}`, where the URL is core-signed and short-lived. Kept on
+     * the default timeout: it touches no payment gateway, so the long PayPal
+     * budget would only delay the page when core is unwell.
+     */
+    public function ncpHandoff(string $token, int $planId, ?string $country = null): array
+    {
+        $query = http_build_query(array_filter([
+            'plan_id' => $planId,
+            'country' => $country,
+        ], fn ($v) => $v !== null && $v !== ''));
+
+        return $this->call('get', '/api/v1/billing/ncp-handoff?' . $query, [], $token);
+    }
+
+    /**
      * POST /api/v1/billing/paypal/create-order — SDK create-order proxy.
      *
      * The marketing checkout page mounts PayPal's SDK; the SDK's
