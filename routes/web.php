@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InboxController;
 use App\Http\Controllers\Admin\InstanceWebController;
+use App\Http\Controllers\Admin\OnboardingController;
 use App\Http\Controllers\Admin\KnowledgeController;
 use App\Http\Controllers\Admin\OtpServiceController;
 use App\Http\Controllers\Admin\ProfileController;
@@ -375,6 +376,17 @@ $registerPanelRoutes = function (string $prefix, string $namePrefix, array $role
             if (!$includeManagement) {
                 return;
             }
+
+            // First-run setup. Admin-only: it writes the workspace's WhatsApp
+            // connection, knowledge base and AI mode, none of which a super
+            // admin has a tenant for.
+            Route::middleware('role:admin')->group(function () {
+                Route::get('/get-started', [OnboardingController::class, 'show'])->name('onboarding.show');
+                Route::post('/get-started/skip', [OnboardingController::class, 'skip'])->name('onboarding.skip');
+                Route::post('/get-started/knowledge', [OnboardingController::class, 'knowledge'])->name('onboarding.knowledge');
+                Route::post('/get-started/knowledge/skip', [OnboardingController::class, 'skipKnowledge'])->name('onboarding.knowledge.skip');
+                Route::post('/get-started/ai', [OnboardingController::class, 'ai'])->name('onboarding.ai');
+            });
 
             // Management routes - admin and super admin only
             Route::middleware('role:admin,super_admin')->group(function () {

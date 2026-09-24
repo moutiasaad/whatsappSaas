@@ -9,6 +9,28 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
+    /**
+     * Has first-run setup stopped being the most useful page for an admin?
+     *
+     * True once they skip it, and once the three things it sets up are all
+     * true. Read from the rows themselves rather than a progress flag, so
+     * finishing a step on its own page counts for just as much.
+     */
+    public function onboardingSettled(): bool
+    {
+        if (data_get($this->settings, 'onboarding.skipped_at')) {
+            return true;
+        }
+
+        $linked = WhatsAppInstance::where('tenant_id', $this->id)
+            ->where('status', 'connected')
+            ->exists();
+
+        $knows = KnowledgeEntry::where('tenant_id', $this->id)->exists();
+
+        return $linked && $knows && ($this->aiSettings?->mode ?? 'off') !== 'off';
+    }
+
     protected $fillable = [
         'name', 'slug', 'subscription_status', 'subscription_starts_at', 'subscription_ends_at',
         'plan_id', 'trial_ends_at', 'stripe_id', 'settings', 'timezone', 'is_active',

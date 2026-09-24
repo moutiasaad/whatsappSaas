@@ -24,6 +24,14 @@ class DashboardController extends Controller
             return $this->superAdminDashboard();
         }
 
+        // A workspace with nothing connected has nothing to chart, so a new
+        // admin lands on setup instead of an empty dashboard — until they
+        // finish it or skip it, which is what stops this being a loop.
+        $setup = $user->routeNamePrefix() . '.onboarding.show';
+        if ($user->isAdmin() && \Illuminate\Support\Facades\Route::has($setup) && !$tenant->onboardingSettled()) {
+            return redirect()->route($setup);
+        }
+
         $days = (int) $request->query('range', 14);
         if (!in_array($days, self::RANGES, true)) {
             $days = 14;

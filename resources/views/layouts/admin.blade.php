@@ -1926,6 +1926,7 @@
                     [
                         'label' => __('ui.sidebar.workspace'),
                         'items' => [
+                            ['route' => 'onboarding.show',     'match' => ['onboarding.*'],     'icon' => 'ri-rocket-line',       'label' => __('ui.sidebar.get_started'), 'show' => $u->isAdmin()],
                             ['route' => 'dashboard',           'match' => ['dashboard'],        'icon' => 'ri-dashboard-3-line',  'label' => __('ui.dashboard')],
                             ['route' => 'inbox.index',         'match' => ['inbox.*', 'conversations.*'], 'icon' => 'ri-message-3-line', 'label' => __('ui.sidebar.inbox'), 'badge' => $poolCount, 'show' => !$isSA || $sp('conversations')],
                             // Customers stays for the roles that work cases day to day.
