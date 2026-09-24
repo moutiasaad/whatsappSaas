@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Country;
 use App\Models\PlanCountryPrice;
 use App\Models\PlatformSetting;
+use App\Services\Security\TurnstileConfig;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -28,6 +29,13 @@ class PlatformPreferencesApiController extends Controller
                 SuperAdminPlatformController::DEFAULT_LOCALE_KEY,
                 config('app.locale', 'en'),
             ),
+            // The signup challenge: whether to render the widget, and the
+            // public site key it needs. The secret deliberately stays here —
+            // marketing forwards the token to core, which verifies it.
+            'turnstile' => [
+                'enabled'  => TurnstileConfig::active(),
+                'site_key' => TurnstileConfig::siteKey(),
+            ],
         ]);
     }
 

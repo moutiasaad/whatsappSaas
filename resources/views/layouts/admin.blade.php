@@ -1910,6 +1910,7 @@
                             // Meta / Facebook Messenger platform credentials — App ID, App
                             // Secret, Verify Token, Graph version. Same permission gate as
                             // system health (both are cross-tenant ops-owned config).
+                            ['route' => 'platform.signup-protection',    'match' => ['platform.signup-protection*'],    'icon' => 'ri-shield-check-line',  'label' => __('ui.signup_protection.nav'),           'show' => $sp('platform_system_health')],
                             ['route' => 'platform.meta-settings',         'match' => ['platform.meta-settings*'],         'icon' => 'ri-messenger-line',     'label' => 'Meta / Messenger',                       'show' => $sp('platform_system_health')],
                             ['route' => 'platform.system-health',         'match' => ['platform.system-health*'],         'icon' => 'ri-pulse-line',         'label' => __('ui.sidebar.system_health'),           'show' => $sp('platform_system_health')],
                             ['route' => 'platform.legal-pages.index',     'match' => ['platform.legal-pages*'],           'icon' => 'ri-file-shield-2-line', 'label' => __('ui.sidebar.legal_pages'),             'show' => $sp('platform_legal_pages')],

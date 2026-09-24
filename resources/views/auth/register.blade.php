@@ -81,6 +81,27 @@
         @error('password')<div class="hint err">{{ $message }}</div>@enderror
     </div>
 
+    {{-- Cloudflare Turnstile, invisible by default.
+         `interaction-only` is what keeps it out of the way: the widget
+         occupies no space and asks nothing of an ordinary visitor, and only
+         draws a checkbox here when Cloudflare judges this particular request
+         worth challenging. That is also why it sits directly above the submit
+         button — on the rare occasion it does appear, it appears exactly where
+         the eye already is, rather than somewhere the visitor has scrolled
+         past.
+
+         The script writes its token into a hidden `cf-turnstile-response`
+         field inside this form, which the server checks on submit. --}}
+    @if($turnstile['enabled'] ?? false)
+        <div class="cf-turnstile"
+             data-sitekey="{{ $turnstile['site_key'] }}"
+             data-appearance="interaction-only"
+             data-theme="auto"
+             data-language="{{ str_replace('_', '-', app()->getLocale()) }}"
+             style="margin-bottom:14px"></div>
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endif
+
     <button class="cta" type="submit"><span class="sp"></span><span class="lbl">{{ __('auth.register.submit_btn') }}</span></button>
     <div class="ctahint">{{ __('auth.register.submit_hint', ['days' => $trialDays]) }}</div>
 

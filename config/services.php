@@ -53,6 +53,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cloudflare Turnstile
+    |--------------------------------------------------------------------------
+    |
+    | Fallback only. The live values are in platform_settings, editable by the
+    | super admin (Control panel -> Platform -> Signup protection), so these
+    | exist for a fresh box and for a rollback to an env-only setup.
+    |
+    */
+    'turnstile' => [
+        'enabled'    => env('TURNSTILE_ENABLED', false),
+        'site_key'   => env('TURNSTILE_SITE_KEY', ''),
+        'secret_key' => env('TURNSTILE_SECRET_KEY', ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Google Tag Manager
     |--------------------------------------------------------------------------
     |

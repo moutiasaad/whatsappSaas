@@ -43,7 +43,12 @@ class RegisterController extends Controller
         $trialDays = $plans->first(fn (Plan $p) => $p->hasTrial())?->trialDays()
             ?? (int) config('app.trial_days', 7);
 
-        return view('auth.register', compact('intendedPlan', 'trialDays'));
+        // Invisible unless Cloudflare decides this visitor needs a checkbox.
+        // On marketing this is a cached read of core's setting; on core it is
+        // the setting itself.
+        $turnstile = \App\Services\Security\Turnstile::frontend();
+
+        return view('auth.register', compact('intendedPlan', 'trialDays', 'turnstile'));
     }
 
     // ── Step 1 submit: create the workspace ─────────────────────────────────
@@ -64,6 +69,14 @@ class RegisterController extends Controller
         // browser is handed off to app.wavadesk.com already signed in.
         if (Wavadesk::isMarketing()) {
             return $this->storeViaCoreApi($request);
+        }
+
+        // Before the transaction and before any lookup: a bot should cost us
+        // one HTTP call to Cloudflare, not a slug generation and a write.
+        if (! \App\Services\Security\Turnstile::passes($request->input(\App\Services\Security\Turnstile::FIELD), $request->ip())) {
+            return back()
+                ->withInput($request->except('password'))
+                ->withErrors(['general' => __('auth.register.challenge_failed')]);
         }
 
         $request->validate([
@@ -253,6 +266,11 @@ class RegisterController extends Controller
             'password'     => 'required|string|min:8',
             'plan_id'      => 'nullable|integer',
         ]);
+
+        // The token travels with the signup rather than being checked here:
+        // wavadesk.com never holds the secret key, and the box that writes the
+        // user row is the one that should decide whether to write it.
+        $data[\App\Services\Security\Turnstile::FIELD] = (string) $request->input(\App\Services\Security\Turnstile::FIELD, '');
 
         $result = app(WavadeskApi::class)->register($data);
 

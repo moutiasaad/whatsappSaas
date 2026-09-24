@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Services\Security\Turnstile;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\Tenant;
@@ -42,6 +43,17 @@ class AuthApiController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
+        // The signup form lives on the marketing host, which forwards the
+        // visitor's challenge token rather than checking it: the secret key
+        // belongs on the box that owns the users table, and this is that box.
+        // A 422 keyed on `general` is what the marketing form knows how to
+        // put in front of the visitor.
+        if (! Turnstile::passes($request->input(Turnstile::FIELD), $request->ip())) {
+            return response()->json([
+                'errors' => ['general' => [__('auth.register.challenge_failed')]],
+            ], 422);
+        }
+
         $data = $request->validate([
             'company_name' => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',

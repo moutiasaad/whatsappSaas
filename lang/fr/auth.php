@@ -125,6 +125,7 @@ return [
         'plan_cta_trial_hint'      => 'Gratuit pendant :days jours — rien n\'est débité avant, puis :price/mois.',
         'plan_cta_pay_hint'        => ':price/mois pour :plan. Le montant vous sera présenté avant le paiement.',
         'server_error'             => 'Une erreur est survenue. Veuillez réessayer.',
+        'challenge_failed'         => 'Nous n\'avons pas pu confirmer que vous êtes humain. Complétez la vérification et réessayez.',
         'otp_send_failed'          => "L'envoi du code de vérification a échoué. Veuillez réessayer.",
         'otp_email_saved_but_not_sent' => "Votre code de vérification a été enregistré, mais l'e-mail n'a pas pu être envoyé. Contactez le support si vous ne le recevez pas.",
         'session_expired'          => 'Votre session a expiré. Veuillez recommencer l\'inscription.',

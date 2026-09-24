@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Messenger\MetaConfig;
+use App\Services\Security\TurnstileConfig;
 use App\Support\AddonPricing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -969,6 +970,59 @@ class SuperAdminPlatformController extends Controller
         );
 
         return back()->with('success', __('ui.platform_conversation_settings_page.saved'));
+    }
+
+    /**
+     * Signup protection — Cloudflare Turnstile on the register form.
+     *
+     * A switch and two keys, editable here so the challenge can be turned on
+     * the day the bots arrive and off again the day it gets in someone's way,
+     * without a deploy. The secret is write-only in the UI: the form shows a
+     * mask of what is stored and only ever accepts a replacement.
+     */
+    public function signupProtection()
+    {
+        return view('admin.platform.signup-protection', [
+            'enabled'      => TurnstileConfig::switchedOn(),
+            'active'       => TurnstileConfig::active(),
+            'siteKey'      => TurnstileConfig::siteKey(),
+            'secretSet'    => TurnstileConfig::secret() !== '',
+            'secretMask'   => TurnstileConfig::mask(TurnstileConfig::secret()),
+            'siteKeyInDb'  => TurnstileConfig::isStoredInDb(TurnstileConfig::KEY_SITE),
+            'secretInDb'   => TurnstileConfig::isStoredInDb(TurnstileConfig::KEY_SECRET),
+        ]);
+    }
+
+    public function updateSignupProtection(Request $request)
+    {
+        $data = $request->validate([
+            'enabled'    => ['nullable', 'boolean'],
+            // Turnstile site keys start 0x…; kept loose so a format change at
+            // Cloudflare does not lock the operator out of their own setting.
+            'site_key'   => ['nullable', 'string', 'max:255'],
+            'secret_key' => ['nullable', 'string', 'min:8', 'max:255'],
+        ], [
+            'secret_key.min' => __('ui.signup_protection.secret_too_short'),
+        ]);
+
+        TurnstileConfig::setEnabled((bool) ($data['enabled'] ?? false));
+
+        // Blank fields leave what is stored alone, so saving the switch does
+        // not wipe the keys — the same rule the Meta page follows.
+        if ($request->filled('site_key')) {
+            TurnstileConfig::setSiteKey($data['site_key']);
+        }
+        if ($request->filled('secret_key')) {
+            TurnstileConfig::setSecret($data['secret_key']);
+        }
+
+        AuditLog::record('platform.signup_protection.updated', null, [
+            'enabled'    => (bool) ($data['enabled'] ?? false),
+            'site_key'   => $request->filled('site_key'),
+            'secret_key' => $request->filled('secret_key'),
+        ]);
+
+        return back()->with('success', __('ui.signup_protection.saved'));
     }
 
     /**
