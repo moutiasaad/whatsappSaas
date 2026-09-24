@@ -32,6 +32,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -206,6 +207,7 @@
     </style>
 </head>
 <body>
+@include('partials.gtm-body')
 
 <nav>
     <a class="nav-back" href="{{ $backUrl }}">

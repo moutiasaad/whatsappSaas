@@ -4,6 +4,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -306,6 +307,7 @@ html[dir="rtl"] .backlink svg{transform:scaleX(-1)}
 @stack('head')
 </head>
 <body>
+@include('partials.gtm-body')
 <div class="app">
 
   <div class="nav">

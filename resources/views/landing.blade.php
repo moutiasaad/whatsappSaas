@@ -52,6 +52,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ __('landing.page_title') }}</title>
@@ -529,6 +530,7 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
 </style>
 </head>
 <body>
+@include('partials.gtm-body')
 
 {{-- ══════════ NAV ══════════ --}}
 <div class="nav"><div class="wrap in">

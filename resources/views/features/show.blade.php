@@ -65,6 +65,7 @@
 <!doctype html>
 <html lang="{{ $locale }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -107,6 +108,7 @@
 <script type="application/ld+json">{!! json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
 </head>
 <body>
+@include('partials.gtm-body')
 
 {{-- The locale switcher belongs here: these pages are translated, so a
      reader landing on one from search needs a way to change language. --}}

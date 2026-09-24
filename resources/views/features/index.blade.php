@@ -6,6 +6,7 @@
 <!doctype html>
 <html lang="{{ $locale }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ __('features.index_title') }}</title>
@@ -44,6 +45,7 @@
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
 </head>
 <body>
+@include('partials.gtm-body')
 
 @include('partials.marketing-nav', ['hideLocale' => false])
 

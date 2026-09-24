@@ -51,6 +51,22 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Tag Manager
+    |--------------------------------------------------------------------------
+    |
+    | One container for both hosts. The id is defaulted here rather than left
+    | to .env: marketing and core keep separate .env files and only one of the
+    | two is reachable from a deploy, so an env-only key would have tracked on
+    | one site and silently not on the other. Set GTM_ID to override per host,
+    | or to an empty value to switch the tags off on a box.
+    |
+    */
+    'gtm' => [
+        'id' => env('GTM_ID', 'GTM-WS2XL7ZL'),
+    ],
+
     'paypal' => [
         'mode'          => env('PAYPAL_MODE', 'sandbox'),
         'client_id'     => env('PAYPAL_CLIENT_ID'),

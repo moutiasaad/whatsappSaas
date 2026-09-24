@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ data_get(config('locales.supported', []), app()->getLocale() . '.rtl') ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') — {{ config('app.name', 'wavadesk') }}</title>
@@ -110,6 +111,7 @@
     </style>
 </head>
 <body>
+@include('partials.gtm-body')
 
 {{-- NAV --}}
 <nav>

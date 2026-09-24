@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ $currentLocale ?? app()->getLocale() }}" dir="{{ data_get(config('locales.supported', []), app()->getLocale() . '.rtl') ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -1720,7 +1721,8 @@
 
            Keyed off #mainWrap's own collapse class — the same signal that
            shifts the page content — so the bubble tracks the sidebar with no
-           listener of its own. #wvch-root is appended to <body> after
+           listener of its own. #wvch-root is appended to <body>
+@include('partials.gtm-body') after
            .main-wrap, hence the sibling combinator; the leading `html` is
            what outranks the widget's own `#wvch-root[...]` rules, which are
            injected into <head> after this stylesheet.

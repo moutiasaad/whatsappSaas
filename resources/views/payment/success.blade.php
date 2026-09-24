@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ data_get(config('locales.supported', []), app()->getLocale() . '.rtl') ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('auth.register.success_title', ['app' => config('app.name', 'WA Support')]) }}</title>
@@ -37,6 +38,7 @@
     </style>
 </head>
 <body>
+@include('partials.gtm-body')
 <div class="card">
     @if($isNcp ?? false)
         {{-- Static PayPal NCP link mode: we have no order id to reconcile,

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" dir="{{ data_get(config('locales.supported', []), app()->getLocale() . '.rtl') ? 'rtl' : 'ltr' }}">
 <head>
+@include('partials.gtm-head')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('auth.register.failed_title', ['app' => config('app.name', 'WA Support')]) }}</title>
@@ -30,6 +31,7 @@
     </style>
 </head>
 <body>
+@include('partials.gtm-body')
 <div class="card">
     <div class="icon-wrap">
         <svg width="36" height="36" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" viewBox="0 0 24 24">
