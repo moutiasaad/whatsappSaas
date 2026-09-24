@@ -445,6 +445,10 @@ html[dir="rtl"] .backlink svg{transform:scaleX(-1)}
 })();
 </script>
 @stack('scripts')
-@include('partials.wavadesk-chat-widget')
+{{-- No chat widget on the auth pages. Sign-in and sign-up are the two
+     screens where a floating bubble competes with the only thing on the
+     page, and it answers questions about the product to someone who is
+     already past deciding. It stays on the marketing pages and inside the
+     panel, which is where it gets asked anything. --}}
 </body>
 </html>
