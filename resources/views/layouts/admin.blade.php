@@ -1941,7 +1941,7 @@
                         'label' => __('ui.sidebar.management'),
                         'show'  => $u->isAdmin(),
                         'items' => [
-                            ['route' => 'instances.index', 'match' => ['instances.*'], 'icon' => 'ri-smartphone-line',    'label' => __('ui.sidebar.whatsapp_instances')],
+                            ['route' => 'instances.index', 'match' => ['instances.*'], 'icon' => 'ri-whatsapp-line',      'label' => __('ui.sidebar.whatsapp_instances')],
                             ['route' => 'teams.index',     'match' => ['teams.*'],     'icon' => 'ri-team-line',          'label' => __('ui.sidebar.teams'), 'show' => $modShow('teams'), 'locked' => $teased('teams')],
                             ['route' => 'users.index',     'match' => ['users.*'],     'icon' => 'ri-user-settings-line', 'label' => __('ui.sidebar.agents_users')],
                         ],
