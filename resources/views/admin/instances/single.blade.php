@@ -18,7 +18,6 @@
   --wa:#25a35a;--wa-d:#128c4a;--wa-50:#e9f7ee;
   --bd:#e6ebf0;--soft:#f7f9fa;--mut:#64748b;--mut-2:#94a3b8;--txt:#0f172a;
   --amber:#d97706;--amber-50:#fef3e2;--red:#dc2626;--red-50:#fef2f2;
-  max-width:1120px;
 }
 
 .wacon-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
@@ -34,7 +33,7 @@
 .wacon-pill.is-blocked .dot{background:var(--red)}
 @keyframes wacon-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
 
-.wacon-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px;align-items:start}
+.wacon-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);gap:18px;align-items:start}
 .wacon-card{background:#fff;border:1px solid var(--bd);border-radius:18px;padding:26px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
 .wacon-card h2{font-size:16px;font-weight:700;letter-spacing:-.01em;margin:0 0 6px}
 .wacon-card .sub{font-size:13px;color:var(--mut);margin:0 0 20px;line-height:1.6}

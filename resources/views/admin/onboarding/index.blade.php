@@ -18,7 +18,6 @@
   --bd:#e6ebf0;--bd-2:#cbd5e1;--soft:#f7f9fa;--soft-2:#eef2f5;
   --mut:#64748b;--mut-2:#94a3b8;--txt:#0f172a;
   --amber:#d97706;--amber-50:#fef3e2;--amber-100:#fcd9a4;--wa:#25a35a;
-  max-width:1180px;
 }
 
 /* ─── header ─── */
