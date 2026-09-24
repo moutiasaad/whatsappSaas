@@ -1709,6 +1709,65 @@
         .ai-mode-card p  { font-size: 11.5px; color: var(--text-secondary); }
 
         /* ============================================================
+           SUPPORT WIDGET vs SIDEBAR
+        ============================================================ */
+        /* The web-chat widget (partials/wavadesk-chat-widget) pins its
+           launcher, hint pill and panel to one edge of the viewport. In RTL
+           the rail is on that same edge, so the bubble sat on top of it.
+           Push the widget clear by exactly the rail's width, and only on the
+           side the rail is actually on: LTR clashes only with a left-hand
+           widget, RTL only with a right-hand one.
+
+           Keyed off #mainWrap's own collapse class — the same signal that
+           shifts the page content — so the bubble tracks the sidebar with no
+           listener of its own. #wvch-root is appended to <body> after
+           .main-wrap, hence the sibling combinator; the leading `html` is
+           what outranks the widget's own `#wvch-root[...]` rules, which are
+           injected into <head> after this stylesheet.
+
+           Desktop only: below 1025px the rail is off-canvas and owes the
+           bubble nothing, and the widget goes full-screen at 480px — both
+           would be broken by an offset. */
+        @media (min-width: 1025px) {
+            html:not([dir="rtl"]) .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='left'] .wvch-launcher,
+            html:not([dir="rtl"]) .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='left'] .wvch-panel {
+                left: calc(32px + var(--sidebar-width));
+            }
+            html:not([dir="rtl"]) .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='left'] .wvch-hint {
+                left: calc(104px + var(--sidebar-width));
+            }
+
+            html[dir="rtl"] .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='right'] .wvch-launcher,
+            html[dir="rtl"] .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='right'] .wvch-panel {
+                right: calc(32px + var(--sidebar-width));
+            }
+            html[dir="rtl"] .main-wrap:not(.sidebar-collapsed) ~ #wvch-root[data-position='right'] .wvch-hint {
+                right: calc(104px + var(--sidebar-width));
+            }
+
+            /* Slide with the rail on the same curve .main-wrap uses, instead
+               of teleporting when it collapses. Overriding `transition`
+               replaces the widget's own, so its values are repeated here —
+               they live in public/webchat/widget.js, launcher and hint. */
+            html #wvch-root .wvch-launcher {
+                transition: transform .18s ease,
+                            left 250ms cubic-bezier(.4,0,.2,1),
+                            right 250ms cubic-bezier(.4,0,.2,1);
+            }
+            html #wvch-root .wvch-hint {
+                transition: opacity .28s ease, transform .28s ease,
+                            left 250ms cubic-bezier(.4,0,.2,1),
+                            right 250ms cubic-bezier(.4,0,.2,1);
+            }
+            /* The panel animates in with @keyframes, not a transition, so it
+               has none of its own to preserve. */
+            html #wvch-root .wvch-panel {
+                transition: left 250ms cubic-bezier(.4,0,.2,1),
+                            right 250ms cubic-bezier(.4,0,.2,1);
+            }
+        }
+
+        /* ============================================================
            RESPONSIVE
         ============================================================ */
         /* Sidebar backdrop — hidden by default, only relevant on mobile.
