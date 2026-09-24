@@ -3132,6 +3132,13 @@
         btn.addEventListener('click', function () { pPanel?.classList.remove('open'); });
     })();
     </script>
-    @include('partials.wavadesk-chat-widget')
+    {{-- The support chat belongs on the tenant panels, where the person
+         reading the page is a customer who may need us. In the control panel
+         the reader IS us — the bubble would only ever put the platform owner
+         through to their own support queue, on top of a page that already has
+         a sidebar in that corner. --}}
+    @unless(auth()->user()?->isSuperAdmin())
+        @include('partials.wavadesk-chat-widget')
+    @endunless
 </body>
 </html>
