@@ -122,6 +122,72 @@
     <div class="bl-grid">
         <div class="bl-col">
 
+            {{-- ══════════ PLANS ══════════ --}}
+            <div class="card" id="plans">
+                <div class="bl-ch">
+                    <div class="m">
+                        <h3>{{ __('ui.tenant_billing.plans_title') }}</h3>
+                        <p>{{ __('ui.tenant_billing.plans_sub') }}</p>
+                    </div>
+                </div>
+                <div class="bl-cb">
+                    <div class="bl-plans">
+                        @foreach($plans as $i => $p)
+                        @php
+                            $isCurrent = $p->id === $currentId;
+                            $isPopular = $i === 1 && $plans->count() >= 2;
+                            $picked    = $p->landingAttributes();
+                        @endphp
+                        <button type="button"
+                                class="bl-plan"
+                                :class="{ sel: selectedPlan === {{ $p->id }} }"
+                                @click="selectPlan({{ $p->id }})"
+                                @if($isCurrent) data-current="1" @endif>
+                            <div class="tags">
+                                @if($isCurrent)<span class="tag cur">{{ __('ui.tenant_billing.tag_current') }}</span>
+                                @elseif($isPopular)<span class="tag pop">{{ __('landing.popular_short') }}</span>@endif
+                            </div>
+                            <div class="nm">{{ $p->name }}</div>
+                            <div class="pr">
+                                <b>${{ $price($p->price_monthly) }}</b>
+                                <span>{{ __('landing.plan_per_month') }}</span>
+                            </div>
+                            <div class="quo">
+                                <div class="q">
+                                    <div class="qv">{{ $p->max_users ? number_format($p->max_users) : '∞' }}</div>
+                                    <div class="ql">{{ __('ui.tenant_billing.q_users') }}</div>
+                                </div>
+                                <div class="q">
+                                    <div class="qv">{{ $p->ai_message_quota === null ? '∞' : number_format((int) $p->ai_message_quota) }}</div>
+                                    <div class="ql">{{ __('ui.tenant_billing.q_ai') }}</div>
+                                </div>
+                            </div>
+                            <div class="unl">
+                                <i class="ri-check-line"></i>
+                                <span>{{ __('landing.plan_unlimited_headline') }}</span>
+                            </div>
+                            @if($picked)
+                            <ul>
+                                @foreach($picked as $attr)
+                                    @php
+                                        $line = str_starts_with($attr, 'module:')
+                                            ? __('ui.plan_modules.' . substr($attr, 7))
+                                            : null;
+                                    @endphp
+                                    @if($line)<li><i class="ri-check-line"></i>{{ $line }}</li>@endif
+                                @endforeach
+                            </ul>
+                            @endif
+                            <span class="pick" :class="{ on: selectedPlan === {{ $p->id }} }">
+                                <template x-if="selectedPlan === {{ $p->id }}"><i class="ri-check-line"></i></template>
+                                <span x-text="selectedPlan === {{ $p->id }} ? @js(__('ui.tenant_billing.selected')) : @js($isCurrent ? __('ui.tenant_billing.renew_this') : __('ui.tenant_billing.choose_this'))"></span>
+                            </span>
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
             {{-- ══════════ USAGE ══════════ --}}
             <div class="card">
                 <div class="bl-ch">
@@ -211,72 +277,6 @@
                             </div>
                         </div>
 
-                    </div>
-                </div>
-            </div>
-
-            {{-- ══════════ PLANS ══════════ --}}
-            <div class="card" id="plans">
-                <div class="bl-ch">
-                    <div class="m">
-                        <h3>{{ __('ui.tenant_billing.plans_title') }}</h3>
-                        <p>{{ __('ui.tenant_billing.plans_sub') }}</p>
-                    </div>
-                </div>
-                <div class="bl-cb">
-                    <div class="bl-plans">
-                        @foreach($plans as $i => $p)
-                        @php
-                            $isCurrent = $p->id === $currentId;
-                            $isPopular = $i === 1 && $plans->count() >= 2;
-                            $picked    = $p->landingAttributes();
-                        @endphp
-                        <button type="button"
-                                class="bl-plan"
-                                :class="{ sel: selectedPlan === {{ $p->id }} }"
-                                @click="selectPlan({{ $p->id }})"
-                                @if($isCurrent) data-current="1" @endif>
-                            <div class="tags">
-                                @if($isCurrent)<span class="tag cur">{{ __('ui.tenant_billing.tag_current') }}</span>
-                                @elseif($isPopular)<span class="tag pop">{{ __('landing.popular_short') }}</span>@endif
-                            </div>
-                            <div class="nm">{{ $p->name }}</div>
-                            <div class="pr">
-                                <b>${{ $price($p->price_monthly) }}</b>
-                                <span>{{ __('landing.plan_per_month') }}</span>
-                            </div>
-                            <div class="quo">
-                                <div class="q">
-                                    <div class="qv">{{ $p->max_users ? number_format($p->max_users) : '∞' }}</div>
-                                    <div class="ql">{{ __('ui.tenant_billing.q_users') }}</div>
-                                </div>
-                                <div class="q">
-                                    <div class="qv">{{ $p->ai_message_quota === null ? '∞' : number_format((int) $p->ai_message_quota) }}</div>
-                                    <div class="ql">{{ __('ui.tenant_billing.q_ai') }}</div>
-                                </div>
-                            </div>
-                            <div class="unl">
-                                <i class="ri-check-line"></i>
-                                <span>{{ __('landing.plan_unlimited_headline') }}</span>
-                            </div>
-                            @if($picked)
-                            <ul>
-                                @foreach($picked as $attr)
-                                    @php
-                                        $line = str_starts_with($attr, 'module:')
-                                            ? __('ui.plan_modules.' . substr($attr, 7))
-                                            : null;
-                                    @endphp
-                                    @if($line)<li><i class="ri-check-line"></i>{{ $line }}</li>@endif
-                                @endforeach
-                            </ul>
-                            @endif
-                            <span class="pick" :class="{ on: selectedPlan === {{ $p->id }} }">
-                                <template x-if="selectedPlan === {{ $p->id }}"><i class="ri-check-line"></i></template>
-                                <span x-text="selectedPlan === {{ $p->id }} ? @js(__('ui.tenant_billing.selected')) : @js($isCurrent ? __('ui.tenant_billing.renew_this') : __('ui.tenant_billing.choose_this'))"></span>
-                            </span>
-                        </button>
-                        @endforeach
                     </div>
                 </div>
             </div>
@@ -771,12 +771,19 @@ function billingPage(cfg) {
 
     @media (max-width: 1160px) {
         .bl-grid { grid-template-columns: minmax(0,1fr); }
-        /* Stacked, the order is the journey: someone on this page came to
-           change plan, and usage is what they check afterwards to see
-           whether the new one fits. Beside each other that order does not
-           matter; in one column it is the difference between landing on
-           the plans and scrolling past a chart to find them. */
-        #plans { order: -1; }
+        /* Stacked, the summary follows the plans instead of trailing the
+           whole page: pick a plan, pay for it, and only then the things
+           you check afterwards — usage, capacity, card, invoices.
+
+           It cannot be done with `order` alone, because the summary is a
+           child of .bl-grid while the plans sit inside .bl-col — different
+           boxes. `display: contents` dissolves that box for this layout:
+           .bl-col's cards become grid items in their own right, so the
+           summary can sort ahead of them as one list. It also hands them
+           the grid's gap in place of the column's, which is why nothing
+           here re-states spacing. */
+        .bl-col { display: contents; }
+        #order-summary { order: -1; }
         /* Scrolled to from a plan tap — clear the sticky topbar. */
         #order-summary { scroll-margin-top: 78px; }
         .bl-sum { position: static; }
