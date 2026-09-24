@@ -459,14 +459,22 @@
 
                     @if($ncpLink)
                         {{-- NCP mode: super-admin set a paypal.com/ncp/payment/XXX
-                             URL on this plan. Button links straight there —
-                             no Orders API call, no server round-trip, no
-                             dynamic pricing. Manual reconciliation via the
-                             PayPal dashboard. --}}
-                        <a href="{{ $ncpLink }}" class="btn-paypal" rel="noopener">
-                            <i class="ri-paypal-fill"></i>
-                            {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
-                        </a>
+                             URL on this plan. No Orders API call and no dynamic
+                             pricing, but the POST goes through ncpStart() first
+                             so a pending payment row and a single-use session
+                             intent exist before the buyer leaves for PayPal —
+                             that intent is what lets the plan's confirm URL
+                             activate the subscription on the way back. --}}
+                        <form method="POST" action="{{ route('payment.paypal.ncp.start') }}"
+                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                            @csrf
+                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
+                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                            <button type="submit" class="btn-paypal">
+                                <i class="ri-paypal-fill"></i>
+                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => '$' . number_format($amount, 2)]) }}
+                            </button>
+                        </form>
                         <p class="payhint">{{ __('ui.payment_page.paypal_ncp_hint') }}</p>
                     @elseif($paypalReady)
                         {{-- Single "Pay with PayPal" button for every kind

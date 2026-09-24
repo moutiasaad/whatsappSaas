@@ -1060,6 +1060,7 @@ Always:
         'annual_price' => 'Annual Price',
         'paypal_ncp_link' => 'PayPal payment link',
         'paypal_ncp_link_hint' => 'Optional. Paste the PayPal NCP button URL (paypal.com/ncp/payment/XXX) you created in the merchant dashboard. When set, the checkout button links straight to this URL. Leave blank to use the platform-wide PAYPAL_NCP_LINK env, or the dynamic PayPal Orders API flow if that is also unset.',
+        'paypal_ncp_confirm_hint' => 'Return URL — paste this into the same PayPal payment link, under “after payment, take customers to this page”. It is what confirms the payment and switches the customer to this plan, so keep it private and do not reuse it on another plan:',
         'max_users' => 'Max Users',
         'max_instances' => 'Max Instances',
         'max_conversations_per_month' => 'Max Conversations / Month',

@@ -136,6 +136,19 @@ Route::post('/payment/paypal/initiate', [PaymentController::class, 'initiatePayp
 Route::post('/payment/paypal/standard', [PaymentController::class, 'paypalStandardStart'])
     ->name('payment.paypal.standard')
     ->middleware(['auth', ResolveTenant::class, 'role:admin']);
+// Static NCP link flow. The button POSTs to /ncp/start so a pending row and
+// a single-use session intent exist before the buyer leaves for paypal.com;
+// the confirm URL — pasted into that plan's NCP page in the PayPal dashboard
+// as its return URL — is what completes the row and activates the plan. Its
+// token is an HMAC of the plan id, so the URL is unguessable, and it lives in
+// the path rather than the query string so params PayPal may append cannot
+// invalidate it.
+Route::post('/payment/paypal/ncp/start', [PaymentController::class, 'ncpStart'])
+    ->name('payment.paypal.ncp.start');
+Route::get('/payment/paypal/ncp/confirm/{plan}/{token}', [PaymentController::class, 'ncpConfirm'])
+    ->name('payment.paypal.ncp.confirm')
+    ->whereNumber('plan')
+    ->where('token', '[A-Fa-f0-9]{64}');
 Route::get('/payment/paypal/return',    [PaymentController::class, 'paypalReturn'])->name('payment.paypal.return');
 Route::get('/payment/paypal/cancel',    [PaymentController::class, 'paypalCancel'])->name('payment.paypal.cancel');
 Route::post('/payment/paypal/webhook',  [PaymentController::class, 'paypalWebhook'])->name('payment.paypal.webhook')->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

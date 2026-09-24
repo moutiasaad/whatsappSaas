@@ -63,6 +63,17 @@
                class="form-control @error('paypal_ncp_link') error @enderror">
         <small class="form-help">{{ __('ui.plan_form_fields.paypal_ncp_link_hint') }}</small>
         @error('paypal_ncp_link') <div class="form-error">{{ $message }}</div> @enderror
+
+        {{-- The other half of the pair: this goes in the PayPal page's own
+             "return to site" field, and it is what confirms the plan when the
+             buyer comes back. Only shown for a saved plan, since the URL is
+             derived from its id. --}}
+        @if($plan?->id)
+            <small class="form-help" style="margin-top:8px;display:block;">
+                {{ __('ui.plan_form_fields.paypal_ncp_confirm_hint') }}
+                <code style="user-select:all;word-break:break-all;display:block;margin-top:4px;">{{ $plan->paypal_ncp_confirm_url }}</code>
+            </small>
+        @endif
     </div>
 
     <div class="form-group">

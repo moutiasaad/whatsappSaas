@@ -1060,6 +1060,7 @@ Toujours :
         'annual_price' => 'Prix annuel',
         'paypal_ncp_link' => 'Lien de paiement PayPal',
         'paypal_ncp_link_hint' => 'Facultatif. Collez l\'URL du bouton PayPal NCP (paypal.com/ncp/payment/XXX) créé dans le tableau de bord marchand. Si défini, le bouton de paiement redirige directement vers cette URL. Laissez vide pour utiliser la variable PAYPAL_NCP_LINK de la plateforme, ou le flux dynamique PayPal Orders API si celle-ci est également vide.',
+        'paypal_ncp_confirm_hint' => 'URL de retour — collez-la dans le même lien de paiement PayPal, sous « après le paiement, rediriger le client vers cette page ». C\'est elle qui confirme le paiement et bascule le client sur ce plan : gardez-la privée et ne la réutilisez pas sur un autre plan :',
         'max_users' => 'Utilisateurs max',
         'max_instances' => 'Instances max',
         'max_conversations_per_month' => 'Conversations max / mois',

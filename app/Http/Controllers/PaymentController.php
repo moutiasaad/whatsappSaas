@@ -18,6 +18,12 @@ use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
+    /** Session key holding the single-use intent behind an NCP checkout. */
+    private const NCP_INTENT = '_paypal_ncp_intent';
+
+    /** How long that intent stays good while the buyer is on PayPal. */
+    private const NCP_INTENT_TTL = 7200;
+
     public function __construct(
         private StripeService $stripe,
         private PayPalService $paypal,
@@ -970,6 +976,140 @@ class PaymentController extends Controller
             'action' => $this->paypalStd->getCheckoutUrl(),
             'params' => $params,
         ]);
+    }
+
+    /**
+     * Hand a plan buyer over to that plan's static PayPal NCP page.
+     *
+     * The button used to link straight to paypal.com, which left no record of
+     * the attempt and nothing to complete when the buyer came back. Going
+     * through here first writes the pending row the confirm URL later
+     * completes, and stashes a single-use intent in the session: the confirm
+     * URL on its own activates nothing, so a buyer who bookmarks it — or
+     * passes it on — cannot replay the upgrade.
+     */
+    public function ncpStart(Request $request)
+    {
+        $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
+            'plan_id'   => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
+        ]);
+
+        $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
+        $plan   = Plan::findOrFail($request->plan_id);
+
+        if (!$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return redirect()->route('register');
+        }
+
+        $link = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
+        abort_unless($link, 404);
+
+        $payment = TenantPayment::create([
+            'tenant_id'       => $tenant->id,
+            'plan_id'         => $plan->id,
+            'kind'            => TenantPayment::KIND_SUBSCRIPTION,
+            'amount'          => round((float) $plan->price_monthly, 2),
+            'currency'        => config('services.paypal.currency', 'USD'),
+            'payment_method'  => 'paypal',
+            // NCP creates no PayPal order, so this stands in as the key the
+            // success page looks the row up by.
+            'paypal_order_id' => 'ncp_' . $tenant->id . '_' . time(),
+            'status'          => 'pending',
+            // `verified` stays false for the life of the row: nothing here ever
+            // confirms the money with PayPal. It is the flag to reconcile on.
+            'gateway_response'=> ['mode' => 'ncp', 'verified' => false],
+        ]);
+
+        $request->session()->put(self::NCP_INTENT, [
+            'payment_id' => $payment->id,
+            'plan_id'    => $plan->id,
+            'tenant_id'  => $tenant->id,
+            'at'         => now()->timestamp,
+        ]);
+
+        Log::info('PayPal NCP checkout started', [
+            'tenant_id'  => $tenant->id,
+            'plan_id'    => $plan->id,
+            'payment_id' => $payment->id,
+            'amount'     => (float) $payment->amount,
+        ]);
+
+        return redirect()->away($link);
+    }
+
+    /**
+     * Return URL for a plan's PayPal NCP page: complete the pending row and
+     * put the buyer on the same success page the Orders API flow ends on.
+     *
+     * Two things have to hold. The path token must be this plan's HMAC, which
+     * makes the URL unguessable and stops it being edited onto a dearer plan.
+     * And the session must still hold the intent ncpStart() wrote, which is
+     * pulled here, so the URL is good exactly once per checkout.
+     *
+     * What it cannot do is prove the money arrived — an NCP page reports
+     * nothing back to us. A hit that clears both checks is therefore trusted,
+     * and the row it completes stays `verified: false` for reconciliation
+     * against the PayPal dashboard.
+     */
+    public function ncpConfirm(Request $request, int $plan, string $token)
+    {
+        $planModel = Plan::find($plan);
+        abort_unless($planModel, 404);
+
+        // Constant-time, and a 404 either way — a wrong token learns nothing.
+        abort_unless(hash_equals($planModel->paypalNcpConfirmToken(), $token), 404);
+
+        $intent  = (array) $request->session()->pull(self::NCP_INTENT, []);
+        $payment = !empty($intent['payment_id'])
+            ? TenantPayment::with('tenant', 'plan')->find($intent['payment_id'])
+            : null;
+
+        $live = $payment
+            && !$payment->isCompleted()
+            && (int) ($intent['plan_id'] ?? 0)  === $planModel->id
+            && (int) ($intent['tenant_id'] ?? 0) === (int) $payment->tenant_id
+            && (time() - (int) ($intent['at'] ?? 0)) < self::NCP_INTENT_TTL;
+
+        if (!$live) {
+            // Nothing live behind this hit: a forwarded link, a second visit,
+            // or a return that took longer than the window. Activate nothing
+            // and show the amber "received — under review" page instead.
+            Log::warning('PayPal NCP confirm with no live intent — nothing activated', [
+                'plan_id' => $planModel->id,
+                'user_id' => Auth::id(),
+                'ip'      => $request->ip(),
+            ]);
+
+            return redirect()->route('payment.success', ['ncp' => 1, 'plan' => $planModel->id]);
+        }
+
+        $payment->update([
+            'status'           => 'completed',
+            'paid_at'          => now(),
+            'gateway_response' => ['mode' => 'ncp', 'verified' => false],
+        ]);
+
+        // Same fulfilment every other gateway callback runs.
+        $this->fulfilPayment($payment);
+
+        Log::warning('Tenant activated from a PayPal NCP return — unverified with PayPal', [
+            'tenant_id'  => $payment->tenant_id,
+            'plan_id'    => $payment->plan_id,
+            'payment_id' => $payment->id,
+            'amount'     => (float) $payment->amount,
+        ]);
+
+        AuditLog::record('tenant.ncp_payment_confirmed', $payment->tenant, [
+            'payment_id' => $payment->id,
+            'plan_id'    => $payment->plan_id,
+            'amount'     => (float) $payment->amount,
+            'verified'   => false,
+        ]);
+
+        // success() finds the row by its order id, sees it already completed so
+        // it skips the REST capture, and logs a guest mid-signup in.
+        return redirect()->route('payment.success', ['token' => $payment->paypal_order_id]);
     }
 
     public function paypalIpn(Request $request)

@@ -34,6 +34,33 @@ class Plan extends Model
     ];
 
     public function tenants(): HasMany { return $this->hasMany(Tenant::class); }
+
+    /**
+     * Secret that proves a hit on the NCP confirm URL was meant for this plan.
+     *
+     * Keyed on APP_KEY, so the URL is unguessable and cannot be edited to
+     * point at a dearer plan. Rotating APP_KEY changes it — the three URLs
+     * held in the PayPal dashboard would have to be re-pasted.
+     */
+    public function paypalNcpConfirmToken(): string
+    {
+        return hash_hmac('sha256', 'paypal-ncp-confirm:' . $this->id, (string) config('app.key'));
+    }
+
+    /**
+     * The return URL to paste into this plan's PayPal NCP page.
+     *
+     * Deliberately not a Laravel signed URL: PayPal may append its own query
+     * parameters to a return URL, which would break a query-string signature.
+     * The token rides in the path instead, where extra params cannot touch it.
+     */
+    public function getPaypalNcpConfirmUrlAttribute(): string
+    {
+        return route('payment.paypal.ncp.confirm', [
+            'plan'  => $this->id,
+            'token' => $this->paypalNcpConfirmToken(),
+        ]);
+    }
     public function countryPrices(): HasMany { return $this->hasMany(PlanCountryPrice::class); }
 
     /**
