@@ -482,6 +482,10 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
      was blending the input's subtle border into the paragraph on small
      screens and making the two look tied together. */
   .capture{flex-direction:column;max-width:none;margin-top:36px;gap:12px}
+  /* Stacked means the button is no longer sized by its label — stretch it
+     to the full width of the input so the pair reads as one block rather
+     than a field with a tab hanging off it. */
+  .capture .btn{width:100%}
   .final h2{font-size:32px}
   .mobcta{display:flex}
   footer{padding-bottom:96px}
@@ -495,13 +499,29 @@ footer .fbase{padding-top:22px;display:flex;gap:18px;flex-wrap:wrap;font-size:13
   .sechead{margin-bottom:36px}
   .sechead h2{font-size:27px}
   .sechead p{font-size:15.5px}
-  /* Phones inherit the desktop pill styling — same subtle border, same
-     bg tint, same icon padding — and only override what's phone-specific:
-     16px input font to stop iOS Safari auto-zoom on focus, and matching
-     button font so the stacked pair reads at one type scale. Height
-     stays 54px to match the desktop pill exactly. */
-  .capture input{font-size:16px}
-  .capture .btn{font-size:16px}
+  /* Phones inherit the desktop pill styling — same border, same bg tint,
+     same icon — but not its proportions. At 390px wide this form is the
+     only thing on screen anyone has to tap, and the desktop pill, which
+     is sized to sit politely beside a 480px column, reads as small and
+     tentative blown up to full width. So the controls grow: 58px tall
+     (desktop 54), a rounder 16px radius to match that height, 16px input
+     text (also what stops iOS Safari zooming the page on focus) and a
+     bolder 17px button that carries the weight of being the one action.
+     The shadow lifts it off the hero glow the same way the input's does. */
+  .capture{gap:10px;margin-top:30px}
+  .capture input{height:58px;font-size:16px;border-radius:16px;padding:0 18px 0 52px;background-position:20px center}
+  html[dir="rtl"] .capture input{padding:0 52px 0 18px;background-position:calc(100% - 20px) center}
+  .capture .btn{
+    height:58px;font-size:17px;font-weight:700;border-radius:16px;
+    box-shadow:0 10px 26px -12px rgba(21,182,168,.65);
+  }
+  /* Long CTA labels — the Arabic one runs to five words — must not be
+     clipped by the desktop rule's nowrap on a 320px screen. */
+  .capture .btn{white-space:normal;padding:0 16px;line-height:1.25}
+  /* The reassurance line belongs to the CTA, so it sits closer to it than
+     to whatever follows. */
+  .microtrust{margin-top:18px;gap:12px 16px}
+  .microtrust span{font-size:13px}
   .strip .in{gap:22px}
   .strip .k{flex:1 1 40%}
   .strip .k b{font-size:22px}
