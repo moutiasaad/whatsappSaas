@@ -38,12 +38,56 @@ class InboxController extends Controller
         // switching afterwards would mean two requests and a visible flip.
         $counts = $this->counts($request, 'all');
 
+        [$waState, $waFixUrl] = $this->whatsAppLinkState($request);
+
         return view('admin.inbox.index', [
             'canUseWebChat'   => $this->canUseWebChat(),
             'canUseMessenger' => $this->canUseMessenger(),
             'initialTab'      => ($counts['mine'] ?? 0) > 0 ? 'mine' : 'pending',
             'initialCounts'   => $counts,
+            'waState'         => $waState,
+            'waFixUrl'        => $waFixUrl,
         ]);
+    }
+
+    /**
+     * Whether WhatsApp can actually deliver into this inbox, and where to fix
+     * it if not.
+     *
+     * An empty inbox looks the same whether it is quiet or broken, and the
+     * difference matters: a workspace whose phone was unlinked keeps waiting
+     * for messages that will never arrive. Returns one of `linked`, `pairing`,
+     * `offline` or `none`, plus the connection page for whoever is allowed to
+     * open it — an agent sees the warning but has nothing to click, since the
+     * instance routes are admin-only.
+     */
+    private function whatsAppLinkState(Request $request): array
+    {
+        $user = $request->user();
+
+        // Nothing to warn about on a plan that does not sell the channel, or
+        // for a super admin, who is not looking at one workspace's phone.
+        if (!$user?->tenant_id || $user->isSuperAdmin() || !($user->tenant?->planAllows('whatsapp') ?? false)) {
+            return ['linked', null];
+        }
+
+        $status = \App\Models\WhatsAppInstance::where('tenant_id', $user->tenant_id)
+            ->orderBy('id')
+            ->value('status');
+
+        $state = match (true) {
+            $status === null                                  => 'none',
+            $status === 'connected'                           => 'linked',
+            in_array($status, ['qr_pending', 'connecting'], true) => 'pairing',
+            default                                           => 'offline',
+        };
+
+        $route = $user->routeNamePrefix() . '.instances.index';
+
+        return [
+            $state,
+            ($state !== 'linked' && \Illuminate\Support\Facades\Route::has($route)) ? route($route) : null,
+        ];
     }
 
     // ── list ────────────────────────────────────────────────────────────────

@@ -15,6 +15,24 @@
 ════════════════════════════════════════════════════════════════ */
 main.page-content { padding: 0 !important; }
 
+/* ─────────── WhatsApp-not-linked strip ───────────
+   Sits above the grid inside a flex shell, so the grid takes whatever
+   height is left instead of being pushed into a page scroll. Literal
+   colours: the amber tokens live on .ubx, and this is its sibling. */
+.ubx-shell{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-height, 64px))}
+.ubx-shell .ubx{height:auto;flex:1 1 auto;min-height:0}
+.ubx-wa{display:flex;align-items:center;gap:13px;padding:11px 16px;background:#fef3e2;border-block-end:1px solid #f3d9ab;flex-shrink:0}
+.ubx-wa-ic{width:34px;height:34px;border-radius:10px;background:#fff;border:1px solid #f3d9ab;display:grid;place-items:center;color:#d97706;font-size:18px;flex-shrink:0}
+.ubx-wa-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ubx-wa-txt strong{font-size:13.5px;font-weight:700;color:#7c4a03;line-height:1.3}
+.ubx-wa-txt span{font-size:12.5px;color:#9a6a18;line-height:1.45}
+.ubx-wa-cta{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:9px;background:#d97706;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;transition:background .12s ease}
+.ubx-wa-cta:hover{background:#b45309;color:#fff}
+@media (max-width:700px){
+  .ubx-wa{flex-wrap:wrap;align-items:flex-start;padding:11px 14px}
+  .ubx-wa-cta{margin-inline-start:0;width:100%;justify-content:center}
+}
+
 .ubx{
   --teal:#0f7e7a;--teal-l:#15b6a8;--teal-d:#0a5e5b;--teal-50:#ecf7f6;--teal-100:#d6efed;
   --ink:#0d1417;--txt:#0f172a;--mut:#64748b;--mut-2:#94a3b8;
@@ -370,6 +388,30 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
 {{-- No x-init here: Alpine calls init() on the x-data object automatically.
      Adding x-init="init()" ran it twice, which started two poll timers and
      left the first one unreachable. --}}
+{{-- An empty inbox looks the same whether it is quiet or broken, and the
+     difference matters: a workspace whose phone was unlinked keeps waiting
+     for messages that can no longer arrive. State + fix link come from
+     InboxController::whatsAppLinkState(); an agent sees the warning with no
+     button, since the connection page is admin-only. --}}
+<div class="ubx-shell">
+@if(($waState ?? 'linked') !== 'linked')
+    <div class="ubx-wa" role="alert"
+         x-data="{ show: true }" x-show="show" x-cloak
+         x-init="window.Echo?.private(`tenant.{{ auth()->user()->tenant_id }}.instances`)
+                       ?.listen('.instance.status.changed', e => { if (e.status === 'connected') show = false })">
+        <span class="ubx-wa-ic"><i class="ri-whatsapp-line"></i></span>
+        <div class="ubx-wa-txt">
+            <strong>{{ __('ui.inbox_page.wa_alert_title_' . $waState) }}</strong>
+            <span>{{ __('ui.inbox_page.wa_alert_desc_' . $waState) }}</span>
+        </div>
+        @if($waFixUrl ?? null)
+            <a href="{{ $waFixUrl }}" class="ubx-wa-cta">
+                <i class="ri-qr-scan-2-line"></i> {{ __('ui.inbox_page.wa_alert_cta') }}
+            </a>
+        @endif
+    </div>
+@endif
+
 <div x-data="unifiedInbox()" x-cloak class="ubx" :class="{ 'v-thread': mobileThread }">
 
     {{-- ═══════════ LIST ═══════════ --}}
@@ -843,6 +885,7 @@ html[dir="rtl"] .ubx .send svg{transform:scaleX(-1)}
         </div>
     </template>
 </div>
+</div>{{-- /.ubx-shell --}}
 
 <script>
 function unifiedInbox() {

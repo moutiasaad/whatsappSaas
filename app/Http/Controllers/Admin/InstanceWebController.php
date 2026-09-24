@@ -74,6 +74,23 @@ class InstanceWebController extends Controller
 
         $showGatewayInternals = $this->seesGatewayInternals();
 
+        // One workspace, one number: every plan caps instances at one, so a
+        // tenant gets a single connection page — state, QR and settings in one
+        // place — rather than a table with a single row in it. Super admins
+        // keep the table; they look across every tenant at once.
+        if (!$isSuperAdmin) {
+            $instance = WhatsAppInstance::where('tenant_id', $tenantId)
+                ->orderBy('id')
+                ->first();
+
+            return view('admin.instances.single', [
+                'instance'            => $instance,
+                'teams'               => $teams,
+                'canCreateInstance'   => $canCreateInstance,
+                'defaultInstanceName' => $defaultInstanceName,
+            ]);
+        }
+
         return view('admin.instances.index', compact(
             'canCreateInstance', 'isSuperAdmin', 'teams', 'defaultInstanceName', 'showGatewayInternals'
         ));
@@ -168,6 +185,17 @@ class InstanceWebController extends Controller
         $this->configureGatewayWebhook($instance);
 
         AuditLog::record('instance.created', $instance);
+
+        // The single-connection page creates the instance over fetch() and then
+        // asks the gateway for a QR, so it needs the new row back rather than a
+        // redirect. Created here rather than through the API controller so the
+        // webhook secret and gateway registration above are never skipped.
+        if ($request->expectsJson()) {
+            return response()->json(
+                $instance->makeHidden(['gateway_api_key', 'webhook_token', 'webhook_secret']),
+                201
+            );
+        }
 
         return redirect()->route(auth()->user()->routeNamePrefix() . '.instances.index')
             ->with('success', __('ui.controller_messages.instance_created', ['name' => $instance->name]));
