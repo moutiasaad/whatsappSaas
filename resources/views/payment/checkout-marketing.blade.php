@@ -306,42 +306,32 @@
                         <span class="t">{{ __('ui.payment_page.cards_accepted') }}</span>
                     </div>
 
-                    @php
-                        // Per-plan override wins; falls back to the platform-wide
-                        // PAYPAL_NCP_LINK env. Both blank → the plain Orders API
-                        // flow renders below.
-                        $ncpLink = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
-                    @endphp
-                    @if($ncpLink)
-                        {{-- NCP mode: super-admin set a paypal.com/ncp/payment/XXX
-                             URL on this plan (or PAYPAL_NCP_LINK on core's .env).
-                             Button links straight there — no Orders API call, no
-                             server round-trip, no dynamic pricing. Manual
-                             reconciliation via the PayPal dashboard. --}}
-                        <a href="{{ $ncpLink }}" class="btn-paypal" rel="noopener">
+                    {{-- No NCP branch here on purpose. This host cannot run that
+                         flow: the confirm URL PayPal returns to reads a single-use
+                         intent out of core's session, and this box's session is not
+                         core's. Linking straight to the NCP page from here would
+                         take the buyer's money and leave the plan unactivated.
+                         Core decides instead — /payment/paypal/initiate proxies to
+                         its billing API, which answers with a signed link into its
+                         own NCP checkout when the plan has one. --}}
+                    {{-- Single-button PayPal redirect flow. Marketing POSTs
+                         to /payment/paypal/initiate which proxies to core; core
+                         answers with wherever the buyer should go — a PayPal
+                         Orders API approval URL, or a signed link into its own
+                         NCP checkout when the plan is paid on a fixed PayPal
+                         page — and the browser is 302-redirected there. PayPal
+                         returns to core either way, which captures or confirms
+                         and auto-logs the buyer in from the signed SSO handoff. --}}
+                    <form method="POST" action="{{ route('payment.paypal.initiate') }}"
+                          onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
+                        @csrf
+                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                        <button type="submit" class="btn-paypal">
                             <i class="ri-paypal-fill"></i>
                             {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
-                        </a>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_ncp_hint') }}</p>
-                    @else
-                        {{-- Single-button PayPal redirect flow. Marketing POSTs
-                             to /payment/paypal/initiate which proxies to core;
-                             core creates a PayPal Orders API order, returns the
-                             approval URL, and the browser is 302-redirected to
-                             paypal.com. PayPal returns to /payment/paypal/return,
-                             core captures, and success page auto-logs-in via the
-                             signed SSO handoff embedded in success_url. --}}
-                        <form method="POST" action="{{ route('payment.paypal.initiate') }}"
-                              onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
-                            @csrf
-                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                            <button type="submit" class="btn-paypal">
-                                <i class="ri-paypal-fill"></i>
-                                {{ __('ui.payment_page.pay_with_paypal', ['amount' => $displayPrice]) }}
-                            </button>
-                        </form>
-                        <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
-                    @endif
+                        </button>
+                    </form>
+                    <p class="payhint">{{ __('ui.payment_page.paypal_hint') }}</p>
                 </div>
 
                 <a href="{{ $backUrl }}" class="backlink">← {{ __('ui.payment_page.back_cancel') }}</a>

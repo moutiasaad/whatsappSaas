@@ -1001,25 +1001,13 @@ class PaymentController extends Controller
 
     /**
      * The NCP page that may stand in for this order, or null when the Orders
-     * API has to price it.
-     *
-     * An NCP page charges one fixed amount, so it can only ever stand in for a
-     * bare plan — a first subscription or an upgrade — and only when the total
-     * really is that plan's price. Anything with an add-on in it, and anything
-     * whose total has drifted from the plan price (a proration, a discount, a
-     * localised price), goes back down the Orders API path.
+     * API has to price it. The rule itself lives in one place — the marketing
+     * host's checkout goes through the billing API, which asks the same
+     * question of the same class.
      */
     private function ncpLinkFor(?Plan $plan, float $amount, bool $hasAddon): ?string
     {
-        if (!$plan || $hasAddon) {
-            return null;
-        }
-
-        if (abs($amount - (float) $plan->price_monthly) >= 0.005) {
-            return null;
-        }
-
-        return $plan->paypal_ncp_link ?: (config('services.paypal.ncp_link') ?: null);
+        return \App\Support\PaypalNcp::linkFor($plan, $amount, $hasAddon);
     }
 
     /**
@@ -1105,6 +1093,51 @@ class PaymentController extends Controller
         if (!$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
             return redirect()->route('register');
         }
+
+        $link = $this->ncpLinkFor($plan, (float) $plan->price_monthly, false);
+        abort_unless($link, 404);
+
+        return $this->startNcpCheckout($request, $tenant, $plan, $link);
+    }
+
+    /**
+     * Start an NCP checkout for a buyer arriving from the marketing host.
+     *
+     * wavadesk.com owns the signup checkout page, but it cannot own this
+     * flow: the confirm URL PayPal returns to reads a single-use intent out
+     * of core's session, and a session core never issued does not exist. So
+     * the billing API hands marketing a signed link to this route instead of
+     * a PayPal approve URL, and the buyer leaves for PayPal from core's own
+     * origin — one redirect earlier than before, invisible to them.
+     *
+     * The signature is core's, over the plan; identity rides along as the
+     * same SSO handoff code the Orders API flow already bakes into its
+     * return URL, so the buyer lands on the success page signed in.
+     */
+    public function ncpHandoff(Request $request)
+    {
+        abort_unless($request->hasValidSignature(), 403);
+
+        $plan = Plan::where('id', (int) $request->query('plan'))
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        // First request this browser has ever made to core, so there is no
+        // session to read the buyer out of — the code is the identity.
+        if (!Auth::check() && ($sso = (string) $request->query('sso', ''))) {
+            try {
+                $userId = app(\App\Services\Auth\SsoHandoffCode::class)->verify($sso);
+                if ($user = User::find($userId)) {
+                    Auth::login($user);
+                    $request->session()->regenerate();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('NCP handoff SSO redemption failed', ['reason' => $e->getMessage()]);
+            }
+        }
+
+        $tenant = Auth::user()?->tenant;
+        abort_unless($tenant, 403);
 
         $link = $this->ncpLinkFor($plan, (float) $plan->price_monthly, false);
         abort_unless($link, 404);

@@ -12,6 +12,7 @@ use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 
 /**
@@ -232,6 +233,44 @@ class BillingApiController extends Controller
         // no way forward for the buyer. Fall back to the plan's base USD
         // price so the checkout completes, and log the swap for audit.
         $priced = PayPalService::compatiblePricing($plan, $priced, $tenant->id);
+
+        // A plan paid on a fixed PayPal page never reaches the Orders API. The
+        // marketing host cannot run that checkout itself — the confirm URL
+        // PayPal returns to reads a single-use intent out of core's session,
+        // and marketing's session is not core's — so hand back a signed link
+        // into core's own NCP entry point and let the buyer leave for PayPal
+        // from here. `linkFor` refuses a localised price, which is why this
+        // sits after compatiblePricing() rather than before it.
+        $ncpLink = \App\Support\PaypalNcp::linkFor(
+            $plan,
+            (float) $priced['amount'],
+            false,
+            (string) $priced['currency'],
+        );
+
+        if ($ncpLink) {
+            // Same 30-minute handoff the REST branch mints, for the same
+            // reason: the buyer has no session on core to come back to.
+            $sso = app(SsoHandoffCode::class)->mint($userId, 1800);
+
+            Log::info('API v1 billing/checkout handing off to NCP', [
+                'tenant_id' => $tenant->id,
+                'plan_id'   => $plan->id,
+            ]);
+
+            return response()->json([
+                'redirect_url'    => URL::temporarySignedRoute(
+                    'payment.paypal.ncp.handoff',
+                    now()->addMinutes(30),
+                    ['plan' => $plan->id, 'sso' => $sso],
+                ),
+                'provider'        => 'paypal',
+                'mode'            => 'ncp',
+                'currency'        => strtoupper((string) $priced['currency']),
+                'amount'          => (float) $priced['amount'],
+                'base_amount_usd' => (float) $plan->price_monthly,
+            ]);
+        }
 
         // credentialsValid() proves the OAuth creds work by fetching a token
         // (6s + cache). Config presence alone is not enough — a box with a

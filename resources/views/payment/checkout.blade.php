@@ -37,22 +37,10 @@
     $cartPacks = (int) ($cart['packs'] ?? 0);
     $hasAddon  = $isPack || $isSeat || ($isCart && ($cartSeats > 0 || $cartPacks > 0));
 
-    // Belt and braces on top of the add-on rule: never hand a buyer a
-    // fixed-amount link when the figure on this page is not the plan price to
-    // the cent (a proration, a discount or a localised price would otherwise
-    // be charged at whatever the NCP page says).
-    $ncpAmountMatches = $plan
-        && abs((float) ($amount ?? 0) - (float) $plan->price_monthly) < 0.005;
-
-    // Resolution order for the eligible case:
-    //   1. per-plan `paypal_ncp_link` (super-admin form)
-    //   2. platform-wide `PAYPAL_NCP_LINK` env (config services.paypal.ncp_link)
-    //   3. neither set → fall through to Orders API flow
-    // If set, the button links straight to paypal.com/ncp/payment/XXX and
-    // skips the Orders API entirely (manual reconciliation on the operator).
-    $ncpLink = (!$hasAddon && $ncpAmountMatches)
-        ? ($plan?->paypal_ncp_link ?: config('services.paypal.ncp_link'))
-        : null;
+    // The rest of the rule — and the per-plan link, then the platform-wide
+    // PAYPAL_NCP_LINK fallback, then nothing — lives in one place, because the
+    // billing API the marketing host calls has to answer it identically.
+    $ncpLink = \App\Support\PaypalNcp::linkFor($plan, (float) ($amount ?? 0), $hasAddon);
 
     // Hidden fields the initiate endpoint needs to reprice the order server
     // side. Kind drives which branch of PaymentController::initiatePaypal runs.

@@ -145,6 +145,11 @@ Route::post('/payment/paypal/standard', [PaymentController::class, 'paypalStanda
 // invalidate it.
 Route::post('/payment/paypal/ncp/start', [PaymentController::class, 'ncpStart'])
     ->name('payment.paypal.ncp.start');
+// Entry point for a buyer sent over from the marketing host: the billing API
+// signs this URL and marketing 302s the browser to it, so the session holding
+// the checkout intent is core's — the only one the confirm URL can read.
+Route::get('/payment/paypal/ncp/handoff', [PaymentController::class, 'ncpHandoff'])
+    ->name('payment.paypal.ncp.handoff');
 Route::get('/payment/paypal/ncp/confirm/{plan}/{token}', [PaymentController::class, 'ncpConfirm'])
     ->name('payment.paypal.ncp.confirm')
     ->whereNumber('plan')
