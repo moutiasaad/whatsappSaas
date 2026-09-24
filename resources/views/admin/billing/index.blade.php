@@ -216,7 +216,7 @@
             </div>
 
             {{-- ══════════ PLANS ══════════ --}}
-            <div class="card">
+            <div class="card" id="plans">
                 <div class="bl-ch">
                     <div class="m">
                         <h3>{{ __('ui.tenant_billing.plans_title') }}</h3>
@@ -408,7 +408,7 @@
         </div>
 
         {{-- ══════════ ORDER SUMMARY ══════════ --}}
-        <div>
+        <div id="order-summary">
             <div class="bl-sum">
                 <div class="sh">
                     <h3>{{ __('ui.tenant_billing.summary_title') }}</h3>
@@ -513,8 +513,33 @@ function billingPage(cfg) {
 
         selectPlan(id) {
             // Clicking the selected plan again clears it, so the summary can go
-            // back to "nothing selected" without a reload.
-            this.selectedPlan = this.selectedPlan === id ? null : id;
+            // back to "nothing selected" without a reload — but only where the
+            // summary is on screen to show that it happened. Stacked, it sits
+            // far below the plans, so a second tap there means "take me to it
+            // to pay": deselecting would be an outcome the buyer cannot see.
+            const stacked = window.matchMedia('(max-width: 1160px)').matches;
+
+            if (this.selectedPlan === id && !stacked) {
+                this.selectedPlan = null;
+                return;
+            }
+
+            this.selectedPlan = id;
+
+            // After the summary has re-rendered for the new plan, so it is at
+            // its final height before the scroll measures anything.
+            if (stacked) this.$nextTick(() => this.showSummary());
+        },
+
+        /** Bring the order summary into view on a stacked layout. */
+        showSummary() {
+            const el = document.getElementById('order-summary');
+            if (!el) return;
+
+            el.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                block: 'start',
+            });
         },
 
         get planLine() {
@@ -746,6 +771,14 @@ function billingPage(cfg) {
 
     @media (max-width: 1160px) {
         .bl-grid { grid-template-columns: minmax(0,1fr); }
+        /* Stacked, the order is the journey: someone on this page came to
+           change plan, and usage is what they check afterwards to see
+           whether the new one fits. Beside each other that order does not
+           matter; in one column it is the difference between landing on
+           the plans and scrolling past a chart to find them. */
+        #plans { order: -1; }
+        /* Scrolled to from a plan tap — clear the sticky topbar. */
+        #order-summary { scroll-margin-top: 78px; }
         .bl-sum { position: static; }
         .bl-plans { grid-template-columns: 1fr; }
     }
