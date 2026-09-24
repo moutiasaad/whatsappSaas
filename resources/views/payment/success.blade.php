@@ -51,6 +51,13 @@
         </div>
         <h1>{{ __('ui.payment_page.ncp_return_heading') }}</h1>
         <p>{{ __('ui.payment_page.ncp_return_desc') }}</p>
+        {{-- Present only when the NCP link's return URL carries ?plan={id},
+             which is how the operator tells the three plans apart. --}}
+        @if($ncpPlan ?? null)
+            <p class="redirect-note" style="margin-top:6px;">
+                {{ $ncpPlan->name }} — ${{ number_format((float) $ncpPlan->price_monthly, 2) }}
+            </p>
+        @endif
         <a href="{{ url('/') }}" class="btn" style="background:linear-gradient(135deg,#d97706,#b45309);box-shadow:0 4px 14px rgba(217,119,6,.3);">
             {{ __('ui.payment_page.ncp_return_cta') }}
         </a>

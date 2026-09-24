@@ -355,6 +355,22 @@ class PaymentController extends Controller
         // if it went through.
         $isNcp = $request->boolean('ncp');
 
+        // Each plan's NCP page gets its own return URL, ...?ncp=1&plan={id},
+        // so the buyer is told what they just paid for and the operator has it
+        // in the log. An NCP payment comes back with no order id at all, so
+        // this line is the only trace on our side that it happened.
+        $ncpPlan = ($isNcp && $request->filled('plan'))
+            ? Plan::find((int) $request->query('plan'))
+            : null;
+
+        if ($isNcp) {
+            Log::info('PayPal NCP return', [
+                'plan_id' => $ncpPlan?->id,
+                'plan'    => $ncpPlan?->name,
+                'user_id' => Auth::id(),
+            ]);
+        }
+
         if (!$sessionId && !$orderId) {
             return view('payment.success', [
                 'tenant'         => null,
@@ -362,6 +378,7 @@ class PaymentController extends Controller
                 'payment'        => null,
                 'redirectToDash' => false,
                 'isNcp'          => $isNcp,
+                'ncpPlan'        => $ncpPlan,
             ]);
         }
 

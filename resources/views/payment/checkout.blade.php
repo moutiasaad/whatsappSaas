@@ -25,15 +25,32 @@
     $paypalReady = (bool) config('services.paypal.client_id')
         || (bool) config('services.paypal.payee_email');
 
-    // Static NCP link mode — only valid for plan subscriptions, since
-    // pack/seat/cart amounts vary per quantity and an NCP link is a
-    // fixed-amount PayPal button. Resolution order:
+    // Static NCP link mode — an NCP button is a FIXED-amount PayPal page, so
+    // it may only ever stand in for an order whose total is exactly the plan's
+    // monthly price: a new subscription or a plan upgrade, nothing else.
+    //
+    // Any add-on in the order sends it back down the Orders API path, which
+    // prices the order server side: a standalone AI pack or seat pack, and a
+    // cart that carries either alongside the plan. A cart with a plan and no
+    // add-on is just an upgrade, so it keeps the link.
+    $cartSeats = (int) ($cart['seats'] ?? 0);
+    $cartPacks = (int) ($cart['packs'] ?? 0);
+    $hasAddon  = $isPack || $isSeat || ($isCart && ($cartSeats > 0 || $cartPacks > 0));
+
+    // Belt and braces on top of the add-on rule: never hand a buyer a
+    // fixed-amount link when the figure on this page is not the plan price to
+    // the cent (a proration, a discount or a localised price would otherwise
+    // be charged at whatever the NCP page says).
+    $ncpAmountMatches = $plan
+        && abs((float) ($amount ?? 0) - (float) $plan->price_monthly) < 0.005;
+
+    // Resolution order for the eligible case:
     //   1. per-plan `paypal_ncp_link` (super-admin form)
     //   2. platform-wide `PAYPAL_NCP_LINK` env (config services.paypal.ncp_link)
     //   3. neither set → fall through to Orders API flow
     // If set, the button links straight to paypal.com/ncp/payment/XXX and
     // skips the Orders API entirely (manual reconciliation on the operator).
-    $ncpLink = (!$isPack && !$isSeat && !$isCart)
+    $ncpLink = (!$hasAddon && $ncpAmountMatches)
         ? ($plan?->paypal_ncp_link ?: config('services.paypal.ncp_link'))
         : null;
 
