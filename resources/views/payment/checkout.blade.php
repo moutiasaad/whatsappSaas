@@ -458,13 +458,13 @@
                     </div>
 
                     @if($ncpLink)
-                        {{-- NCP mode: super-admin set a paypal.com/ncp/payment/XXX
-                             URL on this plan. No Orders API call and no dynamic
-                             pricing, but the POST goes through ncpStart() first
-                             so a pending payment row and a single-use session
-                             intent exist before the buyer leaves for PayPal —
-                             that intent is what lets the plan's confirm URL
-                             activate the subscription on the way back. --}}
+                        {{-- NCP mode, and a fallback: checkout() and
+                             cartCheckout() redirect to PayPal before this page
+                             renders, so a buyer normally never sees it. If some
+                             other path does show it, the POST still goes through
+                             ncpStart(), which writes the pending row and the
+                             single-use session intent the plan's confirm URL
+                             needs to activate the subscription on the way back. --}}
                         <form method="POST" action="{{ route('payment.paypal.ncp.start') }}"
                               onsubmit="this.querySelectorAll('button').forEach(b => b.disabled = true)">
                             @csrf

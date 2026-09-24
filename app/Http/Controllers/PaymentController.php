@@ -134,6 +134,21 @@ class PaymentController extends Controller
         $cart = $this->priceCart($data, $tenant);
         abort_if($cart['amount'] <= 0, 404);
 
+        // A plan on its own, on a plan that has an NCP page: there is nothing
+        // to pick on the checkout page — that page's whole job is to offer a
+        // card form and a PayPal button, and NCP mode has neither — so the
+        // buyer goes straight to PayPal. Add a seat or a pack to the order and
+        // this falls through to the page, which prices it via the Orders API.
+        $link = $this->ncpLinkFor(
+            $cart['plan'],
+            (float) $cart['amount'],
+            $cart['seats'] > 0 || $cart['packs'] > 0,
+        );
+
+        if ($link) {
+            return $this->startNcpCheckout($request, $tenant, $cart['plan'], $link);
+        }
+
         return view('payment.checkout', [
             'tenant' => $tenant,
             'plan'   => $cart['plan'] ?? $tenant->plan,
@@ -273,6 +288,12 @@ class PaymentController extends Controller
 
         $admin  = $tenant->users()->where('role', 'admin')->first();
         $amount = (float) $plan->price_monthly;
+
+        // Registration and upgrade both land here, and both are a bare plan —
+        // so an NCP plan skips the page and goes straight to its PayPal link.
+        if ($link = $this->ncpLinkFor($plan, $amount, false)) {
+            return $this->startNcpCheckout($request, $tenant, $plan, $link);
+        }
 
         return view('payment.checkout', [
             'tenant'  => $tenant,
@@ -979,33 +1000,40 @@ class PaymentController extends Controller
     }
 
     /**
-     * Hand a plan buyer over to that plan's static PayPal NCP page.
+     * The NCP page that may stand in for this order, or null when the Orders
+     * API has to price it.
      *
-     * The button used to link straight to paypal.com, which left no record of
-     * the attempt and nothing to complete when the buyer came back. Going
-     * through here first writes the pending row the confirm URL later
-     * completes, and stashes a single-use intent in the session: the confirm
-     * URL on its own activates nothing, so a buyer who bookmarks it — or
-     * passes it on — cannot replay the upgrade.
+     * An NCP page charges one fixed amount, so it can only ever stand in for a
+     * bare plan — a first subscription or an upgrade — and only when the total
+     * really is that plan's price. Anything with an add-on in it, and anything
+     * whose total has drifted from the plan price (a proration, a discount, a
+     * localised price), goes back down the Orders API path.
      */
-    public function ncpStart(Request $request)
+    private function ncpLinkFor(?Plan $plan, float $amount, bool $hasAddon): ?string
     {
-        $request->validate([
-            'tenant_id' => 'required|exists:tenants,id',
-            'plan_id'   => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
-        ]);
-
-        $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
-        $plan   = Plan::findOrFail($request->plan_id);
-
-        if (!$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
-            return redirect()->route('register');
+        if (!$plan || $hasAddon) {
+            return null;
         }
 
-        $link = $plan->paypal_ncp_link ?: config('services.paypal.ncp_link');
-        abort_unless($link, 404);
+        if (abs($amount - (float) $plan->price_monthly) >= 0.005) {
+            return null;
+        }
 
-        $payment = TenantPayment::create([
+        return $plan->paypal_ncp_link ?: (config('services.paypal.ncp_link') ?: null);
+    }
+
+    /**
+     * Send a plan buyer to that plan's static PayPal page.
+     *
+     * Writes the pending row the confirm URL later completes and stashes a
+     * single-use intent in the session, so the return can be trusted exactly
+     * once. A checkout the buyer is already in the middle of is reused rather
+     * than duplicated — this runs on a GET, so a reload or a back-button would
+     * otherwise leave a trail of pending rows behind.
+     */
+    private function startNcpCheckout(Request $request, Tenant $tenant, Plan $plan, string $link)
+    {
+        $payment = $this->liveNcpPayment($request, $tenant, $plan) ?? TenantPayment::create([
             'tenant_id'       => $tenant->id,
             'plan_id'         => $plan->id,
             'kind'            => TenantPayment::KIND_SUBSCRIPTION,
@@ -1036,6 +1064,52 @@ class PaymentController extends Controller
         ]);
 
         return redirect()->away($link);
+    }
+
+    /**
+     * The pending row from a checkout this buyer is already in the middle of,
+     * for this same tenant and plan, or null if there is none worth reusing.
+     */
+    private function liveNcpPayment(Request $request, Tenant $tenant, Plan $plan): ?TenantPayment
+    {
+        $intent = (array) $request->session()->get(self::NCP_INTENT, []);
+
+        if ((int) ($intent['plan_id'] ?? 0) !== $plan->id
+            || (int) ($intent['tenant_id'] ?? 0) !== $tenant->id
+            || (time() - (int) ($intent['at'] ?? 0)) >= self::NCP_INTENT_TTL) {
+            return null;
+        }
+
+        $payment = TenantPayment::find($intent['payment_id'] ?? 0);
+
+        return $payment && !$payment->isCompleted() ? $payment : null;
+    }
+
+    /**
+     * POST fallback for the NCP button on the checkout page.
+     *
+     * checkout() and cartCheckout() redirect before that page ever renders, so
+     * this is only reached if some other path puts an NCP plan in front of a
+     * buyer. It exists so the button can never bypass the pending row.
+     */
+    public function ncpStart(Request $request)
+    {
+        $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
+            'plan_id'   => ['required', Rule::exists('plans', 'id')->where('is_active', true)],
+        ]);
+
+        $tenant = Tenant::with(['plan', 'users'])->findOrFail($request->tenant_id);
+        $plan   = Plan::findOrFail($request->plan_id);
+
+        if (!$plan->price_monthly || (float) $plan->price_monthly === 0.0) {
+            return redirect()->route('register');
+        }
+
+        $link = $this->ncpLinkFor($plan, (float) $plan->price_monthly, false);
+        abort_unless($link, 404);
+
+        return $this->startNcpCheckout($request, $tenant, $plan, $link);
     }
 
     /**
